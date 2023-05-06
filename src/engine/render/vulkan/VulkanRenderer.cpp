@@ -87,7 +87,7 @@ bool VulkanRenderer::Setup()
 
 void VulkanRenderer::Teardown()
 {
-		// don't want to destroy things if we are still in the middle of using them for rendering
+    // don't want to destroy things if we are still in the middle of using them for rendering
 	m_pDevice->Flush();
 
 	TeardownSwapchain();
