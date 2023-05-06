@@ -1,5 +1,5 @@
-#include "Engine/Render/Camera.h"
-#include "Engine/Input/InputSystem.h"
+#include "engine/render/Camera.h"
+#include "engine/input/InputSystem.h"
 
 Camera::Camera()
 	:m_worldPosition(Vec3::ZERO)

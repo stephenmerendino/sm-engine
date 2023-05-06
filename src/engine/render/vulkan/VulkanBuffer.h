@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Engine/Render/Vulkan/VulkanInclude.h"
-#include "Engine/Core/Types.h"
+#include "engine/render/vulkan/VulkanInclude.h"
+#include "engine/core/Types.h"
 
 class VulkanDevice;
 class VulkanCommandPool;

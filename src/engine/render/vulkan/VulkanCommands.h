@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Engine/Core/Types.h"
-#include "Engine/Render/Vulkan/VulkanInclude.h"
+#include "engine/core/Types.h"
+#include "engine/render/vulkan/VulkanInclude.h"
 
 #include <vector>
 

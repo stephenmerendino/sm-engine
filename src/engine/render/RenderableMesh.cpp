@@ -1,8 +1,8 @@
-#include "Engine/Render/RenderableMesh.h"
-#include "Engine/Render/Mesh.h"
-#include "Engine/Render/Vulkan/VulkanDevice.h"
-#include "Engine/Render/Vulkan/VulkanCommandPool.h"
-#include "Engine/Render/Vulkan/VulkanBuffer.h"
+#include "engine/render/RenderableMesh.h"
+#include "engine/render/Mesh.h"
+#include "engine/render/vulkan/VulkanDevice.h"
+#include "engine/render/vulkan/VulkanCommandPool.h"
+#include "engine/render/vulkan/VulkanBuffer.h"
 
 RenderableMesh::RenderableMesh(VulkanDevice* pDevice, Mesh* pMesh)
 	:m_pDevice(pDevice)

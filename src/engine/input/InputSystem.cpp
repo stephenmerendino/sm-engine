@@ -1,8 +1,7 @@
-#include "Engine/Input/InputSystem.h"
-
-#include "Engine/Core/Debug.h"
-#include "Engine/Core/Common.h"
-#include "Engine/Render/Window.h"
+#include "engine/input/InputSystem.h"
+#include "engine/core/Debug.h"
+#include "engine/core/Common.h"
+#include "engine/render/Window.h"
 
 InputSystem g_inputSystem;
 

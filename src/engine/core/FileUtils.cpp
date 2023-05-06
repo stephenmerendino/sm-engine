@@ -1,6 +1,6 @@
-#include "Engine/Core/FileUtils.h"
-#include "Engine/Core/Debug.h"
-#include "Engine/Core/Assert.h"
+#include "engine/core/FileUtils.h"
+#include "engine/core/Debug.h"
+#include "engine/core/Assert.h"
 
 #include <cstdio>
 #include <cerrno>

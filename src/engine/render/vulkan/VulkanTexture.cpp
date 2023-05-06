@@ -1,11 +1,11 @@
-#include "Engine/Render/Vulkan/VulkanTexture.h"
-#include "Engine/Render/Vulkan/VulkanDevice.h"
-#include "Engine/Render/Vulkan/VulkanCommandPool.h"
-#include "Engine/Render/Vulkan/VulkanCommands.h"
+#include "engine/render/vulkan/VulkanTexture.h"
+#include "engine/render/vulkan/VulkanDevice.h"
+#include "engine/render/vulkan/VulkanCommandPool.h"
+#include "engine/render/vulkan/VulkanCommands.h"
 
-#include "Engine/Core/Debug.h"
+#include "engine/core/Debug.h"
 #define STB_IMAGE_IMPLEMENTATION
-#include "Engine/ThirdParty/stb/stb_image.h"
+#include "engine/thirdparty/stb/stb_image.h"
 
 #include <cmath>
 

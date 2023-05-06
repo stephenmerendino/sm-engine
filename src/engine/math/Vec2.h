@@ -1,9 +1,9 @@
 #pragma once
 #pragma warning(disable:4201)
 
-#include <Engine/Math/MathUtils.h>
-#include <Engine/Core/Types.h>
-#include <Engine/Core/Common.h>
+#include <engine/math/MathUtils.h>
+#include <engine/core/Types.h>
+#include <engine/core/Common.h>
 
 #include <cmath>
 

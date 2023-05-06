@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Engine/Core/Types.h"
-#include "Engine/THread/AtomicUtil.h"
+#include "engine/core/Types.h"
+#include "engine/thread/AtomicUtil.h"
 
 class AtomicInt
 {

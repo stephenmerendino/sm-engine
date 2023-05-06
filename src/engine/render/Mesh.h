@@ -1,9 +1,8 @@
 #pragma once
 
-#include "Engine/Core/Types.h"
-#include "Engine/Math/Vec3.h"
-
-#include "Vertex.h"
+#include "engine/core/Types.h"
+#include "engine/math/Vec3.h"
+#include "engine/render/Vertex.h"
 
 #include <vector>
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Engine/Core/Types.h"
+#include "engine/core/Types.h"
 
 #include <cfloat>
 #include <cmath>

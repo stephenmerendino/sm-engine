@@ -1,6 +1,6 @@
-#include "Engine/Job/Job.h"
-#include "Engine/Job/JobSystem.h"
-#include "Engine/Core/Assert.h"
+#include "engine/job/Job.h"
+#include "engine/job/JobSystem.h"
+#include "engine/core/Assert.h"
 
 Job::Job(JobFunc jobFunc, void* jobArgs)
 	:m_jobFunc(jobFunc)
@@ -14,7 +14,8 @@ Job::Job(JobFunc jobFunc, void* jobArgs)
 
 Job::~Job()
 {
-	delete m_jobArgs;
+    //TODO Do we need to be deleting m_jobArgs?
+	//delete m_jobArgs;
 }
 
 void Job::Acquire()

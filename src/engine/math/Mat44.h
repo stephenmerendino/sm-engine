@@ -1,9 +1,9 @@
 #pragma once
 #pragma warning(disable:4201)
 
-#include "Engine/Core/Common.h"
-#include "Engine/Math/Vec4.h"
-#include "Engine/Math/Vec3.h"
+#include "engine/core/Common.h"
+#include "engine/math/Vec4.h"
+#include "engine/math/Vec3.h"
 
 #include <memory.h>
 

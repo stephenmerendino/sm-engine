@@ -1,12 +1,11 @@
 #pragma once
 
-#include "Engine/Core/Types.h"
+#include "engine/core/Types.h"
 #include <vector>
 #include <string>
 
 static const U32 WINDOW_WIDTH = 1920;
 static const U32 WINDOW_HEIGHT = 1080;
-static const char* WINDOW_NAME = "Hikari Workbench";
 static const bool WINDOW_ALLOW_RESIZE = true;
 
 static const U32 MAX_NUM_FRAMES_IN_FLIGHT = 2;

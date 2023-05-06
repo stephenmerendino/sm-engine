@@ -1,8 +1,8 @@
 #pragma once
 #pragma warning(disable:4201)
 
-#include "Engine/Core/Types.h"
-#include <Engine/Math/MathUtils.h>
+#include "engine/core/Types.h"
+#include "engine/math/MathUtils.h"
 
 class IntVec2
 {

@@ -1,6 +1,6 @@
-#include "Engine/Render/Vulkan/VulkanUtils.h"
-#include "Engine/Core/Common.h"
-#include "Engine/Math/MathUtils.h"
+#include "engine/render/vulkan/VulkanUtils.h"
+#include "engine/core/Common.h"
+#include "engine/math/MathUtils.h"
 
 VkSurfaceFormatKHR ChooseSwapchainSurfaceFormat(std::vector<VkSurfaceFormatKHR> formats)
 {

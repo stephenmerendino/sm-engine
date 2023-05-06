@@ -1,9 +1,9 @@
-#include "Engine/Job/JobSystem.h"
-#include "Engine/Core/Common.h"
-#include "Engine/Core/Assert.h"
-#include "Engine/Thread/Event.h"
-#include "Engine/Thread/ThreadSafeQueue.h"
-#include "Engine/Math/MathUtils.h"
+#include "engine/job/JobSystem.h"
+#include "engine/core/Common.h"
+#include "engine/core/Assert.h"
+#include "engine/thread/Event.h"
+#include "engine/thread/ThreadSafeQueue.h"
+#include "engine/math/MathUtils.h"
 
 JobSystem g_jobSystem;
 

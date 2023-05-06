@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Engine/Core/Types.h"
+#include "engine/core/Types.h"
 
 constexpr inline bool IsBitSet(U8 bits, U8 flag) { return (bits & flag); }
 constexpr inline void SetBit(U8& bits, U8 flag) { bits |= flag; }

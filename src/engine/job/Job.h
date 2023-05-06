@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Engine/Core/Types.h"
-#include "Engine/Thread/AtomicInt.h"
-#include "Engine/Thread/CriticalSection.h"
+#include "engine/core/Types.h"
+#include "engine/thread/AtomicInt.h"
+#include "engine/thread/CriticalSection.h"
 
 typedef void (*JobFunc)(void* args);
 

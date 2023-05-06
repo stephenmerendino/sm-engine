@@ -1,6 +1,6 @@
-#include <Engine/Math/Mat44.h>
-#include <Engine/Math/Mat33.h>
-#include <Engine/Math/MathUtils.h>
+#include <engine/math/Mat44.h>
+#include <engine/math/Mat33.h>
+#include <engine/math/MathUtils.h>
 
 Mat44 Mat44::IDENTITY = Mat44(1.0f, 0.0f, 0.0f, 0.0f,
 							  0.0f, 1.0f, 0.0f, 0.0f,

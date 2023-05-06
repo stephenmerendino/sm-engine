@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Engine/Render/Window.h"
-#include "Engine/Render/Vulkan/VulkanInclude.h"
+#include "engine/render/Window.h"
+#include "engine/render/vulkan/VulkanInclude.h"
 
 class VulkanSurface
 {

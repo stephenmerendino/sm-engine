@@ -1,4 +1,4 @@
-#include "Engine/Render/Vertex.h"
+#include "engine/render/Vertex.h"
 
 VkVertexInputBindingDescription GetBindingDescription(const Vertex& vtx)
 {

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Engine/Core/Types.h"
-#include "Engine/Math/IntVec2.h"
-#include "Engine/Platform/WindowsInclude.h"
+#include "engine/core/Types.h"
+#include "engine/math/IntVec2.h"
+#include "engine/platform/WindowsInclude.h"
 
 #include <vector>
 #include <string>

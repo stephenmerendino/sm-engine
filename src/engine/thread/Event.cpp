@@ -1,4 +1,4 @@
-#include "Engine/Thread/Event.h"
+#include "engine/thread/Event.h"
 
 Event::Event()
 	:m_osEvent(NULL)

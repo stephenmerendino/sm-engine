@@ -1,7 +1,6 @@
-#include "Engine/Render/Vulkan/VulkanSampler.h"
-#include "Engine/Render/Vulkan/VulkanDevice.h"
-
-#include "Engine/Core/Assert.h"
+#include "engine/render/vulkan/VulkanSampler.h"
+#include "engine/render/vulkan/VulkanDevice.h"
+#include "engine/core/Assert.h"
 
 VulkanSampler::VulkanSampler(VulkanDevice* pDevice)
 	:m_pDevice(pDevice)

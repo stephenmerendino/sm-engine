@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Engine/Core/Types.h"
-#include "Engine/Core/BitFlags.h"
-#include "Engine/Math/IntVec2.h"
-#include "Engine/Math/Vec2.h"
+#include "engine/core/Types.h"
+#include "engine/core/BitFlags.h"
+#include "engine/math/IntVec2.h"
+#include "engine/math/Vec2.h"
 
 class Window;
 

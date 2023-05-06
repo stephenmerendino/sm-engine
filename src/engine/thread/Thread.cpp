@@ -1,6 +1,6 @@
-#include "Engine/Thread/Thread.h"
-#include "Engine/Core/Assert.h"
-#include "Engine/Core/Clock.h"
+#include "engine/thread/Thread.h"
+#include "engine/core/Assert.h"
+#include "engine/core/Clock.h"
 
 Thread::Thread()
 	:m_bIsRunning(false)

@@ -1,4 +1,4 @@
-#include "Engine/Math/Vec3.h"
+#include "engine/math/Vec3.h"
 
 Vec3 Vec3::ZERO = Vec3(0.0f, 0.0f, 0.0f);
 Vec3 Vec3::FORWARD = Vec3(1.0f, 0.0f, 0.0f);

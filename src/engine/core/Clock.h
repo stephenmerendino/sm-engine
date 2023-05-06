@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Engine/Core/Common.h"
+#include "engine/core/Common.h"
 
 class Clock
 {

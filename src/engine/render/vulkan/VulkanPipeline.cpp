@@ -1,9 +1,9 @@
-#include "Engine/Render/Vulkan/VulkanPipeline.h"
-#include "Engine/Render/Vulkan/VulkanDevice.h"
-#include "Engine/Render/Vulkan/VulkanRenderPass.h"
-#include "Engine/Render/RenderableMesh.h"
-#include "Engine/Core/Assert.h"
-#include "Engine/Core/Common.h"
+#include "engine/render/vulkan/VulkanPipeline.h"
+#include "engine/render/vulkan/VulkanDevice.h"
+#include "engine/render/vulkan/VulkanRenderPass.h"
+#include "engine/render/RenderableMesh.h"
+#include "engine/core/Assert.h"
+#include "engine/core/Common.h"
 
 VulkanPipeline::VulkanPipeline(VulkanDevice* pDevice)
 	:m_pDevice(pDevice)

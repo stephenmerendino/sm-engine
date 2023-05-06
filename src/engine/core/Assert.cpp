@@ -1,5 +1,5 @@
-#include "Engine/Core/Assert.h"
-#include "Engine/Platform/WindowsInclude.h"
+#include "engine/core/Assert.h"
+#include "engine/platform/WindowsInclude.h"
 
 #include <cstdio>
 #include <cstdlib>

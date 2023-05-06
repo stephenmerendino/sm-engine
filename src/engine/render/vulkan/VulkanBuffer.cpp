@@ -1,8 +1,8 @@
-#include "Engine/Render/Vulkan/VulkanBuffer.h"
-#include "Engine/Render/Vulkan/VulkanDevice.h"
-#include "Engine/Render/Vulkan/VulkanCommandPool.h"
-#include "Engine/Render/Vulkan/VulkanCommands.h"
-#include "Engine/Core/Assert.h"
+#include "engine/render/vulkan/VulkanBuffer.h"
+#include "engine/render/vulkan/VulkanDevice.h"
+#include "engine/render/vulkan/VulkanCommandPool.h"
+#include "engine/render/vulkan/VulkanCommands.h"
+#include "engine/core/Assert.h"
 
 VulkanBuffer::VulkanBuffer(VulkanDevice* pDevice)
 	:m_pDevice(pDevice)

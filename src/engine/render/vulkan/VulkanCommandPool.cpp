@@ -1,7 +1,7 @@
-#include "Engine/Render/Vulkan/VulkanCommandPool.h"
-#include "Engine/Render/Vulkan/VulkanDevice.h"
-#include "Engine/Core/Assert.h"
-#include "Engine/Core/Common.h"
+#include "engine/render/vulkan/VulkanCommandPool.h"
+#include "engine/render/vulkan/VulkanDevice.h"
+#include "engine/core/Assert.h"
+#include "engine/core/Common.h"
 
 VulkanCommandPool::VulkanCommandPool(VulkanDevice* pDevice)
 	:m_pDevice(pDevice)

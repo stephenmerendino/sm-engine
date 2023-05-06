@@ -1,8 +1,8 @@
-#include "Engine/Render/Vulkan/VulkanInstance.h"
-#include "Engine/Render/Vulkan/VulkanUtils.h"
-#include "Engine/Core/Assert.h"
-#include "Engine/Core/Common.h"
-#include "Engine/Core/Config.h"
+#include "engine/render/vulkan/VulkanInstance.h"
+#include "engine/render/vulkan/VulkanUtils.h"
+#include "engine/core/Assert.h"
+#include "engine/core/Common.h"
+#include "engine/core/Config.h"
 
 VkInstance VulkanInstance::m_vkInstance = VK_NULL_HANDLE;
 VkDebugUtilsMessengerEXT VulkanInstance::m_debugMessenger = VK_NULL_HANDLE;

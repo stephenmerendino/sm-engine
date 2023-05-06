@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Engine/Platform/WindowsInclude.h"
+#include "engine/platform/WindowsInclude.h"
 
 #define VK_NO_PROTOTYPES
-#include "Engine/ThirdParty/Vulkan/vulkan.h"
-#include "Engine/ThirdParty/Vulkan/vulkan_win32.h"
+#include "engine/thirdparty/vulkan/vulkan.h"
+#include "engine/thirdparty/vulkan/vulkan_win32.h"
 
 void LoadVulkanGlobalFuncs();
 void LoadVulkanInstanceFuncs(VkInstance instance);

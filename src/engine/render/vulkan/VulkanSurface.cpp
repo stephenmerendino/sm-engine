@@ -1,7 +1,6 @@
-#include "Engine/Render/Vulkan/VulkanSurface.h"
-#include "Engine/Render/Vulkan/VulkanInstance.h"
-
-#include "Engine/Core/Assert.h"
+#include "engine/render/vulkan/VulkanSurface.h"
+#include "engine/render/vulkan/VulkanInstance.h"
+#include "engine/core/Assert.h"
 
 VulkanSurface::VulkanSurface(const Window* pWindow)
 	:m_pWindow(pWindow)

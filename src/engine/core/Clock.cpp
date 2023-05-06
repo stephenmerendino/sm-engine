@@ -1,6 +1,5 @@
-#include "Clock.h"
-
-#include "Engine/Platform/WindowsInclude.h"
+#include "engine/core/Clock.h"
+#include "engine/platform/WindowsInclude.h"
 
 static I64 s_freqPerSecond;
 

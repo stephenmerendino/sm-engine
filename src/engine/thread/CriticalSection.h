@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Engine/Core/StringUtils.h"
-#include "Engine/Platform/WindowsInclude.h"
+#include "engine/core/StringUtils.h"
+#include "engine/platform/WindowsInclude.h"
 
 class CriticalSection
 {

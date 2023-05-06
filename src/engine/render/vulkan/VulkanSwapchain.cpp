@@ -1,8 +1,8 @@
-#include "Engine/Render/Vulkan/VulkanSwapchain.h"
-#include "Engine/Render/Vulkan/VulkanDevice.h"
-#include "Engine/Render/Vulkan/VulkanSurface.h"
-#include "Engine/Render/Vulkan/VulkanUtils.h"
-#include "Engine/Core/Assert.h"
+#include "engine/render/vulkan/VulkanSwapchain.h"
+#include "engine/render/vulkan/VulkanDevice.h"
+#include "engine/render/vulkan/VulkanSurface.h"
+#include "engine/render/vulkan/VulkanUtils.h"
+#include "engine/core/Assert.h"
 
 VulkanSwapchain::VulkanSwapchain(VulkanDevice* pDevice)
 	:m_pDevice(pDevice)

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Engine/Job/Job.h"
-#include "Engine/Thread/Thread.h"
+#include "engine/job/Job.h"
+#include "engine/thread/Thread.h"
 
 class JobSystem
 {

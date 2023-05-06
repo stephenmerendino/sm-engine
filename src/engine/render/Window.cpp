@@ -1,8 +1,7 @@
-#include "Engine/Render/Window.h"
-
-#include "Engine/Core/Debug.h"
-#include "Engine/Core/Common.h"
-#include "Engine/Core/Assert.h"
+#include "engine/render/Window.h"
+#include "engine/core/Debug.h"
+#include "engine/core/Common.h"
+#include "engine/core/Assert.h"
 
 static const char* WINDOW_CLASS_NAME = "App Window Class";
 

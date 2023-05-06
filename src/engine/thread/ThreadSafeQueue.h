@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Engine/Thread/CriticalSection.h"
+#include "engine/thread/CriticalSection.h"
 
 #include <queue>
 

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Engine/Core/Assert.h"
-#include "Engine/Core/Types.h"
-#include "Engine/Core/Debug.h"
+#include "engine/core/Assert.h"
+#include "engine/core/Types.h"
+#include "engine/core/Debug.h"
 
 #define Unused(var) var
 #define MemZero(x) memset(&x, 0, sizeof(x));

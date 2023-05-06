@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Engine/Core/Types.h"
-#include "Engine/Platform/WindowsInclude.h"
+#include "engine/core/Types.h"
+#include "engine/platform/WindowsInclude.h"
 
 __forceinline
 I32 AtomicIncr(volatile I32* value)

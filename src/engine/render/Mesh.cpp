@@ -1,7 +1,7 @@
-#include "Engine/Render/Mesh.h"
+#include "engine/render/Mesh.h"
 
 #define TINYOBJLOADER_IMPLEMENTATION
-#include "Engine/ThirdParty/tinyobjloader/tiny_obj_loader.h"
+#include "engine/thirdparty/tinyobjloader/tiny_obj_loader.h"
 
 Mesh::Mesh()
 {
