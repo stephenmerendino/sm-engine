@@ -2,6 +2,12 @@
 
 #include "engine/render/vulkan/VulkanInclude.h"
 
+struct vulkan_instance_t
+{
+    VkInstance m_instance = VK_NULL_HANDLE;
+    VkDebugUtilsMessengerEXT m_debugMessenger = VK_NULL_HANDLE;
+};
+
 class VulkanInstance
 {
 public:

@@ -61,6 +61,8 @@ add_library(sm-engine STATIC src/engine/core/Assert.cpp
                              src/engine/render/vulkan/VulkanPipeline.h
                              src/engine/render/vulkan/VulkanRenderer.cpp
                              src/engine/render/vulkan/VulkanRenderer.h
+                             src/engine/render/vulkan/VulkanRenderer2.cpp
+                             src/engine/render/vulkan/VulkanRenderer2.h
                              src/engine/render/vulkan/VulkanRenderPass.cpp
                              src/engine/render/vulkan/VulkanRenderPass.h
                              src/engine/render/vulkan/VulkanSampler.cpp
