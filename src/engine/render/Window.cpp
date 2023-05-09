@@ -1,217 +1,169 @@
 #include "engine/render/Window.h"
 #include "engine/core/Debug.h"
-#include "engine/core/Common.h"
 #include "engine/core/Assert.h"
+#include "engine/core/macros.h"
 
 static const char* WINDOW_CLASS_NAME = "App Window Class";
 
-LRESULT MainWindowMsgHandler(HWND hWindow, UINT msg, WPARAM wParam, LPARAM lParam)
+// message cb for all subscribers
+static LRESULT main_window_msg_handler(HWND window_handle, UINT msg, WPARAM w_param, LPARAM l_param)
 {
 	// Handle special case of creation so we can store the window pointer for later retrieval
 	switch (msg)
 	{
-	case WM_CREATE:
-	{
-		CREATESTRUCT* cs = (CREATESTRUCT*)lParam;
-		Window* pAppWindow = (Window*)cs->lpCreateParams;
-		::SetWindowLongPtr(hWindow, GWLP_USERDATA, (LONG_PTR)pAppWindow);
-		return ::DefWindowProc(hWindow, msg, wParam, lParam);
-	}
+        case WM_CREATE:
+        {
+            CREATESTRUCT* cs = (CREATESTRUCT*)l_param;
+            window_t* p_window = (window_t*)cs->lpCreateParams;
+            ::SetWindowLongPtr(window_handle, GWLP_USERDATA, (LONG_PTR)p_window);
+            return ::DefWindowProc(window_handle, msg, w_param, l_param);
+        }
 	}
 
-	LONG_PTR ptr = ::GetWindowLongPtr(hWindow, GWLP_USERDATA);
-	Window* pMainWindow = (Window*)ptr;
+	LONG_PTR ptr = ::GetWindowLongPtr(window_handle, GWLP_USERDATA);
+	window_t* p_window = (window_t*)ptr;
 
-	if (pMainWindow)
+	if (p_window)
 	{
 		// Forward any OS messages to subscribers
-		for (WindowMessageCbWithArgs msgCbWithArgs : pMainWindow->GetMessageCallbacks())
+		for (window_message_cb_with_args_t cb_with_args : p_window->m_message_cbs)
 		{
-			msgCbWithArgs.m_msgCb(msg, wParam, lParam, msgCbWithArgs.m_userArgs);
+			cb_with_args.m_cb(msg, w_param, l_param, cb_with_args.m_user_args);
 		}
 	}
 
-	return ::DefWindowProc(hWindow, msg, wParam, lParam);
+	return ::DefWindowProc(window_handle, msg, w_param, l_param);
 }
 
-static void InternalWindowMessageHandler(UINT msg, WPARAM wParam, LPARAM lParam, void* userArgs)
+// internal message subscription for window
+static void internal_window_msg_handler(UINT msg, WPARAM w_param, LPARAM l_param, void* user_args)
 {
-	Unused(lParam);
-	Window* pWindow = (Window*)userArgs;
+	UNUSED(l_param);
+
+	window_t* p_window = (window_t*)user_args;
 
 	switch (msg)
 	{
-	case WM_SIZE:
-	{
-		if (wParam == SIZE_RESTORED)
-		{
-			pWindow->ShowWindow();
-		}
-		else
-		{
-			pWindow->SetResized(true);
-		}
-		break;
+        case WM_SIZE:
+        {
+            if (w_param == SIZE_RESTORED)
+            {
+                ::ShowWindow(p_window->m_handle, SW_SHOW);
+            }
+            else
+            {
+                p_window->m_was_resized = true;
+            }
+            break;
+        }
+
+        default: break;
 	}
-
-	default: break;
-	}
 }
 
-Window::Window(const char* windowName, U32 width, U32 height, bool resizable)
-	:m_windowName(windowName)
-	,m_hWindow(NULL)
-	,m_width(width)
-	,m_height(height)
-	,m_resizable(resizable)
-	,m_isMinimized(false)
-	,m_wasResized(false)
+static void update_window_size(window_t* p_window)
 {
+	RECT size;
+	::GetClientRect(p_window->m_handle, &size);
+	p_window->m_width = size.right - size.left;
+	p_window->m_height = size.bottom - size.top;
 }
 
-Window::~Window()
+window_t* create_window(const char* name, u32 width, u32 height, bool resizable)
 {
-}
-
-bool Window::Setup()
-{
-	WNDCLASSEX wc;
-	MemZero(wc);
+	WNDCLASSEX wc = {};
 	wc.cbSize = sizeof(wc);
 	wc.style = CS_OWNDC | CS_DBLCLKS;
-	wc.lpfnWndProc = (WNDPROC)MainWindowMsgHandler;
+	wc.lpfnWndProc = (WNDPROC)main_window_msg_handler;
 	wc.hInstance = ::GetModuleHandle(NULL);
 	wc.lpszClassName = WINDOW_CLASS_NAME;
 	RegisterClassEx(&wc);
 
-	DWORD windowStyle = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_VISIBLE;
+	DWORD style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_VISIBLE;
 
-	if (m_resizable)
+	if (resizable)
 	{
-		windowStyle |= WS_THICKFRAME;
+		style |= WS_THICKFRAME;
 	}
 
-	// Have to calculate how big to create the window to ensure the "client area" (renderable surface) is actually sized to m_width and m_height
-	RECT fullWindowSize;
-	fullWindowSize.left = 0;
-	fullWindowSize.top = 0;
-	fullWindowSize.right = m_width;
-	fullWindowSize.bottom = m_height;
+	// calculate how big to create the window to ensure the "client area" (renderable surface) is actually sized to requested width & height
+	RECT full_size;
+	full_size.left = 0;
+	full_size.top = 0;
+	full_size.right = width;
+	full_size.bottom = height;
 
-	::AdjustWindowRectEx(&fullWindowSize, windowStyle, FALSE, NULL);
-	I32 createWidth = fullWindowSize.right - fullWindowSize.left;
-	I32 createHeight = fullWindowSize.bottom - fullWindowSize.top;
+	::AdjustWindowRectEx(&full_size, style, FALSE, NULL);
+	i32 create_width = full_size.right - full_size.left;
+	i32 create_height = full_size.bottom - full_size.top;
 
-	m_hWindow = CreateWindowEx(0, WINDOW_CLASS_NAME, m_windowName, windowStyle, CW_USEDEFAULT, CW_USEDEFAULT, createWidth, createHeight, NULL, NULL, GetModuleHandle(NULL), this);
-	ASSERT(NULL != m_hWindow);
+    window_t* p_window = new window_t;
+    MEM_ZERO(*p_window);
+    p_window->m_name = name;
+    p_window->m_was_resized = false;
+    p_window->m_is_minimized = false;
 
-	UpdateSize();
+	p_window->m_handle = CreateWindowEx(0, 
+                                        WINDOW_CLASS_NAME, 
+                                        name, 
+                                        style, 
+                                        CW_USEDEFAULT, 
+                                        CW_USEDEFAULT, 
+                                        create_width, 
+                                        create_height, 
+                                        NULL, NULL, 
+                                        GetModuleHandle(NULL), 
+                                        p_window);
+	ASSERT(NULL != p_window->m_handle);
 
-	AddMessageCallback(InternalWindowMessageHandler, this);
+    // verify that the created size is actually correct
+    update_window_size(p_window);
+    ASSERT(p_window->m_width == width && p_window->m_height == height);
 
-	// Make sure to show message on init
-	ShowWindow();
+    // window adds a self subscription to catch windows messages for itself
+    add_window_callback(p_window, internal_window_msg_handler, p_window);
 
-	return true;
+	// make sure to show on init
+	::ShowWindow(p_window->m_handle, SW_SHOW);
+
+    return p_window;
 }
 
-void Window::Update()
+void update_window(window_t* window)
 {
-	m_wasResized = false;
+    ASSERT(nullptr != window);
+
+	window->m_was_resized = false;
 
 	// Pump messages
 	MSG msg;
-	while (::PeekMessage(&msg, m_hWindow, 0, 0, PM_REMOVE))
+	while (::PeekMessage(&msg, window->m_handle, 0, 0, PM_REMOVE))
 	{
 		::TranslateMessage(&msg);
 		::DispatchMessage(&msg);
 	}
 
-	UpdateSize();
-	m_isMinimized = ::IsIconic(m_hWindow);
+    update_window_size(window);
+	window->m_is_minimized = ::IsIconic(window->m_handle);
 }
 
-void Window::UpdateSize()
+void set_window_title(window_t* window, const char* new_title)
 {
-	RECT windowSize;
-	::GetClientRect(m_hWindow, &windowSize);
-	m_width = windowSize.right - windowSize.left;
-	m_height = windowSize.bottom - windowSize.top;
+    ASSERT(nullptr != window);
+	LPCSTR new_title_win32 = (LPCSTR)(new_title);
+	::SetWindowText(window->m_handle, new_title_win32);
 }
 
-void Window::Teardown()
+void add_window_callback(window_t* window, window_message_cb_t cb, void* args)
 {
-	::DestroyWindow(m_hWindow);
+	window_message_cb_with_args_t cb_with_args = { cb, args };
+	window->m_message_cbs.push_back(cb_with_args);
+}
+
+void destroy_window(window_t* window)
+{
+    ASSERT(nullptr != window);
+	::DestroyWindow(window->m_handle);
 	::UnregisterClass(WINDOW_CLASS_NAME, ::GetModuleHandle(NULL));
-}
-
-HWND Window::GetHandle() const
-{
-	return m_hWindow;
-}
-
-void Window::SetTitle(const std::string& newTitle)
-{
-	LPCSTR newTitleWin32 = static_cast<LPCSTR>(newTitle.c_str());
-	::SetWindowText(m_hWindow, newTitleWin32);
-}
-
-U32 Window::GetWidth() const
-{
-	return m_width;
-}
-
-U32 Window::GetHeight() const
-{
-	return m_height;
-}
-
-IntVec2 Window::GetSize() const
-{
-	return IntVec2(GetWidth(), GetHeight());
-}
-
-IntVec2 Window::GetPosition() const
-{
-	RECT screenRect;
-	::GetWindowRect(m_hWindow, &screenRect);
-
-	IntVec2 windowSize = GetSize();
-
-	I32 screenPosX = screenRect.left + (windowSize.m_x / 2);
-	I32 screenPosY = screenRect.top + (windowSize.m_y / 2);
-
-	return IntVec2(screenPosX, screenPosY);
-}
-
-bool Window::IsMinimized() const
-{
-	return m_isMinimized;
-}
-
-void Window::SetResized(bool wasResized)
-{
-	m_wasResized = wasResized;
-}
-
-bool Window::WasResized() const
-{
-	return m_wasResized;
-}
-
-void Window::ShowWindow()
-{
-	IntVec2 pos = GetPosition();
-	::ShowWindow(m_hWindow, SW_SHOW);
-}
-
-void Window::AddMessageCallback(WindowMessageCb msgCallback, void* userArgs)
-{
-	WindowMessageCbWithArgs cbWithArgs = { msgCallback, userArgs };
-	m_messageCallbacks.push_back(cbWithArgs);
-}
-
-const std::vector<WindowMessageCbWithArgs>& Window::GetMessageCallbacks() const
-{
-	return m_messageCallbacks;
+    delete window;
 }

@@ -1,57 +1,31 @@
 #pragma once
 
-#include "engine/core/Types.h"
-#include "engine/math/IntVec2.h"
-#include "engine/platform/WindowsInclude.h"
+#include "engine/core/types.h"
+#include "engine/platform/windows_include.h"
 
 #include <vector>
 #include <string>
 
-typedef void (*WindowMessageCb)(UINT msg, WPARAM wParam, LPARAM lParam, void* userArgs);
-
-struct WindowMessageCbWithArgs
+typedef void (*window_message_cb_t)(UINT msg, WPARAM w_param, LPARAM l_param, void* user_args);
+struct window_message_cb_with_args_t
 {
-	WindowMessageCb m_msgCb;
-	void* m_userArgs;
+	window_message_cb_t m_cb;
+	void* m_user_args;
 };
 
-class Window
+struct window_t
 {
-public:
-	Window(const char* windowName, U32 width, U32 height, bool resizable);
-	~Window();
-
-	bool Setup();
-	void Update();
-	void UpdateSize();
-	void Teardown();
-
-	HWND GetHandle() const;
-
-	U32 GetWidth() const;
-	U32 GetHeight() const;
-	IntVec2 GetSize() const;
-	IntVec2 GetPosition() const;
-	bool IsMinimized() const;
-	void SetResized(bool wasResized);
-	bool WasResized() const;
-
-	void SetTitle(const std::string& newTitle);
-	void ShowWindow();
-
-	void AddMessageCallback(WindowMessageCb msgCallback, void* userArgs);
-	const std::vector<WindowMessageCbWithArgs>& GetMessageCallbacks() const;
-
-private:
-	const char* m_windowName;
-	HWND m_hWindow;
-	bool m_resizable;
-
-	U32 m_width;
-	U32 m_height;
-
-	bool m_isMinimized;
-	bool m_wasResized;
-
-	std::vector<WindowMessageCbWithArgs> m_messageCallbacks;
+    HWND m_handle;
+    const char* m_name;
+    u32 m_width;
+    u32 m_height;
+    bool m_is_minimized;
+    bool m_was_resized;
+    std::vector<window_message_cb_with_args_t> m_message_cbs;
 };
+
+window_t*   create_window(const char* name, u32 width, u32 height, bool resizable);
+void        update_window(window_t* p_window);
+void        set_window_title(window_t* p_window, const char* new_title);
+void        add_window_callback(window_t* p_window, window_message_cb_t cb, void* args = nullptr);
+void        destroy_window(window_t* p_window);

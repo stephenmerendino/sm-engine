@@ -1,8 +1,8 @@
 #pragma once
 
-#include "engine/core/Types.h"
-#include "engine/core/BitFlags.h"
-#include "engine/math/IntVec2.h"
+#include "engine/core/types.h"
+#include "engine/core/bit_flags.h"
+#include "engine/math/ivec2.h"
 #include "engine/math/Vec2.h"
 
 class Window;

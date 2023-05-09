@@ -1,17 +1,17 @@
 #pragma once
 
-#include "engine/core/Types.h"
+#include "engine/core/types.h"
 #include <vector>
 #include <string>
 
-static const U32 WINDOW_WIDTH = 1920;
-static const U32 WINDOW_HEIGHT = 1080;
+static const u32 WINDOW_WIDTH = 1920;
+static const u32 WINDOW_HEIGHT = 1080;
 static const bool WINDOW_ALLOW_RESIZE = true;
 
-static const U32 MAX_NUM_FRAMES_IN_FLIGHT = 2;
+static const u32 MAX_NUM_FRAMES_IN_FLIGHT = 2;
 
-static const F32 FPS_CALC_TIME_INTERVAL_SECONDS = 0.1f;
-static const F32 TARGET_FPS = 120.0f;
+static const f32 FPS_CALC_TIME_INTERVAL_SECONDS = 0.1f;
+static const f32 TARGET_FPS = 120.0f;
 
 static const std::string MODEL_PATH = "Models/viking_room.obj";
 static const std::string TEXTURE_PATH = "Textures/viking_room.png";
