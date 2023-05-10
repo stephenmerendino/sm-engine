@@ -9,21 +9,15 @@
 struct vec4
 {
     inline vec4(){}
-    inline vec4(f32 in_x, f32 in_y, f32 in_z, f32 in_w)
-        :x(in_x)
-        ,y(in_y)
-        ,z(in_z)
-        ,w(in_w)
-    {}
 
     union
     {
         struct
         {
-            f32 x;
-            f32 y;
-            f32 z;
-            f32 w;
+            f32 x = 0.0f;
+            f32 y = 0.0f;
+            f32 z = 0.0f;
+            f32 w = 0.0f;
         };
 
         struct
@@ -36,19 +30,37 @@ struct vec4
     };
 };
 
-static const vec4 VEC4_ZERO = vec4(0.0f, 0.0f, 0.0f, 0.0f);
+inline 
+vec4 make_vec4(f32 x, f32 y, f32 z, f32 w)
+{
+    vec4 v;
+    v.x = x;
+    v.y = y;
+    v.z = z;
+    v.w = w;
+    return v;
+}
+
+inline 
+vec4 make_vec4(const vec3& xyz, f32 w)
+{
+    vec4 v;
+    v.xyz = xyz;
+    v.w = w;
+    return v;
+}
 
 inline 
 vec4 operator*(const vec4& v, f32 s) 
 {
-	return vec4(v.x * s, v.y * s, v.z * s, v.w * s);
+	return make_vec4(v.x * s, v.y * s, v.z * s, v.w * s);
 }
 
 inline 
 vec4 operator/(const vec4& v, f32 s) 
 {
 	f32 inv_s = 1.0f / s;
-	return vec4(v.x * inv_s, v.y * inv_s, v.z * inv_s, v.w * inv_s);
+	return make_vec4(v.x * inv_s, v.y * inv_s, v.z * inv_s, v.w * inv_s);
 }
 
 inline 
@@ -75,7 +87,7 @@ vec4& operator/=(vec4& v, f32 s)
 inline 
 vec4 operator+(const vec4& a, const vec4& b) 
 {
-	return vec4(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w);
+	return make_vec4(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w);
 }
 
 inline 
@@ -91,7 +103,7 @@ vec4& operator+=(vec4& v, const vec4& add)
 inline 
 vec4 operator-(const vec4& a, const vec4& b) 
 {
-	return vec4(a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w);
+	return make_vec4(a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w);
 }
 
 inline 
@@ -107,7 +119,7 @@ vec4& operator-=(vec4& v, const vec4& sub)
 inline 
 vec4 operator-(const vec4& v) 
 {
-	return vec4(-v.x, -v.y, -v.z, -v.w);
+	return make_vec4(-v.x, -v.y, -v.z, -v.w);
 }
 
 inline 
@@ -173,3 +185,5 @@ f32 distance_sq( vec4& a,  vec4& b)
 {
     return calc_length_sq(a - b);
 }
+
+static const vec4 VEC4_ZERO = make_vec4(0.0f, 0.0f, 0.0f, 0.0f);

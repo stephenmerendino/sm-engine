@@ -24,21 +24,21 @@ constexpr f32 rad_to_deg(f32 radians)
 }
 
 inline
-f32 sin_deg(f32 degs)
+f32 sin_deg(f32 deg)
 {
-	return sinf(deg_to_rad(degs));
+	return sinf(deg_to_rad(deg));
 }
 
 inline
-f32 cos_deg(f32 degs)
+f32 cos_deg(f32 deg)
 {
-	return cosf(deg_to_rad(degs));
+	return cosf(deg_to_rad(deg));
 }
 
 inline
-f32 tan_deg(f32 degs)
+f32 tan_deg(f32 deg)
 {
-	return tanf(deg_to_rad(degs));
+	return tanf(deg_to_rad(deg));
 }
 
 template<typename T>

@@ -7,10 +7,6 @@
 struct ivec2
 {
     inline ivec2(){}
-    inline ivec2(i32 in_x, i32 in_y) 
-        :x(in_x)
-        ,y(in_y)
-    {}
 
 	union
 	{
@@ -24,18 +20,25 @@ struct ivec2
 	};
 };
 
-static const ivec2 IVEC2_ZERO(0, 0);
+inline
+ivec2 make_ivec2(i32 x, i32 y)
+{
+    ivec2 iv2;
+    iv2.x = x;
+    iv2.y = y;
+    return iv2;
+}
 
 inline
 ivec2 operator*(const ivec2& iv, i32 s)
 {
-    return ivec2(iv.x * s, iv.y * s);
+    return make_ivec2(iv.x * s, iv.y * s);
 }
 
 inline 
 ivec2 operator/(const ivec2& iv, i32 s)
 {
-    return ivec2(iv.x / s, iv.y / s);
+    return make_ivec2(iv.x / s, iv.y / s);
 }
 
 inline 
@@ -57,7 +60,7 @@ ivec2& operator/=(ivec2& iv, i32 s)
 inline 
 ivec2 operator+(const ivec2& a, const ivec2& b)
 {
-    return ivec2(a.x + b.x, a.y + b.y);
+    return make_ivec2(a.x + b.x, a.y + b.y);
 }
 
 inline 
@@ -71,7 +74,7 @@ ivec2& operator+=(ivec2& iv, const ivec2& add)
 inline 
 ivec2 operator-(const ivec2& a, const ivec2& b)
 {
-    return ivec2(a.x - b.x, a.y - b.y); 
+    return make_ivec2(a.x - b.x, a.y - b.y); 
 }
 
 inline 
@@ -85,7 +88,7 @@ ivec2& operator-=(ivec2& iv, const ivec2& sub)
 inline 
 ivec2 operator-(const ivec2& iv)
 {
-    return ivec2(-iv.x, -iv.y);
+    return make_ivec2(-iv.x, -iv.y);
 }
 
 inline 
@@ -109,7 +112,7 @@ f32 calc_length(const ivec2& iv)
 inline 
 ivec2 operator*(i32 s, const ivec2& iv)
 {
-    return ivec2(iv.x * s, iv.y * s);
+    return make_ivec2(iv.x * s, iv.y * s);
 }
 
 inline 
@@ -127,3 +130,5 @@ inline i32 dist_sq(const ivec2& a, const ivec2& b)
 {
     return calc_length_sq(a - b); 
 }
+
+static const ivec2 IVEC2_ZERO = make_ivec2(0, 0);

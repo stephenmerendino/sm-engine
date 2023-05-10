@@ -10,35 +10,38 @@
 struct vec2
 {
     inline vec2(){}
-    inline vec2(f32 in_x, f32 in_y) 
-        :x(in_x)
-        ,y(in_y) 
-    {}
 
     union
     {
         struct
         {
-            f32 x;
-            f32 y;
+            f32 x = 0.0f;
+            f32 y = 0.0f;
         };
 
         f32 data[2];
     };
 };
 
-static const vec2 VEC2_ZERO(0, 0);
+inline
+vec2 make_vec2(f32 in_x, f32 in_y)
+{
+   vec2 v;
+   v.x = in_x;
+   v.y = in_y;
+   return v;
+}
 
 inline 
 vec2 operator*(const vec2& v, f32 s)
 {
-   return vec2(v.x * s, v.y * s); 
+   return make_vec2(v.x * s, v.y * s); 
 }
 
 inline 
 vec2 operator/(const vec2& v, f32 s)
 {
-    return vec2(v.x * s, v.y * s);    
+    return make_vec2(v.x * s, v.y * s);    
 }
 
 inline 
@@ -60,7 +63,7 @@ vec2& operator/=(vec2& v, f32 s)
 inline 
 vec2 operator+(const vec2& a, const vec2& b)
 {
-    return vec2(a.x + b.x, a.y + b.y); 
+    return make_vec2(a.x + b.x, a.y + b.y); 
 }
 
 inline 
@@ -74,7 +77,7 @@ vec2& operator+=(vec2& v, const vec2& add)
 inline 
 vec2 operator-(const vec2& a, const vec2& b)
 {
-    return vec2(a.x - b.x, a.y - b.y); 
+    return make_vec2(a.x - b.x, a.y - b.y); 
 }
 
 inline 
@@ -88,7 +91,7 @@ vec2& operator-=(vec2& v, const vec2& sub)
 inline 
 vec2 operator-(const vec2& v)
 {
-   return vec2(-v.x, -v.y); 
+   return make_vec2(-v.x, -v.y); 
 }
 
 
@@ -155,3 +158,5 @@ f32 distance_sq(const vec2& a, const vec2& b)
 {
     return calc_length_sq(a - b); 
 }
+
+static const vec2 VEC2_ZERO = make_vec2(0, 0);

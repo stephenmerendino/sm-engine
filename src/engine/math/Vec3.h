@@ -1,16 +1,11 @@
 #pragma once
 #pragma warning(disable:4201)
 
-#include <engine/math/Vec2.h>
+#include <engine/math/vec2.h>
 
 struct vec3
 {
     inline vec3(){}
-    inline vec3(f32 in_x, f32 in_y, f32 in_z)
-        :x(in_x)
-        ,y(in_y)
-        ,z(in_z)
-    {}
 
     union
     {
@@ -21,29 +16,46 @@ struct vec3
             f32 z;
         };
 
+        struct
+        {
+            vec2 xy;
+            f32 pad0;
+        };
+
         f32 data[3];
     };
 };
 
-static const vec3 VEC3_ZERO      = vec3(0.0f, 0.0f, 0.0f);
-static const vec3 VEC3_FORWARD   = vec3(1.0f, 0.0f, 0.0f);
-static const vec3 VEC3_BACKWARD  = vec3(-1.0f, 0.0f, 0.0f);
-static const vec3 VEC3_UP        = vec3(0.0f, 0.0f, 1.0f);
-static const vec3 VEC3_DOWN      = vec3(0.0f, 0.0f, -1.0f);
-static const vec3 VEC3_LEFT      = vec3(0.0f, 1.0f, 0.0f);
-static const vec3 VEC3_RIGHT     = vec3(0.0f, -1.0f, 0.0f);
+inline
+vec3 make_vec3(f32 x, f32 y, f32 z)
+{
+   vec3 v;
+   v.x = x;
+   v.y = y;
+   v.z = z;
+   return v;
+}
+
+inline
+vec3 make_vec3(const vec2& xy, f32 z)
+{
+   vec3 v;
+   v.xy = xy;
+   v.z = z;
+   return v;
+}
 
 inline 
 vec3 operator*(const vec3& v,f32 s)
 {
-	return vec3(v.x * s, v.y * s, v.z * s);
+	return make_vec3(v.x * s, v.y * s, v.z * s);
 }
 
 inline 
 vec3 operator/(const vec3& v, f32 s)
 {
 	f32 inv_s = 1.0f / s;
-	return vec3(v.x * inv_s, v.y * inv_s, v.z * inv_s);
+	return make_vec3(v.x * inv_s, v.y * inv_s, v.z * inv_s);
 }
 
 inline 
@@ -68,7 +80,7 @@ vec3& operator/=(vec3& v, f32 s)
 inline 
 vec3 operator+(const vec3& a, const vec3& b)
 {
-	return vec3(a.x + b.x, a.y + b.y, a.z + b.z);
+	return make_vec3(a.x + b.x, a.y + b.y, a.z + b.z);
 }
 
 inline 
@@ -83,7 +95,7 @@ vec3& operator+=(vec3& v, const vec3& add)
 inline 
 vec3 operator-(const vec3& a, const vec3& b)
 {
-	return vec3(a.x - b.x, a.y - b.y, a.z - b.z);
+	return make_vec3(a.x - b.x, a.y - b.y, a.z - b.z);
 }
 
 inline 
@@ -98,7 +110,7 @@ vec3& operator-=(vec3& v, const vec3& sub)
 inline 
 vec3 operator-(const vec3& v)
 {
-	return vec3(-v.x, -v.y, -v.z);
+	return make_vec3(-v.x, -v.y, -v.z);
 }
 
 inline 
@@ -174,3 +186,11 @@ f32 DistanceSquared(const vec3& a, const vec3& b)
 {
     return calc_length_sq(a - b);
 }
+
+static const vec3 VEC3_ZERO      = make_vec3(0.0f, 0.0f, 0.0f);
+static const vec3 VEC3_FORWARD   = make_vec3(1.0f, 0.0f, 0.0f);
+static const vec3 VEC3_BACKWARD  = make_vec3(-1.0f, 0.0f, 0.0f);
+static const vec3 VEC3_UP        = make_vec3(0.0f, 0.0f, 1.0f);
+static const vec3 VEC3_DOWN      = make_vec3(0.0f, 0.0f, -1.0f);
+static const vec3 VEC3_LEFT      = make_vec3(0.0f, 1.0f, 0.0f);
+static const vec3 VEC3_RIGHT     = make_vec3(0.0f, -1.0f, 0.0f);

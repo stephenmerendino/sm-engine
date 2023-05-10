@@ -1,4 +1,5 @@
 #pragma once
+#include "engine/math/math_utils.h"
 #pragma warning(disable:4201)
 
 #include "engine/core/funcs.h"
@@ -23,12 +24,6 @@
 struct mat44
 {
 	inline mat44(){};
-	inline mat44(const vec4& i, const vec4& j, const vec4& k, const vec4& t);
-	inline mat44(f32 ix, f32 iy, f32 iz, f32 iw,
-				 f32 jx, f32 jy, f32 jz, f32 jw,
-				 f32 kx, f32 ky, f32 kz, f32 kw,
-				 f32 tx, f32 ty, f32 tz, f32 tw);
-	inline mat44(f32 *data);
 
     inline f32* operator[](u32 row);
     inline const f32* operator[](u32 row) const;
@@ -55,38 +50,44 @@ struct mat44
     };
 };
 
-mat44 MAT44_IDENTITY = mat44(1.0f, 0.0f, 0.0f, 0.0f,
-							 0.0f, 1.0f, 0.0f, 0.0f,
-							 0.0f, 0.0f, 1.0f, 0.0f,
-							 0.0f, 0.0f, 0.0f, 1.0f);
-
 inline 
-mat44::mat44(const vec4& in_i, const vec4& in_j, const vec4& in_k, const vec4& in_t)
-    :i(in_i)
-    ,j(in_j)
-    ,k(in_k)
-    ,t(in_t)
+mat44 make_mat44(const vec4& i, const vec4& j, const vec4& k, const vec4& t)
 {
+    mat44 m;
+    m.i = i;
+    m.j = j;
+    m.k = k;
+    m.t = t;
+    return m;
 }
 
 inline 
-mat44::mat44(f32 ix, f32 iy, f32 iz, f32 iw,
-             f32 jx, f32 jy, f32 jz, f32 jw,
-             f32 kx, f32 ky, f32 kz, f32 kw,
-             f32 tx, f32 ty, f32 tz, f32 tw)
-    :i(ix, iy, iz, iw)
-    ,j(jx, jy, jz, jw)
-    ,k(kx, ky, kz, kw)
-    ,t(tx, ty, tz, tw)
+mat44 make_mat44(f32 ix, f32 iy, f32 iz, f32 iw,
+                 f32 jx, f32 jy, f32 jz, f32 jw,
+                 f32 kx, f32 ky, f32 kz, f32 kw,
+                 f32 tx, f32 ty, f32 tz, f32 tw)
 {
+    mat44 m;
+    m.i = make_vec4(ix, iy, iz, iw);
+    m.j = make_vec4(jx, jy, jz, jw);
+    m.k = make_vec4(kx, ky, kz, kw);
+    m.t = make_vec4(tx, ty, tz, tw);
+    return m;
 }
 
 inline 
-mat44::mat44(f32* in_data)
+mat44 make_mat44(f32 *data)
 {
-	ASSERT(nullptr != in_data);
-	memcpy(data, in_data, sizeof(mat44));
+	ASSERT(nullptr != data);
+    mat44 m;
+	memcpy(m.data, data, sizeof(mat44));
+    return m;
 }
+
+static const mat44 MAT44_IDENTITY = make_mat44(1.0f, 0.0f, 0.0f, 0.0f,
+                                               0.0f, 1.0f, 0.0f, 0.0f,
+                                               0.0f, 0.0f, 1.0f, 0.0f,
+                                               0.0f, 0.0f, 0.0f, 1.0f);
 
 inline
 f32* mat44::operator[](u32 row)
@@ -105,7 +106,7 @@ const f32* mat44::operator[](u32 row) const
 inline 
 mat44 operator*(const mat44& m, f32 s)
 {
-    return mat44(m.i * s, m.j * s, m.k * s, m.t * s);
+    return make_mat44(m.i * s, m.j * s, m.k * s, m.t * s);
 }
 
 inline 
@@ -154,6 +155,12 @@ mat44 operator*(const mat44& a, const mat44& b)
 	mat44 copy = a;
 	copy *= b;
 	return copy;
+}
+
+inline
+mat44 operator*(f32 s, const mat44& m)
+{
+	return m * s;
 }
 
 inline
@@ -278,273 +285,250 @@ mat44 get_fast_ortho_inversed(const mat44& m)
 	return copy;
 }
 
-inline 
-mat44 GetScaled(f32 uniformScale) const
+inline
+void scale(mat44& m, f32 uniform_scale)
 {
-	mat44 scaled = *this;
-	scaled.Scale(uniformScale);
-	return scaled;
-}
-
-inline 
-mat44 GetScaled(f32 iScale, f32 jScale, f32 kScale) const
-{
-	mat44 scaled = *this;
-	scaled.Scale(iScale, jScale, kScale);
-	return scaled;
-}
-
-inline 
-mat44 GetScaled(const vec3& scaleFactors) const
-{
-	mat44 scaled = *this;
-	scaled.Scale(scaleFactors);
-	return scaled;
+	m.i.xyz *= uniform_scale;
+	m.j.xyz *= uniform_scale;
+	m.k.xyz *= uniform_scale;
 }
 
 inline
-mat44 operator*(f32 s, const mat44& m)
+void scale(mat44& m, f32 i_scale, f32 j_scale, f32 k_scale)
 {
-	return m * s;
+	m.i.x *= i_scale;
+	m.i.y *= j_scale;
+	m.i.z *= k_scale;
+
+	m.j.x *= i_scale;
+	m.j.y *= j_scale;
+	m.j.z *= k_scale;
+
+	m.k.x *= i_scale;
+	m.k.y *= j_scale;
+	m.k.z *= k_scale;
 }
 
-void Mat44::Translate(const Vec3& t)
+inline
+void scale(mat44& m, const vec3& ijk_scale_factors)
 {
-	SetTranslation(m_t.m_xyz + t);
+	m.i.x *= ijk_scale_factors.x;
+	m.i.y *= ijk_scale_factors.y;
+	m.i.z *= ijk_scale_factors.z;
+
+	m.j.x *= ijk_scale_factors.x;
+	m.j.y *= ijk_scale_factors.y;
+	m.j.z *= ijk_scale_factors.z;
+
+	m.k.x *= ijk_scale_factors.x;
+	m.k.y *= ijk_scale_factors.y;
+	m.k.z *= ijk_scale_factors.z;
 }
 
-void Mat44::SetTranslation(const Vec3& t)
+inline 
+mat44 get_scaled(mat44& m, f32 uniform_scale)
 {
-	m_t = Vec4(t, 1.0f);
+	mat44 copy = m;
+    scale(copy, uniform_scale);
+	return copy;
 }
 
-Vec3 Mat44::GetTranslation() const
+inline 
+mat44 get_scaled(mat44& m, f32 i_scale, f32 j_scale, f32 k_scale)
 {
-	return m_t.m_xyz;
+	mat44 copy = m;
+    scale(m, i_scale, j_scale, k_scale);
+	return copy;
 }
 
-Mat44 Mat44::MakeTranslation(const Vec3& t)
+inline 
+mat44 get_scaled(const mat44& m, const vec3& ijk_scale_factors)
 {
-	Mat44 translation = Mat44::IDENTITY;
-	translation.Translate(t);
+	mat44 copy = m;
+    scale(copy, ijk_scale_factors);
+	return copy;
+}
+
+inline
+void set_translation(mat44& m, const vec3& t)
+{
+	m.t = make_vec4(t, 1.0f);
+}
+
+inline
+void translate(mat44& m, const vec3& t)
+{
+	set_translation(m, m.t.xyz + t);
+}
+
+inline
+mat44 make_translation(const vec3& t)
+{
+	mat44 translation = MAT44_IDENTITY;
+    translate(translation, t);
 	return translation;
 }
 
-void Mat44::RotateXDeg(F32 xDegrees)
+inline
+void rotate_x_rad(mat44& m, f32 x_rads)
 {
-	RotateXRad(DegreesToRadians(xDegrees));
+	f32 cos_rads = cosf(x_rads);
+	f32 sin_rads = sinf(x_rads);
+
+	mat44 x_rot = make_mat44(1.0f, 0.0f, 0.0f, 0.0f,
+                             0.0f, cos_rads, sin_rads, 0.0f,
+                             0.0f, -sin_rads, cos_rads, 0.0f,
+                             0.0f, 0.0f, 0.0f, 1.0f);
+
+	m *= x_rot;
 }
 
-void Mat44::RotateYDeg(F32 yDegrees)
+inline
+void rotate_y_rad(mat44& m, f32 y_rads)
 {
-	RotateYRad(DegreesToRadians(yDegrees));
+	f32 cos_rads = cosf(y_rads);
+	f32 sin_rads = sinf(y_rads);
+
+	mat44 y_rot = make_mat44(cos_rads, 0.0f, -sin_rads, 0.0f,
+					         0.0f, 1.0f, 0.0f, 0.0f,
+					         sin_rads, 0.0f, cos_rads, 0.0f,
+					         0.0f, 0.0f, 0.0f, 1.0f);
+
+	m *= y_rot;
 }
 
-void Mat44::RotateZDeg(F32 zDegrees)
+inline
+void rotate_z_rad(mat44& m, f32 z_rads)
 {
-	RotateZRad(DegreesToRadians(zDegrees));
+	f32 cos_rads = cosf(z_rads);
+	f32 sin_rads = sinf(z_rads);
+
+	mat44 z_rot = make_mat44(cos_rads, sin_rads, 0.0f, 0.0f,
+					         -sin_rads, cos_rads, 0.0f, 0.0f,
+					         0.0f, 0.0f, 1.0f, 0.0f,
+					         0.0f, 0.0f, 0.0f, 1.0f);
+
+	m *= z_rot;
 }
 
-void Mat44::RotateXRad(F32 xRadians)
+inline
+void rotate_x_deg(mat44& m, f32 x_deg)
 {
-	F32 cosRads = cosf(xRadians);
-	F32 sinRads = sinf(xRadians);
-
-	Mat44 xRot = Mat44(1.0f, 0.0f, 0.0f, 0.0f,
-					   0.0f, cosRads, sinRads, 0.0f,
-					   0.0f, -sinRads, cosRads, 0.0f,
-					   0.0f, 0.0f, 0.0f, 1.0f);
-
-	*this *= xRot;
+	rotate_x_rad(m, deg_to_rad(x_deg));
 }
 
-void Mat44::RotateYRad(F32 yRadians)
+inline
+void rotate_y_deg(mat44& m, f32 y_deg)
 {
-	F32 cosRads = cosf(yRadians);
-	F32 sinRads = sinf(yRadians);
-
-	Mat44 yRot = Mat44(cosRads, 0.0f, -sinRads, 0.0f,
-					   0.0f, 1.0f, 0.0f, 0.0f,
-					   sinRads, 0.0f, cosRads, 0.0f,
-					   0.0f, 0.0f, 0.0f, 1.0f);
-
-	*this *= yRot;
+	rotate_y_rad(m, deg_to_rad(y_deg));
 }
 
-void Mat44::RotateZRad(F32 zRadians)
+inline
+void rotate_z_deg(mat44& m, f32 z_deg)
 {
-	F32 cosRads = cosf(zRadians);
-	F32 sinRads = sinf(zRadians);
-
-	Mat44 zRot = Mat44(cosRads, sinRads, 0.0f, 0.0f,
-					   -sinRads, cosRads, 0.0f, 0.0f,
-					   0.0f, 0.0f, 1.0f, 0.0f,
-					   0.0f, 0.0f, 0.0f, 1.0f);
-
-	*this *= zRot;
+	rotate_z_rad(m, deg_to_rad(z_deg));
 }
 
-Mat44 Mat44::MakeRotationXDeg(F32 xDegrees)
+inline
+mat44 make_rotation_x_deg(f32 x_deg)
 {
-	Mat44 rotation = Mat44::IDENTITY;
-	rotation.RotateXDeg(xDegrees);
-	return rotation;
+	mat44 m = MAT44_IDENTITY;
+    rotate_x_deg(m, x_deg);
+	return m;
 }
 
-Mat44 Mat44::MakeRotationYDeg(F32 yDegrees)
+inline
+mat44 make_rotation_y_deg(f32 y_deg)
 {
-	Mat44 rotation = Mat44::IDENTITY;
-	rotation.RotateYDeg(yDegrees);
-	return rotation;
+	mat44 m = MAT44_IDENTITY;
+    rotate_y_deg(m, y_deg);
+	return m;
 }
 
-Mat44 Mat44::MakeRotationZDeg(F32 zDegrees)
+inline
+mat44 make_rotation_z_deg(f32 z_deg)
 {
-	Mat44 rotation = Mat44::IDENTITY;
-	rotation.RotateZDeg(zDegrees);
-	return rotation;
+	mat44 m = MAT44_IDENTITY;
+    rotate_z_deg(m, z_deg);
+	return m;
 }
 
-Mat44 Mat44::MakeRotationXRad(F32 xRadians)
+inline
+mat44 make_rotation_x_rad(f32 x_rad)
 {
-	Mat44 rotation = Mat44::IDENTITY;
-	rotation.RotateXRad(xRadians);
-	return rotation;
+	mat44 m = MAT44_IDENTITY;
+    rotate_x_rad(m, x_rad);
+	return m;
 }
 
-Mat44 Mat44::MakeRotationYRad(F32 yRadians)
+inline
+mat44 make_rotation_y_rad(f32 y_rad)
 {
-	Mat44 rotation = Mat44::IDENTITY;
-	rotation.RotateYRad(yRadians);
-	return rotation;
+	mat44 m = MAT44_IDENTITY;
+    rotate_y_rad(m, y_rad);
+	return m;
 }
 
-Mat44 Mat44::MakeRotationZRad(F32 zRadians)
+inline
+mat44 make_rotation_z_rad(f32 z_rad)
 {
-	Mat44 rotation = Mat44::IDENTITY;
-	rotation.RotateZRad(zRadians);
-	return rotation;
+	mat44 m = MAT44_IDENTITY;
+    rotate_z_rad(m, z_rad);
+	return m;
 }
 
-Mat44 Mat44::GetRotation()
+inline
+mat44 get_rotation(mat44& m)
 {
-	Mat44 rotationOnly = Mat44::IDENTITY;
-	rotationOnly.SetIBasis(this->GetIBasis());
-	rotationOnly.SetJBasis(this->GetJBasis());
-	rotationOnly.SetKBasis(this->GetKBasis());
-	return rotationOnly;
+	mat44 rot_only = MAT44_IDENTITY;
+    rot_only.i.xyz = m.i.xyz;
+    rot_only.j.xyz = m.j.xyz;
+    rot_only.k.xyz = m.k.xyz;
+	return rot_only;
 }
 
-void Mat44::SetRotation(const Mat44& rotation)
+inline
+void set_rotation(mat44& m, const mat44& rotation)
 {
-	SetIBasis(rotation.GetIBasis());
-	SetJBasis(rotation.GetJBasis());
-	SetKBasis(rotation.GetKBasis());
+    m.i.xyz = rotation.i.xyz;
+    m.j.xyz = rotation.j.xyz;
+    m.k.xyz = rotation.k.xyz;
 }
 
-void Mat44::Scale(F32 uniformScale)
+inline
+vec4 operator*(const vec4& v, const mat44& mat)
 {
-	m_i.m_xyz *= uniformScale;
-	m_j.m_xyz *= uniformScale;
-	m_k.m_xyz *= uniformScale;
-}
-
-void Mat44::Scale(F32 iScale, F32 jScale, F32 kScale)
-{
-	m_i.m_x *= iScale;
-	m_i.m_y *= jScale;
-	m_i.m_z *= kScale;
-
-	m_j.m_x *= iScale;
-	m_j.m_y *= jScale;
-	m_j.m_z *= kScale;
-
-	m_k.m_x *= iScale;
-	m_k.m_y *= jScale;
-	m_k.m_z *= kScale;
-}
-
-void Mat44::Scale(const Vec3& scaleFactors)
-{
-	m_i.m_x *= scaleFactors.m_x;
-	m_i.m_y *= scaleFactors.m_y;
-	m_i.m_z *= scaleFactors.m_z;
-
-	m_j.m_x *= scaleFactors.m_x;
-	m_j.m_y *= scaleFactors.m_y;
-	m_j.m_z *= scaleFactors.m_z;
-
-	m_k.m_x *= scaleFactors.m_x;
-	m_k.m_y *= scaleFactors.m_y;
-	m_k.m_z *= scaleFactors.m_z;
-}
-
-void Mat44::SetIBasis(const Vec3& iBasis)
-{
-	m_i = Vec4(iBasis, 0.0f);
-}
-
-void Mat44::SetJBasis(const Vec3& jBasis)
-{
-	m_j = Vec4(jBasis, 0.0f);
-}
-
-void Mat44::SetKBasis(const Vec3& kBasis)
-{
-	m_k = Vec4(kBasis, 0.0f);
-}
-
-Vec3 Mat44::GetIBasis() const
-{
-	return m_i.m_xyz;
-}
-
-Vec3 Mat44::GetJBasis() const
-{
-	return m_j.m_xyz;
-}
-
-Vec3 Mat44::GetKBasis() const
-{
-	return m_k.m_xyz;
-}
-
-Vec3 Mat44::TransformVector(const Vec3& v) const
-{
-	Vec4 res = Vec4(v, 0.0f) * (*this);
-	return res.m_xyz;
-}
-
-Vec3 Mat44::TransformPoint(const Vec3& p) const
-{
-	Vec4 res = Vec4(p, 1.0f) * (*this);
-	return res.m_xyz;
-}
-
-Vec4 operator*(const Vec4& v, const Mat44& mat)
-{
-	Vec4 result;
-	result.m_x = (v.m_x * mat.m_ix) + (v.m_y * mat.m_jx) + (v.m_z * mat.m_kx) + (v.m_w * mat.m_tx);
-	result.m_y = (v.m_x * mat.m_iy) + (v.m_y * mat.m_jy) + (v.m_z * mat.m_ky) + (v.m_w * mat.m_ty);
-	result.m_z = (v.m_x * mat.m_iz) + (v.m_y * mat.m_jz) + (v.m_z * mat.m_kz) + (v.m_w * mat.m_tz);
-	result.m_w = (v.m_x * mat.m_iw) + (v.m_y * mat.m_jw) + (v.m_z * mat.m_kw) + (v.m_w * mat.m_tw);
+	vec4 result;
+	result.x = (v.x * mat.ix) + (v.y * mat.jx) + (v.z * mat.kx) + (v.w * mat.tx);
+	result.y = (v.x * mat.iy) + (v.y * mat.jy) + (v.z * mat.ky) + (v.w * mat.ty);
+	result.z = (v.x * mat.iz) + (v.y * mat.jz) + (v.z * mat.kz) + (v.w * mat.tz);
+	result.w = (v.x * mat.iw) + (v.y * mat.jw) + (v.z * mat.kw) + (v.w * mat.tw);
 	return result;
 }
 
-Mat44 CreatePerspectiveProjection(F32 verticalFovDegrees, F32 nearPlane, F32 farPlane, F32 aspect)
+inline
+vec3 transform_vec(const mat44& m, const vec3& v)
 {
-	F32 focalLength = 1.0f / TanDegrees(verticalFovDegrees * 0.5f);
-
-	return Mat44(focalLength / aspect,	0.0f,			0.0f,								0.0f,
-				 0.0f,					-focalLength,	0.0f,								0.0f,
-				 0.0f,					0.0f,			farPlane / (farPlane - nearPlane),	1.0f,
-				 0.0f,					0.0f,			-nearPlane * farPlane / (farPlane - nearPlane),	0.0f);
+	vec4 res = make_vec4(v, 0.0f) * m;
+	return res.xyz;
 }
 
-vec4 operator*(const vec4& v, const mat44& mat);
+inline
+vec3 transform_point(const mat44& m, const vec3& p)
+{
+	vec4 res = make_vec4(p, 1.0f) * m;
+	return res.xyz;
+}
 
-// perspective projection
-mat44 CreatePerspectiveProjection(f32 verticalFoVDegrees, f32 nearPlane, f32 farPlane, f32 aspect);
+inline
+mat44 create_perspective_projection(f32 vertical_fov_deg, f32 near_plane, f32 far_plane, f32 aspect)
+{
+	f32 focal_len = 1.0f / tan_deg(vertical_fov_deg * 0.5f);
 
-// orthographic projection
+	return make_mat44(focal_len / aspect,	0.0f,			0.0f,								                0.0f,
+				      0.0f,					-focal_len,	    0.0f,								                0.0f,
+				      0.0f,					0.0f,			far_plane / (far_plane - near_plane),	            1.0f,
+				      0.0f,					0.0f,			-near_plane * far_plane / (far_plane - near_plane),	0.0f);
+}
 
+// TODO orthographic projection

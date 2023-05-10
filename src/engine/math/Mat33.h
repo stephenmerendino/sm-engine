@@ -9,11 +9,6 @@
 struct mat33
 {
 	inline mat33(){};
-	inline mat33(const vec3& i, const vec3& j, const vec3& k);
-	inline mat33(f32 ix, f32 iy, f32 iz,
-				 f32 jx, f32 jy, f32 jz,
-				 f32 kx, f32 ky, f32 kz);
-	inline mat33(f32* data);
 
     f32* operator[](u32 row);
     const f32* operator[](u32 row) const;
@@ -38,34 +33,40 @@ struct mat33
     };
 };
 
-static const mat33 MAT33_IDENTITY = mat33(1.0f, 0.0f, 0.0f,
-							              0.0f, 1.0f, 0.0f,
-							              0.0f, 0.0f, 1.0f);
-
 inline 
-mat33::mat33(const vec3& in_i, const vec3& in_j, const vec3& in_k)
-	:i(in_i)
-	,j(in_j)
-	,k(in_k)
+mat33 make_mat33(const vec3& i, const vec3& j, const vec3& k)
 {
+    mat33 m;
+    m.i = i;
+    m.j = j;
+    m.k = k;
+    return m;
 }
 
 inline 
-mat33::mat33(f32 ix, f32 iy, f32 iz, 
-             f32 jx, f32 jy, f32 jz,
-             f32 kx, f32 ky, f32 kz)
-	:i(ix, iy, iz)
-	,j(jx, jy, jz)
-	,k(kx, ky, kz)
+mat33 make_mat33(f32 ix, f32 iy, f32 iz, 
+                 f32 jx, f32 jy, f32 jz,
+                 f32 kx, f32 ky, f32 kz)
 {
+    mat33 m;
+    m.i = make_vec3(ix, iy, iz);
+    m.j = make_vec3(jx, jy, jz);
+    m.k = make_vec3(kx, ky, kz);
+    return m;
 }
 
 inline 
-mat33::mat33(f32* in_data)
+mat33 make_mat33(f32* data)
 {
-	ASSERT(nullptr != in_data);
-	memcpy(data, in_data, sizeof(mat33));
+	ASSERT(nullptr != data);
+    mat33 m;
+	memcpy(m.data, data, sizeof(mat33));
+    return m;
 }
+
+static const mat33 MAT33_IDENTITY = make_mat33(1.0f, 0.0f, 0.0f,
+							                   0.0f, 1.0f, 0.0f,
+							                   0.0f, 0.0f, 1.0f);
 
 inline
 f32* mat33::operator[](u32 row)
@@ -84,7 +85,7 @@ const f32* mat33::operator[](u32 row) const
 inline 
 mat33 operator*(const mat33& m, f32 s)
 {
-    return mat33(m.i * s, m.j * s, m.k * s);
+    return make_mat33(m.i * s, m.j * s, m.k * s);
 }
 
 inline 
