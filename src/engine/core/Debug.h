@@ -1,6 +1,6 @@
 #pragma once
 
-inline constexpr bool IsDebug()
+inline constexpr bool is_debug()
 {
 #if defined(NDEBUG)
 	return false;
@@ -9,4 +9,4 @@ inline constexpr bool IsDebug()
 #endif
 }
 
-void DebugPrintf(const char* msgFormat, ...);
+void debug_printf(const char* format, ...);

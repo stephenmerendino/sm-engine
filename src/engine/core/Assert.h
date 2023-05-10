@@ -2,21 +2,21 @@
 
 #include <cassert>
 
-bool ReportAssertFailure(const char* expression, const char* fileName, int lineNumber);
+bool report_assert_failure(const char* expression, const char* filename, int line_number);
 
 #define ASSERTIONS_ENABLED !NDEBUG
 
 #if ASSERTIONS_ENABLED
 
-#define TriggerDebug() __debugbreak() 
+#define TRIGGER_DEBUG() __debugbreak() 
 #define ASSERT(expr) \
 	if(expr){} \
-	else if(ReportAssertFailure(#expr, __FILE__, __LINE__)) \
+	else if(report_assert_failure(#expr, __FILE__, __LINE__)) \
 	{ \
-		TriggerDebug(); \
+		TRIGGER_DEBUG(); \
 	}                                                   
 
-#define VULKAN_ASSERT(vkResult) ASSERT(VK_SUCCESS == vkResult)
+#define VULKAN_ASSERT(vk_result) ASSERT(VK_SUCCESS == vk_result)
 
 #else
 

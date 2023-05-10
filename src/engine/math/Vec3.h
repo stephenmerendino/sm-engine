@@ -3,219 +3,174 @@
 
 #include <engine/math/Vec2.h>
 
-class Vec3
+struct vec3
 {
-public:
-	enum { NumElements = 3 };
+    inline vec3(){}
+    inline vec3(f32 in_x, f32 in_y, f32 in_z)
+        :x(in_x)
+        ,y(in_y)
+        ,z(in_z)
+    {}
 
-	union
-	{
-		struct
-		{
-			F32 m_x;
-			F32 m_y;
-			F32 m_z;
-		};
+    union
+    {
+        struct
+        {
+            f32 x;
+            f32 y;
+            f32 z;
+        };
 
-		struct
-		{
-			Vec2 m_xy;
-			F32 m_pad;
-		};
-
-		F32 m_data[NumElements];
-	};
-
-	inline Vec3(){};
-	inline Vec3(F32 x, F32 y, F32 z);
-
-	inline Vec3 operator*(F32 s) const;
-	inline Vec3 operator/(F32 s) const;
-	inline Vec3& operator*=(F32 s);
-	inline Vec3& operator/=(F32 s);
-
-	inline Vec3 operator+(const Vec3& v) const;
-	inline Vec3& operator+=(const Vec3& v);
-	inline Vec3 operator-(const Vec3& v) const;
-	inline Vec3& operator-=(const Vec3& v);
-	inline Vec3 operator-() const;
-
-	inline bool operator==(const Vec3& other) const;
-
-	inline F32 CalcLength() const;
-	inline F32 CalcLengthSquared() const;
-
-	inline void Normalize();
-	inline Vec3 GetNormalized() const;
-
-	static Vec3 ZERO;
-	static Vec3 FORWARD;
-	static Vec3 BACKWARD;
-	static Vec3 UP;
-	static Vec3 DOWN;
-	static Vec3 LEFT;
-	static Vec3 RIGHT;
+        f32 data[3];
+    };
 };
 
-inline Vec3 operator*(F32 s, const Vec3& v);
-inline F32 Dot(const Vec3& a, const Vec3& b);
-inline Vec3 Cross(const Vec3& a, const Vec3& b);
-inline F32 Distance(const Vec3& a, const Vec3& b);
-inline F32 DistanceSquared(const Vec3& a, const Vec3& b);
+static const vec3 VEC3_ZERO      = vec3(0.0f, 0.0f, 0.0f);
+static const vec3 VEC3_FORWARD   = vec3(1.0f, 0.0f, 0.0f);
+static const vec3 VEC3_BACKWARD  = vec3(-1.0f, 0.0f, 0.0f);
+static const vec3 VEC3_UP        = vec3(0.0f, 0.0f, 1.0f);
+static const vec3 VEC3_DOWN      = vec3(0.0f, 0.0f, -1.0f);
+static const vec3 VEC3_LEFT      = vec3(0.0f, 1.0f, 0.0f);
+static const vec3 VEC3_RIGHT     = vec3(0.0f, -1.0f, 0.0f);
 
-inline
-Vec3::Vec3(F32 x, F32 y, F32 z)
-	:m_x(x)
-	,m_y(y)
-	,m_z(z)
+inline 
+vec3 operator*(const vec3& v,f32 s)
 {
+	return vec3(v.x * s, v.y * s, v.z * s);
 }
 
 inline 
-Vec3 Vec3::operator*(F32 s) const
+vec3 operator/(const vec3& v, f32 s)
 {
-	return Vec3(m_x * s, m_y * s, m_z * s);
+	f32 inv_s = 1.0f / s;
+	return vec3(v.x * inv_s, v.y * inv_s, v.z * inv_s);
 }
 
 inline 
-Vec3 Vec3::operator/(F32 s) const
+vec3& operator*=(vec3& v, f32 s)
 {
-	F32 invS = 1.0f / s;
-	return Vec3(m_x * invS, m_y * invS, m_z * invS);
+	v.x *= s;
+	v.y *= s;
+	v.z *= s;
+	return v;
 }
 
 inline 
-Vec3& Vec3::operator*=(F32 s)
+vec3& operator/=(vec3& v, f32 s)
 {
-	m_x *= s;
-	m_y *= s;
-	m_z *= s;
-	return *this;
+	f32 inv_s = 1.0f / s;
+	v.x *= inv_s;
+	v.y *= inv_s;
+	v.z *= inv_s;
+	return v;
 }
 
 inline 
-Vec3& Vec3::operator/=(F32 s)
+vec3 operator+(const vec3& a, const vec3& b)
 {
-	F32 invS = 1.0f / s;
-	m_x *= invS;
-	m_y *= invS;
-	m_z *= invS;
-	return *this;
+	return vec3(a.x + b.x, a.y + b.y, a.z + b.z);
 }
 
 inline 
-Vec3 Vec3::operator+(const Vec3& v) const
+vec3& operator+=(vec3& v, const vec3& add)
 {
-	return Vec3(m_x + v.m_x, m_y + v.m_y, m_z + v.m_z);
+	v.x += add.x;
+	v.y += add.y;
+	v.z += add.z;
+	return v;
 }
 
 inline 
-Vec3& Vec3::operator+=(const Vec3& v)
+vec3 operator-(const vec3& a, const vec3& b)
 {
-	m_x += v.m_x;
-	m_y += v.m_y;
-	m_z += v.m_z;
-	return *this;
+	return vec3(a.x - b.x, a.y - b.y, a.z - b.z);
 }
 
 inline 
-Vec3 Vec3::operator-(const Vec3& v) const
+vec3& operator-=(vec3& v, const vec3& sub)
 {
-	return Vec3(m_x - v.m_x, m_y - v.m_y, m_z - v.m_z);
+	v.x -= sub.x;
+	v.y -= sub.y;
+	v.z -= sub.z;
+	return v;
 }
 
 inline 
-Vec3& Vec3::operator-=(const Vec3& v)
+vec3 operator-(const vec3& v)
 {
-	m_x -= v.m_x;
-	m_y -= v.m_y;
-	m_z -= v.m_z;
-	return *this;
+	return vec3(-v.x, -v.y, -v.z);
 }
 
 inline 
-Vec3 Vec3::operator-() const
+bool operator==(const vec3& a, const vec3& b)
 {
-	return Vec3(-m_x, -m_y, -m_z);
+	return (a.x == b.x) && (a.y == b.y) && (a.z == b.z);
 }
 
 inline 
-bool Vec3::operator==(const Vec3& other) const
+f32 calc_length_sq(const vec3& v)
 {
-	return m_x == other.m_y && m_y == other.m_y && m_z == other.m_z;
+	return (v.x * v.x) + (v.y * v.y) + (v.z * v.z);
 }
 
 inline 
-F32 Vec3::CalcLength() const
+f32 calc_length(const vec3& v)
 {
-	return sqrtf(m_x * m_x + m_y * m_y + m_z * m_z);
+	return sqrtf(calc_length_sq(v));
 }
 
 inline 
-F32 Vec3::CalcLengthSquared() const
-{
-	return m_x * m_x + m_y * m_y + m_z * m_z;
-}
-
-inline void Vec3::Normalize()
+void normalize(vec3& v)
 {
 	// prevent division by zero by checking for zero length and asserting
-	F32 lengthSq = CalcLengthSquared();
-	ASSERT(!IsZero(lengthSq));
-	if (IsZero(lengthSq))
-	{
-		m_x = m_y = m_z = 0.0f;
-		return;
-	}
+	f32 length_sq = calc_length_sq(v);
+	ASSERT(!is_zero(length_sq));
 
 	// do normalization now that we know length is not zero
-	F32 length = CalcLength();
-	F32 invLength = 1.0f / length;
+	f32 length = sqrtf(length_sq);
+	f32 inv_length = 1.0f / length;
 
-	m_x *= invLength;
-	m_y *= invLength;
-	m_z *= invLength;
-}
-
-inline Vec3 Vec3::GetNormalized() const
-{
-	Vec3 unit = *this;
-	unit.Normalize();
-	return unit;
+    v *= inv_length;
 }
 
 inline 
-Vec3 operator*(F32 s, const Vec3& v)
+vec3 get_normalized(const vec3& v)
+{
+    vec3 copy = v;
+    normalize(copy);
+    return copy;
+}
+
+inline 
+vec3 operator*(f32 s, const vec3& v)
 {
 	return v * s;
 }
 
 inline
-F32 Dot(const Vec3& a, const Vec3& b)
+f32 dot(const vec3& a, const vec3& b)
 {
-	return (a.m_x * b.m_x) + (a.m_y * b.m_y) + (a.m_z * b.m_z);
+	return (a.x * b.x) + (a.y * b.y) + (a.z * b.z);
 }
 
 inline 
-Vec3 Cross(const Vec3& a, const Vec3& b)
+vec3 cross(const vec3& a, const vec3& b)
 {
-	Vec3 cross;
-	cross.m_x = a.m_y * b.m_z - a.m_z * b.m_y;
-	cross.m_y = a.m_z * b.m_x - a.m_x * b.m_z;
-	cross.m_z = a.m_x * b.m_y - a.m_y * b.m_x;
+	vec3 cross;
+	cross.x = a.y * b.z - a.z * b.y;
+	cross.y = a.z * b.x - a.x * b.z;
+	cross.z = a.x * b.y - a.y * b.x;
 	return cross;
 }
 
 inline 
-F32 Distance(const Vec3& a, const Vec3& b)
+f32 distance(const vec3& a, const vec3& b)
 {
-	Vec3 displacement = a - b;
-	return displacement.CalcLength();
+    return calc_length(a - b);
 }
 
 inline 
-F32 DistanceSquared(const Vec3& a, const Vec3& b)
+f32 DistanceSquared(const vec3& a, const vec3& b)
 {
-	Vec3 displacement = a - b;
-	return displacement.CalcLengthSquared();
+    return calc_length_sq(a - b);
 }

@@ -1,197 +1,157 @@
 #pragma once
 #pragma warning(disable:4201)
 
-#include <engine/math/MathUtils.h>
-#include <engine/core/Types.h>
-#include <engine/core/Common.h>
+#include "engine/math/math_utils.h"
+#include "engine/core/types.h"
+#include "engine/core/assert.h"
 
 #include <cmath>
 
-class Vec2
+struct vec2
 {
-public:
-	enum { NumElements = 2 };
+    inline vec2(){}
+    inline vec2(f32 in_x, f32 in_y) 
+        :x(in_x)
+        ,y(in_y) 
+    {}
 
-	union
-	{
-		struct
-		{
-			F32 m_x;
-			F32 m_y;
-		};
+    union
+    {
+        struct
+        {
+            f32 x;
+            f32 y;
+        };
 
-		F32 m_data[NumElements];
-	};
-
-	Vec2(){};
-	inline Vec2(F32 x, F32 y);
-
-	inline Vec2 operator*(F32 s) const;
-	inline Vec2 operator/(F32 s) const;
-	inline Vec2& operator*=(F32 s);
-	inline Vec2& operator/=(F32 s);
-
-	inline Vec2 operator+(const Vec2& v) const;
-	inline Vec2& operator+=(const Vec2& v);
-	inline Vec2 operator-(const Vec2& v) const;
-	inline Vec2& operator-=(const Vec2& v);
-	inline Vec2 operator-() const;
-
-	inline bool operator==(const Vec2& other) const;
-
-	inline F32 CalcLength() const;
-	inline F32 CalcLengthSquared() const;
-
-	inline void Normalize();
-	inline Vec2 GetNormalized() const;
-
-	static Vec2 ZERO;
+        f32 data[2];
+    };
 };
 
-inline Vec2 operator*(F32 s, const Vec2& v);
-inline F32 Dot(const Vec2& a, const Vec2& b);
-inline F32 Distance(const Vec2& a, const Vec2& b);
-inline F32 DistanceSquared(const Vec2& a, const Vec2& b);
+static const vec2 VEC2_ZERO(0, 0);
 
-//////////////////////////////////////////////////////////////////////////
-
-inline
-Vec2::Vec2(F32 x, F32 y)
-	:m_x(x)
-	,m_y(y)
+inline 
+vec2 operator*(const vec2& v, f32 s)
 {
+   return vec2(v.x * s, v.y * s); 
 }
 
 inline 
-Vec2 Vec2::operator*(F32 s) const
+vec2 operator/(const vec2& v, f32 s)
 {
-	return Vec2(m_x * s, m_y * s);
+    return vec2(v.x * s, v.y * s);    
 }
 
 inline 
-Vec2 Vec2::operator/(F32 s) const
+vec2& operator*=(vec2& v, f32 s)
 {
-	F32 invS = 1.0f / s;
-	return Vec2(m_x * invS, m_y * invS);
+    v.x *= s;
+    v.y *= s;
+    return v;
 }
 
 inline 
-Vec2& Vec2::operator*=(F32 s)
+vec2& operator/=(vec2& v, f32 s)
 {
-	m_x *= s;
-	m_y *= s;
-	return *this;
+   v.x *= s;
+   v.y *= s;
+   return v;
 }
 
 inline 
-Vec2& Vec2::operator/=(F32 s)
+vec2 operator+(const vec2& a, const vec2& b)
 {
-	F32 invS = 1.0f / s;
-	m_x *= invS;
-	m_y *= invS;
-	return *this;
+    return vec2(a.x + b.x, a.y + b.y); 
 }
 
 inline 
-Vec2 Vec2::operator+(const Vec2& v) const
+vec2& operator+=(vec2& v, const vec2& add)
 {
-	return Vec2(m_x + v.m_x, m_y + v.m_y);
+    v.x += add.x;
+    v.y += add.y;
+    return v;
 }
 
 inline 
-Vec2& Vec2::operator+=(const Vec2& v)
+vec2 operator-(const vec2& a, const vec2& b)
 {
-	m_x += v.m_x;
-	m_y += v.m_y;
-	return *this;
+    return vec2(a.x - b.x, a.y - b.y); 
 }
 
 inline 
-Vec2 Vec2::operator-(const Vec2& v) const
+vec2& operator-=(vec2& v, const vec2& sub)
 {
-	return Vec2(m_x - v.m_x, m_y - v.m_y);
+    v.x -= sub.x;
+    v.y -= sub.y;
+    return v;
 }
 
 inline 
-Vec2& Vec2::operator-=(const Vec2& v)
+vec2 operator-(const vec2& v)
 {
-	m_x -= v.m_x;
-	m_y -= v.m_y;
-	return *this;
+   return vec2(-v.x, -v.y); 
+}
+
+
+inline 
+bool operator==(const vec2& a, const vec2& b)
+{
+   return (a.x == b.x) && (a.y == b.y);
 }
 
 inline 
-Vec2 Vec2::operator-() const
+f32 calc_length_sq(const vec2& v)
 {
-	return Vec2(-m_x, -m_y);
+    return (v.x * v.x) + (v.y * v.y);
 }
 
 inline 
-bool Vec2::operator==(const Vec2& other) const
+f32 calc_length(const vec2& v)
 {
-	return m_x == other.m_x && m_y == other.m_y;
+    return sqrtf(calc_length_sq(v)); 
 }
 
 inline 
-F32 Vec2::CalcLength() const
-{
-	return sqrtf(m_x * m_x + m_y * m_y);
-}
-
-inline 
-F32 Vec2::CalcLengthSquared() const
-{
-	return m_x * m_x + m_y * m_y;
-}
-
-inline void Vec2::Normalize()
+void normalize(vec2& v)
 {
 	// prevent division by zero by checking for zero length and asserting
-	F32 lengthSq = CalcLengthSquared();
-	ASSERT(!IsZero(lengthSq));
-	if (IsZero(lengthSq))
-	{
-		m_x = m_y = 0.0f;
-		return;
-	}
+	f32 length_sq = calc_length_sq(v);
+	ASSERT(!is_zero(length_sq));
 
 	// do normalization now that we know length is not zero
-	F32 length = CalcLength();
-	F32 invLength = 1.0f / length;
+	f32 length = sqrtf(length_sq);
+	f32 inv_length = 1.0f / length;
 
-	m_x *= invLength;
-	m_y *= invLength;
-}
-
-inline Vec2 Vec2::GetNormalized() const
-{
-	Vec2 unit = *this;
-	unit.Normalize();
-	return unit;
+    v *= inv_length;
 }
 
 inline 
-Vec2 operator*(F32 s, const Vec2& v)
+vec2 get_normalized(const vec2& v)
 {
-	return v * s;
-}
-
-inline
-F32 Dot(const Vec2& a, const Vec2& b)
-{
-	return (a.m_x * b.m_x) + (a.m_y * b.m_y);
+    vec2 copy = v;
+    normalize(copy);
+    return copy;
 }
 
 inline 
-F32 Distance(const Vec2& a, const Vec2& b)
+vec2 operator*(f32 s, const vec2& v)
 {
-	Vec2 displacement = a - b;
-	return displacement.CalcLength();
+    return v * s; 
 }
 
 inline 
-F32 DistanceSquared(const Vec2& a, const Vec2& b)
+f32 dot(const vec2& a, const vec2& b)
 {
-	Vec2 displacement = a - b;
-	return displacement.CalcLengthSquared();
+    return (a.x * b.x) + (a.y * b.y); 
+}
+
+inline 
+f32 distance(const vec2& a, const vec2& b)
+{
+    return calc_length(a - b); 
+}
+
+inline 
+f32 distance_sq(const vec2& a, const vec2& b)
+{
+    return calc_length_sq(a - b); 
 }
