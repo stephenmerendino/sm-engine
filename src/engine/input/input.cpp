@@ -1,4 +1,5 @@
 #include "engine/input/input.h"
+#include "engine/core/bit_flags.h"
 #include "engine/core/debug.h"
 #include "engine/core/macros.h"
 #include "engine/math/ivec2.h"

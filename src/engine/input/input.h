@@ -1,9 +1,7 @@
 #pragma once
 
 #include "engine/core/types.h"
-#include "engine/core/bit_flags.h"
-#include "engine/math/ivec2.h"
-#include "engine/math/Vec2.h"
+#include "engine/math/vec2.h"
 
 enum class KeyCode : u32
 {
@@ -134,60 +132,3 @@ bool is_key_down(KeyCode key);
 bool was_key_pressed(KeyCode key);
 bool was_key_released(KeyCode key);
 vec2 get_mouse_movement();
-
-//class KeyState
-//{
-//public:
-//	KeyState();
-//
-//	void Reset();
-//	
-//	bool GetIsDown() const;
-//	bool GetWasPressed() const;
-//	bool GetWasReleased() const;
-//
-//	void SetIsDown(bool isDown);
-//	void SetWasPressed(bool wasPressed);
-//	void SetWasReleased(bool wasReleased);
-//
-//private:
-//	U8 m_state;
-//};
-//
-//class InputSystem
-//{
-//public:
-//	InputSystem();
-//	~InputSystem();
-//
-//	bool Init(Window* pWindow);
-//
-//	void BeforeWindowUpdate();
-//	void Update();
-//
-//	bool IsKeyDown(KeyCode key) const;
-//	bool WasKeyPressed(KeyCode key) const;
-//	bool WasKeyReleased(KeyCode key) const;
-//	
-//	Vec2 GetMouseMovement() const;
-//	void SaveMousePosition();
-//	void RestoreMousePosition();
-//	void CenterMouseOnScreen();
-//	void UpdateMouseMovement();
-//	void HideCursor();
-//	void ShowCursor();
-//
-//	bool GetKeyStateIndexForWindowsKey(int* outKeyStateIndex, U32 winKeyCode) const;
-//	void HandleWindowsKeyDown(U32 winKeyCode);
-//	void HandleWindowsKeyUp(U32 winKeyCode);
-//	void HandleMouseButtonUp(KeyCode mouseButton);
-//
-//private:
-//	Window* m_pWindow;
-//	KeyState m_keyStates[(U32)KeyCode::NUM_KEY_CODES];
-//	Vec2 m_mouseMovementNormalized;
-//	bool m_mouseIsShown;
-//	IntVec2 m_savedMousePosition;
-//};
-//
-//extern InputSystem g_inputSystem;
