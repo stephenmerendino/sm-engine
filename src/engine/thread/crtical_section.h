@@ -3,27 +3,23 @@
 #include "engine/core/macros.h"
 #include "engine/platform/windows_include.h"
 
-class CriticalSection
+struct critical_section_t
 {
-public:
-	CriticalSection();
-	~CriticalSection();
-
-	void Lock();
-	void Unlock();
-
-private:
-	CRITICAL_SECTION m_criticalSection;
+    CRITICAL_SECTION m_cs; 
 };
 
-class ScopedCriticalSection
+critical_section_t create_critical_section();
+void delete_critical_section(critical_section_t cs);
+void lock_cs(critical_section_t cs);
+void unlock_cs(critical_section_t cs);
+
+class ScopedCriticalSection 
 {
 public:
-	ScopedCriticalSection(CriticalSection* criticalSection);
+	ScopedCriticalSection(critical_section_t cs);
 	~ScopedCriticalSection();
 
-private:
-	CriticalSection* m_criticalSection;
+	critical_section_t m_cs;
 };
 
-#define SCOPED_CRITICAL_SECTION(criticalSection) ScopedCriticalSection CONCATENATE(scopedCriticalSection, __LINE__)(criticalSection)
+#define SCOPED_CRITICAL_SECTION(cs) ScopedCriticalSection CONCATENATE(scopedCriticalSection, __LINE__)(cs)
