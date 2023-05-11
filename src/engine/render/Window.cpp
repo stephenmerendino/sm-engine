@@ -2,11 +2,13 @@
 #include "engine/core/Debug.h"
 #include "engine/core/Assert.h"
 #include "engine/core/macros.h"
+#include <winuser.h>
 
 static const char* WINDOW_CLASS_NAME = "App Window Class";
 
 // message cb for all subscribers
-static LRESULT main_window_msg_handler(HWND window_handle, UINT msg, WPARAM w_param, LPARAM l_param)
+static 
+LRESULT main_window_msg_handler(HWND window_handle, UINT msg, WPARAM w_param, LPARAM l_param)
 {
 	// Handle special case of creation so we can store the window pointer for later retrieval
 	switch (msg)
@@ -36,7 +38,8 @@ static LRESULT main_window_msg_handler(HWND window_handle, UINT msg, WPARAM w_pa
 }
 
 // internal message subscription for window
-static void internal_window_msg_handler(UINT msg, WPARAM w_param, LPARAM l_param, void* user_args)
+static 
+void internal_window_msg_handler(UINT msg, WPARAM w_param, LPARAM l_param, void* user_args)
 {
 	UNUSED(l_param);
 
@@ -61,12 +64,22 @@ static void internal_window_msg_handler(UINT msg, WPARAM w_param, LPARAM l_param
 	}
 }
 
-static void update_window_size(window_t* window)
+static 
+void update_window_size(window_t* window)
 {
 	RECT size;
 	::GetClientRect(window->m_handle, &size);
 	window->m_width = size.right - size.left;
 	window->m_height = size.bottom - size.top;
+}
+
+static 
+void update_window_position(window_t* window)
+{
+    RECT pos;
+    ::GetWindowRect(window->m_handle, &pos);
+    window->m_x = pos.left;
+    window->m_y = pos.top;
 }
 
 window_t* create_window(const char* name, u32 width, u32 height, bool resizable)
@@ -118,6 +131,7 @@ window_t* create_window(const char* name, u32 width, u32 height, bool resizable)
 
     // verify that the created size is actually correct
     update_window_size(window);
+    update_window_position(window);
     ASSERT(window->m_width == width && window->m_height == height);
 
     // window adds a self subscription to catch windows messages for itself
@@ -144,6 +158,7 @@ void update_window(window_t* window)
 	}
 
     update_window_size(window);
+    update_window_position(window);
 	window->m_is_minimized = ::IsIconic(window->m_handle);
 }
 

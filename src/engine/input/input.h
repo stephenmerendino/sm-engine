@@ -125,13 +125,6 @@ enum class KeyCode : u32
 	NUM_KEY_CODES
 };
 
-enum class KeyStateBitFlags : u8
-{
-	IS_DOWN			= 0b000000001,
-	WAS_PRESSED		= 0b000000010,
-	WAS_RELEASED	= 0b000000100
-};
-
 struct window_t;
 
 void init_input(window_t* window);
