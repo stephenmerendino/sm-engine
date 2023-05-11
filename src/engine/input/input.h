@@ -125,10 +125,10 @@ enum class KeyCode : u32
 
 struct window_t;
 
-void init_input(window_t* window);
+void input_init(window_t* window);
 void input_begin_frame();
-void update_input();
-bool is_key_down(KeyCode key);
-bool was_key_pressed(KeyCode key);
-bool was_key_released(KeyCode key);
-vec2 get_mouse_movement();
+void input_update();
+bool input_is_key_down(KeyCode key);
+bool input_was_key_pressed(KeyCode key);
+bool input_was_key_released(KeyCode key);
+vec2 input_get_mouse_movement();

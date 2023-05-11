@@ -8,6 +8,9 @@ template<typename T>
 class ThreadSafeQueue
 {
 public:
+    ThreadSafeQueue();
+    ~ThreadSafeQueue();
+
 	void push(T& t);
 	bool pop(T* outT);
 	T front();
@@ -16,6 +19,18 @@ public:
 	std::queue<T> m_queue;
 	critical_section_t m_rw_lock;
 };
+
+template<typename T>
+ThreadSafeQueue<T>::ThreadSafeQueue()
+{
+    m_rw_lock = critical_section_create();
+}
+
+template<typename T>
+ThreadSafeQueue<T>::~ThreadSafeQueue()
+{
+    critical_section_delete(m_rw_lock);
+}
 
 template<typename T>
 void ThreadSafeQueue<T>::push(T& t)

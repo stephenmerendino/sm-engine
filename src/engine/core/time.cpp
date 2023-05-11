@@ -24,12 +24,12 @@ void init_time()
 	}
 }
 
-void start_stopwatch(stopwatch_t& stopwatch)
+void stopwatch_start(stopwatch_t& stopwatch)
 {
    stopwatch.m_start_tick = get_current_tick();
 }
 
-f32 get_stopwatch_elapsed_seconds(const stopwatch_t& stopwatch)
+f32 stopwatch_get_elapsed_seconds(const stopwatch_t& stopwatch)
 {
 	i64 cur_tick = get_current_tick();
 	i64 ticks_since_start = cur_tick - stopwatch.m_start_tick;
@@ -37,7 +37,7 @@ f32 get_stopwatch_elapsed_seconds(const stopwatch_t& stopwatch)
 	return seconds_elapsed;
 }
 
-f32 get_stopwatch_elapsed_ms(const stopwatch_t& stopwatch)
+f32 stopwatch_get_elapsed_ms(const stopwatch_t& stopwatch)
 {
-	return get_stopwatch_elapsed_seconds(stopwatch) * 1000.0f;
+	return stopwatch_get_elapsed_seconds(stopwatch) * 1000.0f;
 }

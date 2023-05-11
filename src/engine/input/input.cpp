@@ -142,6 +142,7 @@ void handle_win_key_down(u32 win_key)
     set_key_state_flag(key_state, KeyStateBitFlags::IS_DOWN, true);
 }
 
+static
 void handle_win_key_up(u32 win_key)
 {
 	int key_state_index = -1;
@@ -180,7 +181,56 @@ static void input_system_msg_handler(UINT msg, WPARAM w_param, LPARAM l_param, v
 	}
 }
 
-void init_input(window_t* window)
+static
+void save_mouse_pos()
+{
+    POINT mouse_pos;
+    ::GetCursorPos(&mouse_pos);
+    s_saved_mouse_pos = make_ivec2(mouse_pos.x, mouse_pos.y);
+}
+
+static
+void restore_mouse_pos()
+{
+    ::SetCursorPos(s_saved_mouse_pos.x, s_saved_mouse_pos.y);
+}
+
+static
+void center_mouse_on_screen()
+{
+    ::SetCursorPos(s_window->m_x, s_window->m_y);
+}
+
+static
+void update_mouse_movement()
+{
+    POINT mouse_pos;
+    ::GetCursorPos(&mouse_pos);
+
+    ivec2 window_pos = make_ivec2(s_window->m_x, s_window->m_y); 
+    ivec2 window_size = make_ivec2(s_window->m_width, s_window->m_height);
+
+    ivec2 delta = make_ivec2(mouse_pos.x, mouse_pos.y) - window_pos;
+
+    s_mouse_movement_normalized = make_vec2((f32)delta.x / (f32)window_size.x,
+            (f32)delta.y / (f32)window_size.y);
+}
+
+static
+void hide_cursor()
+{
+    ::ShowCursor(false);
+    s_mouse_is_shown = false;
+}
+
+static
+void show_cursor()
+{
+    ::ShowCursor(true);
+    s_mouse_is_shown = true;
+}
+
+void input_init(window_t* window)
 {
     ASSERT(nullptr != window);
     add_window_callback(window, input_system_msg_handler);
@@ -197,87 +247,44 @@ void input_begin_frame()
 	}
 }
 
-void save_mouse_pos()
-{
-	POINT mouse_pos;
-	::GetCursorPos(&mouse_pos);
-	s_saved_mouse_pos = make_ivec2(mouse_pos.x, mouse_pos.y);
-}
-
-void restore_mouse_pos()
-{
-	::SetCursorPos(s_saved_mouse_pos.x, s_saved_mouse_pos.y);
-}
-
-void center_mouse_on_screen()
-{
-	::SetCursorPos(s_window->m_x, s_window->m_y);
-}
-
-void update_mouse_movement()
-{
-	POINT mouse_pos;
-	::GetCursorPos(&mouse_pos);
-
-	ivec2 window_pos = make_ivec2(s_window->m_x, s_window->m_y); 
-	ivec2 window_size = make_ivec2(s_window->m_width, s_window->m_height);
-
-	ivec2 delta = make_ivec2(mouse_pos.x, mouse_pos.y) - window_pos;
-
-	s_mouse_movement_normalized = make_vec2((f32)delta.x / (f32)window_size.x,
-                                            (f32)delta.y / (f32)window_size.y);
-}
-
-void hide_cursor()
-{
-	::ShowCursor(false);
-	s_mouse_is_shown = false;
-}
-
-void show_cursor()
-{
-	::ShowCursor(true);
-	s_mouse_is_shown = true;
-}
-
-vec2 get_mouse_movement()
-{
-	return s_mouse_movement_normalized;
-}
-
-void update_input()
+void input_update()
 {
 	// Mouse movement update
-    if (was_key_released(KeyCode::MOUSE_RBUTTON) && !s_mouse_is_shown)
+    if (input_was_key_released(KeyCode::MOUSE_RBUTTON) && !s_mouse_is_shown)
     {
         show_cursor();
         restore_mouse_pos();
     }
-    else if (was_key_pressed(KeyCode::MOUSE_RBUTTON) && s_mouse_is_shown)
+    else if (input_was_key_pressed(KeyCode::MOUSE_RBUTTON) && s_mouse_is_shown)
     {
         hide_cursor();
         save_mouse_pos();
         center_mouse_on_screen();
     }
-    else if (is_key_down(KeyCode::MOUSE_RBUTTON))
+    else if (input_is_key_down(KeyCode::MOUSE_RBUTTON))
     {
         update_mouse_movement();
         center_mouse_on_screen();
     }
 }
 
-bool is_key_down(KeyCode key)
+bool input_is_key_down(KeyCode key)
 {
     return is_bit_set(s_key_states[(u32)key].m_state, (u8)KeyStateBitFlags::IS_DOWN);
 }
 
-bool was_key_pressed(KeyCode key)
+bool input_was_key_pressed(KeyCode key)
 {
     return is_bit_set(s_key_states[(u32)key].m_state, (u8)KeyStateBitFlags::WAS_PRESSED);
 }
 
-bool was_key_released(KeyCode key)
+bool input_was_key_released(KeyCode key)
 {
     return is_bit_set(s_key_states[(u32)key].m_state, (u8)KeyStateBitFlags::WAS_RELEASED);
+}
+
+vec2 input_get_mouse_movement()
+{
+	return s_mouse_movement_normalized;
 }
 
