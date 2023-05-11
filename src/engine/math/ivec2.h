@@ -12,8 +12,8 @@ struct ivec2
 	{
 		struct
 		{
-			i32 x = 0;
-			i32 y = 0;
+			i32 x;
+			i32 y;
 		};
 
 		i32 data[2];

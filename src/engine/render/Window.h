@@ -25,7 +25,7 @@ struct window_t
 };
 
 window_t*   create_window(const char* name, u32 width, u32 height, bool resizable);
-void        update_window(window_t* p_window);
-void        set_window_title(window_t* p_window, const char* new_title);
-void        add_window_callback(window_t* p_window, window_message_cb_t cb, void* args = nullptr);
-void        destroy_window(window_t* p_window);
+void        update_window(window_t* window);
+void        set_window_title(window_t* window, const char* new_title);
+void        add_window_callback(window_t* window, window_message_cb_t cb, void* args = nullptr);
+void        destroy_window(window_t* window);

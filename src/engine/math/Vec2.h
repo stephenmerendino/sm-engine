@@ -15,8 +15,8 @@ struct vec2
     {
         struct
         {
-            f32 x = 0.0f;
-            f32 y = 0.0f;
+            f32 x;
+            f32 y;
         };
 
         f32 data[2];

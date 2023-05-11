@@ -14,19 +14,19 @@ static LRESULT main_window_msg_handler(HWND window_handle, UINT msg, WPARAM w_pa
         case WM_CREATE:
         {
             CREATESTRUCT* cs = (CREATESTRUCT*)l_param;
-            window_t* p_window = (window_t*)cs->lpCreateParams;
-            ::SetWindowLongPtr(window_handle, GWLP_USERDATA, (LONG_PTR)p_window);
+            window_t* window = (window_t*)cs->lpCreateParams;
+            ::SetWindowLongPtr(window_handle, GWLP_USERDATA, (LONG_PTR)window);
             return ::DefWindowProc(window_handle, msg, w_param, l_param);
         }
 	}
 
 	LONG_PTR ptr = ::GetWindowLongPtr(window_handle, GWLP_USERDATA);
-	window_t* p_window = (window_t*)ptr;
+	window_t* window = (window_t*)ptr;
 
-	if (p_window)
+	if (window)
 	{
 		// Forward any OS messages to subscribers
-		for (window_message_cb_with_args_t cb_with_args : p_window->m_message_cbs)
+		for (window_message_cb_with_args_t cb_with_args : window->m_message_cbs)
 		{
 			cb_with_args.m_cb(msg, w_param, l_param, cb_with_args.m_user_args);
 		}
@@ -40,7 +40,7 @@ static void internal_window_msg_handler(UINT msg, WPARAM w_param, LPARAM l_param
 {
 	UNUSED(l_param);
 
-	window_t* p_window = (window_t*)user_args;
+	window_t* window = (window_t*)user_args;
 
 	switch (msg)
 	{
@@ -48,11 +48,11 @@ static void internal_window_msg_handler(UINT msg, WPARAM w_param, LPARAM l_param
         {
             if (w_param == SIZE_RESTORED)
             {
-                ::ShowWindow(p_window->m_handle, SW_SHOW);
+                ::ShowWindow(window->m_handle, SW_SHOW);
             }
             else
             {
-                p_window->m_was_resized = true;
+                window->m_was_resized = true;
             }
             break;
         }
@@ -61,12 +61,12 @@ static void internal_window_msg_handler(UINT msg, WPARAM w_param, LPARAM l_param
 	}
 }
 
-static void update_window_size(window_t* p_window)
+static void update_window_size(window_t* window)
 {
 	RECT size;
-	::GetClientRect(p_window->m_handle, &size);
-	p_window->m_width = size.right - size.left;
-	p_window->m_height = size.bottom - size.top;
+	::GetClientRect(window->m_handle, &size);
+	window->m_width = size.right - size.left;
+	window->m_height = size.bottom - size.top;
 }
 
 window_t* create_window(const char* name, u32 width, u32 height, bool resizable)
@@ -97,36 +97,36 @@ window_t* create_window(const char* name, u32 width, u32 height, bool resizable)
 	i32 create_width = full_size.right - full_size.left;
 	i32 create_height = full_size.bottom - full_size.top;
 
-    window_t* p_window = new window_t;
-    MEM_ZERO(*p_window);
-    p_window->m_name = name;
-    p_window->m_was_resized = false;
-    p_window->m_is_minimized = false;
+    window_t* window = new window_t;
+    MEM_ZERO(*window);
+    window->m_name = name;
+    window->m_was_resized = false;
+    window->m_is_minimized = false;
 
-	p_window->m_handle = CreateWindowEx(0, 
-                                        WINDOW_CLASS_NAME, 
-                                        name, 
-                                        style, 
-                                        CW_USEDEFAULT, 
-                                        CW_USEDEFAULT, 
-                                        create_width, 
-                                        create_height, 
-                                        NULL, NULL, 
-                                        GetModuleHandle(NULL), 
-                                        p_window);
-	ASSERT(NULL != p_window->m_handle);
+	window->m_handle = CreateWindowEx(0, 
+                                      WINDOW_CLASS_NAME, 
+                                      name, 
+                                      style, 
+                                      CW_USEDEFAULT, 
+                                      CW_USEDEFAULT, 
+                                      create_width, 
+                                      create_height, 
+                                      NULL, NULL, 
+                                      GetModuleHandle(NULL), 
+                                      window);
+	ASSERT(NULL != window->m_handle);
 
     // verify that the created size is actually correct
-    update_window_size(p_window);
-    ASSERT(p_window->m_width == width && p_window->m_height == height);
+    update_window_size(window);
+    ASSERT(window->m_width == width && window->m_height == height);
 
     // window adds a self subscription to catch windows messages for itself
-    add_window_callback(p_window, internal_window_msg_handler, p_window);
+    add_window_callback(window, internal_window_msg_handler, window);
 
 	// make sure to show on init
-	::ShowWindow(p_window->m_handle, SW_SHOW);
+	::ShowWindow(window->m_handle, SW_SHOW);
 
-    return p_window;
+    return window;
 }
 
 void update_window(window_t* window)
