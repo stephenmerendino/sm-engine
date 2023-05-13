@@ -35,14 +35,14 @@ ThreadSafeQueue<T>::~ThreadSafeQueue()
 template<typename T>
 void ThreadSafeQueue<T>::push(T& t)
 {
-	SCOPED_CRITICAL_SECTION(m_rw_lock);
+	SCOPED_CRITICAL_SECTION(&m_rw_lock);
 	m_queue.push(t);
 }
 
 template<typename T>
 bool ThreadSafeQueue<T>::pop(T* out_t)
 {
-	SCOPED_CRITICAL_SECTION(m_rw_lock);
+	SCOPED_CRITICAL_SECTION(&m_rw_lock);
 
 	if (m_queue.empty())
 	{
@@ -57,13 +57,13 @@ bool ThreadSafeQueue<T>::pop(T* out_t)
 template<typename T>
 T ThreadSafeQueue<T>::front()
 {
-	SCOPED_CRITICAL_SECTION(m_rw_lock);
+	SCOPED_CRITICAL_SECTION(&m_rw_lock);
 	return m_queue.front();
 }
 
 template<typename T>
 bool ThreadSafeQueue<T>::empty()
 {
-	SCOPED_CRITICAL_SECTION(m_rw_lock);
+	SCOPED_CRITICAL_SECTION(&m_rw_lock);
 	return m_queue.empty();
 }

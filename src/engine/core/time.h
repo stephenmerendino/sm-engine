@@ -2,7 +2,7 @@
 
 #include "engine/core/types.h"
 
-void init_time();
+void time_init();
 
 struct stopwatch_t
 {

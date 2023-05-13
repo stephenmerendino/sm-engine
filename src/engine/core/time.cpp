@@ -11,7 +11,7 @@ static i64 get_current_tick()
 	return tick.QuadPart;
 }
 
-void init_time()
+void time_init()
 {
 	static bool did_init = false;
 	if (!did_init)

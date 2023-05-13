@@ -3,29 +3,13 @@ cmake_minimum_required(VERSION 3.26)
 project(sm-engine)
 
 add_library(sm-engine STATIC src/engine/core/assert.cpp
-                             #src/engine/core/assert.h
                              src/engine/core/bit_flags.h
-                             #src/engine/core/config.h
                              src/engine/core/debug.cpp
-                             #src/engine/core/debug.h
                              src/engine/core/file.cpp
-                             #src/engine/core/file.h
                              src/engine/core/time.cpp
                              src/engine/input/input.cpp
-                             #src/engine/input/input.h
-                             #src/engine/job/Job.cpp
-                             #src/engine/job/Job.h
-                             #src/engine/job/JobSystem.cpp
-                             #src/engine/job/JobSystem.h
-                             #src/engine/math/ivec2.h
-                             #src/engine/math/mat33.h
-                             #src/engine/math/mat44.h
+                             src/engine/job/job_system.cpp
                              src/engine/math/math_utils.cpp
-                             #src/engine/math/math_utils.h
-                             #src/engine/math/vec2.h
-                             #src/engine/math/vec3.h
-                             #src/engine/math/vec4.h
-                             #src/engine/platform/windows_include.h
                              #src/engine/render/Camera.cpp
                              #src/engine/render/Mesh.cpp
                              #src/engine/render/Mesh.h
@@ -68,16 +52,9 @@ add_library(sm-engine STATIC src/engine/core/assert.cpp
                              #src/engine/render/vulkan/VulkanTexture.h
                              #src/engine/render/vulkan/VulkanUtils.cpp
                              #src/engine/render/vulkan/VulkanUtils.h
-                             #src/engine/thread/AtomicInt.cpp
-                             #src/engine/thread/AtomicInt.h
-                             #src/engine/thread/AtomicUtil.h
-                             #src/engine/thread/CriticalSection.cpp
-                             #src/engine/thread/CriticalSection.h
-                             #src/engine/thread/Event.cpp
-                             #src/engine/thread/Event.h
-                             #src/engine/thread/Thread.cpp
-                             #src/engine/thread/Thread.h
-                             #src/engine/thread/ThreadSafeQueue.h
+                             src/engine/thread/critical_section.cpp
+                             src/engine/thread/event.cpp
+                             src/engine/thread/thread.cpp
                              )
 
 target_include_directories(sm-engine PUBLIC src/)

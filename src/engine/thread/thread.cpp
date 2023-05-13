@@ -55,8 +55,8 @@ void thread_sleep_ms(f32 ms)
 
 	// Spin down the last bit of time since calling the Win32 Sleep function is too inaccurate
 	stopwatch_t stopwatch;
-    start_stopwatch(stopwatch);
-	while (get_stopwatch_elapsed_ms(stopwatch) < ms) { thread_yield(); }
+    stopwatch_start(stopwatch);
+	while (stopwatch_get_elapsed_ms(stopwatch) < ms) { thread_yield(); }
 }
 
 void thread_sleep_seconds(f32 seconds)
