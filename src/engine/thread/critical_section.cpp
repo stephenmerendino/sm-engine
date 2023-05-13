@@ -1,4 +1,5 @@
-#include "engine/thread/crtical_section.h"
+
+#include "engine/thread/critical_section.h"
 
 critical_section_t critical_section_create()
 {

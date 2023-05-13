@@ -1,7 +1,7 @@
 #pragma once
 
 #include "engine/thread/atomic_util.h"
-#include "engine/thread/crtical_section.h"
+#include "engine/thread/critical_section.h"
 #include "engine/thread/thread.h"
 
 typedef void (*job_func_t)(void* args);

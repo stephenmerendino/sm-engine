@@ -3,58 +3,71 @@ cmake_minimum_required(VERSION 3.26)
 project(sm-engine)
 
 add_library(sm-engine STATIC src/engine/core/assert.cpp
+                             src/engine/core/assert.h
                              src/engine/core/bit_flags.h
+                             src/engine/core/config.h
                              src/engine/core/debug.cpp
+                             src/engine/core/debug.h
                              src/engine/core/file.cpp
+                             src/engine/core/file.h
+                             src/engine/core/funcs.h
+                             src/engine/core/macros.h
                              src/engine/core/time.cpp
+                             src/engine/core/time.h
+                             src/engine/core/types.h
                              src/engine/input/input.cpp
+                             src/engine/input/input.h
                              src/engine/job/job_system.cpp
+                             src/engine/job/job_system.h
+                             src/engine/math/ivec2.h
+                             src/engine/math/mat33.h
+                             src/engine/math/mat44.h
                              src/engine/math/math_utils.cpp
+                             src/engine/math/math_utils.h
+                             src/engine/math/vec2.h
+                             src/engine/math/vec3.h
+                             src/engine/math/vec4.h
+                             src/engine/platform/windows_include.h
                              #src/engine/render/Camera.cpp
+                             #src/engine/render/Camera.h
                              #src/engine/render/Mesh.cpp
                              #src/engine/render/Mesh.h
                              #src/engine/render/RenderableMesh.cpp
                              #src/engine/render/RenderableMesh.h
                              #src/engine/render/Vertex.cpp
                              #src/engine/render/Vertex.h
+                             src/engine/render/vulkan/vulkan_functions.cpp
+                             src/engine/render/vulkan/vulkan_functions.h
+                             src/engine/render/vulkan/vulkan_functions_manifest.inl
+                             src/engine/render/vulkan/vulkan_include.h
+                             src/engine/render/vulkan/vulkan_renderer.cpp
+                             src/engine/render/vulkan/vulkan_renderer.h
                              src/engine/render/window.cpp
                              src/engine/render/window.h
                              #src/engine/render/vulkan/VulkanBuffer.cpp
-                             #src/engine/render/vulkan/VulkanBuffer.h
                              #src/engine/render/vulkan/VulkanCommandPool.cpp
-                             #src/engine/render/vulkan/VulkanCommandPool.h
                              #src/engine/render/vulkan/VulkanCommands.cpp
-                             #src/engine/render/vulkan/VulkanCommands.h
                              #src/engine/render/vulkan/VulkanDescriptorSet.cpp
-                             #src/engine/render/vulkan/VulkanDescriptorSet.h
                              #src/engine/render/vulkan/VulkanDevice.cpp
-                             #src/engine/render/vulkan/VulkanDevice.h
                              #src/engine/render/vulkan/VulkanFunctions.cpp
-                             #src/engine/render/vulkan/VulkanFunctions.h
-                             #src/engine/render/vulkan/VulkanInclude.h
                              #src/engine/render/vulkan/VulkanInstance.cpp
-                             #src/engine/render/vulkan/VulkanInstance.h
                              #src/engine/render/vulkan/VulkanPipeline.cpp
-                             #src/engine/render/vulkan/VulkanPipeline.h
                              #src/engine/render/vulkan/VulkanRenderer.cpp
-                             #src/engine/render/vulkan/VulkanRenderer.h
                              #src/engine/render/vulkan/VulkanRenderer2.cpp
-                             #src/engine/render/vulkan/VulkanRenderer2.h
                              #src/engine/render/vulkan/VulkanRenderPass.cpp
-                             #src/engine/render/vulkan/VulkanRenderPass.h
                              #src/engine/render/vulkan/VulkanSampler.cpp
-                             #src/engine/render/vulkan/VulkanSampler.h
                              #src/engine/render/vulkan/VulkanSurface.cpp
-                             #src/engine/render/vulkan/VulkanSurface.h
                              #src/engine/render/vulkan/VulkanSwapchain.cpp
-                             #src/engine/render/vulkan/VulkanSwapchain.h
                              #src/engine/render/vulkan/VulkanTexture.cpp
-                             #src/engine/render/vulkan/VulkanTexture.h
                              #src/engine/render/vulkan/VulkanUtils.cpp
-                             #src/engine/render/vulkan/VulkanUtils.h
+                             src/engine/thread/atomic_util.h
                              src/engine/thread/critical_section.cpp
+                             src/engine/thread/critical_section.h
                              src/engine/thread/event.cpp
+                             src/engine/thread/event.h
                              src/engine/thread/thread.cpp
+                             src/engine/thread/thread.h
+                             src/engine/thread/thread_safe_queue.h
                              )
 
 target_include_directories(sm-engine PUBLIC src/)
