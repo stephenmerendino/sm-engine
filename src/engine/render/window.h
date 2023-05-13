@@ -27,9 +27,9 @@ struct window_t
     std::vector<window_message_cb_with_args_t> m_message_cbs;
 };
 
-window_t*   create_window(const char* name, u32 width, u32 height, bool resizable);
-void        update_window(window_t* window);
-void        set_window_title(window_t* window, const char* new_title);
-void        add_window_callback(window_t* window, window_message_cb_t cb, void* args = nullptr);
-ivec2       get_window_position();
-void        destroy_window(window_t* window);
+window_t*   window_create(const char* name, u32 width, u32 height, bool resizable);
+void        window_update(window_t* window);
+void        window_set_title(window_t* window, const char* new_title);
+void        window_add_msg_callback(window_t* window, window_message_cb_t cb, void* args = nullptr);
+ivec2       window_get_position();
+void        window_destroy(window_t* window);

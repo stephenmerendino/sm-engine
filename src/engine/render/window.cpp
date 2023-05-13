@@ -65,7 +65,7 @@ void internal_window_msg_handler(UINT msg, WPARAM w_param, LPARAM l_param, void*
 }
 
 static 
-void update_window_size(window_t* window)
+void window_update_size(window_t* window)
 {
 	RECT size;
 	::GetClientRect(window->m_handle, &size);
@@ -74,7 +74,7 @@ void update_window_size(window_t* window)
 }
 
 static 
-void update_window_position(window_t* window)
+void window_update_position(window_t* window)
 {
     RECT pos;
     ::GetWindowRect(window->m_handle, &pos);
@@ -82,7 +82,7 @@ void update_window_position(window_t* window)
     window->m_y = pos.top;
 }
 
-window_t* create_window(const char* name, u32 width, u32 height, bool resizable)
+window_t* window_create(const char* name, u32 width, u32 height, bool resizable)
 {
 	WNDCLASSEX wc = {};
 	wc.cbSize = sizeof(wc);
@@ -130,12 +130,12 @@ window_t* create_window(const char* name, u32 width, u32 height, bool resizable)
 	ASSERT(NULL != window->m_handle);
 
     // verify that the created size is actually correct
-    update_window_size(window);
-    update_window_position(window);
+    window_update_size(window);
+    window_update_position(window);
     ASSERT(window->m_width == width && window->m_height == height);
 
     // window adds a self subscription to catch windows messages for itself
-    add_window_callback(window, internal_window_msg_handler, window);
+    window_add_msg_callback(window, internal_window_msg_handler, window);
 
 	// make sure to show on init
 	::ShowWindow(window->m_handle, SW_SHOW);
@@ -143,7 +143,7 @@ window_t* create_window(const char* name, u32 width, u32 height, bool resizable)
     return window;
 }
 
-void update_window(window_t* window)
+void window_update(window_t* window)
 {
     ASSERT(nullptr != window);
 
@@ -157,25 +157,25 @@ void update_window(window_t* window)
 		::DispatchMessage(&msg);
 	}
 
-    update_window_size(window);
-    update_window_position(window);
+    window_update_size(window);
+    window_update_position(window);
 	window->m_is_minimized = ::IsIconic(window->m_handle);
 }
 
-void set_window_title(window_t* window, const char* new_title)
+void window_set_title(window_t* window, const char* new_title)
 {
     ASSERT(nullptr != window);
 	LPCSTR new_title_win32 = (LPCSTR)(new_title);
 	::SetWindowText(window->m_handle, new_title_win32);
 }
 
-void add_window_callback(window_t* window, window_message_cb_t cb, void* args)
+void window_add_msg_callback(window_t* window, window_message_cb_t cb, void* args)
 {
 	window_message_cb_with_args_t cb_with_args = { cb, args };
 	window->m_message_cbs.push_back(cb_with_args);
 }
 
-void destroy_window(window_t* window)
+void window_destroy(window_t* window)
 {
     ASSERT(nullptr != window);
 	::DestroyWindow(window->m_handle);

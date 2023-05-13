@@ -3,6 +3,7 @@
 #include "engine/core/debug.h"
 #include "engine/core/macros.h"
 #include "engine/math/ivec2.h"
+#include "engine/render/Window.h"
 #include "engine/render/window.h"
 
 enum class KeyStateBitFlags : u8
@@ -233,7 +234,7 @@ void show_cursor()
 void input_init(window_t* window)
 {
     ASSERT(nullptr != window);
-    add_window_callback(window, input_system_msg_handler);
+    window_add_msg_callback(window, input_system_msg_handler);
     s_window = window;
 }
 
