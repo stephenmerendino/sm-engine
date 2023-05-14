@@ -175,7 +175,7 @@ void transpose(mat44& m)
 }
 
 inline 
-mat44 transposed(const mat44& m)
+mat44 get_transposed(const mat44& m)
 {
 	mat44 copy = m;
     transpose(copy);

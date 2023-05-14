@@ -6,7 +6,7 @@
 class VulkanDevice;
 class VulkanCommandPool;
 
-enum class VulkanBufferType : U8
+enum class BufferType : u8
 {
 	kVertexBuffer,
 	kIndexBuffer,
@@ -14,6 +14,15 @@ enum class VulkanBufferType : U8
 	kNumBufferTypes,
 	kInvalidBuffer = 0xFF,
 };
+
+struct buffer_t
+{
+    VkBuffer m_vk_handle = VK_NULL_HANDLE;   
+    VkDeviceMemory m_memory;
+    size_t m_size;
+    BufferType m_type;
+};
+
 
 class VulkanBuffer
 {

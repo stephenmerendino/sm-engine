@@ -2,6 +2,7 @@
 #include "engine/core/config.h"
 #include "engine/core/debug.h"
 #include "engine/core/macros.h"
+#include "engine/render/mesh.h"
 #include "engine/render/vulkan/vulkan_functions.h"
 #include "engine/render/vulkan/vulkan_include.h"
 #include "engine/render/vulkan/vulkan_renderer.h"
@@ -22,6 +23,14 @@ struct surface_t
     VkSurfaceKHR m_vk_handle = VK_NULL_HANDLE;
 };
 
+struct queue_family_indices_t
+{
+    static const i32 INVALID = -1;
+
+	i32 m_graphics_family = INVALID;
+	i32 m_present_family = INVALID;
+};
+
 struct device_t
 {
 	VkPhysicalDevice m_phys_device_vk_handle = VK_NULL_HANDLE;
@@ -29,14 +38,7 @@ struct device_t
     VkQueue m_graphics_queue = VK_NULL_HANDLE;
     VkQueue m_present_queue = VK_NULL_HANDLE;
     u32 m_max_num_msaa_samples = 0;
-};
-
-struct queue_family_indices_t
-{
-    static const i32 INVALID = -1;
-
-	i32 m_graphics_family = INVALID;
-	i32 m_present_family = INVALID;
+    queue_family_indices_t m_queue_families;
 };
 
 struct swapchain_details_t 
@@ -56,11 +58,48 @@ struct swapchain_t
     std::vector<VkImageView> m_image_views;
 };
 
+struct command_pool_t
+{
+    VkCommandPool m_vk_handle = VK_NULL_HANDLE;
+    VkQueueFlags m_queue_families;
+    VkCommandPoolCreateFlags m_create_flags;
+};
+
+enum class BufferType : u8
+{
+	kVertexBuffer,
+	kIndexBuffer,
+	kUniformBuffer,
+	kNumBufferTypes,
+	kInvalidBuffer = 0xFF,
+};
+
+struct buffer_t
+{
+    VkBuffer m_vk_handle = VK_NULL_HANDLE;   
+    VkDeviceMemory m_memory;
+    size_t m_size;
+    BufferType m_type;
+};
+
+struct renderable_mesh_t
+{
+    mesh_t* m_mesh = nullptr;
+    buffer_t* m_vertex_buffer = nullptr;
+    buffer_t* m_index_buffer = nullptr;
+};
+
 static window_t* s_window = nullptr;
+static camera_t* s_camera = nullptr;
 static instance_t s_instance;
 static surface_t s_surface;
 static device_t s_device;
 static swapchain_t s_swapchain;
+static command_pool_t s_graphics_command_pool;
+
+//  these should be collected into a container at some point
+static renderable_mesh_t s_viking_room_mesh;
+static renderable_mesh_t s_world_axes_mesh;
 
 static 
 void print_instance_info()
@@ -422,12 +461,6 @@ queue_family_indices_t queue_family_find(VkPhysicalDevice device, surface_t& sur
 }
 
 static 
-queue_family_indices_t queue_family_find(device_t& device, surface_t& surface)
-{
-    return queue_family_find(device.m_phys_device_vk_handle, surface);
-}
-
-static 
 bool is_physical_device_suitable(VkPhysicalDevice device, surface_t& surface)
 {
 	VkPhysicalDeviceProperties props;
@@ -583,6 +616,7 @@ device_t vulkan_create_device(instance_t& instance, surface_t& surface)
     device.m_graphics_queue = graphics_queue;
     device.m_present_queue = present_queue;
     device.m_max_num_msaa_samples = max_num_msaa_samples;
+    device.m_queue_families = queue_families;
     return device;
 }
 
@@ -632,7 +666,7 @@ swapchain_t vulkan_create_swapchain(device_t& device, surface_t& surface, window
 	create_info.imageArrayLayers = 1;
 	create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-	queue_family_indices_t indices = queue_family_find(device, surface);
+	queue_family_indices_t indices = device.m_queue_families;
 	u32 queue_family_indices[] = { (u32)indices.m_graphics_family, (u32)indices.m_present_family };
 
 	if (indices.m_graphics_family != indices.m_present_family)
@@ -674,6 +708,31 @@ swapchain_t vulkan_create_swapchain(device_t& device, surface_t& surface, window
     return swapchain;
 }
 
+static
+command_pool_t vulkan_create_command_pool(device_t& device, VkQueueFlags queue_families, VkCommandPoolCreateFlags create_flags)
+{
+	queue_family_indices_t queue_family_indices = device.m_queue_families;
+
+	VkCommandPoolCreateInfo create_info = {};
+	create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	create_info.flags = create_flags;
+	
+	if (queue_families & VK_QUEUE_GRAPHICS_BIT)
+	{
+		create_info.queueFamilyIndex = queue_family_indices.m_graphics_family;
+	}
+	
+    command_pool_t command_pool;
+	VULKAN_ASSERT(vkCreateCommandPool(device.m_device_vk_handle, &create_info, nullptr, &command_pool.m_vk_handle));
+	return command_pool;
+}
+
+static
+renderable_mesh_t renderable_mesh_create(device_t& device, command_pool_t& graphics_command_pool, mesh_t* mesh)
+{
+    
+}
+
 void renderer_init(window_t* app_window)
 {
     ASSERT(nullptr != app_window);
@@ -682,4 +741,37 @@ void renderer_init(window_t* app_window)
     s_surface = vulkan_create_surface(s_instance, *s_window);
     s_device = vulkan_create_device(s_instance, s_surface);
     s_swapchain = vulkan_create_swapchain(s_device, s_surface, *s_window);
+    s_graphics_command_pool = vulkan_create_command_pool(s_device, VK_QUEUE_GRAPHICS_BIT, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+
+	//SetupMeshes();
+    mesh_t* viking_room_mesh = mesh_load_from_obj("models/viking_room.obj");
+    s_viking_room_mesh = renderable_mesh_create(s_device, s_graphics_command_pool, viking_room_mesh);
+
+    mesh_t* world_axes_mesh = mesh_load_axes();
+    s_world_axes_mesh = renderable_mesh_create(s_device, s_graphics_command_pool, world_axes_mesh);
+
+	//SetupTexturesAndSamplers();
+	//SetupUniformBuffers();
+	//SetupRenderPass();
+	//SetupFrameBuffers();
+	//SetupDescriptorSets();
+	//SetupPipelines();
+	//SetupCommandBuffers();
+	//SetupSyncObjects();
+}
+
+void renderer_set_main_camera(camera_t* camera)
+{
+   ASSERT(nullptr != camera); 
+   s_camera = camera;
+}
+
+void renderer_render_frame()
+{
+    
+}
+
+void renderer_deinit()
+{
+    
 }
