@@ -70,6 +70,7 @@ enum class BufferType : u8
 	kVertexBuffer,
 	kIndexBuffer,
 	kUniformBuffer,
+	kStagingBuffer,
 	kNumBufferTypes,
 	kInvalidBuffer = 0xFF,
 };
@@ -77,7 +78,7 @@ enum class BufferType : u8
 struct buffer_t
 {
     VkBuffer m_vk_handle = VK_NULL_HANDLE;   
-    VkDeviceMemory m_memory;
+    VkDeviceMemory m_vk_memory = VK_NULL_HANDLE;
     size_t m_size;
     BufferType m_type;
 };
@@ -85,8 +86,8 @@ struct buffer_t
 struct renderable_mesh_t
 {
     mesh_t* m_mesh = nullptr;
-    buffer_t* m_vertex_buffer = nullptr;
-    buffer_t* m_index_buffer = nullptr;
+    buffer_t m_vertex_buffer;
+    buffer_t m_index_buffer;
 };
 
 static window_t* s_window = nullptr;
@@ -727,10 +728,127 @@ command_pool_t vulkan_create_command_pool(device_t& device, VkQueueFlags queue_f
 	return command_pool;
 }
 
+u32 find_memory_type(device_t& device, u32 type_filter, VkMemoryPropertyFlags properties)
+{
+	VkPhysicalDeviceMemoryProperties mem_properties;
+	vkGetPhysicalDeviceMemoryProperties(device.m_phys_device_vk_handle, &mem_properties);
+
+	u32 found_mem_type = UINT_MAX;
+	for (u32 i = 0; i < mem_properties.memoryTypeCount; i++)
+	{
+		if (type_filter & (1 << i) && (mem_properties.memoryTypes[i].propertyFlags & properties) == properties)
+		{
+			found_mem_type = i;
+			break;
+		}
+	}
+
+	ASSERT(found_mem_type != UINT_MAX);
+	return found_mem_type;
+}
+
+static
+void vulkan_create_buffer(device_t& device, VkDeviceSize size, VkBufferUsageFlags usage_flags, VkMemoryPropertyFlags memory_property_flags, VkBuffer& out_buffer, VkDeviceMemory& out_memory)
+{
+	VkBufferCreateInfo create_info = {};
+	create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	create_info.size = size;
+	create_info.usage = usage_flags;
+	create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	VULKAN_ASSERT(vkCreateBuffer(device.m_device_vk_handle, &create_info, nullptr, &out_buffer));
+
+	VkMemoryRequirements mem_requirements;
+	vkGetBufferMemoryRequirements(device.m_device_vk_handle, out_buffer, &mem_requirements);
+
+	VkMemoryAllocateInfo alloc_info = {};
+	alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	alloc_info.allocationSize = mem_requirements.size;
+	alloc_info.memoryTypeIndex = find_memory_type(device, mem_requirements.memoryTypeBits, memory_property_flags);
+
+	VULKAN_ASSERT(vkAllocateMemory(device.m_device_vk_handle, &alloc_info, nullptr, &out_memory));
+
+	vkBindBufferMemory(device.m_device_vk_handle, out_buffer, out_memory, 0);
+}
+
+static 
+buffer_t vulkan_create_buffer(device_t& device, BufferType type, size_t size)
+{
+    buffer_t buffer;
+    buffer.m_type = type;
+    buffer.m_size = size;
+
+    switch(buffer.m_type)
+    {
+        case BufferType::kVertexBuffer:	 vulkan_create_buffer(device, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, buffer.m_vk_handle, buffer.m_vk_memory); break;
+        case BufferType::kIndexBuffer:	 vulkan_create_buffer(device, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, buffer.m_vk_handle, buffer.m_vk_memory); break;
+        case BufferType::kUniformBuffer: vulkan_create_buffer(device, size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, buffer.m_vk_handle, buffer.m_vk_memory); break;
+        case BufferType::kStagingBuffer: vulkan_create_buffer(device, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, buffer.m_vk_handle, buffer.m_vk_memory); break;
+        case BufferType::kNumBufferTypes: break;
+        case BufferType::kInvalidBuffer: break;
+    }
+
+    return buffer;
+}
+
+static
+void buffer_update_data(device_t& device, buffer_t& buffer, void* data, VkDeviceSize gpu_memory_offset = 0)
+{
+	void* mapped_gpu_mem;
+	vkMapMemory(device.m_device_vk_handle, buffer.m_vk_memory, gpu_memory_offset, buffer.m_size, 0, &mapped_gpu_mem);
+	memcpy(mapped_gpu_mem, data, buffer.m_size);
+	vkUnmapMemory(device.m_device_vk_handle, buffer.m_vk_memory);
+}
+
+static
+void vulkan_destroy_buffer(device_t& device, buffer_t& buffer)
+{
+    vkDestroyBuffer(device.m_device_vk_handle, buffer.m_vk_handle, nullptr);
+    vkFreeMemory(device.m_device_vk_handle, buffer.m_vk_memory, nullptr);
+}
+
+static
+void command_copy_buffer(command_pool_t& graphics_command_pool, buffer_t& src, buffer_t& dst, VkDeviceSize size)
+{
+	VkCommandBuffer copyCommandBuffer = pCommandPool->BeginSingleTimeCommands();
+
+	VkBufferCopy copyRegion = {};
+	copyRegion.srcOffset = 0;
+	copyRegion.dstOffset = 0;
+	copyRegion.size = size;
+	vkCmdCopyBuffer(copyCommandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+
+	pCommandPool->EndSingleTimeCommands(copyCommandBuffer);
+}
+
+static 
+void buffer_update(device_t& device, buffer_t& buffer, command_pool_t& command_pool, void* data)
+{
+	if (buffer.m_type == BufferType::kUniformBuffer)
+	{
+        buffer_update_data(device, buffer, data);
+	}
+	else if (buffer.m_type == BufferType::kVertexBuffer || buffer.m_type == BufferType::kIndexBuffer)
+	{
+        buffer_t staging_buffer = vulkan_create_buffer(device, BufferType::kStagingBuffer, buffer.m_size);
+
+        buffer_update_data(device, staging_buffer, data);
+		VulkanCommands::CopyBuffer(pGraphicsCommandPool, stagingBuffer, m_vkBuffer, m_bufferSize);
+
+        vulkan_destroy_buffer(device, staging_buffer);
+	}
+}
+
 static
 renderable_mesh_t renderable_mesh_create(device_t& device, command_pool_t& graphics_command_pool, mesh_t* mesh)
 {
-    
+    renderable_mesh_t renderable_mesh;
+    renderable_mesh.m_mesh = mesh;
+    renderable_mesh.m_vertex_buffer = vulkan_create_buffer(device, BufferType::kVertexBuffer, mesh_calc_vertex_buffer_size(mesh));
+    renderable_mesh.m_index_buffer = vulkan_create_buffer(device, BufferType::kIndexBuffer, mesh_calc_index_buffer_size(mesh));
+    buffer_update(device, renderable_mesh.m_vertex_buffer, graphics_command_pool, mesh->m_vertices.data());
+    buffer_update(device, renderable_mesh.m_index_buffer, graphics_command_pool, mesh->m_indices.data());
+    return renderable_mesh;
 }
 
 void renderer_init(window_t* app_window)
@@ -743,7 +861,7 @@ void renderer_init(window_t* app_window)
     s_swapchain = vulkan_create_swapchain(s_device, s_surface, *s_window);
     s_graphics_command_pool = vulkan_create_command_pool(s_device, VK_QUEUE_GRAPHICS_BIT, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
-	//SetupMeshes();
+    // setup meshes
     mesh_t* viking_room_mesh = mesh_load_from_obj("models/viking_room.obj");
     s_viking_room_mesh = renderable_mesh_create(s_device, s_graphics_command_pool, viking_room_mesh);
 
