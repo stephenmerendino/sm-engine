@@ -808,17 +808,59 @@ void vulkan_destroy_buffer(device_t& device, buffer_t& buffer)
 }
 
 static
-void command_copy_buffer(command_pool_t& graphics_command_pool, buffer_t& src, buffer_t& dst, VkDeviceSize size)
+void queue_flush(VkQueue queue)
 {
-	VkCommandBuffer copyCommandBuffer = pCommandPool->BeginSingleTimeCommands();
+    vkQueueWaitIdle(queue);
+}
 
-	VkBufferCopy copyRegion = {};
-	copyRegion.srcOffset = 0;
-	copyRegion.dstOffset = 0;
-	copyRegion.size = size;
-	vkCmdCopyBuffer(copyCommandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+VkCommandBuffer command_begin_single_time(device_t& device, command_pool_t& pool)
+{
+	VkCommandBufferAllocateInfo alloc_info = {};
+	alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	alloc_info.commandPool = pool.m_vk_handle;
+	alloc_info.commandBufferCount = 1;
 
-	pCommandPool->EndSingleTimeCommands(copyCommandBuffer);
+	VkCommandBuffer command_buffer;
+	vkAllocateCommandBuffers(device.m_device_vk_handle, &alloc_info, &command_buffer);
+
+	VkCommandBufferBeginInfo begin_info = {};
+	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vkBeginCommandBuffer(command_buffer, &begin_info);
+
+	return command_buffer;
+}
+
+static
+void command_end_single_time(device_t& device, command_pool_t& pool, VkCommandBuffer command_buffer)
+{
+	vkEndCommandBuffer(command_buffer);
+
+	VkSubmitInfo submit_info = {};
+	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submit_info.commandBufferCount = 1;
+	submit_info.pCommandBuffers = &command_buffer;
+
+	vkQueueSubmit(device.m_graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
+    queue_flush(device.m_graphics_queue);
+
+	vkFreeCommandBuffers(device.m_device_vk_handle, pool.m_vk_handle, 1, &command_buffer);
+}
+
+static
+void command_copy_buffer(device_t& device, command_pool_t& graphics_command_pool, buffer_t& src, buffer_t& dst, VkDeviceSize size)
+{
+	VkCommandBuffer copy_command_buffer = command_begin_single_time(device, graphics_command_pool);
+
+	VkBufferCopy copy_region = {};
+	copy_region.srcOffset = 0;
+	copy_region.dstOffset = 0;
+	copy_region.size = size;
+	vkCmdCopyBuffer(copy_command_buffer, src.m_vk_handle, dst.m_vk_handle, 1, &copy_region);
+
+    command_end_single_time(device, graphics_command_pool, copy_command_buffer);
 }
 
 static 
@@ -833,7 +875,7 @@ void buffer_update(device_t& device, buffer_t& buffer, command_pool_t& command_p
         buffer_t staging_buffer = vulkan_create_buffer(device, BufferType::kStagingBuffer, buffer.m_size);
 
         buffer_update_data(device, staging_buffer, data);
-		VulkanCommands::CopyBuffer(pGraphicsCommandPool, stagingBuffer, m_vkBuffer, m_bufferSize);
+        command_copy_buffer(device, command_pool, staging_buffer, buffer, buffer.m_size);
 
         vulkan_destroy_buffer(device, staging_buffer);
 	}
