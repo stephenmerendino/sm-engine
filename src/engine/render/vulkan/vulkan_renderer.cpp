@@ -13,6 +13,9 @@
 #include <set>
 #include <string>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "engine/thirdparty/stb/stb_image.h"
+
 struct instance_t
 {
     VkInstance m_vk_handle = VK_NULL_HANDLE;
@@ -106,6 +109,23 @@ struct sampler_t
     u32 m_max_mip_level = 1;
 };
 
+struct subpass_t
+{
+	std::vector<VkAttachmentReference> m_color_attach_refs;
+	std::vector<VkAttachmentReference> m_resolve_attach_refs;
+	VkAttachmentReference m_depth_attach_ref;
+	bool m_has_depth_attach;
+};
+
+struct render_pass_t
+{
+	VkRenderPass m_vk_handle;
+	std::vector<VkSubpassDescription> m_subpasses;
+	std::vector<VkSubpassDependency> m_subpass_dependencies;
+	std::vector<VkAttachmentDescription> m_attachments;
+    
+};
+
 struct mvp_buffer_t
 {
 	mat44 m_model;
@@ -135,6 +155,8 @@ static texture_t s_depth_target;
 static sampler_t s_sampler;
 
 static std::vector<buffer_t> s_uniform_buffers;
+
+static render_pass_t s_render_pass;
 
 static 
 void print_instance_info()
@@ -254,10 +276,10 @@ VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_debug_cb(VkDebugUtilsMessageSeverityFlagBi
 
 static
 VkAttachmentDescription setup_attachment_desc(VkFormat format, VkSampleCountFlagBits sample_count, 
-        VkImageLayout initial_layout, VkImageLayout final_layout,
-        VkAttachmentLoadOp load_op, VkAttachmentStoreOp store_op, 
-        VkAttachmentLoadOp stencil_load_op, VkAttachmentStoreOp stencil_store_op, 
-        VkAttachmentDescriptionFlags flags = 0)
+                                              VkImageLayout initial_layout, VkImageLayout final_layout,
+                                              VkAttachmentLoadOp load_op, VkAttachmentStoreOp store_op, 
+                                              VkAttachmentLoadOp stencil_load_op, VkAttachmentStoreOp stencil_store_op, 
+                                              VkAttachmentDescriptionFlags flags = 0)
 {
     VkAttachmentDescription attachment_desc = {};
     attachment_desc.format = format;
@@ -466,6 +488,39 @@ VkExtent2D swapchain_choose_extent(const VkSurfaceCapabilitiesKHR& capabilities,
 
     return actual_extent;
 }
+
+static
+VkFormat find_support_format(device_t& device, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
+{
+	for (VkFormat format : candidates)
+	{
+		VkFormatProperties props;
+		vkGetPhysicalDeviceFormatProperties(device.m_phys_device_vk_handle, format, &props);
+
+		if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
+		{
+			return format;
+		}
+		else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
+		{
+			return format;
+		}
+	}
+
+	return VK_FORMAT_UNDEFINED;
+}
+
+static
+VkFormat find_depth_format(device_t& device)
+{
+	VkFormat depth_format = find_support_format(device, 
+                                                {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
+												VK_IMAGE_TILING_OPTIMAL, 
+												VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+
+	ASSERT(depth_format != VK_FORMAT_UNDEFINED);
+	return depth_format;
+} 
 
 static
 bool has_stencil_component(VkFormat format)
@@ -1224,6 +1279,59 @@ static
 texture_t texture_create_from_file(device_t& device, command_pool_t graphics_command_pool, const char* filepath)
 {
     texture_t texture;
+
+    int tex_width;
+	int tex_height;
+	int tex_channels;
+
+	VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
+
+	// load image pixels
+	stbi_uc* pixels = stbi_load(filepath, &tex_width, &tex_height, &tex_channels, STBI_rgb_alpha);
+
+    // calc num mips
+	texture.m_num_mips = (u32)(std::floor(std::log2(std::max(tex_width, tex_height))) + 1);
+
+	// Copy image data to staging buffer
+	VkDeviceSize image_size = tex_width * tex_height * 4; // times 4 because of STBI_rgb_alpha
+    buffer_t staging_buffer = buffer_create(device, BufferType::kStagingBuffer, image_size);
+
+	// Do the actual memcpy on cpu side
+    buffer_update_data(device, staging_buffer, pixels);
+
+	// Make sure to free the pixels data
+	stbi_image_free(pixels);
+
+	// Create the vulkan image and its memory
+    image_create(device, tex_width, tex_height, texture.m_num_mips, VK_SAMPLE_COUNT_1_BIT, format, VK_IMAGE_TILING_OPTIMAL,VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, texture.m_vk_handle, texture.m_vk_memory);
+
+	// Transition the image to transfer destination layout
+    command_transition_image_layout(device, graphics_command_pool, texture.m_vk_handle, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, texture.m_num_mips);
+
+	// Copy pixel data from staging buffer to actual vulkan image
+	//VulkanCommands::CopyBufferToImage(pGraphicsCommandPool, stagingBuffer, m_vkImage, static_cast<U32>(texWidth), static_cast<U32>(texHeight));
+    command_copy_buffer_to_image(device, graphics_command_pool, staging_buffer.m_vk_handle, texture.m_vk_handle, tex_width, tex_height);
+
+	// Transition image to shader read layout so it can be used in fragment shader
+    command_generate_mip_maps(device, graphics_command_pool, texture.m_vk_handle, format, tex_width, tex_height, texture.m_num_mips);
+
+	// Set user friendly debug name
+	if (is_debug())
+	{
+		VkDebugUtilsObjectNameInfoEXT debug_name_info = {};
+		debug_name_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+		debug_name_info.objectType = VK_OBJECT_TYPE_IMAGE;
+		debug_name_info.objectHandle = (u64)texture.m_vk_handle;
+		debug_name_info.pObjectName = filepath;
+		debug_name_info.pNext = nullptr;
+
+		vkSetDebugUtilsObjectNameEXT(device.m_device_vk_handle, &debug_name_info);
+	}
+
+    buffer_destroy(device, staging_buffer);
+
+	texture.m_image_view = image_view_create(device, texture.m_vk_handle, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, texture.m_num_mips);
+
     return texture;
 }
 
@@ -1233,7 +1341,7 @@ texture_t texture_create_color_target(device_t& device, VkFormat format, u32 wid
     texture_t texture;
     texture.m_num_mips = 1;
     image_create(device, width, height, texture.m_num_mips, device.m_max_num_msaa_samples, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, texture.m_vk_handle, texture.m_vk_memory);
-    image_view_create(device, texture.m_vk_handle, format, VK_IMAGE_ASPECT_COLOR_BIT, texture.m_num_mips);
+    texture.m_image_view = image_view_create(device, texture.m_vk_handle, format, VK_IMAGE_ASPECT_COLOR_BIT, texture.m_num_mips);
     return texture;
 }
 
@@ -1243,7 +1351,7 @@ texture_t texture_create_depth_target(device_t& device, VkFormat format, u32 wid
     texture_t texture;
     texture.m_num_mips = 1;
     image_create(device, width, height, texture.m_num_mips, device.m_max_num_msaa_samples, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, texture.m_vk_handle, texture.m_vk_memory);
-    image_view_create(device, texture.m_vk_handle, format, VK_IMAGE_ASPECT_DEPTH_BIT, texture.m_num_mips);
+    texture.m_image_view = image_view_create(device, texture.m_vk_handle, format, VK_IMAGE_ASPECT_DEPTH_BIT, texture.m_num_mips);
     return texture;
 }
 
@@ -1322,6 +1430,18 @@ void instance_destroy(instance_t& instance)
     vkDestroyInstance(instance.m_vk_handle, nullptr);
 }
 
+static
+void descriptor_set_layout_destroy(device_t& device, VkDescriptorSetLayout layout)
+{
+	vkDestroyDescriptorSetLayout(device.m_device_vk_handle, layout, nullptr);
+}
+
+static 
+void render_pass_destroy(device_t& device, render_pass_t& render_pass)
+{
+    vkDestroyRenderPass(device.m_device_vk_handle, render_pass.m_vk_handle, nullptr);
+}
+
 //void VulkanRenderer::UpdateUniformBuffer(U32 currentImage)
 //{
 //	MVPUniformBuffer ubo;
@@ -1342,25 +1462,6 @@ void instance_destroy(instance_t& instance)
 //	m_pUniformBuffers[currentImage]->Update(m_pGraphicsCommandPool, &ubo);
 //}
 
-struct subpass_t
-{
-	std::vector<VkAttachmentReference> m_color_attach_refs;
-	std::vector<VkAttachmentReference> m_resolve_attach_refs;
-	VkAttachmentReference m_depth_attach_ref;
-	bool m_has_depth_attach;
-};
-
-struct render_pass_t
-{
-	VkRenderPass m_vk_handle;
-	std::vector<VkSubpassDescription> m_subpasses;
-	std::vector<VkSubpassDependency> m_subpass_dependencies;
-	std::vector<VkAttachmentDescription> m_attachments;
-    
-};
-
-static render_pass_t s_render_pass;
-
 void renderer_init(window_t* app_window)
 {
     ASSERT(nullptr != app_window);
@@ -1379,9 +1480,9 @@ void renderer_init(window_t* app_window)
     s_world_axes_renderable_mesh = renderable_mesh_create(s_device, s_graphics_command_pool, s_world_axes_mesh);
 
     // textures
-    s_viking_room_texture = texture_create_from_file(s_device, s_graphics_command_pool, "models/viking_room.obj");
+    s_viking_room_texture = texture_create_from_file(s_device, s_graphics_command_pool, "textures/viking_room.png");
     s_color_target = texture_create_color_target(s_device, s_swapchain.m_format, s_swapchain.m_extent.width, s_swapchain.m_extent.height);
-    s_depth_target = texture_create_depth_target(s_device, s_swapchain.m_format, s_swapchain.m_extent.width, s_swapchain.m_extent.height);
+    s_depth_target = texture_create_depth_target(s_device, find_depth_format(s_device), s_swapchain.m_extent.width, s_swapchain.m_extent.height);
 
     // samplers
     s_sampler = sampler_create(s_device, s_viking_room_texture.m_num_mips);
@@ -1402,15 +1503,15 @@ void renderer_init(window_t* app_window)
                                                                           VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
                                                                           0);
 
-        VkAttachmentDescription depth_target_desc = setup_attachment_desc(s_swapchain.m_format, s_device.m_max_num_msaa_samples, 
-                                                                          VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, 
+        VkAttachmentDescription depth_target_desc = setup_attachment_desc(find_depth_format(s_device), s_device.m_max_num_msaa_samples, 
+                                                                          VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 
                                                                           VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
                                                                           VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
                                                                           0);
 
         VkAttachmentDescription resolve_target_desc = setup_attachment_desc(s_swapchain.m_format, VK_SAMPLE_COUNT_1_BIT, 
-                                                                            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, 
-                                                                            VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
+                                                                            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 
+                                                                            VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE, 
                                                                             VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
                                                                             0);
         s_render_pass.m_attachments.push_back(color_target_desc);
@@ -1433,7 +1534,7 @@ void renderer_init(window_t* app_window)
             subpass.m_has_depth_attach = true;
 
             VkAttachmentReference resolve_attach_ref = {};
-            resolve_attach_ref.attachment = 1;
+            resolve_attach_ref.attachment = 2;
             resolve_attach_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             subpass.m_resolve_attach_refs.push_back(resolve_attach_ref);
 
@@ -1496,27 +1597,150 @@ void renderer_init(window_t* app_window)
     
     // descriptor sets
     {
-        //m_pDescriptorSetLayout = new VulkanDescriptorSetLayout(m_pDevice);
-        //m_pDescriptorSetLayout->AddBinding(0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
-        //m_pDescriptorSetLayout->AddBinding(1, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
-        //m_pDescriptorSetLayout->Setup();
+        // layout
+        VkDescriptorSetLayout layout = VK_NULL_HANDLE;
+        std::vector<VkDescriptorSetLayoutBinding> bindings;
 
-        //m_pDescriptorPool = new VulkanDescriptorPool(m_pDevice);
-        //m_pDescriptorPool->AddPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, m_pSwapchain->GetNumImages());
-        //m_pDescriptorPool->AddPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, m_pSwapchain->GetNumImages());
-        //m_pDescriptorPool->Setup(m_pSwapchain->GetNumImages());
+        VkDescriptorSetLayoutBinding uniform_binding = {};
+        uniform_binding.binding = 0;
+        uniform_binding.descriptorCount = 1;
+        uniform_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        uniform_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        uniform_binding.pImmutableSamplers = nullptr;
+        bindings.push_back(uniform_binding);
 
-        //m_vkDescriptorSets = m_pDescriptorPool->AllocateDescriptorSets(m_pDescriptorSetLayout, m_pSwapchain->GetNumImages());
+        VkDescriptorSetLayoutBinding sampler_binding = {};
+        sampler_binding.binding = 1;
+        sampler_binding.descriptorCount = 1;
+        sampler_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        sampler_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        sampler_binding.pImmutableSamplers = nullptr;
+        bindings.push_back(sampler_binding);
 
-        //VulkanDescriptorSetWriter writer(m_pDevice);
-        //for (size_t i = 0; i < m_pSwapchain->GetNumImages(); ++i)
-        //{
-        //    writer.Reset();
-        //    writer.AddUniformBufferWrite(m_pUniformBuffers[i], 0, 0);
-        //    writer.AddImageSamplerWrite(m_pVikingRoomTexture, m_pLinearSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 0);
-        //    writer.WriteDescriptorSet(m_vkDescriptorSets[i]);
-        //}
+        VkDescriptorSetLayoutCreateInfo layout_create_info = {};
+        layout_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        layout_create_info.bindingCount = (u32)bindings.size();
+        layout_create_info.pBindings = bindings.data();
+
+        VULKAN_ASSERT(vkCreateDescriptorSetLayout(s_device.m_device_vk_handle, &layout_create_info, nullptr, &layout));
+
+        // pool
+        VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
+        std::vector<VkDescriptorPoolSize> pool_sizes;
+
+        VkDescriptorPoolSize uniform_pool_size = {};
+        uniform_pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        uniform_pool_size.descriptorCount = s_swapchain.m_num_images;
+        pool_sizes.push_back(uniform_pool_size);
+
+        VkDescriptorPoolSize sampler_pool_size = {};
+        sampler_pool_size.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        sampler_pool_size.descriptorCount = s_swapchain.m_num_images;
+        pool_sizes.push_back(sampler_pool_size);
+
+        VkDescriptorPoolCreateInfo create_info = {};
+        create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        create_info.poolSizeCount = (u32)pool_sizes.size();
+        create_info.pPoolSizes = pool_sizes.data();
+        create_info.maxSets = s_swapchain.m_num_images;
+
+        VULKAN_ASSERT(vkCreateDescriptorPool(s_device.m_device_vk_handle, &create_info, nullptr, &descriptor_pool));
+
+        // descriptor sets
+        std::vector<VkDescriptorSetLayout> layouts(s_swapchain.m_num_images, layout);
+
+        VkDescriptorSetAllocateInfo alloc_info = {};
+        alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        alloc_info.descriptorPool = descriptor_pool;
+        alloc_info.descriptorSetCount = s_swapchain.m_num_images;
+        alloc_info.pSetLayouts = layouts.data();
+
+        std::vector<VkDescriptorSet> descriptor_sets;
+        descriptor_sets.resize(s_swapchain.m_num_images);
+        VULKAN_ASSERT(vkAllocateDescriptorSets(s_device.m_device_vk_handle, &alloc_info, descriptor_sets.data()));
+
+        // descriptor set writes
+        struct descriptor_set_write_info_t
+        {
+            VkDescriptorType m_type;
+            union
+            {
+                VkDescriptorBufferInfo m_buffer_write_info;
+                VkDescriptorImageInfo m_image_write_info;
+            };
+        };
         
+        std::vector<descriptor_set_write_info_t> descriptor_set_write_infos;
+        std::vector<VkWriteDescriptorSet> descriptor_set_writes;
+
+        for(i32 i = 0; i < s_swapchain.m_num_images; i++)
+        {
+            descriptor_set_write_infos.clear();
+            descriptor_set_writes.clear(); 
+
+            // set up uniform write
+            descriptor_set_write_info_t uniform_write_info = {};
+            uniform_write_info.m_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            uniform_write_info.m_buffer_write_info.buffer = s_uniform_buffers[i].m_vk_handle;
+            uniform_write_info.m_buffer_write_info.offset = 0;
+            uniform_write_info.m_buffer_write_info.range = s_uniform_buffers[i].m_size;
+            descriptor_set_write_infos.push_back(uniform_write_info);
+
+            VkWriteDescriptorSet uniform_write = {};
+            uniform_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            uniform_write.dstBinding = 0;
+            uniform_write.dstArrayElement = 0;
+            uniform_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            uniform_write.descriptorCount = 1;
+            descriptor_set_writes.push_back(uniform_write);
+
+            // set up sampler write
+            descriptor_set_write_info_t sampler_write_info = {};
+            sampler_write_info.m_type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            sampler_write_info.m_image_write_info.imageView = s_viking_room_texture.m_image_view;
+            sampler_write_info.m_image_write_info.sampler = s_sampler.m_vk_handle;
+            sampler_write_info.m_image_write_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            descriptor_set_write_infos.push_back(sampler_write_info);
+
+            VkWriteDescriptorSet sampler_write = {};
+            sampler_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            sampler_write.dstBinding = 1;
+            sampler_write.dstArrayElement = 0;
+            sampler_write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            sampler_write.descriptorCount = 1;
+            descriptor_set_writes.push_back(sampler_write);
+
+            // do the writes
+            for (u32 i = 0; i < descriptor_set_writes.size(); i++)
+            {
+                descriptor_set_writes[i].dstSet = descriptor_sets[i];
+                switch (descriptor_set_writes[i].descriptorType)
+                {
+                    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: descriptor_set_writes[i].pBufferInfo = &descriptor_set_write_infos[i].m_buffer_write_info; break;
+                    case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: descriptor_set_writes[i].pImageInfo = &descriptor_set_write_infos[i].m_image_write_info; break;
+                    case VK_DESCRIPTOR_TYPE_SAMPLER:
+                    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+                    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+                    case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+                    case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+                    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+                    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+                    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+                    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+                    case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
+                    case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+                    case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV:
+                    case VK_DESCRIPTOR_TYPE_MUTABLE_VALVE:
+                    case VK_DESCRIPTOR_TYPE_SAMPLE_WEIGHT_IMAGE_QCOM:
+                    case VK_DESCRIPTOR_TYPE_BLOCK_MATCH_IMAGE_QCOM:
+                    case VK_DESCRIPTOR_TYPE_MAX_ENUM:
+                        ASSERT("Trying to set up a descriptor set write that isn't supported yet\n");
+                        break;
+                    }
+            }
+
+            vkUpdateDescriptorSets(s_device.m_device_vk_handle, (u32)descriptor_set_writes.size(), descriptor_set_writes.data(), 0, nullptr);
+        }
     }
 
     // pipelines
