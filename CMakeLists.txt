@@ -28,14 +28,12 @@ add_library(sm-engine STATIC src/engine/core/assert.cpp
                              src/engine/math/vec3.h
                              src/engine/math/vec4.h
                              src/engine/platform/windows_include.h
-                             #src/engine/render/Camera.cpp
-                             #src/engine/render/Camera.h
-                             #src/engine/render/Mesh.cpp
-                             #src/engine/render/Mesh.h
-                             #src/engine/render/RenderableMesh.cpp
-                             #src/engine/render/RenderableMesh.h
-                             #src/engine/render/Vertex.cpp
-                             #src/engine/render/Vertex.h
+                             src/engine/render/camera.cpp
+                             src/engine/render/camera.h
+                             src/engine/render/mesh.cpp
+                             src/engine/render/mesh.h
+                             src/engine/render/vertex.cpp
+                             src/engine/render/vertex.h
                              src/engine/render/vulkan/vulkan_functions.cpp
                              src/engine/render/vulkan/vulkan_functions.h
                              src/engine/render/vulkan/vulkan_functions_manifest.inl
@@ -44,22 +42,10 @@ add_library(sm-engine STATIC src/engine/core/assert.cpp
                              src/engine/render/vulkan/vulkan_renderer.h
                              src/engine/render/window.cpp
                              src/engine/render/window.h
-                             #src/engine/render/vulkan/VulkanBuffer.cpp
-                             #src/engine/render/vulkan/VulkanCommandPool.cpp
-                             #src/engine/render/vulkan/VulkanCommands.cpp
                              #src/engine/render/vulkan/VulkanDescriptorSet.cpp
-                             #src/engine/render/vulkan/VulkanDevice.cpp
-                             #src/engine/render/vulkan/VulkanFunctions.cpp
-                             #src/engine/render/vulkan/VulkanInstance.cpp
                              #src/engine/render/vulkan/VulkanPipeline.cpp
                              #src/engine/render/vulkan/VulkanRenderer.cpp
-                             #src/engine/render/vulkan/VulkanRenderer2.cpp
                              #src/engine/render/vulkan/VulkanRenderPass.cpp
-                             #src/engine/render/vulkan/VulkanSampler.cpp
-                             #src/engine/render/vulkan/VulkanSurface.cpp
-                             #src/engine/render/vulkan/VulkanSwapchain.cpp
-                             #src/engine/render/vulkan/VulkanTexture.cpp
-                             #src/engine/render/vulkan/VulkanUtils.cpp
                              src/engine/thread/atomic_util.h
                              src/engine/thread/critical_section.cpp
                              src/engine/thread/critical_section.h

@@ -14,10 +14,10 @@ struct vec4
     {
         struct
         {
-            f32 x = 0.0f;
-            f32 y = 0.0f;
-            f32 z = 0.0f;
-            f32 w = 0.0f;
+            f32 x;
+            f32 y;
+            f32 z;
+            f32 w;
         };
 
         struct
