@@ -15,7 +15,7 @@ typedef uint64_t	u64;
 typedef float		f32;
 typedef double		f64;
 
-typedef unsigned char byte;
+typedef unsigned char byte_t;
 
 #define KiB(x) (x * 1024)
 #define MiB(x) (KiB(x) * 1024)

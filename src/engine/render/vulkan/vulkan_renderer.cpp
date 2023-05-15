@@ -1,6 +1,7 @@
 #include "engine/core/assert.h"
 #include "engine/core/config.h"
 #include "engine/core/debug.h"
+#include "engine/core/file.h"
 #include "engine/core/macros.h"
 #include "engine/math/mat44.h"
 #include "engine/render/mesh.h"
@@ -1356,6 +1357,21 @@ texture_t texture_create_depth_target(device_t& device, VkFormat format, u32 wid
 }
 
 static
+VkShaderModule shader_module_create(device_t& device, const char* shader_filepath)
+{
+	std::vector<byte_t> raw_shader_code = read_binary_file(shader_filepath);
+
+	VkShaderModuleCreateInfo create_info = {};
+	create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	create_info.codeSize = raw_shader_code.size();
+	create_info.pCode = (const u32*)raw_shader_code.data();
+
+	VkShaderModule shader_module = VK_NULL_HANDLE;
+	VULKAN_ASSERT(vkCreateShaderModule(device.m_device_vk_handle, &create_info, nullptr, &shader_module));
+
+	return shader_module;
+}
+static
 void texture_destroy(device_t& device, texture_t& texture)
 {
     vkDestroyImageView(device.m_device_vk_handle, texture.m_image_view, nullptr);
@@ -1745,45 +1761,49 @@ void renderer_init(window_t* app_window)
 
     // pipelines
     {
-        //// Viking Room
-        //VulkanPipelineFactory pipelineMaker(m_pDevice);
-        //pipelineMaker.SetVsPs("Shaders/tri-vert.spv", "main", "Shaders/tri-frag.spv", "main");
-        //pipelineMaker.SetVertexInput(m_pVikingRoomMesh, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-        //pipelineMaker.SetViewportAndScissor(m_pSwapchain->GetWidth(), m_pSwapchain->GetHeight());
-        //pipelineMaker.SetRasterizer(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
-        //pipelineMaker.SetMultisampling(m_pDevice->GetMaxMsaaSampleCount());
-        //pipelineMaker.SetDepthStencil(true, true, VK_COMPARE_OP_LESS, false, 0.0f, 1.0f);
-        //
-        //VulkanPipelineColorBlendAttachments colorBlendAttachments;
-        //colorBlendAttachments.Add(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, false,
-        //                          VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD,
-        //                          VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
-        //pipelineMaker.SetBlend(colorBlendAttachments, false, VK_LOGIC_OP_COPY, 0.0f, 0.0f, 0.0f, 0.0f);
+        // Viking Room
+        {
+            //VulkanPipelineFactory pipelineMaker(m_pDevice);
+            //pipelineMaker.SetVsPs("Shaders/tri-vert.spv", "main", "Shaders/tri-frag.spv", "main");
+            //pipelineMaker.SetVertexInput(m_pVikingRoomMesh, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+            //pipelineMaker.SetViewportAndScissor(m_pSwapchain->GetWidth(), m_pSwapchain->GetHeight());
+            //pipelineMaker.SetRasterizer(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+            //pipelineMaker.SetMultisampling(m_pDevice->GetMaxMsaaSampleCount());
+            //pipelineMaker.SetDepthStencil(true, true, VK_COMPARE_OP_LESS, false, 0.0f, 1.0f);
+            //
+            //VulkanPipelineColorBlendAttachments colorBlendAttachments;
+            //colorBlendAttachments.Add(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, false,
+            //                          VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD,
+            //                          VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
+            //pipelineMaker.SetBlend(colorBlendAttachments, false, VK_LOGIC_OP_COPY, 0.0f, 0.0f, 0.0f, 0.0f);
 
-        //std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { m_pDescriptorSetLayout->GetHandle() };
-        //pipelineMaker.SetPipelineLayout(descriptorSetLayouts);
+            //std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { m_pDescriptorSetLayout->GetHandle() };
+            //pipelineMaker.SetPipelineLayout(descriptorSetLayouts);
 
-        //m_pVikingRoomPipeline = pipelineMaker.CreatePipeline(m_pRenderPass, 0);
+            //m_pVikingRoomPipeline = pipelineMaker.CreatePipeline(m_pRenderPass, 0);
+        }
 
-        //// World axes
-        //pipelineMaker.Reset();
-        //pipelineMaker.SetVsPs("Shaders/simple-color-vert.spv", "main", "Shaders/simple-color-frag.spv", "main");
-        //pipelineMaker.SetVertexInput(m_pWorldAxesMesh, VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
-        //pipelineMaker.SetViewportAndScissor(m_pSwapchain->GetWidth(), m_pSwapchain->GetHeight());
-        //pipelineMaker.SetRasterizer(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
-        //pipelineMaker.SetMultisampling(m_pDevice->GetMaxMsaaSampleCount());
-        //pipelineMaker.SetDepthStencil(true, true, VK_COMPARE_OP_LESS, false, 0.0f, 1.0f);
-        //
-        //colorBlendAttachments.Reset();
-        //colorBlendAttachments.Add(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, false,
-        //                          VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD,
-        //                          VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
-        //pipelineMaker.SetBlend(colorBlendAttachments, false, VK_LOGIC_OP_COPY, 0.0f, 0.0f, 0.0f, 0.0f);
+        // World axes
+        {
+            //pipelineMaker.Reset();
+            //pipelineMaker.SetVsPs("Shaders/simple-color-vert.spv", "main", "Shaders/simple-color-frag.spv", "main");
+            //pipelineMaker.SetVertexInput(m_pWorldAxesMesh, VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+            //pipelineMaker.SetViewportAndScissor(m_pSwapchain->GetWidth(), m_pSwapchain->GetHeight());
+            //pipelineMaker.SetRasterizer(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+            //pipelineMaker.SetMultisampling(m_pDevice->GetMaxMsaaSampleCount());
+            //pipelineMaker.SetDepthStencil(true, true, VK_COMPARE_OP_LESS, false, 0.0f, 1.0f);
+            //
+            //colorBlendAttachments.Reset();
+            //colorBlendAttachments.Add(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, false,
+            //                          VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD,
+            //                          VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
+            //pipelineMaker.SetBlend(colorBlendAttachments, false, VK_LOGIC_OP_COPY, 0.0f, 0.0f, 0.0f, 0.0f);
 
-        //descriptorSetLayouts = { m_pDescriptorSetLayout->GetHandle() };
-        //pipelineMaker.SetPipelineLayout(descriptorSetLayouts);
+            //descriptorSetLayouts = { m_pDescriptorSetLayout->GetHandle() };
+            //pipelineMaker.SetPipelineLayout(descriptorSetLayouts);
 
-        //m_pWorldAxesPipeline = pipelineMaker.CreatePipeline(m_pRenderPass, 0);
+            //m_pWorldAxesPipeline = pipelineMaker.CreatePipeline(m_pRenderPass, 0);
+        }
     }
 
     // command buffers
