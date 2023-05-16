@@ -146,6 +146,8 @@ void handle_win_key_down(u32 win_key)
 static
 void handle_win_key_up(u32 win_key)
 {
+	debug_printf("handle_win_key_up: %u\n", win_key);
+
 	int key_state_index = -1;
 	if (!get_key_state_index_from_win_key(&key_state_index, win_key))
 	{
@@ -170,15 +172,15 @@ static void input_system_msg_handler(UINT msg, WPARAM w_param, LPARAM l_param, v
 		// Keyboard / mouse
 		case WM_KEYDOWN:	    handle_win_key_down((u32)w_param); break;
 		case WM_SYSKEYDOWN:     handle_win_key_down((u32)w_param); break;
-		case WM_LBUTTONDOWN:    handle_win_key_down((u32)w_param); break;
-		case WM_MBUTTONDOWN:    handle_win_key_down((u32)w_param); break;
-		case WM_RBUTTONDOWN:    handle_win_key_down((u32)w_param); break;
+		case WM_LBUTTONDOWN:    handle_win_key_down(VK_LBUTTON); break;
+		case WM_MBUTTONDOWN:    handle_win_key_down(VK_MBUTTON); break;
+		case WM_RBUTTONDOWN:    handle_win_key_down(VK_RBUTTON); break;
 		
 		case WM_KEYUP:		    handle_win_key_up((u32)w_param); break;
 		case WM_SYSKEYUP:	    handle_win_key_up((u32)w_param); break;
-		case WM_LBUTTONUP:      handle_win_key_up((u32)w_param); break;
-		case WM_MBUTTONUP:      handle_win_key_up((u32)w_param); break;
-		case WM_RBUTTONUP:      handle_win_key_up((u32)w_param); break;
+		case WM_LBUTTONUP:      handle_win_key_up(VK_LBUTTON); break;
+		case WM_MBUTTONUP:      handle_win_key_up(VK_MBUTTON); break;
+		case WM_RBUTTONUP:      handle_win_key_up(VK_RBUTTON); break;
 	}
 }
 
@@ -199,7 +201,8 @@ void restore_mouse_pos()
 static
 void center_mouse_on_screen()
 {
-    ::SetCursorPos(s_window->m_x, s_window->m_y);
+    ivec2 center_pos = window_get_center_position(s_window);
+    ::SetCursorPos(center_pos.x, center_pos.y);
 }
 
 static
@@ -208,13 +211,13 @@ void update_mouse_movement()
     POINT mouse_pos;
     ::GetCursorPos(&mouse_pos);
 
-    ivec2 window_pos = make_ivec2(s_window->m_x, s_window->m_y); 
+    ivec2 center_pos = window_get_center_position(s_window);
     ivec2 window_size = make_ivec2(s_window->m_width, s_window->m_height);
 
-    ivec2 delta = make_ivec2(mouse_pos.x, mouse_pos.y) - window_pos;
+    ivec2 delta = make_ivec2(mouse_pos.x, mouse_pos.y) - center_pos;
 
     s_mouse_movement_normalized = make_vec2((f32)delta.x / (f32)window_size.x,
-            (f32)delta.y / (f32)window_size.y);
+                                            (f32)delta.y / (f32)window_size.y);
 }
 
 static

@@ -171,8 +171,17 @@ void window_set_title(window_t* window, const char* new_title)
 
 void window_add_msg_callback(window_t* window, window_message_cb_t cb, void* args)
 {
+    ASSERT(nullptr != window);
 	window_message_cb_with_args_t cb_with_args = { cb, args };
 	window->m_message_cbs.push_back(cb_with_args);
+}
+
+ivec2 window_get_center_position(window_t* window)
+{
+    ASSERT(nullptr != window);
+	u32 half_width = window->m_width / 2;
+	u32 half_height = window->m_height / 2;
+    return make_ivec2(window->m_x + half_width, window->m_y + half_height); 
 }
 
 void window_destroy(window_t* window)

@@ -31,5 +31,5 @@ window_t*   window_create(const char* name, u32 width, u32 height, bool resizabl
 void        window_update(window_t* window);
 void        window_set_title(window_t* window, const char* new_title);
 void        window_add_msg_callback(window_t* window, window_message_cb_t cb, void* args = nullptr);
-ivec2       window_get_position();
+ivec2       window_get_center_position(window_t* window);
 void        window_destroy(window_t* window);
