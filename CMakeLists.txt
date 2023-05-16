@@ -42,10 +42,6 @@ add_library(sm-engine STATIC src/engine/core/assert.cpp
                              src/engine/render/vulkan/vulkan_renderer.h
                              src/engine/render/window.cpp
                              src/engine/render/window.h
-                             #src/engine/render/vulkan/VulkanDescriptorSet.cpp
-                             #src/engine/render/vulkan/VulkanPipeline.cpp
-                             #src/engine/render/vulkan/VulkanRenderer.cpp
-                             #src/engine/render/vulkan/VulkanRenderPass.cpp
                              src/engine/thread/atomic_util.h
                              src/engine/thread/critical_section.cpp
                              src/engine/thread/critical_section.h
