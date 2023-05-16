@@ -14,5 +14,5 @@ struct vertex_pct_t
    vec2 m_uv;
 };
 
-VkVertexInputBindingDescription get_binding_desc(const vertex_pct_t& vtx);
-std::vector<VkVertexInputAttributeDescription> get_attr_descs(const vertex_pct_t& vtx);
+std::vector<VkVertexInputBindingDescription> get_vertex_input_binding_descs(const vertex_pct_t& v);
+std::vector<VkVertexInputAttributeDescription> get_vertex_input_attr_descs(const vertex_pct_t& v);

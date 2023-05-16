@@ -14,7 +14,7 @@ struct mesh_t
 size_t mesh_calc_vertex_buffer_size(mesh_t* mesh);
 size_t mesh_calc_index_buffer_size(mesh_t* mesh);
 std::vector<VkVertexInputBindingDescription> mesh_get_vertex_input_binding_descs(mesh_t* mesh);
-std::vector<VkVertexInputAttributeDescription> mesh_get_vertex_attr_descs(mesh_t* mesh);
+std::vector<VkVertexInputAttributeDescription> mesh_get_vertex_input_attr_descs(mesh_t* mesh);
 
 mesh_t* mesh_load_from_obj(const char* obj_filepath);
 mesh_t* mesh_load_cube();

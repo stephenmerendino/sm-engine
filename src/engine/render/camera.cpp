@@ -70,7 +70,7 @@ vec3 camera_get_forward(camera_t& camera)
 
 vec3 camera_get_right(camera_t& camera)
 {
-    return camera_get_rotation(camera).j.xyz;
+    return -camera_get_rotation(camera).j.xyz;
 }
 
 vec3 camera_get_up(camera_t& camera)

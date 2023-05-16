@@ -4,4 +4,4 @@
 
 #include <vector>
 
-std::vector<byte> read_binary_file(const char* filename);
+std::vector<byte_t> read_binary_file(const char* filename);

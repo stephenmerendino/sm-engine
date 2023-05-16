@@ -1,18 +1,21 @@
 #include "engine/render/Vertex.h"
 #include "engine/core/macros.h"
 
-VkVertexInputBindingDescription get_binding_desc(const vertex_pct_t& vtx)
+std::vector<VkVertexInputBindingDescription> get_vertex_input_binding_descs(const vertex_pct_t& v)
 {
-	VkVertexInputBindingDescription vertexInputBindingDesc = {};
-	vertexInputBindingDesc.binding = 0;
-	vertexInputBindingDesc.stride = sizeof(vtx);
-	vertexInputBindingDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-	return vertexInputBindingDesc;
+    UNUSED(v);
+
+    std::vector<VkVertexInputBindingDescription> vertex_input_binding_descs;
+    vertex_input_binding_descs.resize(1);
+    vertex_input_binding_descs[0].binding = 0;
+    vertex_input_binding_descs[0].stride = sizeof(v);
+    vertex_input_binding_descs[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	return vertex_input_binding_descs;
 }
 
-std::vector<VkVertexInputAttributeDescription> get_attr_descs(const vertex_pct_t& vtx)
+std::vector<VkVertexInputAttributeDescription> get_vertex_input_attr_descs(const vertex_pct_t& v)
 {
-    UNUSED(vtx);
+    UNUSED(v);
 
 	std::vector<VkVertexInputAttributeDescription> attr_descs;
 	attr_descs.resize(3);

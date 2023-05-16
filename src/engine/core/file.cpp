@@ -5,9 +5,9 @@
 #include <cstdio>
 #include <cerrno>
 
-std::vector<byte> read_binary_file(const char* filename)
+std::vector<byte_t> read_binary_file(const char* filename)
 {
-	std::vector<byte> file_bytes;
+	std::vector<byte_t> file_bytes;
 
 	// open file for read and binary
 	FILE* p_file = NULL;
@@ -27,7 +27,7 @@ std::vector<byte> read_binary_file(const char* filename)
 	file_bytes.resize(file_len);
 
 	// read into buffer
-	size_t bytes_read = fread(file_bytes.data(), sizeof(byte), file_len, p_file);
+	size_t bytes_read = fread(file_bytes.data(), sizeof(byte_t), file_len, p_file);
 	ASSERT(bytes_read == (size_t)file_len);
 
 	// close file

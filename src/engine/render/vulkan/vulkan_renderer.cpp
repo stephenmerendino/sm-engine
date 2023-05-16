@@ -4,7 +4,9 @@
 #include "engine/core/file.h"
 #include "engine/core/macros.h"
 #include "engine/math/mat44.h"
+#include "engine/render/Camera.h"
 #include "engine/render/mesh.h"
+#include "engine/render/vertex.h"
 #include "engine/render/vulkan/vulkan_functions.h"
 #include "engine/render/vulkan/vulkan_include.h"
 #include "engine/render/vulkan/vulkan_renderer.h"
@@ -127,6 +129,28 @@ struct render_pass_t
     
 };
 
+struct framebuffer_t
+{
+    VkFramebuffer m_vk_handle;
+};
+
+struct pipeline_t
+{
+    VkPipeline m_pipeline_vk_handle = VK_NULL_HANDLE;
+    VkPipelineLayout m_pipeline_layout_vk_handle = VK_NULL_HANDLE;
+    std::vector<VkPipelineColorBlendAttachmentState> m_color_blend_attachments;
+    VkViewport m_viewport;
+    VkRect2D m_scissor;
+    std::vector<VkShaderModule> m_shaders;
+    std::vector<VkPipelineShaderStageCreateInfo> m_shader_stage_infos;
+    VkPipelineInputAssemblyStateCreateInfo m_input_assembly_info;
+    VkPipelineRasterizationStateCreateInfo m_raster_info;
+    VkPipelineMultisampleStateCreateInfo m_multisample_info;
+    VkPipelineDepthStencilStateCreateInfo m_depth_stencil_info;
+    VkPipelineColorBlendStateCreateInfo m_color_blend_info;
+    VkPipelineLayoutCreateInfo m_pipeline_layout_info;
+};
+
 struct mvp_buffer_t
 {
 	mat44 m_model;
@@ -158,6 +182,21 @@ static sampler_t s_sampler;
 static std::vector<buffer_t> s_uniform_buffers;
 
 static render_pass_t s_render_pass;
+
+static std::vector<framebuffer_t> s_framebuffers;
+static pipeline_t s_viking_room_pipeline;
+static pipeline_t s_world_axes_pipeline;
+
+static VkDescriptorPool s_descriptor_pool = VK_NULL_HANDLE;
+std::vector<VkDescriptorSet> s_descriptor_sets;
+static std::vector<VkCommandBuffer> s_command_buffers;
+
+static std::vector<VkSemaphore> s_image_available_semaphores;
+static std::vector<VkSemaphore> s_render_finished_semaphores;
+static std::vector<VkFence> s_frame_finished_fences;
+static std::vector<VkFence> s_swapchain_images_in_flight;
+
+static u32 m_cur_frame = 0;
 
 static 
 void print_instance_info()
@@ -1009,7 +1048,7 @@ void command_end_single_time(device_t& device, command_pool_t& pool, VkCommandBu
 }
 
 static
-std::vector<VkCommandBuffer> command_allocate_buffers(device_t& device, command_pool_t& command_pool, VkCommandBufferLevel level, u32 num_buffers)
+std::vector<VkCommandBuffer> command_buffers_allocate(device_t& device, command_pool_t& command_pool, VkCommandBufferLevel level, u32 num_buffers)
 {
     std::vector<VkCommandBuffer> buffers;
     buffers.resize(num_buffers);
@@ -1225,18 +1264,18 @@ void command_buffer_end_render_pass(VkCommandBuffer command_buffer)
 }
 
 static
-void draw_renderable_mesh(renderable_mesh_t& renderable_mesh, VkCommandBuffer command_buffer, VkPipeline pipeline, const std::vector<VkDescriptorSet>& descriptorSets)
+void draw_renderable_mesh(renderable_mesh_t& renderable_mesh, pipeline_t& pipeline, VkCommandBuffer& command_buffer, const std::vector<VkDescriptorSet>& descriptor_sets)
 {
-    //vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pPipeline->GetPipelineHandle());
+    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.m_pipeline_vk_handle);
 
-    //VkBuffer vertexBuffers[] = { pMesh->GetVertexBuffer() };
-    //VkDeviceSize offsets[] = { 0 };
-    //vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+    VkBuffer vertex_buffers[] = { renderable_mesh.m_vertex_buffer.m_vk_handle };
+    VkDeviceSize offsets[] = { 0 };
+    vkCmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers, offsets);
 
-    //vkCmdBindIndexBuffer(commandBuffer, pMesh->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
-    //vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pPipeline->GetPipelineLayoutHandle(), 0, (U32)descriptorSets.size(), descriptorSets.data(), 0, nullptr);
+    vkCmdBindIndexBuffer(command_buffer, renderable_mesh.m_index_buffer.m_vk_handle, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.m_pipeline_layout_vk_handle, 0, (u32)descriptor_sets.size(), descriptor_sets.data(), 0, nullptr);
 
-    //vkCmdDrawIndexed(commandBuffer, pMesh->GetNumIndices(), 1, 0, 0, 0);
+    vkCmdDrawIndexed(command_buffer, (u32)renderable_mesh.m_mesh->m_indices.size(), 1, 0, 0, 0);
 }
 
 static 
@@ -1357,6 +1396,14 @@ texture_t texture_create_depth_target(device_t& device, VkFormat format, u32 wid
 }
 
 static
+void texture_destroy(device_t& device, texture_t& texture)
+{
+    vkDestroyImageView(device.m_device_vk_handle, texture.m_image_view, nullptr);
+    vkDestroyImage(device.m_device_vk_handle, texture.m_vk_handle, nullptr);
+    vkFreeMemory(device.m_device_vk_handle, texture.m_vk_memory, nullptr); 
+}
+
+static
 VkShaderModule shader_module_create(device_t& device, const char* shader_filepath)
 {
 	std::vector<byte_t> raw_shader_code = read_binary_file(shader_filepath);
@@ -1371,12 +1418,34 @@ VkShaderModule shader_module_create(device_t& device, const char* shader_filepat
 
 	return shader_module;
 }
+
 static
-void texture_destroy(device_t& device, texture_t& texture)
+void shader_module_destroy(device_t& device, VkShaderModule shader)
 {
-    vkDestroyImageView(device.m_device_vk_handle, texture.m_image_view, nullptr);
-    vkDestroyImage(device.m_device_vk_handle, texture.m_vk_handle, nullptr);
-    vkFreeMemory(device.m_device_vk_handle, texture.m_vk_memory, nullptr); 
+    vkDestroyShaderModule(device.m_device_vk_handle, shader, nullptr);
+}
+
+static
+framebuffer_t framebuffer_create(device_t& device, render_pass_t& render_pass, const std::vector<VkImageView> attachments, u32 width, u32 height, u32 layers)
+{
+    VkFramebufferCreateInfo create_info = {};
+    create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    create_info.renderPass = render_pass.m_vk_handle;
+    create_info.pAttachments = attachments.data();
+    create_info.attachmentCount = (u32)attachments.size();
+    create_info.width = width;
+    create_info.height = height;
+    create_info.layers = layers;
+
+    framebuffer_t framebuffer;
+    VULKAN_ASSERT(vkCreateFramebuffer(device.m_device_vk_handle, &create_info, nullptr, &framebuffer.m_vk_handle));
+    return framebuffer;
+}
+
+static 
+void framebuffer_destroy(device_t& device, framebuffer_t& framebuffer)
+{
+    vkDestroyFramebuffer(device.m_device_vk_handle, framebuffer.m_vk_handle, nullptr);
 }
 
 static
@@ -1458,25 +1527,26 @@ void render_pass_destroy(device_t& device, render_pass_t& render_pass)
     vkDestroyRenderPass(device.m_device_vk_handle, render_pass.m_vk_handle, nullptr);
 }
 
-//void VulkanRenderer::UpdateUniformBuffer(U32 currentImage)
-//{
-//	MVPUniformBuffer ubo;
-//
-//	static F32 dt = 0.0f;
-//	dt += 0.016f;
-//
-//	const F32 speed = 0.0f;
-//
-//	Mat44 rot = Mat44::IDENTITY;
-//	rot.RotateZDeg(dt * speed);
-//	ubo.m_model = rot;
-//
-//	ubo.m_view = m_pCurrentCamera->GetViewTransform();
-//
-//	ubo.m_projection = CreatePerspectiveProjection(45.0f, 0.01f, 100.0f, m_pSwapchain->GetAspectRatio());
-//
-//	m_pUniformBuffers[currentImage]->Update(m_pGraphicsCommandPool, &ubo);
-//}
+void update_uniform_buffer(device_t& device, u32 current_image)
+{
+	mvp_buffer_t ubo;
+
+	static f32 dt = 0.0f;
+	dt += 0.016f;
+
+	const f32 speed = 0.0f;
+
+	mat44 rot = MAT44_IDENTITY;
+    rotate_z_deg(rot, dt * speed);
+	ubo.m_model = rot;
+
+	ubo.m_view = camera_get_view_tranform(*s_camera);
+
+    f32 aspect = (f32)s_swapchain.m_extent.width / (f32)s_swapchain.m_extent.height;
+	ubo.m_projection = create_perspective_projection(45.0, 0.01f, 110.0f, aspect);
+
+    buffer_update_data(s_device, s_uniform_buffers[current_image], &ubo);
+}
 
 void renderer_init(window_t* app_window)
 {
@@ -1511,6 +1581,8 @@ void renderer_init(window_t* app_window)
 	}
 
     // render pass
+        // subpass
+        subpass_t subpass;
     {
         // attachments
         VkAttachmentDescription color_target_desc = setup_attachment_desc(s_swapchain.m_format, s_device.m_max_num_msaa_samples, 
@@ -1533,9 +1605,6 @@ void renderer_init(window_t* app_window)
         s_render_pass.m_attachments.push_back(color_target_desc);
         s_render_pass.m_attachments.push_back(depth_target_desc);
         s_render_pass.m_attachments.push_back(resolve_target_desc);
-
-        // subpass
-        subpass_t subpass;
 
             // attach refs
             VkAttachmentReference color_attach_ref = {};
@@ -1589,8 +1658,7 @@ void renderer_init(window_t* app_window)
     }
 
     // framebuffers
-    std::vector<VkFramebuffer> framebuffers;
-    framebuffers.resize(s_swapchain.m_num_images);
+    s_framebuffers.resize(s_swapchain.m_num_images);
     {
         for(i32 i = 0; i < s_swapchain.m_num_images; i++)
         {
@@ -1598,25 +1666,16 @@ void renderer_init(window_t* app_window)
                                                    s_depth_target.m_image_view, 
                                                    s_swapchain.m_image_views[i] };
 
-            VkFramebufferCreateInfo create_info{};
-            create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            create_info.renderPass = s_render_pass.m_vk_handle;
-            create_info.pAttachments = attachments.data();
-            create_info.attachmentCount = (u32)attachments.size();
-            create_info.width = s_swapchain.m_extent.width;
-            create_info.height = s_swapchain.m_extent.height;
-            create_info.layers = 1;
-
-            VULKAN_ASSERT(vkCreateFramebuffer(s_device.m_device_vk_handle, &create_info, nullptr, &framebuffers[i]));
+            s_framebuffers[i] = framebuffer_create(s_device, s_render_pass, attachments, s_swapchain.m_extent.width, s_swapchain.m_extent.height, 1);
         }
     }
     
     // descriptor sets
+    VkDescriptorSetLayout layout = VK_NULL_HANDLE;
     {
-        // layout
-        VkDescriptorSetLayout layout = VK_NULL_HANDLE;
         std::vector<VkDescriptorSetLayoutBinding> bindings;
 
+        // layout
         VkDescriptorSetLayoutBinding uniform_binding = {};
         uniform_binding.binding = 0;
         uniform_binding.descriptorCount = 1;
@@ -1641,7 +1700,6 @@ void renderer_init(window_t* app_window)
         VULKAN_ASSERT(vkCreateDescriptorSetLayout(s_device.m_device_vk_handle, &layout_create_info, nullptr, &layout));
 
         // pool
-        VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
         std::vector<VkDescriptorPoolSize> pool_sizes;
 
         VkDescriptorPoolSize uniform_pool_size = {};
@@ -1660,20 +1718,19 @@ void renderer_init(window_t* app_window)
         create_info.pPoolSizes = pool_sizes.data();
         create_info.maxSets = s_swapchain.m_num_images;
 
-        VULKAN_ASSERT(vkCreateDescriptorPool(s_device.m_device_vk_handle, &create_info, nullptr, &descriptor_pool));
+        VULKAN_ASSERT(vkCreateDescriptorPool(s_device.m_device_vk_handle, &create_info, nullptr, &s_descriptor_pool));
 
         // descriptor sets
         std::vector<VkDescriptorSetLayout> layouts(s_swapchain.m_num_images, layout);
 
         VkDescriptorSetAllocateInfo alloc_info = {};
         alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        alloc_info.descriptorPool = descriptor_pool;
+        alloc_info.descriptorPool = s_descriptor_pool;
         alloc_info.descriptorSetCount = s_swapchain.m_num_images;
         alloc_info.pSetLayouts = layouts.data();
 
-        std::vector<VkDescriptorSet> descriptor_sets;
-        descriptor_sets.resize(s_swapchain.m_num_images);
-        VULKAN_ASSERT(vkAllocateDescriptorSets(s_device.m_device_vk_handle, &alloc_info, descriptor_sets.data()));
+        s_descriptor_sets.resize(s_swapchain.m_num_images);
+        VULKAN_ASSERT(vkAllocateDescriptorSets(s_device.m_device_vk_handle, &alloc_info, s_descriptor_sets.data()));
 
         // descriptor set writes
         struct descriptor_set_write_info_t
@@ -1727,13 +1784,13 @@ void renderer_init(window_t* app_window)
             descriptor_set_writes.push_back(sampler_write);
 
             // do the writes
-            for (u32 i = 0; i < descriptor_set_writes.size(); i++)
+            for (u32 j = 0; j < descriptor_set_writes.size(); j++)
             {
-                descriptor_set_writes[i].dstSet = descriptor_sets[i];
-                switch (descriptor_set_writes[i].descriptorType)
+                descriptor_set_writes[j].dstSet = s_descriptor_sets[i];
+                switch (descriptor_set_writes[j].descriptorType)
                 {
-                    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: descriptor_set_writes[i].pBufferInfo = &descriptor_set_write_infos[i].m_buffer_write_info; break;
-                    case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: descriptor_set_writes[i].pImageInfo = &descriptor_set_write_infos[i].m_image_write_info; break;
+                    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: descriptor_set_writes[j].pBufferInfo = &descriptor_set_write_infos[j].m_buffer_write_info; break;
+                    case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: descriptor_set_writes[j].pImageInfo = &descriptor_set_write_infos[j].m_image_write_info; break;
                     case VK_DESCRIPTOR_TYPE_SAMPLER:
                     case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
                     case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
@@ -1764,98 +1821,437 @@ void renderer_init(window_t* app_window)
         // Viking Room
         {
             //VulkanPipelineFactory pipelineMaker(m_pDevice);
+
             //pipelineMaker.SetVsPs("Shaders/tri-vert.spv", "main", "Shaders/tri-frag.spv", "main");
+                VkShaderModule vert_shader = shader_module_create(s_device, "shaders/tri-vert.spv");
+                VkShaderModule frag_shader = shader_module_create(s_device, "shaders/tri-frag.spv");
+
+                VkPipelineShaderStageCreateInfo vert_shader_stage_create_info = {};
+                vert_shader_stage_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+                vert_shader_stage_create_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
+                vert_shader_stage_create_info.module = vert_shader;
+                vert_shader_stage_create_info.pName = "main";
+
+                VkPipelineShaderStageCreateInfo frag_shader_stage_create_info = {};
+                frag_shader_stage_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+                frag_shader_stage_create_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+                frag_shader_stage_create_info.module = frag_shader;
+                frag_shader_stage_create_info.pName = "main";
+
+            s_viking_room_pipeline.m_shaders.push_back(vert_shader);
+            s_viking_room_pipeline.m_shaders.push_back(frag_shader);
+            s_viking_room_pipeline.m_shader_stage_infos.push_back(vert_shader_stage_create_info);
+            s_viking_room_pipeline.m_shader_stage_infos.push_back(frag_shader_stage_create_info);
+
             //pipelineMaker.SetVertexInput(m_pVikingRoomMesh, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+                VkPipelineInputAssemblyStateCreateInfo input_assembly_info = {};
+                input_assembly_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+                input_assembly_info.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+                input_assembly_info.primitiveRestartEnable = VK_FALSE;
+
+            s_viking_room_pipeline.m_input_assembly_info = input_assembly_info;
+
+            //void VulkanPipelineFactory::SetViewportAndScissor(U32 viewportX, U32 viewportY, U32 width, U32 height, F32 minDepth, F32 maxDepth, I32 scissorOffsetX, I32 scissorOffsetY, U32 scissorWidth, U32 scissorHeight)
+            //SetViewportAndScissor(0, 0, width, height, 0.0f, 1.0f, 0, 0, width, height);
             //pipelineMaker.SetViewportAndScissor(m_pSwapchain->GetWidth(), m_pSwapchain->GetHeight());
+                VkViewport viewport;
+                VkRect2D scissor;
+                viewport.x = 0.0f;
+                viewport.y = 0.0f;
+                viewport.width = s_swapchain.m_extent.width;
+                viewport.height = s_swapchain.m_extent.height;
+                viewport.minDepth = 0.0f;
+                viewport.maxDepth = 1.0f;
+                scissor.offset = { 0, 0};
+                scissor.extent = s_swapchain.m_extent;
+
+            s_viking_room_pipeline.m_viewport = viewport;
+            s_viking_room_pipeline.m_scissor = scissor;
+
+            //void SetRasterizer(VkPolygonMode polygonMode, VkCullModeFlags cullMode, VkFrontFace frontFace, bool depthClampEnable = false, bool rasterizerDiscardEnable = false,
+            //                   F32 lineWidth = 1.0f, bool depthBiasEnable = false, F32 depthBiasConstantFactor = 0.0f, F32 depthBiasClamp = 0.0f, F32 depthBiasSlopeFactor = 0.0f);
             //pipelineMaker.SetRasterizer(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+                VkPipelineRasterizationStateCreateInfo raster_info = {};
+                raster_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+                raster_info.depthClampEnable = VK_FALSE;
+                raster_info.rasterizerDiscardEnable = VK_FALSE;
+                raster_info.polygonMode = VK_POLYGON_MODE_FILL;
+                raster_info.lineWidth = 1.0f;
+                raster_info.cullMode = VK_CULL_MODE_BACK_BIT;
+                raster_info.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+                raster_info.depthBiasEnable = VK_FALSE;
+                raster_info.depthBiasConstantFactor = 0.0f;
+                raster_info.depthBiasClamp = 0.0f;
+                raster_info.depthBiasSlopeFactor = 0.0f;
+
+            s_viking_room_pipeline.m_raster_info = raster_info;
+
+            //void SetMultisampling(VkSampleCountFlagBits sampleCount, bool sampleShadingEnable = false, F32 minSampleShading = 1.0f, bool alphaToCoverageEnable = false, bool alphaToOneEnable = false);
             //pipelineMaker.SetMultisampling(m_pDevice->GetMaxMsaaSampleCount());
+                VkPipelineMultisampleStateCreateInfo multisample_info = {};
+                multisample_info.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+                multisample_info.sampleShadingEnable = VK_FALSE;
+                multisample_info.rasterizationSamples = s_device.m_max_num_msaa_samples;
+                multisample_info.minSampleShading = 1.0f;
+                multisample_info.pSampleMask = nullptr;
+                multisample_info.alphaToCoverageEnable = VK_FALSE;
+                multisample_info.alphaToOneEnable = VK_FALSE;
+
+            s_viking_room_pipeline.m_multisample_info = multisample_info;
+
+            //void VulkanPipelineFactory::SetDepthStencil(bool depthTestEnable, bool depthWriteEnable, VkCompareOp compareOp, bool depthBoundsTestEnable, F32 minDepthBounds, F32 maxDepthBounds)
             //pipelineMaker.SetDepthStencil(true, true, VK_COMPARE_OP_LESS, false, 0.0f, 1.0f);
-            //
-            //VulkanPipelineColorBlendAttachments colorBlendAttachments;
+                VkPipelineDepthStencilStateCreateInfo depth_stencil_info = {};
+                depth_stencil_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+                depth_stencil_info.depthTestEnable = VK_TRUE;
+                depth_stencil_info.depthWriteEnable = VK_TRUE;
+                depth_stencil_info.depthCompareOp = VK_COMPARE_OP_LESS;
+                depth_stencil_info.depthBoundsTestEnable = VK_FALSE;
+                depth_stencil_info.minDepthBounds = 0.0f;
+                depth_stencil_info.maxDepthBounds = 1.0f;
+
+                depth_stencil_info.stencilTestEnable = VK_FALSE;
+                depth_stencil_info.front = {};
+                depth_stencil_info.back = {};
+
+            s_viking_room_pipeline.m_depth_stencil_info = depth_stencil_info;
+            
+            //void VulkanPipelineColorBlendAttachments::Add(VkColorComponentFlags colorWriteMask, bool blendEnable, 
+            //            VkBlendFactor srcColorBlendFactor, VkBlendFactor dstColorBlendFactor, VkBlendOp colorBlendOp, 
+            //            VkBlendFactor srcAlphaBlendFactor, VkBlendFactor dstAlphaBlendFactor, VkBlendOp alphaBlendOp)
             //colorBlendAttachments.Add(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, false,
             //                          VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD,
             //                          VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
-            //pipelineMaker.SetBlend(colorBlendAttachments, false, VK_LOGIC_OP_COPY, 0.0f, 0.0f, 0.0f, 0.0f);
+                VkPipelineColorBlendAttachmentState color_blend_attachment = {};
+                color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+                color_blend_attachment.blendEnable = VK_FALSE;
+                color_blend_attachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+                color_blend_attachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+                color_blend_attachment.colorBlendOp = VK_BLEND_OP_ADD;
+                color_blend_attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+                color_blend_attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+                color_blend_attachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
-            //std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { m_pDescriptorSetLayout->GetHandle() };
+            s_viking_room_pipeline.m_color_blend_attachments.push_back(color_blend_attachment);
+
+            //void VulkanPipelineFactory::SetBlend(const VulkanPipelineColorBlendAttachments& colorBlendAttachments, bool logicOpEnable, VkLogicOp logicOp, F32 blendConstant0, F32 blendConstant1, F32 blendConstant2, F32 blendConstant3)
+            //pipelineMaker.SetBlend(colorBlendAttachments, false, VK_LOGIC_OP_COPY, 0.0f, 0.0f, 0.0f, 0.0f);
+                VkPipelineColorBlendStateCreateInfo color_blend_info = {};
+                color_blend_info.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+                color_blend_info.logicOpEnable = VK_FALSE;
+                color_blend_info.logicOp = VK_LOGIC_OP_COPY;
+                color_blend_info.blendConstants[0] = 0.0f;
+                color_blend_info.blendConstants[1] = 0.0f;
+                color_blend_info.blendConstants[2] = 0.0f;
+                color_blend_info.blendConstants[3] = 0.0f;
+                color_blend_info.attachmentCount = (u32)s_viking_room_pipeline.m_color_blend_attachments.size();
+                color_blend_info.pAttachments = s_viking_room_pipeline.m_color_blend_attachments.data();
+
+            s_viking_room_pipeline.m_color_blend_info = color_blend_info;
+
             //pipelineMaker.SetPipelineLayout(descriptorSetLayouts);
+                std::vector<VkDescriptorSetLayout> descriptor_set_layouts = { layout };
+                VkPipelineLayoutCreateInfo layout_info = {};
+                layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+                layout_info.setLayoutCount = (u32)descriptor_set_layouts.size();
+                layout_info.pSetLayouts = descriptor_set_layouts.data();
+                layout_info.pushConstantRangeCount = 0;
+                layout_info.pPushConstantRanges = nullptr;
+
+            s_viking_room_pipeline.m_pipeline_layout_info = layout_info;
 
             //m_pVikingRoomPipeline = pipelineMaker.CreatePipeline(m_pRenderPass, 0);
+            VULKAN_ASSERT(vkCreatePipelineLayout(s_device.m_device_vk_handle, &s_viking_room_pipeline.m_pipeline_layout_info, nullptr, &s_viking_room_pipeline.m_pipeline_layout_vk_handle));
+
+            std::vector<VkVertexInputBindingDescription> input_binding_descs = mesh_get_vertex_input_binding_descs(s_viking_room_renderable_mesh.m_mesh);
+            std::vector<VkVertexInputAttributeDescription> input_attr_descs = mesh_get_vertex_input_attr_descs(s_viking_room_renderable_mesh.m_mesh);
+
+            // vertex input
+            VkPipelineVertexInputStateCreateInfo vertex_input_info = {};
+            vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+            vertex_input_info.vertexBindingDescriptionCount = (u32)input_binding_descs.size();
+            vertex_input_info.pVertexBindingDescriptions = input_binding_descs.data();
+            vertex_input_info.vertexAttributeDescriptionCount = (u32)(input_attr_descs.size());
+            vertex_input_info.pVertexAttributeDescriptions = input_attr_descs.data();
+
+            // viewport
+            VkPipelineViewportStateCreateInfo viewport_state_info = {};
+            viewport_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+            viewport_state_info.pViewports = &s_viking_room_pipeline.m_viewport;
+            viewport_state_info.viewportCount = 1;
+            viewport_state_info.pScissors = &s_viking_room_pipeline.m_scissor;
+            viewport_state_info.scissorCount = 1;
+
+            VkGraphicsPipelineCreateInfo pipeline_info = {};
+            pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+            pipeline_info.stageCount = (u32)s_viking_room_pipeline.m_shader_stage_infos.size();
+            pipeline_info.pStages = s_viking_room_pipeline.m_shader_stage_infos.data();
+            pipeline_info.pVertexInputState = &vertex_input_info;
+            pipeline_info.pInputAssemblyState = &input_assembly_info;
+            pipeline_info.pViewportState = &viewport_state_info;
+            pipeline_info.pRasterizationState = &raster_info;
+            pipeline_info.pMultisampleState = &multisample_info;
+            pipeline_info.pDepthStencilState = &depth_stencil_info;
+            pipeline_info.pColorBlendState = &color_blend_info;
+            pipeline_info.pDynamicState = nullptr; //#TODO Enable this pipeline state
+            pipeline_info.layout = s_viking_room_pipeline.m_pipeline_layout_vk_handle;
+            pipeline_info.renderPass = s_render_pass.m_vk_handle;
+            pipeline_info.subpass = 0;
+            pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
+            pipeline_info.basePipelineIndex = -1;
+
+            VULKAN_ASSERT(vkCreateGraphicsPipelines(s_device.m_device_vk_handle, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &s_viking_room_pipeline.m_pipeline_vk_handle));
+
+            // cleanup
+            for (VkShaderModule shaderModule : s_viking_room_pipeline.m_shaders)
+            {
+                shader_module_destroy(s_device, shaderModule);
+            }
         }
 
         // World axes
         {
             //pipelineMaker.Reset();
             //pipelineMaker.SetVsPs("Shaders/simple-color-vert.spv", "main", "Shaders/simple-color-frag.spv", "main");
+                VkShaderModule vert_shader = shader_module_create(s_device, "shaders/simple-color-vert.spv");
+                VkShaderModule frag_shader = shader_module_create(s_device, "shaders/simple-color-frag.spv");
+
+                VkPipelineShaderStageCreateInfo vert_shader_stage_create_info = {};
+                vert_shader_stage_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+                vert_shader_stage_create_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
+                vert_shader_stage_create_info.module = vert_shader;
+                vert_shader_stage_create_info.pName = "main";
+
+                VkPipelineShaderStageCreateInfo frag_shader_stage_create_info = {};
+                frag_shader_stage_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+                frag_shader_stage_create_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+                frag_shader_stage_create_info.module = frag_shader;
+                frag_shader_stage_create_info.pName = "main";
+
+            s_world_axes_pipeline.m_shaders.push_back(vert_shader);
+            s_world_axes_pipeline.m_shaders.push_back(frag_shader);
+            s_world_axes_pipeline.m_shader_stage_infos.push_back(vert_shader_stage_create_info);
+            s_world_axes_pipeline.m_shader_stage_infos.push_back(frag_shader_stage_create_info);
+
             //pipelineMaker.SetVertexInput(m_pWorldAxesMesh, VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+                VkPipelineInputAssemblyStateCreateInfo input_assembly_info = {};
+                input_assembly_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+                input_assembly_info.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+                input_assembly_info.primitiveRestartEnable = VK_FALSE;
+
+            s_world_axes_pipeline.m_input_assembly_info = input_assembly_info;
+
             //pipelineMaker.SetViewportAndScissor(m_pSwapchain->GetWidth(), m_pSwapchain->GetHeight());
+                VkViewport viewport;
+                VkRect2D scissor;
+                viewport.x = 0.0f;
+                viewport.y = 0.0f;
+                viewport.width = s_swapchain.m_extent.width;
+                viewport.height = s_swapchain.m_extent.height;
+                viewport.minDepth = 0.0f;
+                viewport.maxDepth = 1.0f;
+                scissor.offset = { 0, 0};
+                scissor.extent = s_swapchain.m_extent;
+
+            s_world_axes_pipeline.m_viewport = viewport;
+            s_world_axes_pipeline.m_scissor = scissor;
+
             //pipelineMaker.SetRasterizer(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+                VkPipelineRasterizationStateCreateInfo raster_info = {};
+                raster_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+                raster_info.depthClampEnable = VK_FALSE;
+                raster_info.rasterizerDiscardEnable = VK_FALSE;
+                raster_info.polygonMode = VK_POLYGON_MODE_FILL;
+                raster_info.lineWidth = 1.0f;
+                raster_info.cullMode = VK_CULL_MODE_BACK_BIT;
+                raster_info.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+                raster_info.depthBiasEnable = VK_FALSE;
+                raster_info.depthBiasConstantFactor = 0.0f;
+                raster_info.depthBiasClamp = 0.0f;
+                raster_info.depthBiasSlopeFactor = 0.0f;
+
+            s_world_axes_pipeline.m_raster_info = raster_info;
+
             //pipelineMaker.SetMultisampling(m_pDevice->GetMaxMsaaSampleCount());
+                VkPipelineMultisampleStateCreateInfo multisample_info = {};
+                multisample_info.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+                multisample_info.sampleShadingEnable = VK_FALSE;
+                multisample_info.rasterizationSamples = s_device.m_max_num_msaa_samples;
+                multisample_info.minSampleShading = 1.0f;
+                multisample_info.pSampleMask = nullptr;
+                multisample_info.alphaToCoverageEnable = VK_FALSE;
+                multisample_info.alphaToOneEnable = VK_FALSE;
+
+            s_world_axes_pipeline.m_multisample_info = multisample_info;
+
             //pipelineMaker.SetDepthStencil(true, true, VK_COMPARE_OP_LESS, false, 0.0f, 1.0f);
-            //
+                VkPipelineDepthStencilStateCreateInfo depth_stencil_info = {};
+                depth_stencil_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+                depth_stencil_info.depthTestEnable = VK_TRUE;
+                depth_stencil_info.depthWriteEnable = VK_TRUE;
+                depth_stencil_info.depthCompareOp = VK_COMPARE_OP_LESS;
+                depth_stencil_info.depthBoundsTestEnable = VK_FALSE;
+                depth_stencil_info.minDepthBounds = 0.0f;
+                depth_stencil_info.maxDepthBounds = 1.0f;
+
+                depth_stencil_info.stencilTestEnable = VK_FALSE;
+                depth_stencil_info.front = {};
+                depth_stencil_info.back = {};
+
+            s_world_axes_pipeline.m_depth_stencil_info = depth_stencil_info;
+
             //colorBlendAttachments.Reset();
             //colorBlendAttachments.Add(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, false,
             //                          VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD,
             //                          VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
-            //pipelineMaker.SetBlend(colorBlendAttachments, false, VK_LOGIC_OP_COPY, 0.0f, 0.0f, 0.0f, 0.0f);
+                VkPipelineColorBlendAttachmentState color_blend_attachment = {};
+                color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+                color_blend_attachment.blendEnable = VK_FALSE;
+                color_blend_attachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+                color_blend_attachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+                color_blend_attachment.colorBlendOp = VK_BLEND_OP_ADD;
+                color_blend_attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+                color_blend_attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+                color_blend_attachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
-            //descriptorSetLayouts = { m_pDescriptorSetLayout->GetHandle() };
+            s_world_axes_pipeline.m_color_blend_attachments.push_back(color_blend_attachment);
+
+            //pipelineMaker.SetBlend(colorBlendAttachments, false, VK_LOGIC_OP_COPY, 0.0f, 0.0f, 0.0f, 0.0f);
+                VkPipelineColorBlendStateCreateInfo color_blend_info = {};
+                color_blend_info.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+                color_blend_info.logicOpEnable = VK_FALSE;
+                color_blend_info.logicOp = VK_LOGIC_OP_COPY;
+                color_blend_info.blendConstants[0] = 0.0f;
+                color_blend_info.blendConstants[1] = 0.0f;
+                color_blend_info.blendConstants[2] = 0.0f;
+                color_blend_info.blendConstants[3] = 0.0f;
+                color_blend_info.attachmentCount = (u32)s_world_axes_pipeline.m_color_blend_attachments.size();
+                color_blend_info.pAttachments = s_world_axes_pipeline.m_color_blend_attachments.data();
+
+            s_world_axes_pipeline.m_color_blend_info = color_blend_info;
+
             //pipelineMaker.SetPipelineLayout(descriptorSetLayouts);
+                std::vector<VkDescriptorSetLayout> descriptor_set_layouts = { layout };
+                VkPipelineLayoutCreateInfo layout_info = {};
+                layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+                layout_info.setLayoutCount = (u32)descriptor_set_layouts.size();
+                layout_info.pSetLayouts = descriptor_set_layouts.data();
+                layout_info.pushConstantRangeCount = 0;
+                layout_info.pPushConstantRanges = nullptr;
+
+            s_world_axes_pipeline.m_pipeline_layout_info = layout_info;
 
             //m_pWorldAxesPipeline = pipelineMaker.CreatePipeline(m_pRenderPass, 0);
+            VULKAN_ASSERT(vkCreatePipelineLayout(s_device.m_device_vk_handle, &s_world_axes_pipeline.m_pipeline_layout_info, nullptr, &s_world_axes_pipeline.m_pipeline_layout_vk_handle));
+
+            std::vector<VkVertexInputBindingDescription> input_binding_descs = mesh_get_vertex_input_binding_descs(s_world_axes_renderable_mesh.m_mesh);
+            std::vector<VkVertexInputAttributeDescription> input_attr_descs = mesh_get_vertex_input_attr_descs(s_world_axes_renderable_mesh.m_mesh);
+
+            // vertex input
+            VkPipelineVertexInputStateCreateInfo vertex_input_info = {};
+            vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+            vertex_input_info.vertexBindingDescriptionCount = (u32)input_binding_descs.size();
+            vertex_input_info.pVertexBindingDescriptions = input_binding_descs.data();
+            vertex_input_info.vertexAttributeDescriptionCount = (u32)(input_attr_descs.size());
+            vertex_input_info.pVertexAttributeDescriptions = input_attr_descs.data();
+
+            // viewport
+            VkPipelineViewportStateCreateInfo viewport_state_info = {};
+            viewport_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+            viewport_state_info.pViewports = &s_world_axes_pipeline.m_viewport;
+            viewport_state_info.viewportCount = 1;
+            viewport_state_info.pScissors = &s_world_axes_pipeline.m_scissor;
+            viewport_state_info.scissorCount = 1;
+
+            VkGraphicsPipelineCreateInfo pipeline_info = {};
+            pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+            pipeline_info.stageCount = (u32)s_world_axes_pipeline.m_shader_stage_infos.size();
+            pipeline_info.pStages = s_world_axes_pipeline.m_shader_stage_infos.data();
+            pipeline_info.pVertexInputState = &vertex_input_info;
+            pipeline_info.pInputAssemblyState = &input_assembly_info;
+            pipeline_info.pViewportState = &viewport_state_info;
+            pipeline_info.pRasterizationState = &raster_info;
+            pipeline_info.pMultisampleState = &multisample_info;
+            pipeline_info.pDepthStencilState = &depth_stencil_info;
+            pipeline_info.pColorBlendState = &color_blend_info;
+            pipeline_info.pDynamicState = nullptr; //#TODO Enable this pipeline state
+            pipeline_info.layout = s_world_axes_pipeline.m_pipeline_layout_vk_handle;
+            pipeline_info.renderPass = s_render_pass.m_vk_handle;
+            pipeline_info.subpass = 0;
+            pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
+            pipeline_info.basePipelineIndex = -1;
+
+            VULKAN_ASSERT(vkCreateGraphicsPipelines(s_device.m_device_vk_handle, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &s_world_axes_pipeline.m_pipeline_vk_handle));
+
+            // cleanup
+            for (VkShaderModule shaderModule : s_world_axes_pipeline.m_shaders)
+            {
+                shader_module_destroy(s_device, shaderModule);
+            }
         }
     }
 
     // command buffers
     {
         //m_vkCommandBuffers = m_pGraphicsCommandPool->AllocateCommandBuffers(VK_COMMAND_BUFFER_LEVEL_PRIMARY, m_pSwapchain->GetNumImages());
+        s_command_buffers = command_buffers_allocate(s_device, s_graphics_command_pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, s_swapchain.m_num_images);
 
-        //for (size_t i = 0; i < m_vkCommandBuffers.size(); i++)
-        //{
-        //    VulkanCommands::BeginCommandBuffer(m_vkCommandBuffers[i]);
-        //    
-        //    VkOffset2D offset{ 0, 0 };
-        //    std::vector<VkClearValue> clearColors = { {0.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 0} };
-        //    VulkanCommands::BeginRenderPass(m_vkCommandBuffers[i], m_pRenderPass, m_vkSwapChainFrameBuffers[i], offset, m_pSwapchain->GetExtent(), clearColors);
-        //    {
-        //        // Normal draw
-        //        {
-        //            std::vector<VkDescriptorSet> descriptorSets = { m_vkDescriptorSets[i] };
-        //            VulkanCommands::DrawRenderableMesh(m_vkCommandBuffers[i], m_pVikingRoomMesh, m_pVikingRoomPipeline, descriptorSets);
-        //        }
-        //         
-        //        // World Axes
-        //        {
-        //            std::vector<VkDescriptorSet> descriptorSets = { m_vkDescriptorSets[i] };
-        //            VulkanCommands::DrawRenderableMesh(m_vkCommandBuffers[i], m_pWorldAxesMesh, m_pWorldAxesPipeline, descriptorSets);
-        //        }
-        //    }
-        //    VulkanCommands::EndRenderPass(m_vkCommandBuffers[i]);
+        for (i32 i = 0; i < (i32)s_command_buffers.size(); i++)
+        {
+            //VulkanCommands::BeginCommandBuffer(m_vkCommandBuffers[i]);
+            command_buffer_begin(s_command_buffers[i]);
+            
+            VkOffset2D offset{ 0, 0 };
 
-        //    VulkanCommands::EndCommandBuffer(m_vkCommandBuffers[i]);
-        //}
+            VkClearValue color_target_clear;
+            color_target_clear.color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+
+            VkClearValue depth_target_clear;
+            depth_target_clear.depthStencil = {1.0f, 0};
+
+            std::vector<VkClearValue> clear_colors;
+            clear_colors.push_back(color_target_clear);
+            clear_colors.push_back(depth_target_clear);
+
+            command_buffer_begin_render_pass(s_device, s_command_buffers[i], s_render_pass.m_vk_handle, s_framebuffers[i].m_vk_handle, offset, s_swapchain.m_extent, clear_colors);
+            {
+                // Normal draw
+                {
+                    std::vector<VkDescriptorSet> draw_descriptor_sets = { s_descriptor_sets[i] };
+                    draw_renderable_mesh(s_viking_room_renderable_mesh, s_viking_room_pipeline, s_command_buffers[i], draw_descriptor_sets);
+                }
+                 
+                // World Axes
+                {
+                    std::vector<VkDescriptorSet> draw_descriptor_sets = { s_descriptor_sets[i] };
+                    draw_renderable_mesh(s_world_axes_renderable_mesh, s_world_axes_pipeline, s_command_buffers[i], draw_descriptor_sets);
+                }
+            }
+            command_buffer_end_render_pass(s_command_buffers[i]);
+            command_buffer_end(s_command_buffers[i]);
+        }
     }
 
     // sync objects
     {
-        //m_vkImageAvailableSemaphores.resize(MAX_NUM_FRAMES_IN_FLIGHT);
-        //m_vkRenderFinishedSemaphores.resize(MAX_NUM_FRAMES_IN_FLIGHT);
-        //m_vkFrameFinishedFences.resize(MAX_NUM_FRAMES_IN_FLIGHT);
-        //m_vkSwapChainImagesInFlight.resize(static_cast<U32>(m_pSwapchain->GetNumImages()), VK_NULL_HANDLE);
+        s_image_available_semaphores.resize(MAX_NUM_FRAMES_IN_FLIGHT);
+        s_render_finished_semaphores.resize(MAX_NUM_FRAMES_IN_FLIGHT);
+        s_frame_finished_fences.resize(MAX_NUM_FRAMES_IN_FLIGHT);
+        s_swapchain_images_in_flight.resize(s_swapchain.m_num_images, VK_NULL_HANDLE);
 
-        //VkSemaphoreCreateInfo semaphoreInfo{};
-        //semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        VkSemaphoreCreateInfo semaphore_create_info = {};
+        semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-        //VkFenceCreateInfo fenceInfo{};
-        //fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        //fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        VkFenceCreateInfo fence_create_info = {};
+        fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-        //for (size_t iSyncObj = 0; iSyncObj < MAX_NUM_FRAMES_IN_FLIGHT; iSyncObj++)
-        //{
-        //    VULKAN_ASSERT(vkCreateSemaphore(m_pDevice->GetHandle(), &semaphoreInfo, nullptr, &m_vkImageAvailableSemaphores[iSyncObj]));
-        //    VULKAN_ASSERT(vkCreateSemaphore(m_pDevice->GetHandle(), &semaphoreInfo, nullptr, &m_vkRenderFinishedSemaphores[iSyncObj]));
-        //    VULKAN_ASSERT(vkCreateFence(m_pDevice->GetHandle(), &fenceInfo, nullptr, &m_vkFrameFinishedFences[iSyncObj]));
-        //}
+        for (i32 i = 0; i < MAX_NUM_FRAMES_IN_FLIGHT; i++)
+        {
+            VULKAN_ASSERT(vkCreateSemaphore(s_device.m_device_vk_handle, &semaphore_create_info, nullptr, &s_image_available_semaphores[i]));
+            VULKAN_ASSERT(vkCreateSemaphore(s_device.m_device_vk_handle, &semaphore_create_info, nullptr, &s_render_finished_semaphores[i]));
+            VULKAN_ASSERT(vkCreateFence(s_device.m_device_vk_handle, &fence_create_info, nullptr, &s_frame_finished_fences[i]));
+        }
     }
 }
 
@@ -1865,76 +2261,127 @@ void renderer_set_main_camera(camera_t* camera)
     s_camera = camera;
 }
 
+static
+void command_buffers_free(device_t& device, command_pool_t& command_pool, std::vector<VkCommandBuffer>& command_buffers)
+{
+	vkFreeCommandBuffers(device.m_device_vk_handle, command_pool.m_vk_handle, (u32)command_buffers.size(), command_buffers.data());
+}
+
+static
+void pipeline_destroy(device_t& device, pipeline_t& pipeline)
+{
+	vkDestroyPipeline(device.m_device_vk_handle, pipeline.m_pipeline_vk_handle, nullptr);
+	vkDestroyPipelineLayout(device.m_device_vk_handle, pipeline.m_pipeline_layout_vk_handle, nullptr);
+}
+
+static
+void swapchain_teardown()
+{
+	for (framebuffer_t& fb : s_framebuffers)
+	{
+        framebuffer_destroy(s_device, fb);
+    }
+
+    command_buffers_free(s_device, s_graphics_command_pool, s_command_buffers);
+
+    pipeline_destroy(s_device, s_viking_room_pipeline);
+    pipeline_destroy(s_device, s_world_axes_pipeline);
+
+    render_pass_destroy(s_device, s_render_pass);
+
+    texture_destroy(s_device, s_depth_target);
+    texture_destroy(s_device, s_color_target);
+
+	for (u32 i = 0; i < s_swapchain.m_num_images; i++)
+	{
+        buffer_destroy(s_device, s_uniform_buffers[i]);
+	}
+
+	//m_pDescriptorPool->Teardown();
+	//delete m_pDescriptorPool;
+    //descriptor_pool_destroy();
+
+	//m_pDescriptorSetLayout->Teardown();
+	//delete m_pDescriptorSetLayout;
+    //descriptor_set_layout_destroy();
+
+    swapchain_destroy(s_device, s_swapchain);
+}
+
+static
+void swapchain_recreate()
+{
+    
+}
+
 void renderer_render_frame()
 {
-	//// Wait for previous frame to finish, this blocks on CPU
-	//vkWaitForFences(m_pDevice->GetHandle(), 1, &m_vkFrameFinishedFences[m_currentFrame], VK_TRUE, UINT64_MAX);
+	// Wait for previous frame to finish, this blocks on CPU
+	vkWaitForFences(s_device.m_device_vk_handle, 1, &s_frame_finished_fences[m_cur_frame], VK_TRUE, UINT64_MAX);
 
-	//// Acquire an image from the swap chain
-	//U32 imageIndex;
-	//VkResult res = vkAcquireNextImageKHR(m_pDevice->GetHandle(), m_pSwapchain->GetHandle(), UINT64_MAX, m_vkImageAvailableSemaphores[m_currentFrame], VK_NULL_HANDLE, &imageIndex);
+	// Acquire an image from the swap chain
+	u32 image_index;
+	VkResult res = vkAcquireNextImageKHR(s_device.m_device_vk_handle, s_swapchain.m_vk_handle, UINT64_MAX, s_image_available_semaphores[m_cur_frame], VK_NULL_HANDLE, &image_index);
 
-	//if (res == VK_ERROR_OUT_OF_DATE_KHR)
-	//{
-	//	TeardownSwapchain();
-	//	return;
-	//}
+	if (res == VK_ERROR_OUT_OF_DATE_KHR)
+	{
+		swapchain_teardown();
+	    return;
+	}
 
-	//ASSERT(res == VK_SUCCESS || res == VK_SUBOPTIMAL_KHR);
+	ASSERT(res == VK_SUCCESS || res == VK_SUBOPTIMAL_KHR);
 
-	//UpdateUniformBuffer(imageIndex);
+	update_uniform_buffer(s_device, image_index);
 
-	//if (m_vkSwapChainImagesInFlight[imageIndex] != VK_NULL_HANDLE)
-	//{
-	//	vkWaitForFences(m_pDevice->GetHandle(), 1, &m_vkSwapChainImagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
-	//}
+	if (s_swapchain_images_in_flight[image_index] != VK_NULL_HANDLE)
+	{
+		vkWaitForFences(s_device.m_device_vk_handle, 1, &s_swapchain_images_in_flight[image_index], VK_TRUE, UINT64_MAX);
+	}
 
-	//m_vkSwapChainImagesInFlight[imageIndex] = m_vkFrameFinishedFences[m_currentFrame];
+	s_swapchain_images_in_flight[image_index] = s_frame_finished_fences[m_cur_frame];
 
-	//// Submit command buffer
-	//VkSubmitInfo submitInfo;
-	//MemZero(submitInfo);
-	//submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	// Submit command buffer
+	VkSubmitInfo submit_info = {};
+	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-	//VkSemaphore waitSemaphores[] = { m_vkImageAvailableSemaphores[m_currentFrame] };
-	//VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-	//submitInfo.waitSemaphoreCount = 1;
-	//submitInfo.pWaitSemaphores = waitSemaphores;
-	//submitInfo.pWaitDstStageMask = waitStages;
-	//submitInfo.commandBufferCount = 1;
-	//submitInfo.pCommandBuffers = &m_vkCommandBuffers[imageIndex];
+	VkSemaphore wait_semaphores[] = { s_image_available_semaphores[m_cur_frame] };
+	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+	submit_info.waitSemaphoreCount = 1;
+	submit_info.pWaitSemaphores = wait_semaphores;
+	submit_info.pWaitDstStageMask = wait_stages;
+	submit_info.commandBufferCount = 1;
+	submit_info.pCommandBuffers = &s_command_buffers[image_index];
 
-	//VkSemaphore signalSemaphores[] = { m_vkRenderFinishedSemaphores[m_currentFrame] };
-	//submitInfo.signalSemaphoreCount = 1;
-	//submitInfo.pSignalSemaphores = signalSemaphores;
+	VkSemaphore signal_semaphores[] = { s_render_finished_semaphores[m_cur_frame] };
+	submit_info.signalSemaphoreCount = 1;
+	submit_info.pSignalSemaphores = signal_semaphores;
 
-	//vkResetFences(m_pDevice->GetHandle(), 1, &m_vkFrameFinishedFences[m_currentFrame]);
-	//VULKAN_ASSERT(vkQueueSubmit(m_pDevice->GetGraphicsQueue(), 1, &submitInfo, m_vkFrameFinishedFences[m_currentFrame]));
+	vkResetFences(s_device.m_device_vk_handle, 1, &s_frame_finished_fences[m_cur_frame]);
+	VULKAN_ASSERT(vkQueueSubmit(s_device.m_graphics_queue, 1, &submit_info, s_frame_finished_fences[m_cur_frame]));
 
-	//// Present to screen
-	//VkPresentInfoKHR presentInfo;
-	//MemZero(presentInfo);
-	//presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	//presentInfo.waitSemaphoreCount = 1;
-	//presentInfo.pWaitSemaphores = signalSemaphores;
-	//VkSwapchainKHR swapChains[] = { m_pSwapchain->GetHandle() };
-	//presentInfo.swapchainCount = 1;
-	//presentInfo.pSwapchains = swapChains;
-	//presentInfo.pImageIndices = &imageIndex;
-	//presentInfo.pResults = nullptr;
+	// Present to screen
+	VkPresentInfoKHR present_info = {};
+	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	present_info.waitSemaphoreCount = 1;
+	present_info.pWaitSemaphores = signal_semaphores;
+	VkSwapchainKHR swapchains[] = { s_swapchain.m_vk_handle };
+	present_info.swapchainCount = 1;
+	present_info.pSwapchains = swapchains;
+	present_info.pImageIndices = &image_index;
+	present_info.pResults = nullptr;
 
-	//res = vkQueuePresentKHR(m_pDevice->GetGraphicsQueue(), &presentInfo);
+	res = vkQueuePresentKHR(s_device.m_graphics_queue, &present_info);
 
-	//if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR || m_pWindow->WasResized())
-	//{
-	//	ResetupSwapChain();
-	//}
-	//else
-	//{
-	//	VULKAN_ASSERT(res);
-	//}
+	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR || s_window->m_was_resized)
+	{
+        swapchain_recreate();
+	}
+	else
+	{
+		VULKAN_ASSERT(res);
+	}
 
-	//m_currentFrame = (m_currentFrame + 1) % MAX_NUM_FRAMES_IN_FLIGHT;
+	m_cur_frame = (m_cur_frame + 1) % MAX_NUM_FRAMES_IN_FLIGHT;
 }
 
 void renderer_deinit()
