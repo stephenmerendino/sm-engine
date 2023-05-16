@@ -1592,8 +1592,29 @@ void swapchain_teardown(device_t& device, swapchain_t& swapchain)
 }
 
 static
+void render_pass_reset(render_pass_t& render_pass)
+{
+    render_pass.m_vk_handle = VK_NULL_HANDLE;
+    render_pass.m_subpasses.clear();
+    render_pass.m_subpass_dependencies.clear();
+    render_pass.m_attachments.clear();
+}
+
+static
+void pipeline_reset(pipeline_t& pipeline)
+{
+    pipeline.m_pipeline_vk_handle = VK_NULL_HANDLE;
+    pipeline.m_pipeline_layout_vk_handle = VK_NULL_HANDLE;
+    pipeline.m_color_blend_attachments.clear();
+    pipeline.m_shaders.clear();
+    pipeline.m_shader_stage_infos.clear();
+}
+
+static
 void renderer_init_resources(device_t& device, swapchain_t& swapchain)
 {
+    render_pass_reset(s_render_pass);
+
     // render targets
     s_color_target = texture_create_color_target(s_device, s_swapchain.m_format, s_swapchain.m_extent.width, s_swapchain.m_extent.height);
     s_depth_target = texture_create_depth_target(s_device, find_depth_format(s_device), s_swapchain.m_extent.width, s_swapchain.m_extent.height);
@@ -1844,6 +1865,7 @@ void renderer_init_resources(device_t& device, swapchain_t& swapchain)
     {
         // Viking Room
         {
+            pipeline_reset(s_viking_room_pipeline);
             //VulkanPipelineFactory pipelineMaker(m_pDevice);
 
             //pipelineMaker.SetVsPs("Shaders/tri-vert.spv", "main", "Shaders/tri-frag.spv", "main");
@@ -2036,6 +2058,8 @@ void renderer_init_resources(device_t& device, swapchain_t& swapchain)
         // World axes
         {
             //pipelineMaker.Reset();
+            pipeline_reset(s_world_axes_pipeline);
+
             //pipelineMaker.SetVsPs("Shaders/simple-color-vert.spv", "main", "Shaders/simple-color-frag.spv", "main");
                 VkShaderModule vert_shader = shader_module_create(s_device, "shaders/simple-color-vert.spv");
                 VkShaderModule frag_shader = shader_module_create(s_device, "shaders/simple-color-frag.spv");

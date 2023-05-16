@@ -146,8 +146,6 @@ void handle_win_key_down(u32 win_key)
 static
 void handle_win_key_up(u32 win_key)
 {
-	debug_printf("handle_win_key_up: %u\n", win_key);
-
 	int key_state_index = -1;
 	if (!get_key_state_index_from_win_key(&key_state_index, win_key))
 	{
