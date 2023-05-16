@@ -174,10 +174,9 @@ static renderable_mesh_t s_viking_room_renderable_mesh;
 static renderable_mesh_t s_world_axes_renderable_mesh;
 
 static texture_t s_viking_room_texture;
+static sampler_t s_viking_room_sampler;
 static texture_t s_color_target;
 static texture_t s_depth_target;
-
-static sampler_t s_sampler;
 
 static std::vector<buffer_t> s_uniform_buffers;
 
@@ -187,8 +186,10 @@ static std::vector<framebuffer_t> s_framebuffers;
 static pipeline_t s_viking_room_pipeline;
 static pipeline_t s_world_axes_pipeline;
 
+static VkDescriptorSetLayout s_descriptor_set_layout = VK_NULL_HANDLE;
 static VkDescriptorPool s_descriptor_pool = VK_NULL_HANDLE;
 std::vector<VkDescriptorSet> s_descriptor_sets;
+
 static std::vector<VkCommandBuffer> s_command_buffers;
 
 static std::vector<VkSemaphore> s_image_available_semaphores;
@@ -1010,6 +1011,12 @@ void queue_flush(VkQueue queue)
     vkQueueWaitIdle(queue);
 }
 
+static 
+void device_flush(device_t& device)
+{
+    vkDeviceWaitIdle(device.m_device_vk_handle);
+}
+
 static
 VkCommandBuffer command_begin_single_time(device_t& device, command_pool_t& pool)
 {
@@ -1494,6 +1501,11 @@ void command_pool_destroy(device_t& device, command_pool_t& command_pool)
 static
 void swapchain_destroy(device_t& device, swapchain_t& swapchain)
 {
+    for(i32 i = 0; i < swapchain.m_num_images; i++)
+    {
+        vkDestroyImageView(device.m_device_vk_handle, swapchain.m_image_views[i], nullptr);
+    }
+
     vkDestroySwapchainKHR(device.m_device_vk_handle, swapchain.m_vk_handle, nullptr);
 }
 
@@ -1512,6 +1524,10 @@ void surface_destroy(instance_t& instance, surface_t& surface)
 static
 void instance_destroy(instance_t& instance)
 {
+    if(instance.m_debug_messenger != VK_NULL_HANDLE)
+    {
+        vkDestroyDebugUtilsMessengerEXT(instance.m_vk_handle, instance.m_debug_messenger, nullptr);
+    }
     vkDestroyInstance(instance.m_vk_handle, nullptr);
 }
 
@@ -1521,57 +1537,66 @@ void descriptor_set_layout_destroy(device_t& device, VkDescriptorSetLayout layou
 	vkDestroyDescriptorSetLayout(device.m_device_vk_handle, layout, nullptr);
 }
 
+static
+void descriptor_pool_destroy(device_t& device, VkDescriptorPool pool)
+{
+	vkDestroyDescriptorPool(device.m_device_vk_handle, pool, nullptr);
+}
+
 static 
 void render_pass_destroy(device_t& device, render_pass_t& render_pass)
 {
     vkDestroyRenderPass(device.m_device_vk_handle, render_pass.m_vk_handle, nullptr);
 }
 
-void update_uniform_buffer(device_t& device, u32 current_image)
+static
+void command_buffers_free(device_t& device, command_pool_t& command_pool, std::vector<VkCommandBuffer>& command_buffers)
 {
-	mvp_buffer_t ubo;
-
-	static f32 dt = 0.0f;
-	dt += 0.016f;
-
-	const f32 speed = 0.0f;
-
-	mat44 rot = MAT44_IDENTITY;
-    rotate_z_deg(rot, dt * speed);
-	ubo.m_model = rot;
-
-	ubo.m_view = camera_get_view_tranform(*s_camera);
-
-    f32 aspect = (f32)s_swapchain.m_extent.width / (f32)s_swapchain.m_extent.height;
-	ubo.m_projection = create_perspective_projection(45.0, 0.01f, 110.0f, aspect);
-
-    buffer_update_data(s_device, s_uniform_buffers[current_image], &ubo);
+	vkFreeCommandBuffers(device.m_device_vk_handle, command_pool.m_vk_handle, (u32)command_buffers.size(), command_buffers.data());
 }
 
-void renderer_init(window_t* app_window)
+static
+void pipeline_destroy(device_t& device, pipeline_t& pipeline)
 {
-    ASSERT(nullptr != app_window);
-    s_window = app_window;
-    s_instance = instance_create(); 
-    s_surface = surface_create(s_instance, *s_window);
-    s_device = device_create(s_instance, s_surface);
-    s_swapchain = swapchain_create(s_device, s_surface, *s_window);
-    s_graphics_command_pool = command_pool_create(s_device, VK_QUEUE_GRAPHICS_BIT, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+	vkDestroyPipeline(device.m_device_vk_handle, pipeline.m_pipeline_vk_handle, nullptr);
+	vkDestroyPipelineLayout(device.m_device_vk_handle, pipeline.m_pipeline_layout_vk_handle, nullptr);
+}
 
-    // meshes
-    s_viking_room_mesh = mesh_load_from_obj("models/viking_room.obj");
-    s_viking_room_renderable_mesh = renderable_mesh_create(s_device, s_graphics_command_pool, s_viking_room_mesh);
+static
+void swapchain_teardown(device_t& device, swapchain_t& swapchain)
+{
+	for (framebuffer_t& fb : s_framebuffers)
+	{
+        framebuffer_destroy(s_device, fb);
+    }
 
-    s_world_axes_mesh = mesh_load_axes();
-    s_world_axes_renderable_mesh = renderable_mesh_create(s_device, s_graphics_command_pool, s_world_axes_mesh);
+    command_buffers_free(s_device, s_graphics_command_pool, s_command_buffers);
 
-    // textures
-    s_viking_room_texture = texture_create_from_file(s_device, s_graphics_command_pool, "textures/viking_room.png");
+    pipeline_destroy(s_device, s_viking_room_pipeline);
+    pipeline_destroy(s_device, s_world_axes_pipeline);
+
+    render_pass_destroy(s_device, s_render_pass);
+
+    texture_destroy(s_device, s_depth_target);
+    texture_destroy(s_device, s_color_target);
+
+	for (u32 i = 0; i < s_swapchain.m_num_images; i++)
+	{
+        buffer_destroy(s_device, s_uniform_buffers[i]);
+	}
+
+    descriptor_pool_destroy(s_device, s_descriptor_pool);
+    descriptor_set_layout_destroy(s_device, s_descriptor_set_layout);
+
+    swapchain_destroy(s_device, s_swapchain);
+}
+
+static
+void renderer_init_resources(device_t& device, swapchain_t& swapchain)
+{
+    // render targets
     s_color_target = texture_create_color_target(s_device, s_swapchain.m_format, s_swapchain.m_extent.width, s_swapchain.m_extent.height);
     s_depth_target = texture_create_depth_target(s_device, find_depth_format(s_device), s_swapchain.m_extent.width, s_swapchain.m_extent.height);
-
-    // samplers
-    s_sampler = sampler_create(s_device, s_viking_room_texture.m_num_mips);
 
     // uniform buffers
 	s_uniform_buffers.resize(s_swapchain.m_num_images);
@@ -1671,7 +1696,6 @@ void renderer_init(window_t* app_window)
     }
     
     // descriptor sets
-    VkDescriptorSetLayout layout = VK_NULL_HANDLE;
     {
         std::vector<VkDescriptorSetLayoutBinding> bindings;
 
@@ -1697,7 +1721,7 @@ void renderer_init(window_t* app_window)
         layout_create_info.bindingCount = (u32)bindings.size();
         layout_create_info.pBindings = bindings.data();
 
-        VULKAN_ASSERT(vkCreateDescriptorSetLayout(s_device.m_device_vk_handle, &layout_create_info, nullptr, &layout));
+        VULKAN_ASSERT(vkCreateDescriptorSetLayout(s_device.m_device_vk_handle, &layout_create_info, nullptr, &s_descriptor_set_layout));
 
         // pool
         std::vector<VkDescriptorPoolSize> pool_sizes;
@@ -1721,7 +1745,7 @@ void renderer_init(window_t* app_window)
         VULKAN_ASSERT(vkCreateDescriptorPool(s_device.m_device_vk_handle, &create_info, nullptr, &s_descriptor_pool));
 
         // descriptor sets
-        std::vector<VkDescriptorSetLayout> layouts(s_swapchain.m_num_images, layout);
+        std::vector<VkDescriptorSetLayout> layouts(s_swapchain.m_num_images, s_descriptor_set_layout);
 
         VkDescriptorSetAllocateInfo alloc_info = {};
         alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -1771,7 +1795,7 @@ void renderer_init(window_t* app_window)
             descriptor_set_write_info_t sampler_write_info = {};
             sampler_write_info.m_type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             sampler_write_info.m_image_write_info.imageView = s_viking_room_texture.m_image_view;
-            sampler_write_info.m_image_write_info.sampler = s_sampler.m_vk_handle;
+            sampler_write_info.m_image_write_info.sampler = s_viking_room_sampler.m_vk_handle;
             sampler_write_info.m_image_write_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
             descriptor_set_write_infos.push_back(sampler_write_info);
 
@@ -1950,7 +1974,7 @@ void renderer_init(window_t* app_window)
             s_viking_room_pipeline.m_color_blend_info = color_blend_info;
 
             //pipelineMaker.SetPipelineLayout(descriptorSetLayouts);
-                std::vector<VkDescriptorSetLayout> descriptor_set_layouts = { layout };
+                std::vector<VkDescriptorSetLayout> descriptor_set_layouts = { s_descriptor_set_layout };
                 VkPipelineLayoutCreateInfo layout_info = {};
                 layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
                 layout_info.setLayoutCount = (u32)descriptor_set_layouts.size();
@@ -2131,7 +2155,7 @@ void renderer_init(window_t* app_window)
             s_world_axes_pipeline.m_color_blend_info = color_blend_info;
 
             //pipelineMaker.SetPipelineLayout(descriptorSetLayouts);
-                std::vector<VkDescriptorSetLayout> descriptor_set_layouts = { layout };
+                std::vector<VkDescriptorSetLayout> descriptor_set_layouts = { s_descriptor_set_layout };
                 VkPipelineLayoutCreateInfo layout_info = {};
                 layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
                 layout_info.setLayoutCount = (u32)descriptor_set_layouts.size();
@@ -2231,6 +2255,70 @@ void renderer_init(window_t* app_window)
             command_buffer_end(s_command_buffers[i]);
         }
     }
+}
+
+static
+void swapchain_recreate()
+{
+    if(s_window->m_is_minimized)
+    {
+        return;
+    }
+
+    device_flush(s_device); 
+
+    swapchain_teardown(s_device, s_swapchain);
+
+    // redo swapchain_create
+    s_swapchain = swapchain_create(s_device, s_surface, *s_window);
+
+    renderer_init_resources(s_device, s_swapchain);
+}
+
+static
+void update_uniform_buffer(device_t& device, u32 current_image)
+{
+	mvp_buffer_t ubo;
+
+	static f32 dt = 0.0f;
+	dt += 0.016f;
+
+	const f32 speed = 0.0f;
+
+	mat44 rot = MAT44_IDENTITY;
+    rotate_z_deg(rot, dt * speed);
+	ubo.m_model = rot;
+
+	ubo.m_view = camera_get_view_tranform(*s_camera);
+
+    f32 aspect = (f32)s_swapchain.m_extent.width / (f32)s_swapchain.m_extent.height;
+	ubo.m_projection = create_perspective_projection(45.0, 0.01f, 110.0f, aspect);
+
+    buffer_update_data(s_device, s_uniform_buffers[current_image], &ubo);
+}
+
+void renderer_init(window_t* app_window)
+{
+    ASSERT(nullptr != app_window);
+    s_window = app_window;
+    s_instance = instance_create(); 
+    s_surface = surface_create(s_instance, *s_window);
+    s_device = device_create(s_instance, s_surface);
+    s_swapchain = swapchain_create(s_device, s_surface, *s_window);
+    s_graphics_command_pool = command_pool_create(s_device, VK_QUEUE_GRAPHICS_BIT, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+
+    // meshes
+    s_viking_room_mesh = mesh_load_from_obj("models/viking_room.obj");
+    s_viking_room_renderable_mesh = renderable_mesh_create(s_device, s_graphics_command_pool, s_viking_room_mesh);
+
+    s_world_axes_mesh = mesh_load_axes();
+    s_world_axes_renderable_mesh = renderable_mesh_create(s_device, s_graphics_command_pool, s_world_axes_mesh);
+
+    // texture and sampler
+    s_viking_room_texture = texture_create_from_file(s_device, s_graphics_command_pool, "textures/viking_room.png");
+    s_viking_room_sampler = sampler_create(s_device, s_viking_room_texture.m_num_mips);
+
+    renderer_init_resources(s_device, s_swapchain);
 
     // sync objects
     {
@@ -2261,59 +2349,6 @@ void renderer_set_main_camera(camera_t* camera)
     s_camera = camera;
 }
 
-static
-void command_buffers_free(device_t& device, command_pool_t& command_pool, std::vector<VkCommandBuffer>& command_buffers)
-{
-	vkFreeCommandBuffers(device.m_device_vk_handle, command_pool.m_vk_handle, (u32)command_buffers.size(), command_buffers.data());
-}
-
-static
-void pipeline_destroy(device_t& device, pipeline_t& pipeline)
-{
-	vkDestroyPipeline(device.m_device_vk_handle, pipeline.m_pipeline_vk_handle, nullptr);
-	vkDestroyPipelineLayout(device.m_device_vk_handle, pipeline.m_pipeline_layout_vk_handle, nullptr);
-}
-
-static
-void swapchain_teardown()
-{
-	for (framebuffer_t& fb : s_framebuffers)
-	{
-        framebuffer_destroy(s_device, fb);
-    }
-
-    command_buffers_free(s_device, s_graphics_command_pool, s_command_buffers);
-
-    pipeline_destroy(s_device, s_viking_room_pipeline);
-    pipeline_destroy(s_device, s_world_axes_pipeline);
-
-    render_pass_destroy(s_device, s_render_pass);
-
-    texture_destroy(s_device, s_depth_target);
-    texture_destroy(s_device, s_color_target);
-
-	for (u32 i = 0; i < s_swapchain.m_num_images; i++)
-	{
-        buffer_destroy(s_device, s_uniform_buffers[i]);
-	}
-
-	//m_pDescriptorPool->Teardown();
-	//delete m_pDescriptorPool;
-    //descriptor_pool_destroy();
-
-	//m_pDescriptorSetLayout->Teardown();
-	//delete m_pDescriptorSetLayout;
-    //descriptor_set_layout_destroy();
-
-    swapchain_destroy(s_device, s_swapchain);
-}
-
-static
-void swapchain_recreate()
-{
-    
-}
-
 void renderer_render_frame()
 {
 	// Wait for previous frame to finish, this blocks on CPU
@@ -2325,7 +2360,7 @@ void renderer_render_frame()
 
 	if (res == VK_ERROR_OUT_OF_DATE_KHR)
 	{
-		swapchain_teardown();
+		swapchain_teardown(s_device, s_swapchain);
 	    return;
 	}
 
@@ -2386,17 +2421,26 @@ void renderer_render_frame()
 
 void renderer_deinit()
 {
-    sampler_destroy(s_device, s_sampler);
-    texture_destroy(s_device, s_depth_target);
-    texture_destroy(s_device, s_color_target);
+    device_flush(s_device);
+
+    swapchain_teardown(s_device, s_swapchain);
+
+    for (i32 i = 0; i < MAX_NUM_FRAMES_IN_FLIGHT; i++)
+	{
+		vkDestroySemaphore(s_device.m_device_vk_handle, s_image_available_semaphores[i], nullptr);
+		vkDestroySemaphore(s_device.m_device_vk_handle, s_render_finished_semaphores[i], nullptr);
+		vkDestroyFence(s_device.m_device_vk_handle, s_frame_finished_fences[i], nullptr);
+	}
+
+    sampler_destroy(s_device, s_viking_room_sampler);
     texture_destroy(s_device, s_viking_room_texture);
+
     renderable_mesh_destroy(s_device, s_world_axes_renderable_mesh);
     renderable_mesh_destroy(s_device, s_viking_room_renderable_mesh);
     delete s_world_axes_mesh;
     delete s_viking_room_mesh;
 
     command_pool_destroy(s_device, s_graphics_command_pool);
-    swapchain_destroy(s_device, s_swapchain);
     device_destroy(s_device);
     surface_destroy(s_instance, s_surface);
     instance_destroy(s_instance);
