@@ -60,6 +60,11 @@ void internal_window_msg_handler(UINT msg, WPARAM w_param, LPARAM l_param, void*
             break;
         }
 
+        case WM_CLOSE:
+        {
+            window->m_was_closed = true;
+        }
+
         default: break;
 	}
 }
@@ -114,6 +119,7 @@ window_t* window_create(const char* name, u32 width, u32 height, bool resizable)
     MEM_ZERO(*window);
     window->m_name = name;
     window->m_was_resized = false;
+    window->m_was_closed = false;
     window->m_is_minimized = false;
 
 	window->m_handle = CreateWindowEx(0, 

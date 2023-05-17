@@ -22,37 +22,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "engine/thirdparty/stb/stb_image.h"
 
-static mesh_t* s_viking_room_mesh = nullptr;
-static mesh_t* s_world_axes_mesh = nullptr;
-static renderable_mesh_t s_viking_room_renderable_mesh;
-static renderable_mesh_t s_world_axes_renderable_mesh;
-
-static texture_t s_viking_room_texture;
-static sampler_t s_viking_room_sampler;
-static texture_t s_color_target;
-static texture_t s_depth_target;
-
-static std::vector<buffer_t> s_uniform_buffers;
-
-static render_pass_t s_render_pass;
-
-static std::vector<framebuffer_t> s_framebuffers;
-static pipeline_t s_viking_room_pipeline;
-static pipeline_t s_world_axes_pipeline;
-
-static VkDescriptorSetLayout s_descriptor_set_layout = VK_NULL_HANDLE;
-static VkDescriptorPool s_descriptor_pool = VK_NULL_HANDLE;
-std::vector<VkDescriptorSet> s_descriptor_sets;
-
-static std::vector<VkCommandBuffer> s_command_buffers;
-
-static std::vector<VkSemaphore> s_image_available_semaphores;
-static std::vector<VkSemaphore> s_render_finished_semaphores;
-static std::vector<VkFence> s_frame_finished_fences;
-static std::vector<VkFence> s_swapchain_images_in_flight;
-
-static u32 m_cur_frame = 0;
-
 static
 VkAttachmentDescription setup_attachment_desc(VkFormat format, VkSampleCountFlagBits sample_count, 
                                               VkImageLayout initial_layout, VkImageLayout final_layout,
@@ -533,6 +502,65 @@ void buffer_update(context_t& context, buffer_t& buffer, command_pool_t& command
     }
 }
 
+std::vector<VkVertexInputBindingDescription> get_vertex_input_binding_descs(const vertex_pct_t& v)
+{
+    UNUSED(v);
+
+    std::vector<VkVertexInputBindingDescription> vertex_input_binding_descs;
+    vertex_input_binding_descs.resize(1);
+    vertex_input_binding_descs[0].binding = 0;
+    vertex_input_binding_descs[0].stride = sizeof(v);
+    vertex_input_binding_descs[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	return vertex_input_binding_descs;
+}
+
+std::vector<VkVertexInputAttributeDescription> get_vertex_input_attr_descs(const vertex_pct_t& v)
+{
+    UNUSED(v);
+
+	std::vector<VkVertexInputAttributeDescription> attr_descs;
+	attr_descs.resize(3);
+
+	//pos
+	VkVertexInputAttributeDescription pos;
+	pos.binding = 0;
+	pos.location = 0;
+	pos.offset = offsetof(vertex_pct_t, m_pos);
+	pos.format = VK_FORMAT_R32G32B32_SFLOAT;
+
+	// color
+	VkVertexInputAttributeDescription color;
+	color.binding = 0;
+	color.location = 1;
+	color.offset = offsetof(vertex_pct_t, m_color);
+	color.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+
+	// tex coord
+	VkVertexInputAttributeDescription uv;
+	uv.binding = 0;
+	uv.location = 2;
+	uv.offset = offsetof(vertex_pct_t, m_uv);
+	uv.format = VK_FORMAT_R32G32_SFLOAT;
+
+	attr_descs[0] = pos;
+	attr_descs[1] = color;
+	attr_descs[2] = uv;
+
+	return attr_descs;
+}
+
+std::vector<VkVertexInputBindingDescription> mesh_get_vertex_input_binding_descs(mesh_t* mesh)
+{
+    ASSERT(nullptr != mesh);
+	return get_vertex_input_binding_descs(mesh->m_vertices[0]);
+}
+
+std::vector<VkVertexInputAttributeDescription> mesh_get_vertex_input_attr_descs(mesh_t* mesh)
+{
+    ASSERT(nullptr != mesh);
+	return get_vertex_input_attr_descs(mesh->m_vertices[0]);
+}
+
 static
 renderable_mesh_t renderable_mesh_create(context_t& context, mesh_t* mesh)
 {
@@ -772,33 +800,6 @@ void pipeline_destroy(context_t& context, pipeline_t& pipeline)
 }
 
 static
-void swapchain_teardown(context_t& context)
-{
-	for (framebuffer_t& fb : s_framebuffers)
-	{
-        framebuffer_destroy(context, fb);
-    }
-
-    command_buffers_free(context, s_command_buffers);
-
-    pipeline_destroy(context, s_viking_room_pipeline);
-    pipeline_destroy(context, s_world_axes_pipeline);
-
-    render_pass_destroy(context, s_render_pass);
-
-    texture_destroy(context, s_depth_target);
-    texture_destroy(context, s_color_target);
-
-	for (u32 i = 0; i < context.m_swapchain.m_num_images; i++)
-	{
-        buffer_destroy(context, s_uniform_buffers[i]);
-	}
-
-    descriptor_pool_destroy(context, s_descriptor_pool);
-    descriptor_set_layout_destroy(context, s_descriptor_set_layout);
-}
-
-static
 void render_pass_reset(render_pass_t& render_pass)
 {
     render_pass.m_vk_handle = VK_NULL_HANDLE;
@@ -816,6 +817,70 @@ void pipeline_reset(pipeline_t& pipeline)
     pipeline.m_shaders.clear();
     pipeline.m_shader_stage_infos.clear();
 }
+
+static
+VkSemaphore semaphore_create(context_t& context)
+{
+    VkSemaphoreCreateInfo semaphore_create_info = {};
+    semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    VkSemaphore semaphore = VK_NULL_HANDLE;
+    VULKAN_ASSERT(vkCreateSemaphore(context.m_device.m_device_vk_handle, &semaphore_create_info, nullptr, &semaphore));
+    return semaphore;
+}
+
+static
+VkFence fence_create(context_t& context)
+{
+    VkFenceCreateInfo fence_create_info = {};
+    fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+    VkFence fence = VK_NULL_HANDLE;
+    VULKAN_ASSERT(vkCreateFence(context.m_device.m_device_vk_handle, &fence_create_info, nullptr, &fence));
+    return fence;
+}
+
+static 
+void semaphore_destroy(context_t& context, VkSemaphore semaphore)
+{
+    vkDestroySemaphore(context.m_device.m_device_vk_handle, semaphore, nullptr);
+}
+
+static 
+void fence_destroy(context_t& context, VkFence fence)
+{
+    vkDestroyFence(context.m_device.m_device_vk_handle, fence, nullptr);
+}
+
+static mesh_t* s_viking_room_mesh = nullptr;
+static mesh_t* s_world_axes_mesh = nullptr;
+static renderable_mesh_t s_viking_room_renderable_mesh;
+static renderable_mesh_t s_world_axes_renderable_mesh;
+
+static texture_t s_viking_room_texture;
+static sampler_t s_viking_room_sampler;
+static texture_t s_color_target;
+static texture_t s_depth_target;
+
+static std::vector<buffer_t> s_uniform_buffers;
+
+static render_pass_t s_render_pass;
+
+static std::vector<framebuffer_t> s_framebuffers;
+static pipeline_t s_viking_room_pipeline;
+static pipeline_t s_world_axes_pipeline;
+
+static VkDescriptorSetLayout s_descriptor_set_layout = VK_NULL_HANDLE;
+static VkDescriptorPool s_descriptor_pool = VK_NULL_HANDLE;
+std::vector<VkDescriptorSet> s_descriptor_sets;
+
+static std::vector<VkCommandBuffer> s_command_buffers;
+
+static std::vector<VkSemaphore> s_image_available_semaphores;
+static std::vector<VkSemaphore> s_render_finished_semaphores;
+static std::vector<VkFence> s_frame_finished_fences;
+static std::vector<VkFence> s_swapchain_images_in_flight;
 
 static
 void renderer_init_resources(context_t& context)
@@ -1491,15 +1556,43 @@ void renderer_init_resources(context_t& context)
 }
 
 static
+void swapchain_teardown(context_t& context)
+{
+	for (framebuffer_t& fb : s_framebuffers)
+	{
+        framebuffer_destroy(context, fb);
+    }
+
+    command_buffers_free(context, s_command_buffers);
+
+    pipeline_destroy(context, s_viking_room_pipeline);
+    pipeline_destroy(context, s_world_axes_pipeline);
+
+    render_pass_destroy(context, s_render_pass);
+
+    texture_destroy(context, s_depth_target);
+    texture_destroy(context, s_color_target);
+
+	for (u32 i = 0; i < context.m_swapchain.m_num_images; i++)
+	{
+        buffer_destroy(context, s_uniform_buffers[i]);
+	}
+
+    descriptor_pool_destroy(context, s_descriptor_pool);
+    descriptor_set_layout_destroy(context, s_descriptor_set_layout);
+}
+
+static
 void swapchain_recreate(context_t& context)
 {
-    if(context.m_window->m_is_minimized)
+    if(context.m_window->m_was_closed)
     {
         return;
     }
 
     device_flush(context.m_device); 
 
+    swapchain_teardown(context);
     context_refresh_swapchain(context);
     renderer_init_resources(context);
 }
@@ -1526,44 +1619,9 @@ void update_uniform_buffer(context_t& context, camera_t& camera, u32 current_ima
     buffer_update_data(context, s_uniform_buffers[current_image], &ubo);
 }
 
+static u32 m_cur_frame = 0;
 static context_t* s_context;
 static camera_t* s_camera = nullptr;
-
-static
-VkSemaphore semaphore_create(context_t& context)
-{
-    VkSemaphoreCreateInfo semaphore_create_info = {};
-    semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-    VkSemaphore semaphore = VK_NULL_HANDLE;
-    VULKAN_ASSERT(vkCreateSemaphore(context.m_device.m_device_vk_handle, &semaphore_create_info, nullptr, &semaphore));
-    return semaphore;
-}
-
-static
-VkFence fence_create(context_t& context)
-{
-    VkFenceCreateInfo fence_create_info = {};
-    fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-    VkFence fence = VK_NULL_HANDLE;
-    VULKAN_ASSERT(vkCreateFence(context.m_device.m_device_vk_handle, &fence_create_info, nullptr, &fence));
-    return fence;
-}
-
-static 
-void semaphore_destroy(context_t& context, VkSemaphore semaphore)
-{
-    vkDestroySemaphore(context.m_device.m_device_vk_handle, semaphore, nullptr);
-}
-
-static 
-void fence_destroy(context_t& context, VkFence fence)
-{
-    vkDestroyFence(context.m_device.m_device_vk_handle, fence, nullptr);
-}
-    
 
 void renderer_init(window_t* app_window)
 {
@@ -1585,18 +1643,16 @@ void renderer_init(window_t* app_window)
     renderer_init_resources(*s_context);
 
     // sync objects
-    {
-        s_image_available_semaphores.resize(MAX_NUM_FRAMES_IN_FLIGHT);
-        s_render_finished_semaphores.resize(MAX_NUM_FRAMES_IN_FLIGHT);
-        s_frame_finished_fences.resize(MAX_NUM_FRAMES_IN_FLIGHT);
-        s_swapchain_images_in_flight.resize(s_context->m_swapchain.m_num_images, VK_NULL_HANDLE);
+    s_image_available_semaphores.resize(MAX_NUM_FRAMES_IN_FLIGHT);
+    s_render_finished_semaphores.resize(MAX_NUM_FRAMES_IN_FLIGHT);
+    s_frame_finished_fences.resize(MAX_NUM_FRAMES_IN_FLIGHT);
+    s_swapchain_images_in_flight.resize(s_context->m_swapchain.m_num_images, VK_NULL_HANDLE);
 
-        for (i32 i = 0; i < MAX_NUM_FRAMES_IN_FLIGHT; i++)
-        {
-            s_image_available_semaphores[i] = semaphore_create(*s_context);
-            s_render_finished_semaphores[i] = semaphore_create(*s_context);
-            s_frame_finished_fences[i] = fence_create(*s_context);
-        }
+    for (i32 i = 0; i < MAX_NUM_FRAMES_IN_FLIGHT; i++)
+    {
+        s_image_available_semaphores[i] = semaphore_create(*s_context);
+        s_render_finished_semaphores[i] = semaphore_create(*s_context);
+        s_frame_finished_fences[i] = fence_create(*s_context);
     }
 }
 
@@ -1617,7 +1673,7 @@ void renderer_render_frame()
 
 	if (res == VK_ERROR_OUT_OF_DATE_KHR)
 	{
-		swapchain_teardown(*s_context);
+        swapchain_recreate(*s_context);
 	    return;
 	}
 

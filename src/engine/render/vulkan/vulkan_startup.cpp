@@ -540,7 +540,7 @@ swapchain_t swapchain_create(device_t& device, surface_t& surface, window_t& win
         image_count = min(image_count, swapchain_details.m_capabilities.maxImageCount);
     }
 
-    VkSwapchainCreateInfoKHR create_info{};
+    VkSwapchainCreateInfoKHR create_info = {};
     create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     create_info.pNext = nullptr;
     create_info.surface = surface.m_vk_handle;
@@ -678,6 +678,11 @@ void context_destroy(context_t* context)
 
 void context_refresh_swapchain(context_t& context)
 {
+    if(context.m_window->m_was_closed)
+    {
+        return;
+    }
+        
     swapchain_destroy(context.m_device, context.m_swapchain);    
     context.m_swapchain = swapchain_create(context.m_device, context.m_surface, *context.m_window);
 }

@@ -16,18 +16,6 @@ size_t mesh_calc_index_buffer_size(mesh_t* mesh)
 	return sizeof(mesh->m_indices[0]) * mesh->m_indices.size();
 }
 
-std::vector<VkVertexInputBindingDescription> mesh_get_vertex_input_binding_descs(mesh_t* mesh)
-{
-    ASSERT(nullptr != mesh);
-	return get_vertex_input_binding_descs(mesh->m_vertices[0]);
-}
-
-std::vector<VkVertexInputAttributeDescription> mesh_get_vertex_input_attr_descs(mesh_t* mesh)
-{
-    ASSERT(nullptr != mesh);
-	return get_vertex_input_attr_descs(mesh->m_vertices[0]);
-}
-
 mesh_t* mesh_load_from_obj(const char* obj_filepath)
 {
     mesh_t* mesh = new mesh_t;

@@ -24,6 +24,7 @@ struct window_t
     u32 m_y;
     bool m_is_minimized;
     bool m_was_resized;
+    bool m_was_closed;
     std::vector<window_message_cb_with_args_t> m_message_cbs;
 };
 
