@@ -13,9 +13,9 @@ VkImageView image_view_create(device_t& device, VkImage image, VkFormat format, 
     create_info.subresourceRange.baseArrayLayer = 0;
     create_info.subresourceRange.layerCount = 1;
 
-    VkImageView imageView;
-    VULKAN_ASSERT(vkCreateImageView(device.m_device_vk_handle, &create_info, nullptr, &imageView));
-    return imageView;
+    VkImageView image_view;
+    VULKAN_ASSERT(vkCreateImageView(device.m_device_handle, &create_info, nullptr, &image_view));
+    return image_view;
 }
 
 VkImageView image_view_create(context_t& context, VkImage image, VkFormat format, VkImageAspectFlags aspect_flags, u32 num_mips)

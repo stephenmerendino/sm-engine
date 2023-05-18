@@ -10,23 +10,23 @@ struct window_t;
 
 struct semaphore_t
 {   
-    VkSemaphore m_vk_handle;
+    VkSemaphore m_handle;
 };
 
 struct fence_t
 {
-    VkFence m_vk_handle;
+    VkFence m_handle;
 };
 
 struct instance_t
 {
-    VkInstance m_vk_handle = VK_NULL_HANDLE;
-    VkDebugUtilsMessengerEXT m_debug_messenger = VK_NULL_HANDLE;
+    VkInstance m_handle = VK_NULL_HANDLE;
+    VkDebugUtilsMessengerEXT m_debug_messenger_handle = VK_NULL_HANDLE;
 };
 
 struct surface_t
 {
-    VkSurfaceKHR m_vk_handle = VK_NULL_HANDLE;
+    VkSurfaceKHR m_handle = VK_NULL_HANDLE;
 };
 
 struct queue_family_indices_t
@@ -39,8 +39,8 @@ struct queue_family_indices_t
 
 struct device_t
 {
-    VkPhysicalDevice m_phys_device_vk_handle = VK_NULL_HANDLE;
-    VkDevice m_device_vk_handle = VK_NULL_HANDLE;
+    VkPhysicalDevice m_phys_device_handle = VK_NULL_HANDLE;
+    VkDevice m_device_handle = VK_NULL_HANDLE;
     VkQueue m_graphics_queue = VK_NULL_HANDLE;
     VkQueue m_present_queue = VK_NULL_HANDLE;
     VkSampleCountFlagBits m_max_num_msaa_samples = VK_SAMPLE_COUNT_1_BIT;
@@ -57,7 +57,7 @@ struct swapchain_details_t
 
 struct swapchain_t
 {
-    VkSwapchainKHR m_vk_handle = VK_NULL_HANDLE; 
+    VkSwapchainKHR m_handle = VK_NULL_HANDLE; 
     VkFormat m_format = VK_FORMAT_UNDEFINED;
     VkExtent2D m_extent = { 0, 0 };
     u32 m_num_images = 0;
@@ -68,7 +68,7 @@ struct swapchain_t
 
 struct command_pool_t
 {
-    VkCommandPool m_vk_handle = VK_NULL_HANDLE;
+    VkCommandPool m_handle = VK_NULL_HANDLE;
     VkQueueFlags m_queue_families;
     VkCommandPoolCreateFlags m_create_flags;
 };
@@ -103,8 +103,8 @@ enum class BufferType : u8
 
 struct buffer_t
 {
-    VkBuffer m_vk_handle = VK_NULL_HANDLE;   
-    VkDeviceMemory m_vk_memory = VK_NULL_HANDLE;
+    VkBuffer m_handle = VK_NULL_HANDLE;   
+    VkDeviceMemory m_memory = VK_NULL_HANDLE;
     size_t m_size;
     BufferType m_type;
 };
@@ -118,15 +118,15 @@ struct renderable_mesh_t
 
 struct texture_t
 {
-    VkImage m_vk_handle = VK_NULL_HANDLE;
-    VkDeviceMemory m_vk_memory = VK_NULL_HANDLE;
+    VkImage m_handle = VK_NULL_HANDLE;
+    VkDeviceMemory m_memory = VK_NULL_HANDLE;
     VkImageView m_image_view;
     u32 m_num_mips;
 };
 
 struct sampler_t
 {
-    VkSampler m_vk_handle = VK_NULL_HANDLE; 
+    VkSampler m_handle = VK_NULL_HANDLE; 
     u32 m_max_mip_level = 1;
 };
 
@@ -140,7 +140,7 @@ struct subpass_t
 
 struct render_pass_t
 {
-	VkRenderPass m_vk_handle;
+	VkRenderPass m_handle;
 	std::vector<VkSubpassDescription> m_subpasses;
 	std::vector<VkSubpassDependency> m_subpass_dependencies;
 	std::vector<VkAttachmentDescription> m_attachments;
@@ -149,13 +149,13 @@ struct render_pass_t
 
 struct framebuffer_t
 {
-    VkFramebuffer m_vk_handle;
+    VkFramebuffer m_handle;
 };
 
 struct pipeline_t
 {
-    VkPipeline m_pipeline_vk_handle = VK_NULL_HANDLE;
-    VkPipelineLayout m_pipeline_layout_vk_handle = VK_NULL_HANDLE;
+    VkPipeline m_pipeline_handle = VK_NULL_HANDLE;
+    VkPipelineLayout m_pipeline_layout_handle = VK_NULL_HANDLE;
     std::vector<VkPipelineColorBlendAttachmentState> m_color_blend_attachments;
     VkViewport m_viewport;
     VkRect2D m_scissor;

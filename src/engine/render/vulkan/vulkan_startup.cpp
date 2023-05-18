@@ -193,15 +193,15 @@ instance_t instance_create()
     }
 
     instance_t vulkan_instance = {};
-    VULKAN_ASSERT(vkCreateInstance(&create_info, nullptr, &vulkan_instance.m_vk_handle));
+    VULKAN_ASSERT(vkCreateInstance(&create_info, nullptr, &vulkan_instance.m_handle));
 
-    load_vulkan_instance_funcs(vulkan_instance.m_vk_handle);
+    load_vulkan_instance_funcs(vulkan_instance.m_handle);
 
     // debug messenger
     if (ENABLE_VALIDATION_LAYERS)
     {
         VkDebugUtilsMessengerCreateInfoEXT debug_messenger_create_info = setup_debug_messenger_create_info(vulkan_debug_cb);
-        VULKAN_ASSERT(vkCreateDebugUtilsMessengerEXT(vulkan_instance.m_vk_handle, &debug_messenger_create_info, nullptr, &vulkan_instance.m_debug_messenger));
+        VULKAN_ASSERT(vkCreateDebugUtilsMessengerEXT(vulkan_instance.m_handle, &debug_messenger_create_info, nullptr, &vulkan_instance.m_debug_messenger_handle));
     }
 
     return vulkan_instance;
@@ -217,7 +217,7 @@ surface_t surface_create(instance_t& instance, window_t& window)
     create_info.hinstance = GetModuleHandle(nullptr);
 
     surface_t surface;
-    VULKAN_ASSERT(vkCreateWin32SurfaceKHR(instance.m_vk_handle, &create_info, nullptr, &surface.m_vk_handle));
+    VULKAN_ASSERT(vkCreateWin32SurfaceKHR(instance.m_handle, &create_info, nullptr, &surface.m_handle));
     return surface;
 }
 
@@ -245,26 +245,26 @@ swapchain_details_t query_swapchain_support(VkPhysicalDevice device, surface_t& 
     swapchain_details_t details;
 
     // surface capabilities
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface.m_vk_handle, &details.m_capabilities);
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface.m_handle, &details.m_capabilities);
 
     // surface formats
     u32 num_surface_formats = 0;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface.m_vk_handle, &num_surface_formats, nullptr);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface.m_handle, &num_surface_formats, nullptr);
 
     if (num_surface_formats != 0)
     {
         details.m_formats.resize(num_surface_formats);
-        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface.m_vk_handle, &num_surface_formats, details.m_formats.data());
+        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface.m_handle, &num_surface_formats, details.m_formats.data());
     }
 
     // present modes
     u32 num_present_modes = 0;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface.m_vk_handle, &num_present_modes, nullptr);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface.m_handle, &num_present_modes, nullptr);
 
     if (num_present_modes != 0)
     {
         details.m_present_modes.resize(num_present_modes);
-        vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface.m_vk_handle, &num_present_modes, details.m_present_modes.data());
+        vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface.m_handle, &num_present_modes, details.m_present_modes.data());
     }
 
     return details;
@@ -280,7 +280,7 @@ bool queue_family_indices_has_required(queue_family_indices_t& indices)
 static 
 swapchain_details_t query_swapchain_support(device_t& device, surface_t& surface)
 {
-    return query_swapchain_support(device.m_phys_device_vk_handle, surface);
+    return query_swapchain_support(device.m_phys_device_handle, surface);
 }
 
 static 
@@ -304,7 +304,7 @@ queue_family_indices_t queue_family_find_all(VkPhysicalDevice device, surface_t&
 
         // query for presentation support on this queue
         VkBool32 present_support = false;
-        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface.m_vk_handle, &present_support);
+        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface.m_handle, &present_support);
 
         if (present_support)
         {
@@ -385,11 +385,11 @@ device_t device_create(instance_t& instance, surface_t& surface)
     VkSampleCountFlagBits max_num_msaa_samples = VK_SAMPLE_COUNT_1_BIT;
     {
         u32 device_count = 0;
-        vkEnumeratePhysicalDevices(instance.m_vk_handle, &device_count, nullptr);
+        vkEnumeratePhysicalDevices(instance.m_handle, &device_count, nullptr);
         ASSERT(device_count != 0);
 
         std::vector<VkPhysicalDevice> devices(device_count);
-        vkEnumeratePhysicalDevices(instance.m_vk_handle, &device_count, devices.data());
+        vkEnumeratePhysicalDevices(instance.m_handle, &device_count, devices.data());
 
         if (is_debug())
         {
@@ -472,8 +472,8 @@ device_t device_create(instance_t& instance, surface_t& surface)
     }
 
     device_t device = {};
-    device.m_phys_device_vk_handle = selected_physical_device;
-    device.m_device_vk_handle = logical_device;
+    device.m_phys_device_handle = selected_physical_device;
+    device.m_device_handle = logical_device;
     device.m_graphics_queue = graphics_queue;
     device.m_present_queue = present_queue;
     device.m_max_num_msaa_samples = max_num_msaa_samples;
@@ -544,7 +544,7 @@ swapchain_t swapchain_create(device_t& device, surface_t& surface, window_t& win
     VkSwapchainCreateInfoKHR create_info = {};
     create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     create_info.pNext = nullptr;
-    create_info.surface = surface.m_vk_handle;
+    create_info.surface = surface.m_handle;
     create_info.minImageCount = image_count;
     create_info.imageFormat = surface_format.format;
     create_info.imageColorSpace = surface_format.colorSpace;
@@ -575,12 +575,12 @@ swapchain_t swapchain_create(device_t& device, surface_t& surface, window_t& win
     create_info.oldSwapchain = VK_NULL_HANDLE;
 
     swapchain_t swapchain = {};
-    VULKAN_ASSERT(vkCreateSwapchainKHR(device.m_device_vk_handle, &create_info, nullptr, &swapchain.m_vk_handle));
+    VULKAN_ASSERT(vkCreateSwapchainKHR(device.m_device_handle, &create_info, nullptr, &swapchain.m_handle));
 
-    vkGetSwapchainImagesKHR(device.m_device_vk_handle, swapchain.m_vk_handle, &swapchain.m_num_images, nullptr);
+    vkGetSwapchainImagesKHR(device.m_device_handle, swapchain.m_handle, &swapchain.m_num_images, nullptr);
 
     swapchain.m_images.resize(swapchain.m_num_images);
-    vkGetSwapchainImagesKHR(device.m_device_vk_handle, swapchain.m_vk_handle, &swapchain.m_num_images, swapchain.m_images.data());
+    vkGetSwapchainImagesKHR(device.m_device_handle, swapchain.m_handle, &swapchain.m_num_images, swapchain.m_images.data());
 
     swapchain.m_format = surface_format.format;
     swapchain.m_extent = image_extent;
@@ -612,14 +612,14 @@ command_pool_t command_pool_create(device_t& device, VkQueueFlags queue_families
     }
 
     command_pool_t command_pool;
-    VULKAN_ASSERT(vkCreateCommandPool(device.m_device_vk_handle, &create_info, nullptr, &command_pool.m_vk_handle));
+    VULKAN_ASSERT(vkCreateCommandPool(device.m_device_handle, &create_info, nullptr, &command_pool.m_handle));
     return command_pool;
 }
 
 static
 void command_pool_destroy(device_t& device, command_pool_t& command_pool)
 {
-    vkDestroyCommandPool(device.m_device_vk_handle, command_pool.m_vk_handle, nullptr);
+    vkDestroyCommandPool(device.m_device_handle, command_pool.m_handle, nullptr);
 }
 
 static
@@ -627,32 +627,32 @@ void swapchain_destroy(device_t& device, swapchain_t& swapchain)
 {
     for(i32 i = 0; i < swapchain.m_num_images; i++)
     {
-        vkDestroyImageView(device.m_device_vk_handle, swapchain.m_image_views[i], nullptr);
+        vkDestroyImageView(device.m_device_handle, swapchain.m_image_views[i], nullptr);
     }
 
-    vkDestroySwapchainKHR(device.m_device_vk_handle, swapchain.m_vk_handle, nullptr);
+    vkDestroySwapchainKHR(device.m_device_handle, swapchain.m_handle, nullptr);
 }
 
 static
 void device_destroy(device_t& device)
 {
-    vkDestroyDevice(device.m_device_vk_handle, nullptr);
+    vkDestroyDevice(device.m_device_handle, nullptr);
 }
 
 static
 void surface_destroy(instance_t& instance, surface_t& surface)
 {
-    vkDestroySurfaceKHR(instance.m_vk_handle, surface.m_vk_handle, nullptr);
+    vkDestroySurfaceKHR(instance.m_handle, surface.m_handle, nullptr);
 }
 
 static
 void instance_destroy(instance_t& instance)
 {
-    if(instance.m_debug_messenger != VK_NULL_HANDLE)
+    if(instance.m_debug_messenger_handle != VK_NULL_HANDLE)
     {
-        vkDestroyDebugUtilsMessengerEXT(instance.m_vk_handle, instance.m_debug_messenger, nullptr);
+        vkDestroyDebugUtilsMessengerEXT(instance.m_handle, instance.m_debug_messenger_handle, nullptr);
     }
-    vkDestroyInstance(instance.m_vk_handle, nullptr);
+    vkDestroyInstance(instance.m_handle, nullptr);
 }
 
 context_t* context_create(window_t* window)
