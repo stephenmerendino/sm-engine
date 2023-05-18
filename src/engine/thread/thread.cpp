@@ -9,7 +9,7 @@ thread_t create_thread(thread_func_t func)
     return thread;
 }
 
-void thread_run(thread_t t)
+void thread_run(thread_t& t)
 {
 	if (t.m_is_running)
 	{

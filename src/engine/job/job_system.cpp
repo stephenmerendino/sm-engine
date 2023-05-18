@@ -1,5 +1,6 @@
 #include "engine/job/job_system.h"
 #include "engine/core/assert.h"
+#include "engine/thread/critical_section.h"
 #include "engine/thread/event.h"
 #include "engine/thread/thread.h"
 #include "engine/thread/thread_safe_queue.h"
@@ -141,6 +142,9 @@ DWORD WINAPI job_worker_thread_func(void* args)
 
 void job_system_init()
 {
+	s_shutdown_job_system_cs = critical_section_create();
+    s_num_jobs_processed_cs = critical_section_create();
+
 	// determine how many threads we need to make based on cpu, leaving 1 thread for the main thread
 	s_num_worker_threads = std::thread::hardware_concurrency() - 1;
 
@@ -157,6 +161,14 @@ void job_system_init()
 		thread_t& t = s_worker_threads[i];
         thread_run(t);
 	}
+}
+
+void job_system_shutdown()
+{
+    SCOPED_CRITICAL_SECTION(&s_shutdown_job_system_cs);
+    s_should_shutdown_job_system = true;
+
+    // TODO We need to cleanup s_shutdown_job_system_cs and s_num_jobs_processed_cs
 }
 
 job_t* job_system_create_job(job_func_t func, void* args)

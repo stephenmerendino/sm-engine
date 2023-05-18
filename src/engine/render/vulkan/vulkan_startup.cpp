@@ -4,6 +4,7 @@
 #include "engine/render/window.h"
 #include "engine/render/vulkan/vulkan_startup.h"
 #include "engine/render/vulkan/vulkan_temp.h"
+#include "engine/thirdparty/vulkan/vulkan_core.h"
 
 #include <set>
 
@@ -590,6 +591,8 @@ swapchain_t swapchain_create(device_t& device, surface_t& surface, window_t& win
     {
         swapchain.m_image_views[i] = image_view_create(device, swapchain.m_images[i], swapchain.m_format, VK_IMAGE_ASPECT_COLOR_BIT, 1);
     }
+
+    swapchain.m_image_in_flight_fences.resize(swapchain.m_num_images);
 
     return swapchain;
 }

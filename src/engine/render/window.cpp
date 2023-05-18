@@ -95,6 +95,7 @@ window_t* window_create(const char* name, u32 width, u32 height, bool resizable)
 	wc.lpfnWndProc = (WNDPROC)main_window_msg_handler;
 	wc.hInstance = ::GetModuleHandle(NULL);
 	wc.lpszClassName = WINDOW_CLASS_NAME;
+    wc.hCursor = ::LoadCursor(NULL, IDC_ARROW);
 	RegisterClassEx(&wc);
 
 	DWORD style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_VISIBLE;

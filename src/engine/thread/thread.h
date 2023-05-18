@@ -19,7 +19,7 @@ struct thread_t
 
 thread_t create_thread(thread_func_t func);
 thread_t create_and_run_thread(thread_func_t func);
-void thread_run(thread_t t);
+void thread_run(thread_t& t);
 void thread_yield();
 void thread_sleep_ms(f32 ms);
 void thread_sleep_seconds(f32 seconds);

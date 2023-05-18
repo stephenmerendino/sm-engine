@@ -262,7 +262,7 @@ std::vector<VkCommandBuffer> command_buffers_allocate(context_t& context, VkComm
     VkCommandBufferAllocateInfo alloc_info = {};
     alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     alloc_info.commandPool = context.m_graphics_command_pool.m_vk_handle;
-    alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    alloc_info.level = level;
     alloc_info.commandBufferCount = (u32)num_buffers;
 
     VULKAN_ASSERT(vkAllocateCommandBuffers(context.m_device.m_device_vk_handle, &alloc_info, buffers.data()));
@@ -819,38 +819,50 @@ void pipeline_reset(pipeline_t& pipeline)
 }
 
 static
-VkSemaphore semaphore_create(context_t& context)
+semaphore_t semaphore_create(context_t& context)
 {
     VkSemaphoreCreateInfo semaphore_create_info = {};
     semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-    VkSemaphore semaphore = VK_NULL_HANDLE;
-    VULKAN_ASSERT(vkCreateSemaphore(context.m_device.m_device_vk_handle, &semaphore_create_info, nullptr, &semaphore));
+    semaphore_t semaphore;
+    VULKAN_ASSERT(vkCreateSemaphore(context.m_device.m_device_vk_handle, &semaphore_create_info, nullptr, &semaphore.m_vk_handle));
     return semaphore;
 }
 
 static
-VkFence fence_create(context_t& context)
+fence_t fence_create(context_t& context)
 {
     VkFenceCreateInfo fence_create_info = {};
     fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-    VkFence fence = VK_NULL_HANDLE;
-    VULKAN_ASSERT(vkCreateFence(context.m_device.m_device_vk_handle, &fence_create_info, nullptr, &fence));
+    fence_t fence;
+    VULKAN_ASSERT(vkCreateFence(context.m_device.m_device_vk_handle, &fence_create_info, nullptr, &fence.m_vk_handle));
     return fence;
 }
 
-static 
-void semaphore_destroy(context_t& context, VkSemaphore semaphore)
+static
+void fence_reset(context_t& context, fence_t& fence)
 {
-    vkDestroySemaphore(context.m_device.m_device_vk_handle, semaphore, nullptr);
+    vkResetFences(context.m_device.m_device_vk_handle, 1, &fence.m_vk_handle);
+}
+
+static
+void fence_wait(context_t& context, fence_t& fence, u64 timeout = UINT64_MAX)
+{
+    vkWaitForFences(context.m_device.m_device_vk_handle, 1, &fence.m_vk_handle, VK_TRUE, UINT64_MAX); 
 }
 
 static 
-void fence_destroy(context_t& context, VkFence fence)
+void semaphore_destroy(context_t& context, semaphore_t& semaphore)
 {
-    vkDestroyFence(context.m_device.m_device_vk_handle, fence, nullptr);
+    vkDestroySemaphore(context.m_device.m_device_vk_handle, semaphore.m_vk_handle, nullptr);
+}
+
+static 
+void fence_destroy(context_t& context, fence_t& fence)
+{
+    vkDestroyFence(context.m_device.m_device_vk_handle, fence.m_vk_handle, nullptr);
 }
 
 static mesh_t* s_viking_room_mesh = nullptr;
@@ -877,9 +889,9 @@ std::vector<VkDescriptorSet> s_descriptor_sets;
 
 static std::vector<VkCommandBuffer> s_command_buffers;
 
-static std::vector<VkSemaphore> s_image_available_semaphores;
-static std::vector<VkSemaphore> s_render_finished_semaphores;
-static std::vector<VkFence> s_frame_finished_fences;
+//static std::vector<VkSemaphore> s_image_available_semaphores;
+//static std::vector<VkSemaphore> s_render_finished_semaphores;
+//static std::vector<VkFence> s_frame_finished_fences;
 static std::vector<VkFence> s_swapchain_images_in_flight;
 
 static
@@ -901,8 +913,8 @@ void renderer_init_resources(context_t& context)
 	}
 
     // render pass
-        // subpass
-        subpass_t subpass;
+    // subpass
+    subpass_t subpass;
     {
         // attachments
         VkAttachmentDescription color_target_desc = setup_attachment_desc(context.m_swapchain.m_format, context.m_device.m_max_num_msaa_samples, 
@@ -1140,153 +1152,128 @@ void renderer_init_resources(context_t& context)
         // Viking Room
         {
             pipeline_reset(s_viking_room_pipeline);
-            //VulkanPipelineFactory pipelineMaker(m_pDevice);
 
-            //pipelineMaker.SetVsPs("Shaders/tri-vert.spv", "main", "Shaders/tri-frag.spv", "main");
-                VkShaderModule vert_shader = shader_module_create(context, "shaders/tri-vert.spv");
-                VkShaderModule frag_shader = shader_module_create(context, "shaders/tri-frag.spv");
+            // shaders
+            VkShaderModule vert_shader = shader_module_create(context, "shaders/tri-vert.spv");
+            VkShaderModule frag_shader = shader_module_create(context, "shaders/tri-frag.spv");
 
-                VkPipelineShaderStageCreateInfo vert_shader_stage_create_info = {};
-                vert_shader_stage_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-                vert_shader_stage_create_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
-                vert_shader_stage_create_info.module = vert_shader;
-                vert_shader_stage_create_info.pName = "main";
+            VkPipelineShaderStageCreateInfo vert_shader_stage_create_info = {};
+            vert_shader_stage_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            vert_shader_stage_create_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
+            vert_shader_stage_create_info.module = vert_shader;
+            vert_shader_stage_create_info.pName = "main";
 
-                VkPipelineShaderStageCreateInfo frag_shader_stage_create_info = {};
-                frag_shader_stage_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-                frag_shader_stage_create_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-                frag_shader_stage_create_info.module = frag_shader;
-                frag_shader_stage_create_info.pName = "main";
+            VkPipelineShaderStageCreateInfo frag_shader_stage_create_info = {};
+            frag_shader_stage_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            frag_shader_stage_create_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+            frag_shader_stage_create_info.module = frag_shader;
+            frag_shader_stage_create_info.pName = "main";
 
             s_viking_room_pipeline.m_shaders.push_back(vert_shader);
             s_viking_room_pipeline.m_shaders.push_back(frag_shader);
             s_viking_room_pipeline.m_shader_stage_infos.push_back(vert_shader_stage_create_info);
             s_viking_room_pipeline.m_shader_stage_infos.push_back(frag_shader_stage_create_info);
 
-            //pipelineMaker.SetVertexInput(m_pVikingRoomMesh, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-                VkPipelineInputAssemblyStateCreateInfo input_assembly_info = {};
-                input_assembly_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-                input_assembly_info.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-                input_assembly_info.primitiveRestartEnable = VK_FALSE;
-
+            // vertex input
+            VkPipelineInputAssemblyStateCreateInfo input_assembly_info = {};
+            input_assembly_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+            input_assembly_info.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+            input_assembly_info.primitiveRestartEnable = VK_FALSE;
             s_viking_room_pipeline.m_input_assembly_info = input_assembly_info;
 
-            //void VulkanPipelineFactory::SetViewportAndScissor(U32 viewportX, U32 viewportY, U32 width, U32 height, F32 minDepth, F32 maxDepth, I32 scissorOffsetX, I32 scissorOffsetY, U32 scissorWidth, U32 scissorHeight)
-            //SetViewportAndScissor(0, 0, width, height, 0.0f, 1.0f, 0, 0, width, height);
-            //pipelineMaker.SetViewportAndScissor(m_pSwapchain->GetWidth(), m_pSwapchain->GetHeight());
-                VkViewport viewport;
-                VkRect2D scissor;
-                viewport.x = 0.0f;
-                viewport.y = 0.0f;
-                viewport.width = context.m_swapchain.m_extent.width;
-                viewport.height = context.m_swapchain.m_extent.height;
-                viewport.minDepth = 0.0f;
-                viewport.maxDepth = 1.0f;
-                scissor.offset = { 0, 0};
-                scissor.extent = context.m_swapchain.m_extent;
-
+            // viewport and scissor
+            VkViewport viewport;
+            VkRect2D scissor;
+            viewport.x = 0.0f;
+            viewport.y = 0.0f;
+            viewport.width = context.m_swapchain.m_extent.width;
+            viewport.height = context.m_swapchain.m_extent.height;
+            viewport.minDepth = 0.0f;
+            viewport.maxDepth = 1.0f;
+            scissor.offset = { 0, 0};
+            scissor.extent = context.m_swapchain.m_extent;
             s_viking_room_pipeline.m_viewport = viewport;
             s_viking_room_pipeline.m_scissor = scissor;
 
-            //void SetRasterizer(VkPolygonMode polygonMode, VkCullModeFlags cullMode, VkFrontFace frontFace, bool depthClampEnable = false, bool rasterizerDiscardEnable = false,
-            //                   F32 lineWidth = 1.0f, bool depthBiasEnable = false, F32 depthBiasConstantFactor = 0.0f, F32 depthBiasClamp = 0.0f, F32 depthBiasSlopeFactor = 0.0f);
-            //pipelineMaker.SetRasterizer(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
-                VkPipelineRasterizationStateCreateInfo raster_info = {};
-                raster_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-                raster_info.depthClampEnable = VK_FALSE;
-                raster_info.rasterizerDiscardEnable = VK_FALSE;
-                raster_info.polygonMode = VK_POLYGON_MODE_FILL;
-                raster_info.lineWidth = 1.0f;
-                raster_info.cullMode = VK_CULL_MODE_BACK_BIT;
-                raster_info.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-                raster_info.depthBiasEnable = VK_FALSE;
-                raster_info.depthBiasConstantFactor = 0.0f;
-                raster_info.depthBiasClamp = 0.0f;
-                raster_info.depthBiasSlopeFactor = 0.0f;
-
+            // rasterizer
+            VkPipelineRasterizationStateCreateInfo raster_info = {};
+            raster_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+            raster_info.depthClampEnable = VK_FALSE;
+            raster_info.rasterizerDiscardEnable = VK_FALSE;
+            raster_info.polygonMode = VK_POLYGON_MODE_FILL;
+            raster_info.lineWidth = 1.0f;
+            raster_info.cullMode = VK_CULL_MODE_BACK_BIT;
+            raster_info.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+            raster_info.depthBiasEnable = VK_FALSE;
+            raster_info.depthBiasConstantFactor = 0.0f;
+            raster_info.depthBiasClamp = 0.0f;
+            raster_info.depthBiasSlopeFactor = 0.0f;
             s_viking_room_pipeline.m_raster_info = raster_info;
 
-            //void SetMultisampling(VkSampleCountFlagBits sampleCount, bool sampleShadingEnable = false, F32 minSampleShading = 1.0f, bool alphaToCoverageEnable = false, bool alphaToOneEnable = false);
-            //pipelineMaker.SetMultisampling(m_pDevice->GetMaxMsaaSampleCount());
-                VkPipelineMultisampleStateCreateInfo multisample_info = {};
-                multisample_info.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-                multisample_info.sampleShadingEnable = VK_FALSE;
-                multisample_info.rasterizationSamples = context.m_device.m_max_num_msaa_samples;
-                multisample_info.minSampleShading = 1.0f;
-                multisample_info.pSampleMask = nullptr;
-                multisample_info.alphaToCoverageEnable = VK_FALSE;
-                multisample_info.alphaToOneEnable = VK_FALSE;
-
+            // multisampling
+            VkPipelineMultisampleStateCreateInfo multisample_info = {};
+            multisample_info.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+            multisample_info.sampleShadingEnable = VK_FALSE;
+            multisample_info.rasterizationSamples = context.m_device.m_max_num_msaa_samples;
+            multisample_info.minSampleShading = 1.0f;
+            multisample_info.pSampleMask = nullptr;
+            multisample_info.alphaToCoverageEnable = VK_FALSE;
+            multisample_info.alphaToOneEnable = VK_FALSE;
             s_viking_room_pipeline.m_multisample_info = multisample_info;
 
-            //void VulkanPipelineFactory::SetDepthStencil(bool depthTestEnable, bool depthWriteEnable, VkCompareOp compareOp, bool depthBoundsTestEnable, F32 minDepthBounds, F32 maxDepthBounds)
-            //pipelineMaker.SetDepthStencil(true, true, VK_COMPARE_OP_LESS, false, 0.0f, 1.0f);
-                VkPipelineDepthStencilStateCreateInfo depth_stencil_info = {};
-                depth_stencil_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-                depth_stencil_info.depthTestEnable = VK_TRUE;
-                depth_stencil_info.depthWriteEnable = VK_TRUE;
-                depth_stencil_info.depthCompareOp = VK_COMPARE_OP_LESS;
-                depth_stencil_info.depthBoundsTestEnable = VK_FALSE;
-                depth_stencil_info.minDepthBounds = 0.0f;
-                depth_stencil_info.maxDepthBounds = 1.0f;
-
-                depth_stencil_info.stencilTestEnable = VK_FALSE;
-                depth_stencil_info.front = {};
-                depth_stencil_info.back = {};
-
+            // depth stencil
+            VkPipelineDepthStencilStateCreateInfo depth_stencil_info = {};
+            depth_stencil_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+            depth_stencil_info.depthTestEnable = VK_TRUE;
+            depth_stencil_info.depthWriteEnable = VK_TRUE;
+            depth_stencil_info.depthCompareOp = VK_COMPARE_OP_LESS;
+            depth_stencil_info.depthBoundsTestEnable = VK_FALSE;
+            depth_stencil_info.minDepthBounds = 0.0f;
+            depth_stencil_info.maxDepthBounds = 1.0f;
+            depth_stencil_info.stencilTestEnable = VK_FALSE;
+            depth_stencil_info.front = {};
+            depth_stencil_info.back = {};
             s_viking_room_pipeline.m_depth_stencil_info = depth_stencil_info;
             
-            //void VulkanPipelineColorBlendAttachments::Add(VkColorComponentFlags colorWriteMask, bool blendEnable, 
-            //            VkBlendFactor srcColorBlendFactor, VkBlendFactor dstColorBlendFactor, VkBlendOp colorBlendOp, 
-            //            VkBlendFactor srcAlphaBlendFactor, VkBlendFactor dstAlphaBlendFactor, VkBlendOp alphaBlendOp)
-            //colorBlendAttachments.Add(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, false,
-            //                          VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD,
-            //                          VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
-                VkPipelineColorBlendAttachmentState color_blend_attachment = {};
-                color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-                color_blend_attachment.blendEnable = VK_FALSE;
-                color_blend_attachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-                color_blend_attachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-                color_blend_attachment.colorBlendOp = VK_BLEND_OP_ADD;
-                color_blend_attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-                color_blend_attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-                color_blend_attachment.alphaBlendOp = VK_BLEND_OP_ADD;
-
+            // color blend attachments
+            VkPipelineColorBlendAttachmentState color_blend_attachment = {};
+            color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+            color_blend_attachment.blendEnable = VK_FALSE;
+            color_blend_attachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+            color_blend_attachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+            color_blend_attachment.colorBlendOp = VK_BLEND_OP_ADD;
+            color_blend_attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+            color_blend_attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+            color_blend_attachment.alphaBlendOp = VK_BLEND_OP_ADD;
             s_viking_room_pipeline.m_color_blend_attachments.push_back(color_blend_attachment);
 
-            //void VulkanPipelineFactory::SetBlend(const VulkanPipelineColorBlendAttachments& colorBlendAttachments, bool logicOpEnable, VkLogicOp logicOp, F32 blendConstant0, F32 blendConstant1, F32 blendConstant2, F32 blendConstant3)
-            //pipelineMaker.SetBlend(colorBlendAttachments, false, VK_LOGIC_OP_COPY, 0.0f, 0.0f, 0.0f, 0.0f);
-                VkPipelineColorBlendStateCreateInfo color_blend_info = {};
-                color_blend_info.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-                color_blend_info.logicOpEnable = VK_FALSE;
-                color_blend_info.logicOp = VK_LOGIC_OP_COPY;
-                color_blend_info.blendConstants[0] = 0.0f;
-                color_blend_info.blendConstants[1] = 0.0f;
-                color_blend_info.blendConstants[2] = 0.0f;
-                color_blend_info.blendConstants[3] = 0.0f;
-                color_blend_info.attachmentCount = (u32)s_viking_room_pipeline.m_color_blend_attachments.size();
-                color_blend_info.pAttachments = s_viking_room_pipeline.m_color_blend_attachments.data();
-
+            // color blend
+            VkPipelineColorBlendStateCreateInfo color_blend_info = {};
+            color_blend_info.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+            color_blend_info.logicOpEnable = VK_FALSE;
+            color_blend_info.logicOp = VK_LOGIC_OP_COPY;
+            color_blend_info.blendConstants[0] = 0.0f;
+            color_blend_info.blendConstants[1] = 0.0f;
+            color_blend_info.blendConstants[2] = 0.0f;
+            color_blend_info.blendConstants[3] = 0.0f;
+            color_blend_info.attachmentCount = (u32)s_viking_room_pipeline.m_color_blend_attachments.size();
+            color_blend_info.pAttachments = s_viking_room_pipeline.m_color_blend_attachments.data();
             s_viking_room_pipeline.m_color_blend_info = color_blend_info;
 
-            //pipelineMaker.SetPipelineLayout(descriptorSetLayouts);
-                std::vector<VkDescriptorSetLayout> descriptor_set_layouts = { s_descriptor_set_layout };
-                VkPipelineLayoutCreateInfo layout_info = {};
-                layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-                layout_info.setLayoutCount = (u32)descriptor_set_layouts.size();
-                layout_info.pSetLayouts = descriptor_set_layouts.data();
-                layout_info.pushConstantRangeCount = 0;
-                layout_info.pPushConstantRanges = nullptr;
-
+            // pipeline layout
+            std::vector<VkDescriptorSetLayout> descriptor_set_layouts = { s_descriptor_set_layout };
+            VkPipelineLayoutCreateInfo layout_info = {};
+            layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            layout_info.setLayoutCount = (u32)descriptor_set_layouts.size();
+            layout_info.pSetLayouts = descriptor_set_layouts.data();
+            layout_info.pushConstantRangeCount = 0;
+            layout_info.pPushConstantRanges = nullptr;
             s_viking_room_pipeline.m_pipeline_layout_info = layout_info;
-
-            //m_pVikingRoomPipeline = pipelineMaker.CreatePipeline(m_pRenderPass, 0);
             VULKAN_ASSERT(vkCreatePipelineLayout(context.m_device.m_device_vk_handle, &s_viking_room_pipeline.m_pipeline_layout_info, nullptr, &s_viking_room_pipeline.m_pipeline_layout_vk_handle));
 
+            // vertex input
             std::vector<VkVertexInputBindingDescription> input_binding_descs = mesh_get_vertex_input_binding_descs(s_viking_room_renderable_mesh.m_mesh);
             std::vector<VkVertexInputAttributeDescription> input_attr_descs = mesh_get_vertex_input_attr_descs(s_viking_room_renderable_mesh.m_mesh);
-
-            // vertex input
             VkPipelineVertexInputStateCreateInfo vertex_input_info = {};
             vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
             vertex_input_info.vertexBindingDescriptionCount = (u32)input_binding_descs.size();
@@ -1302,6 +1289,7 @@ void renderer_init_resources(context_t& context)
             viewport_state_info.pScissors = &s_viking_room_pipeline.m_scissor;
             viewport_state_info.scissorCount = 1;
 
+            // pipeline
             VkGraphicsPipelineCreateInfo pipeline_info = {};
             pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
             pipeline_info.stageCount = (u32)s_viking_room_pipeline.m_shader_stage_infos.size();
@@ -1334,142 +1322,127 @@ void renderer_init_resources(context_t& context)
             //pipelineMaker.Reset();
             pipeline_reset(s_world_axes_pipeline);
 
-            //pipelineMaker.SetVsPs("Shaders/simple-color-vert.spv", "main", "Shaders/simple-color-frag.spv", "main");
-                VkShaderModule vert_shader = shader_module_create(context, "shaders/simple-color-vert.spv");
-                VkShaderModule frag_shader = shader_module_create(context, "shaders/simple-color-frag.spv");
+            // shaders
+            VkShaderModule vert_shader = shader_module_create(context, "shaders/simple-color-vert.spv");
+            VkShaderModule frag_shader = shader_module_create(context, "shaders/simple-color-frag.spv");
 
-                VkPipelineShaderStageCreateInfo vert_shader_stage_create_info = {};
-                vert_shader_stage_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-                vert_shader_stage_create_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
-                vert_shader_stage_create_info.module = vert_shader;
-                vert_shader_stage_create_info.pName = "main";
+            VkPipelineShaderStageCreateInfo vert_shader_stage_create_info = {};
+            vert_shader_stage_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            vert_shader_stage_create_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
+            vert_shader_stage_create_info.module = vert_shader;
+            vert_shader_stage_create_info.pName = "main";
 
-                VkPipelineShaderStageCreateInfo frag_shader_stage_create_info = {};
-                frag_shader_stage_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-                frag_shader_stage_create_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-                frag_shader_stage_create_info.module = frag_shader;
-                frag_shader_stage_create_info.pName = "main";
+            VkPipelineShaderStageCreateInfo frag_shader_stage_create_info = {};
+            frag_shader_stage_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            frag_shader_stage_create_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+            frag_shader_stage_create_info.module = frag_shader;
+            frag_shader_stage_create_info.pName = "main";
 
             s_world_axes_pipeline.m_shaders.push_back(vert_shader);
             s_world_axes_pipeline.m_shaders.push_back(frag_shader);
             s_world_axes_pipeline.m_shader_stage_infos.push_back(vert_shader_stage_create_info);
             s_world_axes_pipeline.m_shader_stage_infos.push_back(frag_shader_stage_create_info);
 
-            //pipelineMaker.SetVertexInput(m_pWorldAxesMesh, VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
-                VkPipelineInputAssemblyStateCreateInfo input_assembly_info = {};
-                input_assembly_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-                input_assembly_info.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-                input_assembly_info.primitiveRestartEnable = VK_FALSE;
-
+            // vertex input
+            VkPipelineInputAssemblyStateCreateInfo input_assembly_info = {};
+            input_assembly_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+            input_assembly_info.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+            input_assembly_info.primitiveRestartEnable = VK_FALSE;
             s_world_axes_pipeline.m_input_assembly_info = input_assembly_info;
 
-            //pipelineMaker.SetViewportAndScissor(m_pSwapchain->GetWidth(), m_pSwapchain->GetHeight());
-                VkViewport viewport;
-                VkRect2D scissor;
-                viewport.x = 0.0f;
-                viewport.y = 0.0f;
-                viewport.width = context.m_swapchain.m_extent.width;
-                viewport.height = context.m_swapchain.m_extent.height;
-                viewport.minDepth = 0.0f;
-                viewport.maxDepth = 1.0f;
-                scissor.offset = { 0, 0};
-                scissor.extent = context.m_swapchain.m_extent;
-
+            // viewport and scissor
+            VkViewport viewport;
+            VkRect2D scissor;
+            viewport.x = 0.0f;
+            viewport.y = 0.0f;
+            viewport.width = context.m_swapchain.m_extent.width;
+            viewport.height = context.m_swapchain.m_extent.height;
+            viewport.minDepth = 0.0f;
+            viewport.maxDepth = 1.0f;
+            scissor.offset = { 0, 0};
+            scissor.extent = context.m_swapchain.m_extent;
             s_world_axes_pipeline.m_viewport = viewport;
             s_world_axes_pipeline.m_scissor = scissor;
 
-            //pipelineMaker.SetRasterizer(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
-                VkPipelineRasterizationStateCreateInfo raster_info = {};
-                raster_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-                raster_info.depthClampEnable = VK_FALSE;
-                raster_info.rasterizerDiscardEnable = VK_FALSE;
-                raster_info.polygonMode = VK_POLYGON_MODE_FILL;
-                raster_info.lineWidth = 1.0f;
-                raster_info.cullMode = VK_CULL_MODE_BACK_BIT;
-                raster_info.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-                raster_info.depthBiasEnable = VK_FALSE;
-                raster_info.depthBiasConstantFactor = 0.0f;
-                raster_info.depthBiasClamp = 0.0f;
-                raster_info.depthBiasSlopeFactor = 0.0f;
-
+            // rasterizer
+            VkPipelineRasterizationStateCreateInfo raster_info = {};
+            raster_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+            raster_info.depthClampEnable = VK_FALSE;
+            raster_info.rasterizerDiscardEnable = VK_FALSE;
+            raster_info.polygonMode = VK_POLYGON_MODE_FILL;
+            raster_info.lineWidth = 1.0f;
+            raster_info.cullMode = VK_CULL_MODE_BACK_BIT;
+            raster_info.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+            raster_info.depthBiasEnable = VK_FALSE;
+            raster_info.depthBiasConstantFactor = 0.0f;
+            raster_info.depthBiasClamp = 0.0f;
+            raster_info.depthBiasSlopeFactor = 0.0f;
             s_world_axes_pipeline.m_raster_info = raster_info;
 
-            //pipelineMaker.SetMultisampling(m_pDevice->GetMaxMsaaSampleCount());
-                VkPipelineMultisampleStateCreateInfo multisample_info = {};
-                multisample_info.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-                multisample_info.sampleShadingEnable = VK_FALSE;
-                multisample_info.rasterizationSamples = context.m_device.m_max_num_msaa_samples;
-                multisample_info.minSampleShading = 1.0f;
-                multisample_info.pSampleMask = nullptr;
-                multisample_info.alphaToCoverageEnable = VK_FALSE;
-                multisample_info.alphaToOneEnable = VK_FALSE;
-
+            // multisampling
+            VkPipelineMultisampleStateCreateInfo multisample_info = {};
+            multisample_info.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+            multisample_info.sampleShadingEnable = VK_FALSE;
+            multisample_info.rasterizationSamples = context.m_device.m_max_num_msaa_samples;
+            multisample_info.minSampleShading = 1.0f;
+            multisample_info.pSampleMask = nullptr;
+            multisample_info.alphaToCoverageEnable = VK_FALSE;
+            multisample_info.alphaToOneEnable = VK_FALSE;
             s_world_axes_pipeline.m_multisample_info = multisample_info;
 
-            //pipelineMaker.SetDepthStencil(true, true, VK_COMPARE_OP_LESS, false, 0.0f, 1.0f);
-                VkPipelineDepthStencilStateCreateInfo depth_stencil_info = {};
-                depth_stencil_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-                depth_stencil_info.depthTestEnable = VK_TRUE;
-                depth_stencil_info.depthWriteEnable = VK_TRUE;
-                depth_stencil_info.depthCompareOp = VK_COMPARE_OP_LESS;
-                depth_stencil_info.depthBoundsTestEnable = VK_FALSE;
-                depth_stencil_info.minDepthBounds = 0.0f;
-                depth_stencil_info.maxDepthBounds = 1.0f;
-
-                depth_stencil_info.stencilTestEnable = VK_FALSE;
-                depth_stencil_info.front = {};
-                depth_stencil_info.back = {};
-
+            // depth stencil
+            VkPipelineDepthStencilStateCreateInfo depth_stencil_info = {};
+            depth_stencil_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+            depth_stencil_info.depthTestEnable = VK_TRUE;
+            depth_stencil_info.depthWriteEnable = VK_TRUE;
+            depth_stencil_info.depthCompareOp = VK_COMPARE_OP_LESS;
+            depth_stencil_info.depthBoundsTestEnable = VK_FALSE;
+            depth_stencil_info.minDepthBounds = 0.0f;
+            depth_stencil_info.maxDepthBounds = 1.0f;
+            depth_stencil_info.stencilTestEnable = VK_FALSE;
+            depth_stencil_info.front = {};
+            depth_stencil_info.back = {};
             s_world_axes_pipeline.m_depth_stencil_info = depth_stencil_info;
 
-            //colorBlendAttachments.Reset();
-            //colorBlendAttachments.Add(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, false,
-            //                          VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD,
-            //                          VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
-                VkPipelineColorBlendAttachmentState color_blend_attachment = {};
-                color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-                color_blend_attachment.blendEnable = VK_FALSE;
-                color_blend_attachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-                color_blend_attachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-                color_blend_attachment.colorBlendOp = VK_BLEND_OP_ADD;
-                color_blend_attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-                color_blend_attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-                color_blend_attachment.alphaBlendOp = VK_BLEND_OP_ADD;
-
+            // color blend attachments
+            VkPipelineColorBlendAttachmentState color_blend_attachment = {};
+            color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+            color_blend_attachment.blendEnable = VK_FALSE;
+            color_blend_attachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+            color_blend_attachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+            color_blend_attachment.colorBlendOp = VK_BLEND_OP_ADD;
+            color_blend_attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+            color_blend_attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+            color_blend_attachment.alphaBlendOp = VK_BLEND_OP_ADD;
             s_world_axes_pipeline.m_color_blend_attachments.push_back(color_blend_attachment);
 
-            //pipelineMaker.SetBlend(colorBlendAttachments, false, VK_LOGIC_OP_COPY, 0.0f, 0.0f, 0.0f, 0.0f);
-                VkPipelineColorBlendStateCreateInfo color_blend_info = {};
-                color_blend_info.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-                color_blend_info.logicOpEnable = VK_FALSE;
-                color_blend_info.logicOp = VK_LOGIC_OP_COPY;
-                color_blend_info.blendConstants[0] = 0.0f;
-                color_blend_info.blendConstants[1] = 0.0f;
-                color_blend_info.blendConstants[2] = 0.0f;
-                color_blend_info.blendConstants[3] = 0.0f;
-                color_blend_info.attachmentCount = (u32)s_world_axes_pipeline.m_color_blend_attachments.size();
-                color_blend_info.pAttachments = s_world_axes_pipeline.m_color_blend_attachments.data();
-
+            // color blend
+            VkPipelineColorBlendStateCreateInfo color_blend_info = {};
+            color_blend_info.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+            color_blend_info.logicOpEnable = VK_FALSE;
+            color_blend_info.logicOp = VK_LOGIC_OP_COPY;
+            color_blend_info.blendConstants[0] = 0.0f;
+            color_blend_info.blendConstants[1] = 0.0f;
+            color_blend_info.blendConstants[2] = 0.0f;
+            color_blend_info.blendConstants[3] = 0.0f;
+            color_blend_info.attachmentCount = (u32)s_world_axes_pipeline.m_color_blend_attachments.size();
+            color_blend_info.pAttachments = s_world_axes_pipeline.m_color_blend_attachments.data();
             s_world_axes_pipeline.m_color_blend_info = color_blend_info;
 
-            //pipelineMaker.SetPipelineLayout(descriptorSetLayouts);
-                std::vector<VkDescriptorSetLayout> descriptor_set_layouts = { s_descriptor_set_layout };
-                VkPipelineLayoutCreateInfo layout_info = {};
-                layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-                layout_info.setLayoutCount = (u32)descriptor_set_layouts.size();
-                layout_info.pSetLayouts = descriptor_set_layouts.data();
-                layout_info.pushConstantRangeCount = 0;
-                layout_info.pPushConstantRanges = nullptr;
-
+            // pipeline layout
+            std::vector<VkDescriptorSetLayout> descriptor_set_layouts = { s_descriptor_set_layout };
+            VkPipelineLayoutCreateInfo layout_info = {};
+            layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            layout_info.setLayoutCount = (u32)descriptor_set_layouts.size();
+            layout_info.pSetLayouts = descriptor_set_layouts.data();
+            layout_info.pushConstantRangeCount = 0;
+            layout_info.pPushConstantRanges = nullptr;
             s_world_axes_pipeline.m_pipeline_layout_info = layout_info;
-
-            //m_pWorldAxesPipeline = pipelineMaker.CreatePipeline(m_pRenderPass, 0);
             VULKAN_ASSERT(vkCreatePipelineLayout(context.m_device.m_device_vk_handle, &s_world_axes_pipeline.m_pipeline_layout_info, nullptr, &s_world_axes_pipeline.m_pipeline_layout_vk_handle));
 
+            // vertex input
             std::vector<VkVertexInputBindingDescription> input_binding_descs = mesh_get_vertex_input_binding_descs(s_world_axes_renderable_mesh.m_mesh);
             std::vector<VkVertexInputAttributeDescription> input_attr_descs = mesh_get_vertex_input_attr_descs(s_world_axes_renderable_mesh.m_mesh);
-
-            // vertex input
             VkPipelineVertexInputStateCreateInfo vertex_input_info = {};
             vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
             vertex_input_info.vertexBindingDescriptionCount = (u32)input_binding_descs.size();
@@ -1485,6 +1458,7 @@ void renderer_init_resources(context_t& context)
             viewport_state_info.pScissors = &s_world_axes_pipeline.m_scissor;
             viewport_state_info.scissorCount = 1;
 
+            // pipeline
             VkGraphicsPipelineCreateInfo pipeline_info = {};
             pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
             pipeline_info.stageCount = (u32)s_world_axes_pipeline.m_shader_stage_infos.size();
@@ -1515,41 +1489,36 @@ void renderer_init_resources(context_t& context)
 
     // command buffers
     {
-        //m_vkCommandBuffers = m_pGraphicsCommandPool->AllocateCommandBuffers(VK_COMMAND_BUFFER_LEVEL_PRIMARY, m_pSwapchain->GetNumImages());
         s_command_buffers = command_buffers_allocate(context, VK_COMMAND_BUFFER_LEVEL_PRIMARY, context.m_swapchain.m_num_images);
 
         for (i32 i = 0; i < (i32)s_command_buffers.size(); i++)
         {
-            //VulkanCommands::BeginCommandBuffer(m_vkCommandBuffers[i]);
             command_buffer_begin(s_command_buffers[i]);
-            
-            VkOffset2D offset{ 0, 0 };
+                VkOffset2D offset{ 0, 0 };
 
-            VkClearValue color_target_clear;
-            color_target_clear.color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+                VkClearValue color_target_clear;
+                color_target_clear.color = {{0.0f, 0.0f, 0.0f, 1.0f}};
 
-            VkClearValue depth_target_clear;
-            depth_target_clear.depthStencil = {1.0f, 0};
+                VkClearValue depth_target_clear;
+                depth_target_clear.depthStencil = {1.0f, 0};
 
-            std::vector<VkClearValue> clear_colors;
-            clear_colors.push_back(color_target_clear);
-            clear_colors.push_back(depth_target_clear);
+                std::vector<VkClearValue> clear_colors;
+                clear_colors.push_back(color_target_clear);
+                clear_colors.push_back(depth_target_clear);
 
-            command_buffer_begin_render_pass(s_command_buffers[i], s_render_pass.m_vk_handle, s_framebuffers[i].m_vk_handle, offset, context.m_swapchain.m_extent, clear_colors);
-            {
-                // Normal draw
-                {
-                    std::vector<VkDescriptorSet> draw_descriptor_sets = { s_descriptor_sets[i] };
-                    draw_renderable_mesh(s_viking_room_renderable_mesh, s_viking_room_pipeline, s_command_buffers[i], draw_descriptor_sets);
-                }
-                 
-                // World Axes
-                {
-                    std::vector<VkDescriptorSet> draw_descriptor_sets = { s_descriptor_sets[i] };
-                    draw_renderable_mesh(s_world_axes_renderable_mesh, s_world_axes_pipeline, s_command_buffers[i], draw_descriptor_sets);
-                }
-            }
-            command_buffer_end_render_pass(s_command_buffers[i]);
+                command_buffer_begin_render_pass(s_command_buffers[i], s_render_pass.m_vk_handle, s_framebuffers[i].m_vk_handle, offset, context.m_swapchain.m_extent, clear_colors);
+                    // Normal draw
+                    {
+                        std::vector<VkDescriptorSet> draw_descriptor_sets = { s_descriptor_sets[i] };
+                        draw_renderable_mesh(s_viking_room_renderable_mesh, s_viking_room_pipeline, s_command_buffers[i], draw_descriptor_sets);
+                    }
+                     
+                    // World Axes
+                    {
+                        std::vector<VkDescriptorSet> draw_descriptor_sets = { s_descriptor_sets[i] };
+                        draw_renderable_mesh(s_world_axes_renderable_mesh, s_world_axes_pipeline, s_command_buffers[i], draw_descriptor_sets);
+                    }
+                command_buffer_end_render_pass(s_command_buffers[i]);
             command_buffer_end(s_command_buffers[i]);
         }
     }
@@ -1619,15 +1588,41 @@ void update_uniform_buffer(context_t& context, camera_t& camera, u32 current_ima
     buffer_update_data(context, s_uniform_buffers[current_image], &ubo);
 }
 
-static u32 m_cur_frame = 0;
+static u32 s_cur_frame = 0;
 static context_t* s_context;
 static camera_t* s_camera = nullptr;
+
+frame_t frame_create(context_t& context)
+{
+    frame_t frame;
+    frame.m_swap_chain_image_index = -1;
+    frame.m_image_available_semaphore = semaphore_create(context);
+    frame.m_render_finished_semaphore = semaphore_create(context);
+    frame.m_frame_completed_fence = fence_create(context);
+    return frame;
+}
+
+void frame_destroy(context_t& context, frame_t& frame)
+{
+    semaphore_destroy(context, frame.m_image_available_semaphore);
+    semaphore_destroy(context, frame.m_render_finished_semaphore);
+    fence_destroy(context, frame.m_frame_completed_fence);
+}
+
+std::vector<frame_t> s_in_flight_frames;
 
 void renderer_init(window_t* app_window)
 {
     ASSERT(nullptr != app_window);
 
     s_context = context_create(app_window);
+
+    // frames
+    s_in_flight_frames.resize(MAX_NUM_FRAMES_IN_FLIGHT);
+    for (i32 i = 0; i < MAX_NUM_FRAMES_IN_FLIGHT; i++)
+    {
+        s_in_flight_frames[i] = frame_create(*s_context);
+    }
 
     // meshes
     s_viking_room_mesh = mesh_load_from_obj("models/viking_room.obj");
@@ -1641,19 +1636,6 @@ void renderer_init(window_t* app_window)
     s_viking_room_sampler = sampler_create(*s_context, s_viking_room_texture.m_num_mips);
 
     renderer_init_resources(*s_context);
-
-    // sync objects
-    s_image_available_semaphores.resize(MAX_NUM_FRAMES_IN_FLIGHT);
-    s_render_finished_semaphores.resize(MAX_NUM_FRAMES_IN_FLIGHT);
-    s_frame_finished_fences.resize(MAX_NUM_FRAMES_IN_FLIGHT);
-    s_swapchain_images_in_flight.resize(s_context->m_swapchain.m_num_images, VK_NULL_HANDLE);
-
-    for (i32 i = 0; i < MAX_NUM_FRAMES_IN_FLIGHT; i++)
-    {
-        s_image_available_semaphores[i] = semaphore_create(*s_context);
-        s_render_finished_semaphores[i] = semaphore_create(*s_context);
-        s_frame_finished_fences[i] = fence_create(*s_context);
-    }
 }
 
 void renderer_set_main_camera(camera_t* camera)
@@ -1662,15 +1644,47 @@ void renderer_set_main_camera(camera_t* camera)
     s_camera = camera;
 }
 
+static
+VkResult frame_acquire_next_image(context_t& context, frame_t& frame)
+{
+	// Acquire an image from the swap chain
+	VkResult res = vkAcquireNextImageKHR(context.m_device.m_device_vk_handle, 
+                                         context.m_swapchain.m_vk_handle, 
+                                         UINT64_MAX, 
+                                         frame.m_image_available_semaphore.m_vk_handle, 
+                                         VK_NULL_HANDLE, 
+                                         &frame.m_swap_chain_image_index);
+    return res; 
+}
+
+static
+VkResult frame_present(context_t& context, frame_t& frame)
+{
+	VkSemaphore signal_semaphores[] = { frame.m_render_finished_semaphore.m_vk_handle };
+
+	VkPresentInfoKHR present_info = {};
+	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	present_info.waitSemaphoreCount = 1;
+	present_info.pWaitSemaphores = signal_semaphores;
+	VkSwapchainKHR swapchains[] = { context.m_swapchain.m_vk_handle };
+	present_info.swapchainCount = 1;
+	present_info.pSwapchains = swapchains;
+	present_info.pImageIndices = &frame.m_swap_chain_image_index;
+	present_info.pResults = nullptr;
+
+	VkResult res = vkQueuePresentKHR(context.m_device.m_graphics_queue, &present_info);
+    return res;
+}
+
 void renderer_render_frame()
 {
+    frame_t& frame = s_in_flight_frames[s_cur_frame];
+
 	// Wait for previous frame to finish, this blocks on CPU
-	vkWaitForFences(s_context->m_device.m_device_vk_handle, 1, &s_frame_finished_fences[m_cur_frame], VK_TRUE, UINT64_MAX);
+    fence_wait(*s_context, frame.m_frame_completed_fence);
 
 	// Acquire an image from the swap chain
-	u32 image_index;
-	VkResult res = vkAcquireNextImageKHR(s_context->m_device.m_device_vk_handle, s_context->m_swapchain.m_vk_handle, UINT64_MAX, s_image_available_semaphores[m_cur_frame], VK_NULL_HANDLE, &image_index);
-
+	VkResult res = frame_acquire_next_image(*s_context, frame); 
 	if (res == VK_ERROR_OUT_OF_DATE_KHR)
 	{
         swapchain_recreate(*s_context);
@@ -1679,48 +1693,37 @@ void renderer_render_frame()
 
 	ASSERT(res == VK_SUCCESS || res == VK_SUBOPTIMAL_KHR);
 
-	update_uniform_buffer(*s_context, *s_camera, image_index);
+	update_uniform_buffer(*s_context, *s_camera, frame.m_swap_chain_image_index);
 
-	if (s_swapchain_images_in_flight[image_index] != VK_NULL_HANDLE)
+	if (VK_NULL_HANDLE != s_context->m_swapchain.m_image_in_flight_fences[frame.m_swap_chain_image_index].m_vk_handle)
 	{
-		vkWaitForFences(s_context->m_device.m_device_vk_handle, 1, &s_swapchain_images_in_flight[image_index], VK_TRUE, UINT64_MAX);
+        fence_wait(*s_context, s_context->m_swapchain.m_image_in_flight_fences[frame.m_swap_chain_image_index]);
 	}
 
-	s_swapchain_images_in_flight[image_index] = s_frame_finished_fences[m_cur_frame];
+	s_context->m_swapchain.m_image_in_flight_fences[frame.m_swap_chain_image_index] = frame.m_frame_completed_fence;
 
 	// Submit command buffer
 	VkSubmitInfo submit_info = {};
 	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-	VkSemaphore wait_semaphores[] = { s_image_available_semaphores[m_cur_frame] };
+	VkSemaphore wait_semaphores[] = { frame.m_image_available_semaphore.m_vk_handle };
 	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 	submit_info.waitSemaphoreCount = 1;
 	submit_info.pWaitSemaphores = wait_semaphores;
 	submit_info.pWaitDstStageMask = wait_stages;
 	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &s_command_buffers[image_index];
+	submit_info.pCommandBuffers = &s_command_buffers[frame.m_swap_chain_image_index];
 
-	VkSemaphore signal_semaphores[] = { s_render_finished_semaphores[m_cur_frame] };
+	VkSemaphore signal_semaphores[] = { frame.m_render_finished_semaphore.m_vk_handle };
 	submit_info.signalSemaphoreCount = 1;
 	submit_info.pSignalSemaphores = signal_semaphores;
 
-	vkResetFences(s_context->m_device.m_device_vk_handle, 1, &s_frame_finished_fences[m_cur_frame]);
-	VULKAN_ASSERT(vkQueueSubmit(s_context->m_device.m_graphics_queue, 1, &submit_info, s_frame_finished_fences[m_cur_frame]));
+    fence_reset(*s_context, frame.m_frame_completed_fence);
+	VULKAN_ASSERT(vkQueueSubmit(s_context->m_device.m_graphics_queue, 1, &submit_info, frame.m_frame_completed_fence.m_vk_handle));
 
 	// Present to screen
-	VkPresentInfoKHR present_info = {};
-	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	present_info.waitSemaphoreCount = 1;
-	present_info.pWaitSemaphores = signal_semaphores;
-	VkSwapchainKHR swapchains[] = { s_context->m_swapchain.m_vk_handle };
-	present_info.swapchainCount = 1;
-	present_info.pSwapchains = swapchains;
-	present_info.pImageIndices = &image_index;
-	present_info.pResults = nullptr;
-
-	res = vkQueuePresentKHR(s_context->m_device.m_graphics_queue, &present_info);
-
-	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR || s_context->m_window->m_was_resized)
+    VkResult present_res = frame_present(*s_context, frame);
+	if (present_res == VK_ERROR_OUT_OF_DATE_KHR || present_res == VK_SUBOPTIMAL_KHR || s_context->m_window->m_was_resized)
 	{
         swapchain_recreate(*s_context);
 	}
@@ -1729,7 +1732,7 @@ void renderer_render_frame()
 		VULKAN_ASSERT(res);
 	}
 
-	m_cur_frame = (m_cur_frame + 1) % MAX_NUM_FRAMES_IN_FLIGHT;
+	s_cur_frame = (s_cur_frame + 1) % MAX_NUM_FRAMES_IN_FLIGHT;
 }
 
 void renderer_deinit()
@@ -1740,9 +1743,7 @@ void renderer_deinit()
 
     for (i32 i = 0; i < MAX_NUM_FRAMES_IN_FLIGHT; i++)
 	{
-        semaphore_destroy(*s_context, s_image_available_semaphores[i]);
-        semaphore_destroy(*s_context, s_render_finished_semaphores[i]);
-        fence_destroy(*s_context, s_frame_finished_fences[i]);
+        frame_destroy(*s_context, s_in_flight_frames[i]);
 	}
 
     sampler_destroy(*s_context, s_viking_room_sampler);

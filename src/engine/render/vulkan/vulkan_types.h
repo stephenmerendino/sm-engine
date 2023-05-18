@@ -8,6 +8,16 @@
 struct mesh_t;
 struct window_t;
 
+struct semaphore_t
+{   
+    VkSemaphore m_vk_handle;
+};
+
+struct fence_t
+{
+    VkFence m_vk_handle;
+};
+
 struct instance_t
 {
     VkInstance m_vk_handle = VK_NULL_HANDLE;
@@ -53,6 +63,7 @@ struct swapchain_t
     u32 m_num_images = 0;
     std::vector<VkImage> m_images;
     std::vector<VkImageView> m_image_views;
+    std::vector<fence_t> m_image_in_flight_fences;
 };
 
 struct command_pool_t
@@ -72,7 +83,13 @@ struct context_t
     command_pool_t m_graphics_command_pool;
 };
 
-////////////////////////////////////////////////////////////////////////////////
+struct frame_t
+{
+    u32 m_swap_chain_image_index;
+    semaphore_t m_image_available_semaphore;
+    semaphore_t m_render_finished_semaphore;
+    fence_t m_frame_completed_fence;
+};
 
 enum class BufferType : u8
 {
