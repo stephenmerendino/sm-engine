@@ -85,8 +85,8 @@ struct context_t
 
 struct frame_t
 {
-    u32 swap_chain_image_index;
-    semaphore_t image_available_semaphore;
+    u32 swapchain_image_index;
+    semaphore_t swapchain_image_available_semaphore;
     semaphore_t render_finished_semaphore;
     fence_t frame_completed_fence;
 };
@@ -121,13 +121,6 @@ struct sampler_t
 {
     VkSampler handle = VK_NULL_HANDLE; 
     u32 max_mip_level = 1;
-};
-
-struct renderable_mesh_t
-{
-    mesh_t* mesh = nullptr;
-    buffer_t vertex_buffer;
-    buffer_t index_buffer;
 };
 
 struct render_pass_attachments_t
@@ -196,4 +189,12 @@ struct mvp_buffer_t
 	mat44 model;
 	mat44 view;
 	mat44 projection;
+};
+
+struct renderable_mesh_t
+{
+    mesh_t* mesh = nullptr;
+    pipeline_t* pipeline = nullptr;
+    buffer_t vertex_buffer;
+    buffer_t index_buffer;
 };
