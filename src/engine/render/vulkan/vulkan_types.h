@@ -138,12 +138,34 @@ struct subpass_t
 	bool m_has_depth_attach;
 };
 
+enum class SubpassAttachmentRefType : u8
+{
+    COLOR,
+    DEPTH,
+    RESOLVE
+};
+
+struct render_pass_attachments_t
+{
+	std::vector<VkAttachmentDescription> m_attachments;
+};
+
+struct subpasses_t
+{
+    std::vector<subpass_t> m_subpasses;
+};
+
+struct subpass_dependencies_t
+{
+    std::vector<VkSubpassDependency> m_dependencies;
+};
+
 struct render_pass_t
 {
 	VkRenderPass m_handle;
-	std::vector<VkSubpassDescription> m_subpasses;
-	std::vector<VkSubpassDependency> m_subpass_dependencies;
-	std::vector<VkAttachmentDescription> m_attachments;
+	render_pass_attachments_t m_attachments;
+	subpasses_t m_subpasses;
+	subpass_dependencies_t m_subpass_dependencies;
     
 };
 

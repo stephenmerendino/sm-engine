@@ -23,26 +23,6 @@
 #include "engine/thirdparty/stb/stb_image.h"
 
 static
-VkAttachmentDescription setup_attachment_desc(VkFormat format, VkSampleCountFlagBits sample_count, 
-                                              VkImageLayout initial_layout, VkImageLayout final_layout,
-                                              VkAttachmentLoadOp load_op, VkAttachmentStoreOp store_op, 
-                                              VkAttachmentLoadOp stencil_load_op, VkAttachmentStoreOp stencil_store_op, 
-                                              VkAttachmentDescriptionFlags flags = 0)
-{
-    VkAttachmentDescription attachment_desc = {};
-    attachment_desc.format = format;
-    attachment_desc.samples = sample_count;
-    attachment_desc.loadOp = load_op;
-    attachment_desc.storeOp = store_op;
-    attachment_desc.stencilLoadOp = stencil_load_op;
-    attachment_desc.stencilStoreOp = stencil_store_op;
-    attachment_desc.initialLayout = initial_layout;
-    attachment_desc.finalLayout = final_layout;
-    attachment_desc.flags = flags;
-    return attachment_desc;
-}
-
-static
 VkFormat format_find_supported(context_t& context, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
 {
 	for (VkFormat format : candidates)
@@ -709,6 +689,131 @@ void shader_module_destroy(context_t& context, VkShaderModule shader)
 }
 
 static
+VkAttachmentDescription setup_attachment_desc(VkFormat format, VkSampleCountFlagBits sample_count, 
+                                              VkImageLayout initial_layout, VkImageLayout final_layout,
+                                              VkAttachmentLoadOp load_op, VkAttachmentStoreOp store_op, 
+                                              VkAttachmentLoadOp stencil_load_op, VkAttachmentStoreOp stencil_store_op, 
+                                              VkAttachmentDescriptionFlags flags = 0)
+{
+    VkAttachmentDescription attachment_desc = {};
+    attachment_desc.format = format;
+    attachment_desc.samples = sample_count;
+    attachment_desc.loadOp = load_op;
+    attachment_desc.storeOp = store_op;
+    attachment_desc.stencilLoadOp = stencil_load_op;
+    attachment_desc.stencilStoreOp = stencil_store_op;
+    attachment_desc.initialLayout = initial_layout;
+    attachment_desc.finalLayout = final_layout;
+    attachment_desc.flags = flags;
+    return attachment_desc;
+}
+
+static
+void render_pass_add_attachment(render_pass_attachments_t& attachments, VkFormat format, VkSampleCountFlagBits sample_count, 
+                                                                        VkImageLayout initial_layout, VkImageLayout final_layout,
+                                                                        VkAttachmentLoadOp load_op, VkAttachmentStoreOp store_op, 
+                                                                        VkAttachmentLoadOp stencil_load_op, VkAttachmentStoreOp stencil_store_op, 
+                                                                        VkAttachmentDescriptionFlags flags = 0)
+{
+        VkAttachmentDescription new_attachment = setup_attachment_desc(format, sample_count, 
+                                                                       initial_layout, final_layout, 
+                                                                       load_op, store_op, 
+                                                                       stencil_load_op, stencil_store_op, 
+                                                                       flags);
+        attachments.m_attachments.push_back(new_attachment);
+}
+
+static
+void subpasses_add_attachment_ref(subpasses_t& subpasses, u32 subpass_index, SubpassAttachmentRefType type, u32 attachment, VkImageLayout layout)
+{
+    VkAttachmentReference attach_ref = {};
+    attach_ref.attachment = attachment;
+    attach_ref.layout = layout;
+
+    if(subpass_index >= subpasses.m_subpasses.size())
+    {
+        subpasses.m_subpasses.resize(subpass_index + 1);
+    }
+
+    subpass_t& subpass = subpasses.m_subpasses[subpass_index];
+
+    switch(type)
+    {
+        case SubpassAttachmentRefType::COLOR: 
+            subpass.m_color_attach_refs.push_back(attach_ref);
+            break;
+        case SubpassAttachmentRefType::DEPTH: 
+            ASSERT(false == subpass.m_has_depth_attach);
+            subpass.m_depth_attach_ref = attach_ref;
+            subpass.m_has_depth_attach = true;
+            break;
+        case SubpassAttachmentRefType::RESOLVE: 
+            subpass.m_resolve_attach_refs.push_back(attach_ref);
+            break;
+    }
+}
+
+static
+void subpass_add_dependency(subpass_dependencies_t& subpass_dependencies, u32 src_subpass,
+                                                                          u32 dst_subpass,
+                                                                          VkPipelineStageFlags src_stage,
+                                                                          VkPipelineStageFlags dst_stage,
+                                                                          VkAccessFlags src_access,
+                                                                          VkAccessFlags dst_access,
+                                                                          VkDependencyFlags dependency_flags = 0)
+{
+    VkSubpassDependency subpass_dependency = {};
+    subpass_dependency.srcSubpass = src_subpass;
+    subpass_dependency.dstSubpass = dst_subpass;
+    subpass_dependency.srcStageMask = src_stage;
+    subpass_dependency.dstStageMask = dst_stage;
+    subpass_dependency.srcAccessMask = src_access;
+    subpass_dependency.dstAccessMask = dst_access;
+    subpass_dependency.dependencyFlags = dependency_flags;
+    subpass_dependencies.m_dependencies.push_back(subpass_dependency);
+}
+
+static
+render_pass_t render_pass_create(context_t& context, render_pass_attachments_t& attachments, subpasses_t& subpasses, subpass_dependencies_t& subpass_dependencies)
+{
+    render_pass_t render_pass;
+
+    std::vector<VkSubpassDescription> subpass_descriptions;
+    subpass_descriptions.resize(subpasses.m_subpasses.size());
+
+    for(i32 i = 0; i < subpasses.m_subpasses.size(); i++)
+    {
+        subpass_t& subpass = subpasses.m_subpasses[i];
+
+        VkSubpassDescription subpass_desc = {};
+        subpass_desc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass_desc.colorAttachmentCount = (u32)subpass.m_color_attach_refs.size();
+        subpass_desc.pColorAttachments = subpass.m_color_attach_refs.data();
+        subpass_desc.pResolveAttachments = subpass.m_resolve_attach_refs.data();
+        subpass_desc.pDepthStencilAttachment = subpass.m_has_depth_attach ? &subpass.m_depth_attach_ref : VK_NULL_HANDLE;
+
+        subpass_descriptions[i] = subpass_desc;
+    }
+
+    VkRenderPassCreateInfo create_info = {};
+    create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    create_info.attachmentCount = (u32)attachments.m_attachments.size();
+    create_info.pAttachments = attachments.m_attachments.data();
+    create_info.subpassCount = (u32)subpass_descriptions.size();
+    create_info.pSubpasses = subpass_descriptions.data();
+    create_info.dependencyCount = (u32)subpass_dependencies.m_dependencies.size();
+    create_info.pDependencies = subpass_dependencies.m_dependencies.data();
+
+    VULKAN_ASSERT(vkCreateRenderPass(context.m_device.m_device_handle, &create_info, nullptr, &render_pass.m_handle));
+
+    render_pass.m_attachments = attachments;
+    render_pass.m_subpasses = subpasses;
+    render_pass.m_subpass_dependencies = subpass_dependencies;
+
+    return render_pass;
+}
+
+static
 framebuffer_t framebuffer_create(context_t& context, render_pass_t& render_pass, const std::vector<VkImageView> attachments, u32 width, u32 height, u32 layers)
 {
     VkFramebufferCreateInfo create_info = {};
@@ -803,9 +908,9 @@ static
 void render_pass_reset(render_pass_t& render_pass)
 {
     render_pass.m_handle = VK_NULL_HANDLE;
-    render_pass.m_subpasses.clear();
-    render_pass.m_subpass_dependencies.clear();
-    render_pass.m_attachments.clear();
+    render_pass.m_subpasses.m_subpasses.clear();
+    render_pass.m_subpass_dependencies.m_dependencies.clear();
+    render_pass.m_attachments.m_attachments.clear();
 }
 
 static
@@ -910,80 +1015,38 @@ void renderer_init_resources(context_t& context)
 	}
 
     // render pass
-    // subpass
-    subpass_t subpass;
     {
-        // attachments
-        VkAttachmentDescription color_target_desc = setup_attachment_desc(context.m_swapchain.m_format, context.m_device.m_max_num_msaa_samples, 
-                                                                          VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
-                                                                          VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, 
-                                                                          VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
-                                                                          0);
+        render_pass_attachments_t attachments;
+        render_pass_add_attachment(attachments, context.m_swapchain.m_format, context.m_device.m_max_num_msaa_samples, 
+                                                 VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
+                                                 VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, 
+                                                 VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
+                                                 0);
+        render_pass_add_attachment(attachments, depth_format, context.m_device.m_max_num_msaa_samples, 
+                                                 VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 
+                                                 VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
+                                                 VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
+                                                 0);
+        render_pass_add_attachment(attachments, context.m_swapchain.m_format, VK_SAMPLE_COUNT_1_BIT, 
+                                                 VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 
+                                                 VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE, 
+                                                 VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
+                                                 0);
 
-        VkAttachmentDescription depth_target_desc = setup_attachment_desc(depth_format, context.m_device.m_max_num_msaa_samples, 
-                                                                          VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 
-                                                                          VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
-                                                                          VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
-                                                                          0);
+        subpasses_t subpasses;
+        subpasses_add_attachment_ref(subpasses, 0, SubpassAttachmentRefType::COLOR, 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        subpasses_add_attachment_ref(subpasses, 0, SubpassAttachmentRefType::DEPTH, 1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+        subpasses_add_attachment_ref(subpasses, 0, SubpassAttachmentRefType::RESOLVE, 2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-        VkAttachmentDescription resolve_target_desc = setup_attachment_desc(context.m_swapchain.m_format, VK_SAMPLE_COUNT_1_BIT, 
-                                                                            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 
-                                                                            VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE, 
-                                                                            VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
-                                                                            0);
-        s_render_pass.m_attachments.push_back(color_target_desc);
-        s_render_pass.m_attachments.push_back(depth_target_desc);
-        s_render_pass.m_attachments.push_back(resolve_target_desc);
+        subpass_dependencies_t subpass_dependencies;
+        subpass_add_dependency(subpass_dependencies, VK_SUBPASS_EXTERNAL, 
+                                                     0, 
+                                                     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+                                                     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+                                                     0,
+                                                     VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
 
-            // attach refs
-            VkAttachmentReference color_attach_ref = {};
-            color_attach_ref.attachment = 0;
-            color_attach_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            subpass.m_color_attach_refs.push_back(color_attach_ref);
-
-            VkAttachmentReference depth_attach_ref = {};
-            depth_attach_ref.attachment = 1;
-            depth_attach_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-            subpass.m_depth_attach_ref = depth_attach_ref;
-            subpass.m_has_depth_attach = true;
-
-            VkAttachmentReference resolve_attach_ref = {};
-            resolve_attach_ref.attachment = 2;
-            resolve_attach_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            subpass.m_resolve_attach_refs.push_back(resolve_attach_ref);
-
-            // subpass desc
-            VkSubpassDescription subpass_desc = {};
-            subpass_desc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-            subpass_desc.colorAttachmentCount = (u32)subpass.m_color_attach_refs.size();
-            subpass_desc.pColorAttachments = subpass.m_color_attach_refs.data();
-            subpass_desc.pResolveAttachments = subpass.m_resolve_attach_refs.data();
-            subpass_desc.pDepthStencilAttachment = subpass.m_has_depth_attach ? &subpass.m_depth_attach_ref : VK_NULL_HANDLE;
-
-            s_render_pass.m_subpasses.push_back(subpass_desc);
-
-            // subpass dependency 
-            VkSubpassDependency sub_pass_dependency = {};
-            sub_pass_dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-            sub_pass_dependency.dstSubpass = 0;
-            sub_pass_dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-            sub_pass_dependency.srcAccessMask = 0;
-            sub_pass_dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-            sub_pass_dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-            s_render_pass.m_subpass_dependencies.push_back(sub_pass_dependency);
-
-        // finally create render pass
-        VkRenderPassCreateInfo create_info = {};
-        create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        create_info.attachmentCount = (u32)s_render_pass.m_attachments.size();
-        create_info.pAttachments = s_render_pass.m_attachments.data();
-        create_info.subpassCount = (u32)s_render_pass.m_subpasses.size();
-        create_info.pSubpasses = s_render_pass.m_subpasses.data();
-        create_info.dependencyCount = (u32)s_render_pass.m_subpass_dependencies.size();
-        create_info.pDependencies = s_render_pass.m_subpass_dependencies.data();
-
-        VULKAN_ASSERT(vkCreateRenderPass(context.m_device.m_device_handle, &create_info, nullptr, &s_render_pass.m_handle));
+        s_render_pass = render_pass_create(context, attachments, subpasses, subpass_dependencies);
     }
 
     // framebuffers
