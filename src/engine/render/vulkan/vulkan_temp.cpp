@@ -14,12 +14,12 @@ VkImageView image_view_create(device_t& device, VkImage image, VkFormat format, 
     create_info.subresourceRange.layerCount = 1;
 
     VkImageView image_view;
-    VULKAN_ASSERT(vkCreateImageView(device.m_device_handle, &create_info, nullptr, &image_view));
+    VULKAN_ASSERT(vkCreateImageView(device.device_handle, &create_info, nullptr, &image_view));
     return image_view;
 }
 
 VkImageView image_view_create(context_t& context, VkImage image, VkFormat format, VkImageAspectFlags aspect_flags, u32 num_mips)
 {
-    return image_view_create(context.m_device, image, format, aspect_flags, num_mips);
+    return image_view_create(context.device, image, format, aspect_flags, num_mips);
 }
 

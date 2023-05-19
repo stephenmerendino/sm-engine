@@ -10,22 +10,22 @@
 typedef void (*window_message_cb_t)(UINT msg, WPARAM w_param, LPARAM l_param, void* user_args);
 struct window_message_cb_with_args_t
 {
-	window_message_cb_t m_cb;
-	void* m_user_args;
+	window_message_cb_t cb;
+	void* user_args;
 };
 
 struct window_t
 {
-    HWND m_handle;
-    const char* m_name;
-    u32 m_width;
-    u32 m_height;
-    u32 m_x;
-    u32 m_y;
-    bool m_is_minimized;
-    bool m_was_resized;
-    bool m_was_closed;
-    std::vector<window_message_cb_with_args_t> m_message_cbs;
+    HWND handle;
+    const char* name;
+    u32 width;
+    u32 height;
+    u32 x;
+    u32 y;
+    bool is_minimized;
+    bool was_resized;
+    bool was_closed;
+    std::vector<window_message_cb_with_args_t> message_cbs;
 };
 
 window_t*   window_create(const char* name, u32 width, u32 height, bool resizable);

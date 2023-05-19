@@ -3,7 +3,6 @@
 #include "engine/core/debug.h"
 #include "engine/core/macros.h"
 #include "engine/math/ivec2.h"
-#include "engine/render/Window.h"
 #include "engine/render/window.h"
 
 enum class KeyStateBitFlags : u8
@@ -15,7 +14,7 @@ enum class KeyStateBitFlags : u8
 
 struct key_state_t
 {
-    u8 m_state = 0;
+    u8 state = 0;
 };
 
 static key_state_t s_key_states[(u32)KeyCode::NUM_KEY_CODES];
@@ -29,18 +28,18 @@ void set_key_state_flag(key_state_t& key_state, KeyStateBitFlags flag, bool flag
 {
 	if (flag_value)
 	{
-		set_bit(key_state.m_state, (u8)flag);
+		set_bit(key_state.state, (u8)flag);
 	}
 	else
 	{
-		unset_bit(key_state.m_state, (u8)flag);
+		unset_bit(key_state.state, (u8)flag);
 	}
 }
 
 static 
 bool get_key_state_flag(const key_state_t& key_state, KeyStateBitFlags flag)
 {
-    return is_bit_set(key_state.m_state, (u8)flag);
+    return is_bit_set(key_state.state, (u8)flag);
 }
 
 static
@@ -210,7 +209,7 @@ void update_mouse_movement()
     ::GetCursorPos(&mouse_pos);
 
     ivec2 center_pos = window_get_center_position(s_window);
-    ivec2 window_size = make_ivec2(s_window->m_width, s_window->m_height);
+    ivec2 window_size = make_ivec2(s_window->width, s_window->height);
 
     ivec2 delta = make_ivec2(mouse_pos.x, mouse_pos.y) - center_pos;
 
@@ -272,17 +271,17 @@ void input_update()
 
 bool input_is_key_down(KeyCode key)
 {
-    return is_bit_set(s_key_states[(u32)key].m_state, (u8)KeyStateBitFlags::IS_DOWN);
+    return is_bit_set(s_key_states[(u32)key].state, (u8)KeyStateBitFlags::IS_DOWN);
 }
 
 bool input_was_key_pressed(KeyCode key)
 {
-    return is_bit_set(s_key_states[(u32)key].m_state, (u8)KeyStateBitFlags::WAS_PRESSED);
+    return is_bit_set(s_key_states[(u32)key].state, (u8)KeyStateBitFlags::WAS_PRESSED);
 }
 
 bool input_was_key_released(KeyCode key)
 {
-    return is_bit_set(s_key_states[(u32)key].m_state, (u8)KeyStateBitFlags::WAS_RELEASED);
+    return is_bit_set(s_key_states[(u32)key].state, (u8)KeyStateBitFlags::WAS_RELEASED);
 }
 
 vec2 input_get_mouse_movement()
