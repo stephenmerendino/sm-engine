@@ -89,6 +89,7 @@ struct frame_t
     semaphore_t swapchain_image_available_semaphore;
     semaphore_t render_finished_semaphore;
     fence_t frame_completed_fence;
+    std::vector<VkCommandBuffer> command_buffers;
 };
 
 enum class BufferType : u8

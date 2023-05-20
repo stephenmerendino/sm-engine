@@ -3,6 +3,7 @@
 #include "engine/core/debug.h"
 #include "engine/core/file.h"
 #include "engine/core/macros.h"
+#include "engine/input/input.h"
 #include "engine/math/mat44.h"
 #include "engine/render/Camera.h"
 #include "engine/render/mesh.h"
@@ -996,9 +997,9 @@ static VkDescriptorSetLayout s_descriptor_set_layout = VK_NULL_HANDLE;
 static VkDescriptorPool s_descriptor_pool = VK_NULL_HANDLE;
 std::vector<VkDescriptorSet> s_descriptor_sets;
 
-static std::vector<VkCommandBuffer> s_command_buffers;
-
 static std::vector<VkFence> s_swapchain_images_in_flight;
+
+static bool s_debug_render = false;
 
 static
 void renderer_init_resources(context_t& context)
@@ -1563,43 +1564,6 @@ void renderer_init_resources(context_t& context)
             }
         }
     }
-
-    // command buffers
-    {
-        s_command_buffers = command_buffers_allocate(context, VK_COMMAND_BUFFER_LEVEL_PRIMARY, context.swapchain.num_images);
-
-        for (i32 i = 0; i < (i32)s_command_buffers.size(); i++)
-        {
-            command_buffer_begin(s_command_buffers[i]);
-                VkOffset2D offset{ 0, 0 };
-
-                VkClearValue color_target_clear;
-                color_target_clear.color = {{0.0f, 0.0f, 0.0f, 1.0f}};
-
-                VkClearValue depth_target_clear;
-                depth_target_clear.depthStencil = {1.0f, 0};
-
-                std::vector<VkClearValue> clear_colors;
-                clear_colors.push_back(color_target_clear);
-                clear_colors.push_back(depth_target_clear);
-
-                command_buffer_begin_render_pass(s_command_buffers[i], s_render_pass.handle, s_framebuffers[i].handle, offset, context.swapchain.extent, clear_colors);
-                    // Normal draw
-                    {
-                        std::vector<VkDescriptorSet> draw_descriptor_sets = { s_descriptor_sets[i] };
-                        command_draw_renderable_mesh(s_command_buffers[i], s_viking_room_renderable_mesh, s_main_draw_pipeline, draw_descriptor_sets);
-                    }
-                     
-                    // World Axes
-                    {
-                        std::vector<VkDescriptorSet> draw_descriptor_sets = { s_descriptor_sets[i] };
-                        command_draw_renderable_mesh(s_command_buffers[i], s_world_axes_renderable_mesh, s_world_axes_pipeline, draw_descriptor_sets);
-                    }
-                command_buffer_end_render_pass(s_command_buffers[i]);
-
-            command_buffer_end(s_command_buffers[i]);
-        }
-    }
 }
 
 static
@@ -1610,7 +1574,7 @@ void swapchain_teardown(context_t& context)
         framebuffer_destroy(context, fb);
     }
 
-    command_buffers_free(context, s_command_buffers);
+    //command_buffers_free(context, s_command_buffers);
 
     pipeline_destroy(context, s_main_draw_pipeline);
     pipeline_destroy(context, s_world_axes_pipeline);
@@ -1632,7 +1596,7 @@ void swapchain_teardown(context_t& context)
 static
 void swapchain_recreate(context_t& context)
 {
-    if(context.window->was_closed)
+    if(context.window->was_closed || context.window->width == 0 || context.window->height == 0)
     {
         return;
     }
@@ -1652,12 +1616,14 @@ frame_t frame_create(context_t& context)
     frame.swapchain_image_available_semaphore = semaphore_create(context);
     frame.render_finished_semaphore = semaphore_create(context);
     frame.frame_completed_fence = fence_create(context);
+    frame.command_buffers = command_buffers_allocate(context, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
     return frame;
 }
 
 static
 void frame_destroy(context_t& context, frame_t& frame)
 {
+    command_buffers_free(context, frame.command_buffers);
     semaphore_destroy(context, frame.swapchain_image_available_semaphore);
     semaphore_destroy(context, frame.render_finished_semaphore);
     fence_destroy(context, frame.frame_completed_fence);
@@ -1739,12 +1705,12 @@ VkResult frame_acquire_next_image(context_t& context, frame_t& frame)
 static
 VkResult frame_present(context_t& context, frame_t& frame)
 {
-	VkSemaphore signal_semaphores[] = { frame.render_finished_semaphore.handle };
+	VkSemaphore wait_semaphores[] = { frame.render_finished_semaphore.handle };
 
 	VkPresentInfoKHR present_info = {};
 	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	present_info.waitSemaphoreCount = 1;
-	present_info.pWaitSemaphores = signal_semaphores;
+	present_info.pWaitSemaphores = wait_semaphores;
 	VkSwapchainKHR swapchains[] = { context.swapchain.handle };
 	present_info.swapchainCount = 1;
 	present_info.pSwapchains = swapchains;
@@ -1753,6 +1719,50 @@ VkResult frame_present(context_t& context, frame_t& frame)
 
 	VkResult res = vkQueuePresentKHR(context.device.graphics_queue, &present_info);
     return res;
+}
+
+static
+void frame_generate_command_buffers(context_t& context, frame_t& frame)
+{
+    VkCommandBuffer command_buffer = frame.command_buffers[0];
+    vkResetCommandBuffer(command_buffer, 0);
+
+    command_buffer_begin(command_buffer);
+        VkOffset2D offset{ 0, 0 };
+
+        VkClearValue color_target_clear;
+        color_target_clear.color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+
+        VkClearValue depth_target_clear;
+        depth_target_clear.depthStencil = {1.0f, 0};
+
+        std::vector<VkClearValue> clear_colors;
+        clear_colors.push_back(color_target_clear);
+        clear_colors.push_back(depth_target_clear);
+
+        command_buffer_begin_render_pass(command_buffer, s_render_pass.handle, s_framebuffers[frame.swapchain_image_index].handle, offset, context.swapchain.extent, clear_colors);
+            // Normal draw
+            {
+                std::vector<VkDescriptorSet> draw_descriptor_sets = { s_descriptor_sets[frame.swapchain_image_index] };
+                command_draw_renderable_mesh(command_buffer, s_viking_room_renderable_mesh, s_main_draw_pipeline, draw_descriptor_sets);
+            }
+             
+            if(s_debug_render)
+            {
+                std::vector<VkDescriptorSet> draw_descriptor_sets = { s_descriptor_sets[frame.swapchain_image_index] };
+                command_draw_renderable_mesh(command_buffer, s_world_axes_renderable_mesh, s_world_axes_pipeline, draw_descriptor_sets);
+            }
+        command_buffer_end_render_pass(command_buffer);
+
+    command_buffer_end(command_buffer);
+}
+
+void renderer_update()
+{
+    if(input_was_key_pressed(KeyCode::KEY_F1))
+    {
+        s_debug_render = !s_debug_render; 
+    }
 }
 
 void renderer_render_frame()
@@ -1789,8 +1799,10 @@ void renderer_render_frame()
 	submit_info.waitSemaphoreCount = 1;
 	submit_info.pWaitSemaphores = wait_semaphores;
 	submit_info.pWaitDstStageMask = wait_stages;
-	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &s_command_buffers[frame.swapchain_image_index];
+
+    frame_generate_command_buffers(*s_context, frame);
+	submit_info.commandBufferCount = frame.command_buffers.size();
+	submit_info.pCommandBuffers = frame.command_buffers.data();
 
 	VkSemaphore signal_semaphores[] = { frame.render_finished_semaphore.handle };
 	submit_info.signalSemaphoreCount = 1;
