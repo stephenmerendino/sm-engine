@@ -551,7 +551,7 @@ swapchain_t swapchain_create(device_t& device, surface_t& surface, window_t& win
     create_info.presentMode = present_mode;
     create_info.imageExtent = image_extent;
     create_info.imageArrayLayers = 1;
-    create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    create_info.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
     queue_family_indices_t indices = device.queue_families;
     u32 queue_family_indices[] = { (u32)indices.graphics_family, (u32)indices.present_family };
@@ -586,11 +586,11 @@ swapchain_t swapchain_create(device_t& device, surface_t& surface, window_t& win
     swapchain.extent = image_extent;
 
     // create swapchain image views
-    swapchain.image_views.resize(swapchain.num_images);
-    for (size_t i = 0; i < swapchain.num_images; i++)
-    {
-        swapchain.image_views[i] = image_view_create(device, swapchain.images[i], swapchain.format, VK_IMAGE_ASPECT_COLOR_BIT, 1);
-    }
+    //swapchain.image_views.resize(swapchain.num_images);
+    //for (size_t i = 0; i < swapchain.num_images; i++)
+    //{
+    //    swapchain.image_views[i] = image_view_create(device, swapchain.images[i], swapchain.format, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+    //}
 
     swapchain.image_in_flight_fences.resize(swapchain.num_images);
 
@@ -625,10 +625,10 @@ void command_pool_destroy(device_t& device, command_pool_t& command_pool)
 static
 void swapchain_destroy(device_t& device, swapchain_t& swapchain)
 {
-    for(i32 i = 0; i < swapchain.num_images; i++)
-    {
-        vkDestroyImageView(device.device_handle, swapchain.image_views[i], nullptr);
-    }
+    //for(i32 i = 0; i < swapchain.num_images; i++)
+    //{
+    //    vkDestroyImageView(device.device_handle, swapchain.image_views[i], nullptr);
+    //}
 
     vkDestroySwapchainKHR(device.device_handle, swapchain.handle, nullptr);
 }

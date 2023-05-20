@@ -62,7 +62,7 @@ struct swapchain_t
     VkExtent2D extent = { 0, 0 };
     u32 num_images = 0;
     std::vector<VkImage> images;
-    std::vector<VkImageView> image_views;
+    //std::vector<VkImageView> image_views;
     std::vector<fence_t> image_in_flight_fences;
 };
 
@@ -160,7 +160,6 @@ struct render_pass_t
 	render_pass_attachments_t attachments;
 	subpasses_t subpasses;
 	subpass_dependencies_t subpass_dependencies;
-    
 };
 
 struct framebuffer_t

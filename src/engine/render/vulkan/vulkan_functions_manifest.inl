@@ -96,6 +96,7 @@ VK_DEVICE_FUNCTION(vkMapMemory);
 VK_DEVICE_FUNCTION(vkUnmapMemory);
 VK_DEVICE_FUNCTION(vkCmdBindVertexBuffers);
 VK_DEVICE_FUNCTION(vkCmdCopyBuffer);
+VK_DEVICE_FUNCTION(vkCmdCopyImage);
 VK_DEVICE_FUNCTION(vkQueueWaitIdle);
 VK_DEVICE_FUNCTION(vkCmdBindIndexBuffer);
 VK_DEVICE_FUNCTION(vkCmdDrawIndexed);

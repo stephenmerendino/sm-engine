@@ -336,10 +336,8 @@ void command_generate_mip_maps(context_t& context, VkImage image, VkFormat forma
 }
 
 static
-void command_transition_image_layout(context_t& context, VkImage image, VkImageLayout old_layout, VkImageLayout new_layout, u32 num_mips)
+void command_transition_image_layout(context_t& context, VkCommandBuffer command_buffer, VkImage image, VkImageLayout old_layout, VkImageLayout new_layout, u32 num_mips)
 {
-    VkCommandBuffer command_buffer = command_begin_single_time(context);
-
     VkImageMemoryBarrier barrier = {};
     barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     barrier.oldLayout = old_layout;
@@ -357,7 +355,38 @@ void command_transition_image_layout(context_t& context, VkImage image, VkImageL
     VkPipelineStageFlags src_stage = 0;
     VkPipelineStageFlags dst_stage = 0;
 
-    if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED && new_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+    // setting up initial swapchain images
+    if(old_layout == VK_IMAGE_LAYOUT_UNDEFINED && new_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+    {
+        is_valid_transition = true; 
+
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = 0;
+
+        src_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        dst_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    }
+    else if(old_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR && new_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+    {
+        is_valid_transition = true; 
+
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+        src_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        dst_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    }
+    else if(old_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && new_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+    {
+        is_valid_transition = true; 
+
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_NONE;
+
+        src_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        dst_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    }
+    else if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED && new_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
     {
         is_valid_transition = true;
 
@@ -386,8 +415,6 @@ void command_transition_image_layout(context_t& context, VkImage image, VkImageL
             0, nullptr, 
             0, nullptr, 
             1, &barrier);
-
-    command_end_single_time(context, command_buffer);
 }
 
 static
@@ -596,7 +623,9 @@ texture_t texture_create_from_file(context_t& context, const char* filepath)
     image_create(context, tex_width, tex_height, texture.num_mips, VK_SAMPLE_COUNT_1_BIT, format, VK_IMAGE_TILING_OPTIMAL,VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, texture.handle, texture.memory);
 
 	// Transition the image to transfer destination layout
-    command_transition_image_layout(context, texture.handle, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, texture.num_mips);
+    VkCommandBuffer transition_command = command_begin_single_time(context);
+    command_transition_image_layout(context, transition_command, texture.handle, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, texture.num_mips);
+    command_end_single_time(context, transition_command);
 
 	// Copy pixel data from staging buffer to actual vulkan image
 	//VulkanCommands::CopyBufferToImage(pGraphicsCommandPool, stagingBuffer, m_vkImage, static_cast<U32>(texWidth), static_cast<U32>(texHeight));
@@ -626,17 +655,17 @@ texture_t texture_create_from_file(context_t& context, const char* filepath)
 }
 
 static
-texture_t texture_create_color_target(context_t& context, VkFormat format, u32 width, u32 height)
+texture_t texture_create_color_target(context_t& context, VkFormat format, u32 width, u32 height, VkImageUsageFlags usage, VkSampleCountFlagBits num_samples)
 {
     texture_t texture;
     texture.num_mips = 1;
     image_create(context, 
                  width, height, 
                  texture.num_mips, 
-                 context.device.max_num_msaa_samples, 
+                 num_samples, 
                  format, 
                  VK_IMAGE_TILING_OPTIMAL, 
-                 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, 
+                 usage, 
                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
                  texture.handle, 
                  texture.memory);
@@ -645,17 +674,17 @@ texture_t texture_create_color_target(context_t& context, VkFormat format, u32 w
 }
 
 static
-texture_t texture_create_depth_target(context_t& context, VkFormat format, u32 width, u32 height)
+texture_t texture_create_depth_target(context_t& context, VkFormat format, u32 width, u32 height, VkImageUsageFlags usage, VkSampleCountFlagBits num_samples)
 {
     texture_t texture;
     texture.num_mips = 1;
     image_create(context, 
                  width, height, 
                  texture.num_mips, 
-                 context.device.max_num_msaa_samples, 
+                 num_samples, 
                  format, 
                  VK_IMAGE_TILING_OPTIMAL, 
-                 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, 
+                 usage, 
                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
                  texture.handle, 
                  texture.memory);
@@ -979,17 +1008,16 @@ static mesh_t* s_viking_room_mesh = nullptr;
 static mesh_t* s_world_axes_mesh = nullptr;
 static renderable_mesh_t s_viking_room_renderable_mesh;
 static renderable_mesh_t s_world_axes_renderable_mesh;
-
 static texture_t s_viking_room_texture;
 static sampler_t s_viking_room_sampler;
-static texture_t s_color_target;
-static texture_t s_depth_target;
-
 static std::vector<buffer_t> s_uniform_buffers;
 
 static render_pass_t s_render_pass;
-
 static std::vector<framebuffer_t> s_framebuffers;
+static texture_t s_color_target;
+static texture_t s_depth_target;
+static texture_t s_resolve_target;
+
 static pipeline_t s_main_draw_pipeline;
 static pipeline_t s_world_axes_pipeline;
 
@@ -1009,8 +1037,20 @@ void renderer_init_resources(context_t& context)
     VkFormat depth_format = format_find_depth(context);
 
     // render targets
-    s_color_target = texture_create_color_target(context, context.swapchain.format, context.swapchain.extent.width, context.swapchain.extent.height);
-    s_depth_target = texture_create_depth_target(context, depth_format, context.swapchain.extent.width, context.swapchain.extent.height);
+    s_color_target = texture_create_color_target(context, context.swapchain.format, 
+                                                          context.swapchain.extent.width, context.swapchain.extent.height, 
+                                                          VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, 
+                                                          context.device.max_num_msaa_samples);
+
+    s_depth_target = texture_create_depth_target(context, depth_format, 
+                                                          context.swapchain.extent.width, context.swapchain.extent.height, 
+                                                          VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, 
+                                                          context.device.max_num_msaa_samples);
+
+    s_resolve_target = texture_create_color_target(context, context.swapchain.format, 
+                                                            context.swapchain.extent.width, context.swapchain.extent.height, 
+                                                            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+                                                            VK_SAMPLE_COUNT_1_BIT);
 
     // uniform buffers
 	s_uniform_buffers.resize(context.swapchain.num_images);
@@ -1033,7 +1073,7 @@ void renderer_init_resources(context_t& context)
                                                  VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
                                                  0);
         render_pass_add_attachment(attachments, context.swapchain.format, VK_SAMPLE_COUNT_1_BIT, 
-                                                 VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 
+                                                 VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
                                                  VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE, 
                                                  VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
                                                  0);
@@ -1041,7 +1081,7 @@ void renderer_init_resources(context_t& context)
         subpasses_t subpasses;
         subpasses_add_attachment_ref(subpasses, 0, SubpassAttachmentRefType::COLOR, 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
         subpasses_add_attachment_ref(subpasses, 0, SubpassAttachmentRefType::DEPTH, 1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-        subpasses_add_attachment_ref(subpasses, 0, SubpassAttachmentRefType::RESOLVE, 2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        subpasses_add_attachment_ref(subpasses, 0, SubpassAttachmentRefType::RESOLVE, 2, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
         subpass_dependencies_t subpass_dependencies;
         subpass_add_dependency(subpass_dependencies, VK_SUBPASS_EXTERNAL, 
@@ -1061,7 +1101,7 @@ void renderer_init_resources(context_t& context)
         {
             std::vector<VkImageView> attachments { s_color_target.image_view, 
                                                    s_depth_target.image_view, 
-                                                   context.swapchain.image_views[i] };
+                                                   s_resolve_target.image_view };
 
             s_framebuffers[i] = framebuffer_create(context, s_render_pass, attachments, context.swapchain.extent.width, context.swapchain.extent.height, 1);
         }
@@ -1574,8 +1614,6 @@ void swapchain_teardown(context_t& context)
         framebuffer_destroy(context, fb);
     }
 
-    //command_buffers_free(context, s_command_buffers);
-
     pipeline_destroy(context, s_main_draw_pipeline);
     pipeline_destroy(context, s_world_axes_pipeline);
 
@@ -1583,6 +1621,7 @@ void swapchain_teardown(context_t& context)
 
     texture_destroy(context, s_depth_target);
     texture_destroy(context, s_color_target);
+    texture_destroy(context, s_resolve_target);
 
 	for (u32 i = 0; i < context.swapchain.num_images; i++)
 	{
@@ -1669,6 +1708,14 @@ void renderer_init(window_t* app_window)
         s_in_flight_frames[i] = frame_create(*s_context);
     }
 
+    // manually init swapchain images to the correct starting layout
+    VkCommandBuffer setup_swapchain_images_commands = command_begin_single_time(*s_context);
+    for(i32 i = 0; i < s_context->swapchain.num_images; i++)
+    {
+        command_transition_image_layout(*s_context, setup_swapchain_images_commands, s_context->swapchain.images[i], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 1);
+    }
+    command_end_single_time(*s_context, setup_swapchain_images_commands);
+
     // meshes
     s_viking_room_mesh = mesh_load_from_obj("models/viking_room.obj");
     s_viking_room_renderable_mesh = renderable_mesh_create(*s_context, s_viking_room_mesh);
@@ -1728,6 +1775,7 @@ void frame_generate_command_buffers(context_t& context, frame_t& frame)
     vkResetCommandBuffer(command_buffer, 0);
 
     command_buffer_begin(command_buffer);
+    {
         VkOffset2D offset{ 0, 0 };
 
         VkClearValue color_target_clear;
@@ -1741,7 +1789,6 @@ void frame_generate_command_buffers(context_t& context, frame_t& frame)
         clear_colors.push_back(depth_target_clear);
 
         command_buffer_begin_render_pass(command_buffer, s_render_pass.handle, s_framebuffers[frame.swapchain_image_index].handle, offset, context.swapchain.extent, clear_colors);
-            // Normal draw
             {
                 std::vector<VkDescriptorSet> draw_descriptor_sets = { s_descriptor_sets[frame.swapchain_image_index] };
                 command_draw_renderable_mesh(command_buffer, s_viking_room_renderable_mesh, s_main_draw_pipeline, draw_descriptor_sets);
@@ -1754,6 +1801,21 @@ void frame_generate_command_buffers(context_t& context, frame_t& frame)
             }
         command_buffer_end_render_pass(command_buffer);
 
+        // copy from render target to swap chain for presentation
+        command_transition_image_layout(context, command_buffer, context.swapchain.images[frame.swapchain_image_index], VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1);
+        VkImageCopy copy = {};
+        copy.extent = { context.swapchain.extent.width, context.swapchain.extent.height, 1 };
+        copy.srcSubresource.mipLevel = 0;
+        copy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        copy.srcSubresource.layerCount = 1;
+        copy.srcSubresource.baseArrayLayer = 0;
+        copy.dstSubresource.mipLevel = 0;
+        copy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        copy.dstSubresource.layerCount = 1;
+        copy.dstSubresource.baseArrayLayer = 0;
+        vkCmdCopyImage(command_buffer, s_resolve_target.handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, context.swapchain.images[frame.swapchain_image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+        command_transition_image_layout(context, command_buffer, context.swapchain.images[frame.swapchain_image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 1);
+    }
     command_buffer_end(command_buffer);
 }
 
