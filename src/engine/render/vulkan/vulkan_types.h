@@ -62,7 +62,6 @@ struct swapchain_t
     VkExtent2D extent = { 0, 0 };
     u32 num_images = 0;
     std::vector<VkImage> images;
-    //std::vector<VkImageView> image_views;
     std::vector<fence_t> image_in_flight_fences;
 };
 

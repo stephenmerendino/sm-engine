@@ -492,6 +492,22 @@ void command_draw_renderable_mesh(VkCommandBuffer command_buffer, renderable_mes
     vkCmdDrawIndexed(command_buffer, (u32)renderable_mesh.mesh->m_indices.size(), 1, 0, 0, 0);
 }
 
+static
+void command_copy_image(VkCommandBuffer command_buffer, VkImage src_image, VkImageLayout src_layout, VkImage dst_image, VkImageLayout dst_layout, u32 width, u32 height, u32 depth = 1)
+{
+    VkImageCopy copy = {};
+    copy.extent = { width, height, depth };
+    copy.srcSubresource.mipLevel = 0;
+    copy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copy.srcSubresource.layerCount = 1;
+    copy.srcSubresource.baseArrayLayer = 0;
+    copy.dstSubresource.mipLevel = 0;
+    copy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copy.dstSubresource.layerCount = 1;
+    copy.dstSubresource.baseArrayLayer = 0;
+    vkCmdCopyImage(command_buffer, src_image, src_layout, dst_image, dst_layout, 1, &copy);
+}
+
 static 
 void buffer_update(context_t& context, buffer_t& buffer, command_pool_t& command_pool, void* data)
 {
@@ -1803,17 +1819,9 @@ void frame_generate_command_buffers(context_t& context, frame_t& frame)
 
         // copy from render target to swap chain for presentation
         command_transition_image_layout(context, command_buffer, context.swapchain.images[frame.swapchain_image_index], VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1);
-        VkImageCopy copy = {};
-        copy.extent = { context.swapchain.extent.width, context.swapchain.extent.height, 1 };
-        copy.srcSubresource.mipLevel = 0;
-        copy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        copy.srcSubresource.layerCount = 1;
-        copy.srcSubresource.baseArrayLayer = 0;
-        copy.dstSubresource.mipLevel = 0;
-        copy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        copy.dstSubresource.layerCount = 1;
-        copy.dstSubresource.baseArrayLayer = 0;
-        vkCmdCopyImage(command_buffer, s_resolve_target.handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, context.swapchain.images[frame.swapchain_image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+        command_copy_image(command_buffer, s_resolve_target.handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
+                                           context.swapchain.images[frame.swapchain_image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+                                           context.swapchain.extent.width, context.swapchain.extent.height);
         command_transition_image_layout(context, command_buffer, context.swapchain.images[frame.swapchain_image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 1);
     }
     command_buffer_end(command_buffer);
