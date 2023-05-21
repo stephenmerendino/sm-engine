@@ -8,6 +8,7 @@
 #include "engine/render/Camera.h"
 #include "engine/render/mesh.h"
 #include "engine/render/vertex.h"
+#include "engine/render/vulkan/vulkan_commands.h"
 #include "engine/render/vulkan/vulkan_functions.h"
 #include "engine/render/vulkan/vulkan_include.h"
 #include "engine/render/vulkan/vulkan_renderer.h"
@@ -22,6 +23,13 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "engine/thirdparty/stb/stb_image.h"
+
+static
+bool format_has_stencil_component(VkFormat format)
+{
+    return (format == VK_FORMAT_D32_SFLOAT_S8_UINT) ||
+           (format == VK_FORMAT_D24_UNORM_S8_UINT);
+}
 
 static
 VkFormat format_find_supported(context_t& context, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
@@ -55,13 +63,6 @@ VkFormat format_find_depth(context_t& context)
 	ASSERT(depth_format != VK_FORMAT_UNDEFINED);
 	return depth_format;
 } 
-
-static
-bool has_stencil_component(VkFormat format)
-{
-    return (format == VK_FORMAT_D32_SFLOAT_S8_UINT) || 
-           (format == VK_FORMAT_D24_UNORM_S8_UINT);
-}
 
 static
 u32 memory_find_type(context_t& context, u32 type_filter, VkMemoryPropertyFlags properties)
@@ -183,329 +184,6 @@ void buffer_update_data(context_t& context, buffer_t& buffer, void* data, VkDevi
     vkMapMemory(context.device.device_handle, buffer.memory, gpu_memory_offset, buffer.size, 0, &mapped_gpu_mem);
     memcpy(mapped_gpu_mem, data, buffer.size);
     vkUnmapMemory(context.device.device_handle, buffer.memory);
-}
-
-static
-void queue_flush(VkQueue queue)
-{
-    vkQueueWaitIdle(queue);
-}
-
-static 
-void device_flush(device_t& device)
-{
-    vkDeviceWaitIdle(device.device_handle);
-}
-
-static
-VkCommandBuffer command_begin_single_time(context_t& context)
-{
-    VkCommandBufferAllocateInfo alloc_info = {};
-    alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    alloc_info.commandPool = context.graphics_command_pool.handle;
-    alloc_info.commandBufferCount = 1;
-
-    VkCommandBuffer command_buffer;
-    vkAllocateCommandBuffers(context.device.device_handle, &alloc_info, &command_buffer);
-
-    VkCommandBufferBeginInfo begin_info = {};
-    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-    vkBeginCommandBuffer(command_buffer, &begin_info);
-
-    return command_buffer;
-}
-
-static
-void command_end_single_time(context_t& context, VkCommandBuffer command_buffer)
-{
-    vkEndCommandBuffer(command_buffer);
-
-    VkSubmitInfo submit_info = {};
-    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit_info.commandBufferCount = 1;
-    submit_info.pCommandBuffers = &command_buffer;
-
-    vkQueueSubmit(context.device.graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
-    queue_flush(context.device.graphics_queue);
-
-    vkFreeCommandBuffers(context.device.device_handle, context.graphics_command_pool.handle, 1, &command_buffer);
-}
-
-static
-std::vector<VkCommandBuffer> command_buffers_allocate(context_t& context, VkCommandBufferLevel level, u32 num_buffers)
-{
-    std::vector<VkCommandBuffer> buffers;
-    buffers.resize(num_buffers);
-
-    VkCommandBufferAllocateInfo alloc_info = {};
-    alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    alloc_info.commandPool = context.graphics_command_pool.handle;
-    alloc_info.level = level;
-    alloc_info.commandBufferCount = (u32)num_buffers;
-
-    VULKAN_ASSERT(vkAllocateCommandBuffers(context.device.device_handle, &alloc_info, buffers.data()));
-    return buffers;
-}
-
-static
-void command_copy_buffer(context_t& context, buffer_t& src, buffer_t& dst, VkDeviceSize size)
-{
-    VkCommandBuffer copy_command_buffer = command_begin_single_time(context);
-
-    VkBufferCopy copy_region = {};
-    copy_region.srcOffset = 0;
-    copy_region.dstOffset = 0;
-    copy_region.size = size;
-    vkCmdCopyBuffer(copy_command_buffer, src.handle, dst.handle, 1, &copy_region);
-
-    command_end_single_time(context, copy_command_buffer);
-}
-
-static
-void command_generate_mip_maps(context_t& context, VkImage image, VkFormat format, u32 width, u32 height, u32 num_mips)
-{
-    // Check if image format supports linear filtered blitting
-    VkFormatProperties format_props;
-    vkGetPhysicalDeviceFormatProperties(context.device.phys_device_handle, format, &format_props);
-    ASSERT(format_props.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT);
-
-    VkCommandBuffer command_buffer = command_begin_single_time(context);
-
-    VkImageMemoryBarrier barrier{};
-    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrier.image = image;
-    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount = 1;
-    barrier.subresourceRange.levelCount = 1;
-
-    i32 mip_width = (i32)width;
-    i32 mip_height = (i32)height;
-
-    for (u32 i = 1; i < num_mips; ++i)
-    {
-        barrier.subresourceRange.baseMipLevel = i - 1;
-        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-
-        vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-        VkImageBlit blit = {};
-        blit.srcOffsets[0] = { 0, 0, 0 };
-        blit.srcOffsets[1] = { mip_width, mip_height, 1 };
-        blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        blit.srcSubresource.baseArrayLayer = 0;
-        blit.srcSubresource.layerCount = 1;
-        blit.srcSubresource.mipLevel = i - 1;
-        blit.dstOffsets[0] = { 0, 0, 0 };
-        blit.dstOffsets[1] = { mip_width > 1 ? mip_width / 2 : 1, mip_height > 1 ? mip_height / 2 : 1, 1 };
-        blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        blit.dstSubresource.baseArrayLayer = 0;
-        blit.dstSubresource.layerCount = 1;
-        blit.dstSubresource.mipLevel = i;
-
-        vkCmdBlitImage(command_buffer, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
-
-        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-        vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-        if (mip_width > 1) mip_width /= 2;
-        if (mip_height > 1) mip_height /= 2;
-    }
-
-    barrier.subresourceRange.baseMipLevel = num_mips - 1;
-    barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-    vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-    command_end_single_time(context, command_buffer);
-}
-
-static
-void command_transition_image_layout(context_t& context, VkCommandBuffer command_buffer, VkImage image, VkImageLayout old_layout, VkImageLayout new_layout, u32 num_mips)
-{
-    VkImageMemoryBarrier barrier = {};
-    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrier.oldLayout = old_layout;
-    barrier.newLayout = new_layout;
-    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.image = image;
-    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    barrier.subresourceRange.baseMipLevel = 0;
-    barrier.subresourceRange.levelCount = num_mips;
-    barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount = 1;
-
-    bool is_valid_transition = false;
-    VkPipelineStageFlags src_stage = 0;
-    VkPipelineStageFlags dst_stage = 0;
-
-    // setting up initial swapchain images
-    if(old_layout == VK_IMAGE_LAYOUT_UNDEFINED && new_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
-    {
-        is_valid_transition = true; 
-
-        barrier.srcAccessMask = 0;
-        barrier.dstAccessMask = 0;
-
-        src_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-        dst_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-    }
-    else if(old_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR && new_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-    {
-        is_valid_transition = true; 
-
-        barrier.srcAccessMask = 0;
-        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-        src_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-        dst_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    }
-    else if(old_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && new_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
-    {
-        is_valid_transition = true; 
-
-        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        barrier.dstAccessMask = VK_ACCESS_NONE;
-
-        src_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        dst_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-    }
-    else if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED && new_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-    {
-        is_valid_transition = true;
-
-        barrier.srcAccessMask = 0;
-        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-        src_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-        dst_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    }
-    else if (old_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && new_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-    {
-        is_valid_transition = true;
-
-        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-        src_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        dst_stage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    }
-
-    ASSERT(is_valid_transition);
-
-    vkCmdPipelineBarrier(command_buffer, 
-            src_stage, dst_stage, 
-            0, 
-            0, nullptr, 
-            0, nullptr, 
-            1, &barrier);
-}
-
-static
-void command_copy_buffer_to_image(context_t& context, VkBuffer buffer, VkImage image, u32 width, u32 height)
-{
-    VkCommandBuffer command_buffer = command_begin_single_time(context);
-
-    VkBufferImageCopy region = {};
-    region.bufferOffset = 0;
-    region.bufferImageHeight = 0;
-    region.bufferRowLength = 0;
-
-    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    region.imageSubresource.mipLevel = 0;
-    region.imageSubresource.baseArrayLayer = 0;
-    region.imageSubresource.layerCount = 1;
-
-    region.imageOffset = {0, 0, 0};
-    region.imageExtent = {width, height, 1};
-
-    vkCmdCopyBufferToImage(command_buffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
-    command_end_single_time(context, command_buffer);
-}
-
-static
-void command_buffer_begin(VkCommandBuffer command_buffer)
-{
-    VkCommandBufferBeginInfo begin_info{};
-    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    begin_info.pInheritanceInfo = nullptr;
-    begin_info.flags = 0;
-    VULKAN_ASSERT(vkBeginCommandBuffer(command_buffer, &begin_info));
-}
-
-static
-void command_buffer_end(VkCommandBuffer command_buffer)
-{
-    VULKAN_ASSERT(vkEndCommandBuffer(command_buffer));
-}
-
-static
-void command_buffer_begin_render_pass(VkCommandBuffer command_buffer, VkRenderPass render_pass, VkFramebuffer framebuffer, VkOffset2D offset, VkExtent2D extent, const std::vector<VkClearValue>& clear_colors)
-{
-    VkRenderPassBeginInfo begin_info = {};
-    begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    begin_info.renderPass = render_pass;
-    begin_info.framebuffer = framebuffer;
-    begin_info.renderArea.offset = offset;
-    begin_info.renderArea.extent = extent;
-    begin_info.clearValueCount = static_cast<u32>(clear_colors.size());
-    begin_info.pClearValues = clear_colors.data();
-
-    vkCmdBeginRenderPass(command_buffer, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
-}
-
-static
-void command_buffer_end_render_pass(VkCommandBuffer command_buffer)
-{
-    vkCmdEndRenderPass(command_buffer);
-}
-
-static
-void command_draw_renderable_mesh(VkCommandBuffer command_buffer, renderable_mesh_t& renderable_mesh, pipeline_t& pipeline, const std::vector<VkDescriptorSet>& descriptor_sets)
-{
-    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline_handle);
-
-    VkBuffer vertex_buffers[] = { renderable_mesh.vertex_buffer.handle };
-    VkDeviceSize offsets[] = { 0 };
-    vkCmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers, offsets);
-
-    vkCmdBindIndexBuffer(command_buffer, renderable_mesh.index_buffer.handle, 0, VK_INDEX_TYPE_UINT32);
-    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline_layout_handle, 0, (u32)descriptor_sets.size(), descriptor_sets.data(), 0, nullptr);
-
-    vkCmdDrawIndexed(command_buffer, (u32)renderable_mesh.mesh->m_indices.size(), 1, 0, 0, 0);
-}
-
-static
-void command_copy_image(VkCommandBuffer command_buffer, VkImage src_image, VkImageLayout src_layout, VkImage dst_image, VkImageLayout dst_layout, u32 width, u32 height, u32 depth = 1)
-{
-    VkImageCopy copy = {};
-    copy.extent = { width, height, depth };
-    copy.srcSubresource.mipLevel = 0;
-    copy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    copy.srcSubresource.layerCount = 1;
-    copy.srcSubresource.baseArrayLayer = 0;
-    copy.dstSubresource.mipLevel = 0;
-    copy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    copy.dstSubresource.layerCount = 1;
-    copy.dstSubresource.baseArrayLayer = 0;
-    vkCmdCopyImage(command_buffer, src_image, src_layout, dst_image, dst_layout, 1, &copy);
 }
 
 static 
@@ -640,11 +318,10 @@ texture_t texture_create_from_file(context_t& context, const char* filepath)
 
 	// Transition the image to transfer destination layout
     VkCommandBuffer transition_command = command_begin_single_time(context);
-    command_transition_image_layout(context, transition_command, texture.handle, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, texture.num_mips);
+    command_transition_image_layout(transition_command, texture.handle, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, texture.num_mips);
     command_end_single_time(context, transition_command);
 
 	// Copy pixel data from staging buffer to actual vulkan image
-	//VulkanCommands::CopyBufferToImage(pGraphicsCommandPool, stagingBuffer, m_vkImage, static_cast<U32>(texWidth), static_cast<U32>(texHeight));
     command_copy_buffer_to_image(context, staging_buffer.handle, texture.handle, tex_width, tex_height);
 
 	// Transition image to shader read layout so it can be used in fragment shader
@@ -942,12 +619,6 @@ void render_pass_destroy(context_t& context, render_pass_t& render_pass)
 }
 
 static
-void command_buffers_free(context_t& context, std::vector<VkCommandBuffer>& command_buffers)
-{
-	vkFreeCommandBuffers(context.device.device_handle, context.graphics_command_pool.handle, (u32)command_buffers.size(), command_buffers.data());
-}
-
-static
 void pipeline_destroy(context_t& context, pipeline_t& pipeline)
 {
 	vkDestroyPipeline(context.device.device_handle, pipeline.pipeline_handle, nullptr);
@@ -1029,10 +700,6 @@ static sampler_t s_viking_room_sampler;
 static std::vector<buffer_t> s_uniform_buffers;
 
 static render_pass_t s_render_pass;
-static std::vector<framebuffer_t> s_framebuffers;
-static texture_t s_color_target;
-static texture_t s_depth_target;
-static texture_t s_resolve_target;
 
 static pipeline_t s_main_draw_pipeline;
 static pipeline_t s_world_axes_pipeline;
@@ -1042,6 +709,7 @@ static VkDescriptorPool s_descriptor_pool = VK_NULL_HANDLE;
 std::vector<VkDescriptorSet> s_descriptor_sets;
 
 static std::vector<VkFence> s_swapchain_images_in_flight;
+std::vector<frame_t> s_in_flight_frames;
 
 static bool s_debug_render = false;
 
@@ -1050,30 +718,14 @@ void renderer_init_resources(context_t& context)
 {
     render_pass_reset(s_render_pass);
 
-    VkFormat depth_format = format_find_depth(context);
-
-    // render targets
-    s_color_target = texture_create_color_target(context, context.swapchain.format, 
-                                                          context.swapchain.extent.width, context.swapchain.extent.height, 
-                                                          VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, 
-                                                          context.device.max_num_msaa_samples);
-
-    s_depth_target = texture_create_depth_target(context, depth_format, 
-                                                          context.swapchain.extent.width, context.swapchain.extent.height, 
-                                                          VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, 
-                                                          context.device.max_num_msaa_samples);
-
-    s_resolve_target = texture_create_color_target(context, context.swapchain.format, 
-                                                            context.swapchain.extent.width, context.swapchain.extent.height, 
-                                                            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-                                                            VK_SAMPLE_COUNT_1_BIT);
-
     // uniform buffers
 	s_uniform_buffers.resize(context.swapchain.num_images);
 	for (i32 i = 0; i < context.swapchain.num_images; i++)
 	{
         s_uniform_buffers[i] = buffer_create(context, BufferType::kUniformBuffer, sizeof(mvp_buffer_t));
 	}
+
+    VkFormat depth_format = format_find_depth(context);
 
     // render pass
     {
@@ -1108,21 +760,18 @@ void renderer_init_resources(context_t& context)
                                                      VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
 
         s_render_pass = render_pass_create(context, attachments, subpasses, subpass_dependencies);
-    }
 
-    // framebuffers
-    s_framebuffers.resize(context.swapchain.num_images);
-    {
-        for(i32 i = 0; i < context.swapchain.num_images; i++)
+        for(i32 i = 0; i < s_in_flight_frames.size(); i++)
         {
-            std::vector<VkImageView> attachments { s_color_target.image_view, 
-                                                   s_depth_target.image_view, 
-                                                   s_resolve_target.image_view };
+            frame_t& frame = s_in_flight_frames[i];
+            std::vector<VkImageView> attachments { frame.main_draw_color_target.image_view, 
+                                                   frame.main_draw_depth_target.image_view, 
+                                                   frame.main_draw_resolve_target.image_view };
 
-            s_framebuffers[i] = framebuffer_create(context, s_render_pass, attachments, context.swapchain.extent.width, context.swapchain.extent.height, 1);
+            frame.main_draw_framebuffer = framebuffer_create(context, s_render_pass, attachments, context.swapchain.extent.width, context.swapchain.extent.height, 1);
         }
     }
-    
+
     // descriptor sets
     {
         struct descriptor_set_layout_t
@@ -1625,19 +1274,10 @@ void renderer_init_resources(context_t& context)
 static
 void swapchain_teardown(context_t& context)
 {
-	for (framebuffer_t& fb : s_framebuffers)
-	{
-        framebuffer_destroy(context, fb);
-    }
-
     pipeline_destroy(context, s_main_draw_pipeline);
     pipeline_destroy(context, s_world_axes_pipeline);
 
     render_pass_destroy(context, s_render_pass);
-
-    texture_destroy(context, s_depth_target);
-    texture_destroy(context, s_color_target);
-    texture_destroy(context, s_resolve_target);
 
 	for (u32 i = 0; i < context.swapchain.num_images; i++)
 	{
@@ -1656,7 +1296,7 @@ void swapchain_recreate(context_t& context)
         return;
     }
 
-    device_flush(context.device); 
+    vkDeviceWaitIdle(context.device.device_handle);
 
     swapchain_teardown(context);
     context_refresh_swapchain(context);
@@ -1672,12 +1312,35 @@ frame_t frame_create(context_t& context)
     frame.render_finished_semaphore = semaphore_create(context);
     frame.frame_completed_fence = fence_create(context);
     frame.command_buffers = command_buffers_allocate(context, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
+
+    VkFormat depth_format = format_find_depth(context);
+
+    // render targets / framebuffer
+    frame.main_draw_color_target = texture_create_color_target(context, context.swapchain.format, 
+                                                               context.swapchain.extent.width, context.swapchain.extent.height, 
+                                                               VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, 
+                                                               context.device.max_num_msaa_samples);
+
+    frame.main_draw_depth_target = texture_create_depth_target(context, depth_format, 
+                                                               context.swapchain.extent.width, context.swapchain.extent.height, 
+                                                               VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, 
+                                                               context.device.max_num_msaa_samples);
+
+    frame.main_draw_resolve_target = texture_create_color_target(context, context.swapchain.format, 
+                                                                 context.swapchain.extent.width, context.swapchain.extent.height, 
+                                                                 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+                                                                 VK_SAMPLE_COUNT_1_BIT);
+
     return frame;
 }
 
 static
 void frame_destroy(context_t& context, frame_t& frame)
 {
+    framebuffer_destroy(context, frame.main_draw_framebuffer);
+    texture_destroy(context, frame.main_draw_color_target);
+    texture_destroy(context, frame.main_draw_depth_target);
+    texture_destroy(context, frame.main_draw_resolve_target);
     command_buffers_free(context, frame.command_buffers);
     semaphore_destroy(context, frame.swapchain_image_available_semaphore);
     semaphore_destroy(context, frame.render_finished_semaphore);
@@ -1709,7 +1372,6 @@ void update_uniform_buffer(context_t& context, camera_t& camera, u32 current_ima
 static u32 s_cur_frame = 0;
 static context_t* s_context;
 static camera_t* s_camera = nullptr;
-std::vector<frame_t> s_in_flight_frames;
 
 void renderer_init(window_t* app_window)
 {
@@ -1728,7 +1390,7 @@ void renderer_init(window_t* app_window)
     VkCommandBuffer setup_swapchain_images_commands = command_begin_single_time(*s_context);
     for(i32 i = 0; i < s_context->swapchain.num_images; i++)
     {
-        command_transition_image_layout(*s_context, setup_swapchain_images_commands, s_context->swapchain.images[i], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 1);
+        command_transition_image_layout(setup_swapchain_images_commands, s_context->swapchain.images[i], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 1);
     }
     command_end_single_time(*s_context, setup_swapchain_images_commands);
 
@@ -1804,7 +1466,7 @@ void frame_generate_command_buffers(context_t& context, frame_t& frame)
         clear_colors.push_back(color_target_clear);
         clear_colors.push_back(depth_target_clear);
 
-        command_buffer_begin_render_pass(command_buffer, s_render_pass.handle, s_framebuffers[frame.swapchain_image_index].handle, offset, context.swapchain.extent, clear_colors);
+        command_buffer_begin_render_pass(command_buffer, s_render_pass.handle, frame.main_draw_framebuffer.handle, offset, context.swapchain.extent, clear_colors);
             {
                 std::vector<VkDescriptorSet> draw_descriptor_sets = { s_descriptor_sets[frame.swapchain_image_index] };
                 command_draw_renderable_mesh(command_buffer, s_viking_room_renderable_mesh, s_main_draw_pipeline, draw_descriptor_sets);
@@ -1818,11 +1480,11 @@ void frame_generate_command_buffers(context_t& context, frame_t& frame)
         command_buffer_end_render_pass(command_buffer);
 
         // copy from render target to swap chain for presentation
-        command_transition_image_layout(context, command_buffer, context.swapchain.images[frame.swapchain_image_index], VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1);
-        command_copy_image(command_buffer, s_resolve_target.handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
+        command_transition_image_layout(command_buffer, context.swapchain.images[frame.swapchain_image_index], VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1);
+        command_copy_image(command_buffer, frame.main_draw_resolve_target.handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
                                            context.swapchain.images[frame.swapchain_image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
                                            context.swapchain.extent.width, context.swapchain.extent.height);
-        command_transition_image_layout(context, command_buffer, context.swapchain.images[frame.swapchain_image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 1);
+        command_transition_image_layout(command_buffer, context.swapchain.images[frame.swapchain_image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 1);
     }
     command_buffer_end(command_buffer);
 }
@@ -1897,7 +1559,7 @@ void renderer_render_frame()
 
 void renderer_deinit()
 {
-    device_flush(s_context->device);
+    vkDeviceWaitIdle(s_context->device.device_handle);
 
     swapchain_teardown(*s_context);
 

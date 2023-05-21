@@ -1,6 +1,6 @@
 #pragma once
 
-#include "engine/core/Types.h"
+#include "engine/core/types.h"
 #include "engine/math/mat44.h"
 #include "engine/render/vulkan/vulkan_include.h"
 #include <vector>
@@ -80,15 +80,6 @@ struct context_t
     surface_t surface;
     swapchain_t swapchain;
     command_pool_t graphics_command_pool;
-};
-
-struct frame_t
-{
-    u32 swapchain_image_index;
-    semaphore_t swapchain_image_available_semaphore;
-    semaphore_t render_finished_semaphore;
-    fence_t frame_completed_fence;
-    std::vector<VkCommandBuffer> command_buffers;
 };
 
 enum class BufferType : u8
@@ -181,6 +172,21 @@ struct pipeline_t
     VkPipelineDepthStencilStateCreateInfo depth_stencil_info;
     VkPipelineColorBlendStateCreateInfo color_blend_info;
     VkPipelineLayoutCreateInfo pipeline_layout_info;
+};
+
+struct frame_t
+{
+    u32 swapchain_image_index;
+    semaphore_t swapchain_image_available_semaphore;
+    semaphore_t render_finished_semaphore;
+    fence_t frame_completed_fence;
+
+    std::vector<VkCommandBuffer> command_buffers;
+
+    framebuffer_t main_draw_framebuffer;
+    texture_t main_draw_color_target;
+    texture_t main_draw_depth_target;
+    texture_t main_draw_resolve_target;
 };
 
 struct mvp_buffer_t
