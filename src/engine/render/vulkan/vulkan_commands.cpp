@@ -275,18 +275,18 @@ void command_buffer_end_render_pass(VkCommandBuffer command_buffer)
     vkCmdEndRenderPass(command_buffer);
 }
 
-void command_draw_renderable_mesh(VkCommandBuffer command_buffer, renderable_mesh_t& renderable_mesh, pipeline_t& pipeline, const std::vector<VkDescriptorSet>& descriptor_sets)
+void command_draw_renderable_mesh(VkCommandBuffer command_buffer, renderable_mesh_t& rm, const std::vector<VkDescriptorSet>& descriptor_sets)
 {
-    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline_handle);
+    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rm.pipeline.pipeline_handle);
 
-    VkBuffer vertex_buffers[] = { renderable_mesh.vertex_buffer.handle };
+    VkBuffer vertex_buffers[] = { rm.vertex_buffer.handle };
     VkDeviceSize offsets[] = { 0 };
     vkCmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers, offsets);
 
-    vkCmdBindIndexBuffer(command_buffer, renderable_mesh.index_buffer.handle, 0, VK_INDEX_TYPE_UINT32);
-    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline_layout_handle, 0, (u32)descriptor_sets.size(), descriptor_sets.data(), 0, nullptr);
+    vkCmdBindIndexBuffer(command_buffer, rm.index_buffer.handle, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rm.pipeline.layout_handle, 0, (u32)descriptor_sets.size(), descriptor_sets.data(), 0, nullptr);
 
-    vkCmdDrawIndexed(command_buffer, (u32)renderable_mesh.mesh->m_indices.size(), 1, 0, 0, 0);
+    vkCmdDrawIndexed(command_buffer, (u32)rm.mesh->m_indices.size(), 1, 0, 0, 0);
 }
 
 void command_copy_image(VkCommandBuffer command_buffer, VkImage src_image, VkImageLayout src_layout, VkImage dst_image, VkImageLayout dst_layout, u32 width, u32 height, u32 depth)

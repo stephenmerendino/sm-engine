@@ -1,5 +1,6 @@
 #pragma once
 
+#include "engine/core/config.h"
 #include "engine/core/types.h"
 #include "engine/math/mat44.h"
 #include "engine/render/vulkan/vulkan_include.h"
@@ -160,18 +161,35 @@ struct framebuffer_t
 struct pipeline_t
 {
     VkPipeline pipeline_handle = VK_NULL_HANDLE;
-    VkPipelineLayout pipeline_layout_handle = VK_NULL_HANDLE;
-    std::vector<VkPipelineColorBlendAttachmentState> color_blend_attachments;
-    VkViewport viewport;
-    VkRect2D scissor;
-    std::vector<VkShaderModule> shaders;
-    std::vector<VkPipelineShaderStageCreateInfo> shader_stage_infos;
-    VkPipelineInputAssemblyStateCreateInfo input_assembly_info;
-    VkPipelineRasterizationStateCreateInfo raster_info;
-    VkPipelineMultisampleStateCreateInfo multisample_info;
-    VkPipelineDepthStencilStateCreateInfo depth_stencil_info;
-    VkPipelineColorBlendStateCreateInfo color_blend_info;
-    VkPipelineLayoutCreateInfo pipeline_layout_info;
+    VkPipelineLayout layout_handle = VK_NULL_HANDLE;
+};
+
+struct mvp_buffer_t
+{
+	mat44 model;
+	mat44 view;
+	mat44 projection;
+};
+
+struct transform_t
+{
+    mat44 model;
+};
+
+struct descriptor_set_layout_t
+{
+    VkDescriptorSetLayout handle = VK_NULL_HANDLE;
+};
+
+struct renderable_mesh_t
+{
+    mesh_t* mesh = nullptr;
+    buffer_t vertex_buffer;
+    buffer_t index_buffer;
+    descriptor_set_layout_t descriptor_set_layout;
+    transform_t transform;
+    pipeline_t pipeline;
+    //std::vector<VkDescriptorSet> descriptor_sets;
 };
 
 struct frame_t
@@ -187,19 +205,4 @@ struct frame_t
     texture_t main_draw_color_target;
     texture_t main_draw_depth_target;
     texture_t main_draw_resolve_target;
-};
-
-struct mvp_buffer_t
-{
-	mat44 model;
-	mat44 view;
-	mat44 projection;
-};
-
-struct renderable_mesh_t
-{
-    mesh_t* mesh = nullptr;
-    pipeline_t* pipeline = nullptr;
-    buffer_t vertex_buffer;
-    buffer_t index_buffer;
 };
