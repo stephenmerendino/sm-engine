@@ -4,6 +4,7 @@
 #include "engine/core/types.h"
 #include "engine/math/mat44.h"
 #include "engine/render/vulkan/vulkan_include.h"
+#include "engine/thirdparty/vulkan/vulkan_core.h"
 #include <vector>
 
 struct mesh_t;
@@ -176,9 +177,75 @@ struct transform_t
     mat44 model;
 };
 
+struct pipeline_shader_stages_t
+{
+    std::vector<VkShaderModule> shaders;
+    std::vector<VkPipelineShaderStageCreateInfo> shader_stage_infos;
+};
+
+struct pipeline_input_assembly_t
+{
+    VkPipelineInputAssemblyStateCreateInfo input_assembly_info = {};
+};
+
+struct pipeline_vertex_input_t
+{
+    VkPipelineVertexInputStateCreateInfo vertex_input_info = {};
+    std::vector<VkVertexInputBindingDescription> input_binding_descs;
+    std::vector<VkVertexInputAttributeDescription> input_attr_descs;
+};
+
+struct pipeline_raster_state_t
+{
+    VkPipelineRasterizationStateCreateInfo raster_state = {};
+};
+
+struct pipeline_viewport_state_t
+{
+    VkPipelineViewportStateCreateInfo viewport_state = {};
+    VkViewport viewport;
+    VkRect2D scissor;
+};
+
+struct pipeline_multisample_state_t
+{
+    VkPipelineMultisampleStateCreateInfo multisample_state = {};
+};
+
+struct pipeline_depth_stencil_state_t
+{
+    VkPipelineDepthStencilStateCreateInfo depth_stencil_state = {};
+};
+
+struct pipeline_color_blend_state_t
+{
+    VkPipelineColorBlendStateCreateInfo color_blend_state = {};
+    std::vector<VkPipelineColorBlendAttachmentState> color_blend_attachments;
+};
+
+struct pipeline_layout_t
+{
+    VkPipelineLayout pipeline_layout = VK_NULL_HANDLE; 
+};
+
 struct descriptor_set_layout_t
 {
     VkDescriptorSetLayout handle = VK_NULL_HANDLE;
+};
+
+struct descriptor_pool_sizes_t
+{
+    std::vector<VkDescriptorPoolSize> pool_sizes;
+};
+
+struct descriptor_pool_t
+{
+    VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
+};
+
+struct descriptor_set_t
+{
+    VkDescriptorSet descriptor_set;
 };
 
 struct renderable_mesh_t
@@ -186,10 +253,10 @@ struct renderable_mesh_t
     mesh_t* mesh = nullptr;
     buffer_t vertex_buffer;
     buffer_t index_buffer;
-    descriptor_set_layout_t descriptor_set_layout;
     transform_t transform;
     pipeline_t pipeline;
-    //std::vector<VkDescriptorSet> descriptor_sets;
+    descriptor_set_layout_t descriptor_set_layout;
+    std::vector<descriptor_set_t> descriptor_sets;
 };
 
 struct frame_t
@@ -200,6 +267,8 @@ struct frame_t
     fence_t frame_completed_fence;
 
     std::vector<VkCommandBuffer> command_buffers;
+
+    descriptor_pool_t descriptor_pool;
 
     framebuffer_t main_draw_framebuffer;
     texture_t main_draw_color_target;

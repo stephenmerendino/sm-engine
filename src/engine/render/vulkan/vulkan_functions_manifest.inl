@@ -104,6 +104,7 @@ VK_DEVICE_FUNCTION(vkCreateDescriptorSetLayout);
 VK_DEVICE_FUNCTION(vkDestroyDescriptorSetLayout);
 VK_DEVICE_FUNCTION(vkCreateDescriptorPool);
 VK_DEVICE_FUNCTION(vkDestroyDescriptorPool);
+VK_DEVICE_FUNCTION(vkResetDescriptorPool);
 VK_DEVICE_FUNCTION(vkAllocateDescriptorSets);
 VK_DEVICE_FUNCTION(vkUpdateDescriptorSets);
 VK_DEVICE_FUNCTION(vkCmdBindDescriptorSets);

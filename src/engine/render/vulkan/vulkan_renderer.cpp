@@ -694,12 +694,6 @@ void fence_destroy(context_t& context, fence_t& fence)
     vkDestroyFence(context.device.device_handle, fence.handle, nullptr);
 }
 
-struct pipeline_shader_stages_t
-{
-    std::vector<VkShaderModule> shaders;
-    std::vector<VkPipelineShaderStageCreateInfo> shader_stage_infos;
-};
-
 static
 pipeline_shader_stages_t pipeline_create_shader_stages(context_t& context, const char* vert_shader_file, const char* vert_shader_entry, const char* frag_shader_file, const char* frag_shader_entry)
 {
@@ -738,11 +732,6 @@ void pipeline_destroy_shader_stages(context_t& context, pipeline_shader_stages_t
     }
 }
 
-struct pipeline_input_assembly_t
-{
-    VkPipelineInputAssemblyStateCreateInfo input_assembly_info = {};
-};
-
 static
 pipeline_input_assembly_t pipeline_create_input_assembly(VkPrimitiveTopology topology, bool primitive_restart_enable = false)
 {
@@ -752,13 +741,6 @@ pipeline_input_assembly_t pipeline_create_input_assembly(VkPrimitiveTopology top
     input_assembly.input_assembly_info.primitiveRestartEnable = primitive_restart_enable;
     return input_assembly;
 }
-
-struct pipeline_vertex_input_t
-{
-    VkPipelineVertexInputStateCreateInfo vertex_input_info = {};
-    std::vector<VkVertexInputBindingDescription> input_binding_descs;
-    std::vector<VkVertexInputAttributeDescription> input_attr_descs;
-};
 
 static
 pipeline_vertex_input_t pipeline_create_vertex_input(renderable_mesh_t& renderable_mesh)
@@ -773,11 +755,6 @@ pipeline_vertex_input_t pipeline_create_vertex_input(renderable_mesh_t& renderab
     vertex_input.vertex_input_info.pVertexAttributeDescriptions = vertex_input.input_attr_descs.data();
     return vertex_input;
 }
-
-struct pipeline_raster_state_t
-{
-    VkPipelineRasterizationStateCreateInfo raster_state = {};
-};
 
 static
 pipeline_raster_state_t pipeline_create_raster_state(VkPolygonMode polygon_mode = VK_POLYGON_MODE_FILL, 
@@ -806,13 +783,6 @@ pipeline_raster_state_t pipeline_create_raster_state(VkPolygonMode polygon_mode 
     return raster_state; 
 }
 
-struct pipeline_viewport_state_t
-{
-    VkPipelineViewportStateCreateInfo viewport_state = {};
-    VkViewport viewport;
-    VkRect2D scissor;
-};
-
 static
 void pipeline_create_viewport_state(pipeline_viewport_state_t& viewport_state, f32 x, f32 y, 
                                                                                f32 w, f32 h, 
@@ -836,11 +806,6 @@ void pipeline_create_viewport_state(pipeline_viewport_state_t& viewport_state, f
     viewport_state.viewport_state.scissorCount = 1;
 }
 
-struct pipeline_multisample_state_t
-{
-    VkPipelineMultisampleStateCreateInfo multisample_state = {};
-};
-
 static
 pipeline_multisample_state_t pipeline_create_multisample_state(VkSampleCountFlagBits sample_count, bool sample_shading_enable = false, f32 min_sample_shading = 1.0f)
 {
@@ -854,11 +819,6 @@ pipeline_multisample_state_t pipeline_create_multisample_state(VkSampleCountFlag
     multisample_state.multisample_state.alphaToOneEnable = VK_FALSE;
     return multisample_state;
 }
-
-struct pipeline_depth_stencil_state_t
-{
-    VkPipelineDepthStencilStateCreateInfo depth_stencil_state = {};
-};
 
 static
 pipeline_depth_stencil_state_t pipeline_create_depth_stencil_state(bool depth_test_enable, bool depth_write_enable, VkCompareOp depth_compare_op, 
@@ -878,12 +838,6 @@ pipeline_depth_stencil_state_t pipeline_create_depth_stencil_state(bool depth_te
     depth_stencil_state.depth_stencil_state.back = {};
     return depth_stencil_state;
 }
-
-struct pipeline_color_blend_state_t
-{
-    VkPipelineColorBlendStateCreateInfo color_blend_state = {};
-    std::vector<VkPipelineColorBlendAttachmentState> color_blend_attachments;
-};
 
 static
 void pipeline_add_color_blend_attachments(pipeline_color_blend_state_t& color_blend_state, bool blend_enable, 
@@ -916,11 +870,6 @@ void pipeline_create_color_blend_state(pipeline_color_blend_state_t& color_blend
     color_blend_state.color_blend_state.attachmentCount = (u32)color_blend_state.color_blend_attachments.size();
     color_blend_state.color_blend_state.pAttachments = color_blend_state.color_blend_attachments.data();
 }
-
-struct pipeline_layout_t
-{
-    VkPipelineLayout pipeline_layout = VK_NULL_HANDLE; 
-};
 
 pipeline_layout_t pipeline_create_layout(context_t& context, renderable_mesh_t& rm)
 {
@@ -974,6 +923,165 @@ pipeline_t pipeline_create(context_t& context, pipeline_shader_stages_t& shader_
     return pipeline;
 }
 
+static
+void descriptor_pool_add_size(descriptor_pool_sizes_t& pool_sizes, VkDescriptorType type, u32 count)
+{
+    VkDescriptorPoolSize pool_size = {}; 
+    pool_size.type = type;
+    pool_size.descriptorCount = count;
+    pool_sizes.pool_sizes.push_back(pool_size);
+}
+
+static
+descriptor_pool_t descriptor_pool_create(context_t& context, descriptor_pool_sizes_t& pool_sizes, u32 max_sets)
+{
+    VkDescriptorPoolCreateInfo create_info = {};
+    create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    create_info.poolSizeCount = (u32)pool_sizes.pool_sizes.size();
+    create_info.pPoolSizes = pool_sizes.pool_sizes.data();
+    create_info.maxSets = max_sets;
+
+    descriptor_pool_t descriptor_pool;
+    VULKAN_ASSERT(vkCreateDescriptorPool(context.device.device_handle, &create_info, nullptr, &descriptor_pool.descriptor_pool));
+    return descriptor_pool;
+}
+
+static
+void descriptor_pool_destroy(context_t& context, descriptor_pool_t& descriptor_pool)
+{
+    vkDestroyDescriptorPool(context.device.device_handle, descriptor_pool.descriptor_pool, nullptr);
+}
+
+static
+void descriptor_pool_reset(context_t& context, descriptor_pool_t& descriptor_pool, VkDescriptorPoolResetFlags flags = 0)
+{
+    vkResetDescriptorPool(context.device.device_handle, descriptor_pool.descriptor_pool, flags);
+}
+
+static
+std::vector<descriptor_set_t> descriptor_sets_allocate(context_t& context, descriptor_pool_t& descriptor_pool, std::vector<descriptor_set_layout_t>& layouts)
+{
+    VkDescriptorSetAllocateInfo alloc_info = {};
+    alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    alloc_info.descriptorPool = descriptor_pool.descriptor_pool;
+    alloc_info.descriptorSetCount = layouts.size();
+
+    std::vector<VkDescriptorSetLayout> vk_layouts(layouts.size());
+    for(i32 i = 0; i < vk_layouts.size(); i++)
+    {
+        vk_layouts[i] = layouts[i].handle;
+    }
+    alloc_info.pSetLayouts = vk_layouts.data();
+
+    std::vector<VkDescriptorSet> vk_descriptor_sets(layouts.size());
+    VULKAN_ASSERT(vkAllocateDescriptorSets(context.device.device_handle, &alloc_info, vk_descriptor_sets.data()));
+
+    std::vector<descriptor_set_t> descriptor_sets(layouts.size());
+    for(i32 i = 0; i < vk_layouts.size(); i++)
+    {
+        descriptor_sets[i].descriptor_set = vk_descriptor_sets[i];
+    }
+
+    return descriptor_sets;
+}
+
+struct descriptor_set_write_info_t
+{
+    VkDescriptorType type;
+    union
+    {
+        VkDescriptorBufferInfo buffer_write_info;
+        VkDescriptorImageInfo image_write_info;
+    };
+};
+
+struct descriptor_sets_writes_t
+{
+    std::vector<descriptor_set_write_info_t> descriptor_sets_write_infos;
+    std::vector<VkWriteDescriptorSet> descriptor_sets_writes;
+};
+
+static
+void descriptor_sets_writes_add_uniform_buffer(descriptor_sets_writes_t& descriptor_sets_writes, descriptor_set_t& descriptor_set, buffer_t& buffer, u32 buffer_offset, u32 dst_binding, u32 dst_array_element, u32 descriptor_count)
+{
+    descriptor_set_write_info_t uniform_write_info = {};
+    uniform_write_info.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    uniform_write_info.buffer_write_info.buffer = buffer.handle;
+    uniform_write_info.buffer_write_info.offset = buffer_offset;
+    uniform_write_info.buffer_write_info.range = buffer.size;
+    descriptor_sets_writes.descriptor_sets_write_infos.push_back(uniform_write_info);
+
+    VkWriteDescriptorSet uniform_write = {};
+    uniform_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    uniform_write.dstBinding = dst_binding;
+    uniform_write.dstSet = descriptor_set.descriptor_set;
+    uniform_write.dstArrayElement = dst_array_element;
+    uniform_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    uniform_write.descriptorCount = descriptor_count;
+    descriptor_sets_writes.descriptor_sets_writes.push_back(uniform_write);
+}
+
+static
+void descriptor_sets_writes_add_combined_image_sampler(descriptor_sets_writes_t& descriptor_sets_writes, descriptor_set_t& descriptor_set, texture_t& texture, sampler_t& sampler, VkImageLayout image_layout, u32 dst_binding, u32 dst_array_element, u32 descriptor_count)
+{
+    descriptor_set_write_info_t combined_sampler_write_info = {};
+    combined_sampler_write_info.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    combined_sampler_write_info.image_write_info.imageView = texture.image_view;
+    combined_sampler_write_info.image_write_info.sampler = sampler.handle;
+    combined_sampler_write_info.image_write_info.imageLayout = image_layout;
+    descriptor_sets_writes.descriptor_sets_write_infos.push_back(combined_sampler_write_info);
+
+    VkWriteDescriptorSet sampler_write = {};
+    sampler_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    sampler_write.dstSet = descriptor_set.descriptor_set;
+    sampler_write.dstBinding = dst_binding;
+    sampler_write.dstArrayElement = dst_array_element;
+    sampler_write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    sampler_write.descriptorCount = descriptor_count;
+    descriptor_sets_writes.descriptor_sets_writes.push_back(sampler_write);
+}
+
+static
+void descriptor_sets_writes_reset(descriptor_sets_writes_t& descriptor_sets_writes)
+{
+    descriptor_sets_writes.descriptor_sets_write_infos.clear();
+    descriptor_sets_writes.descriptor_sets_writes.clear();
+}
+
+static
+void descriptor_sets_write(context_t& context, descriptor_sets_writes_t& descriptor_sets_writes)
+{
+    // hook up write infos to the writes
+    for(i32 i = 0; i < descriptor_sets_writes.descriptor_sets_writes.size(); i++)
+    {
+        switch (descriptor_sets_writes.descriptor_sets_write_infos[i].type)
+        {
+            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:             descriptor_sets_writes.descriptor_sets_writes[i].pBufferInfo = &descriptor_sets_writes.descriptor_sets_write_infos[i].buffer_write_info; break;
+            case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:     descriptor_sets_writes.descriptor_sets_writes[i].pImageInfo = &descriptor_sets_writes.descriptor_sets_write_infos[i].image_write_info; break;
+            case VK_DESCRIPTOR_TYPE_SAMPLER:
+            case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+            case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+            case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+            case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+            case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+            case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
+            case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+            case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV:
+            case VK_DESCRIPTOR_TYPE_MUTABLE_VALVE:
+            case VK_DESCRIPTOR_TYPE_SAMPLE_WEIGHT_IMAGE_QCOM:
+            case VK_DESCRIPTOR_TYPE_BLOCK_MATCH_IMAGE_QCOM:
+            case VK_DESCRIPTOR_TYPE_MAX_ENUM:
+                ASSERT("Trying to set up a descriptor set write that isn't supported yet\n");
+                break;
+        }
+    }
+
+    vkUpdateDescriptorSets(context.device.device_handle, (u32)descriptor_sets_writes.descriptor_sets_writes.size(), descriptor_sets_writes.descriptor_sets_writes.data(), 0, nullptr);
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -989,8 +1097,8 @@ static std::vector<buffer_t> s_uniform_buffers;
 
 static render_pass_t s_render_pass;
 
-static VkDescriptorPool s_descriptor_pool = VK_NULL_HANDLE;
-std::vector<VkDescriptorSet> s_descriptor_sets;
+//static VkDescriptorPool s_descriptor_pool = VK_NULL_HANDLE;
+//std::vector<VkDescriptorSet> s_descriptor_sets;
 
 static std::vector<VkFence> s_swapchain_images_in_flight;
 std::vector<frame_t> s_in_flight_frames;
@@ -1058,126 +1166,26 @@ void renderer_init_resources(context_t& context)
 
     // descriptor sets
     {
-        struct desciptor_pool_t
         {
-            VkDescriptorPool handle;
-            std::vector<VkDescriptorPoolSize> pool_sizes;
-        };
+            std::vector<descriptor_set_layout_t> layouts(s_in_flight_frames.size(), s_viking_room_renderable_mesh.descriptor_set_layout);
+            s_viking_room_renderable_mesh.descriptor_sets = descriptor_sets_allocate(context, s_in_flight_frames[0].descriptor_pool, layouts);
+        }
 
-        std::vector<VkDescriptorPoolSize> pool_sizes;
-
-        VkDescriptorPoolSize uniform_pool_size = {};
-        uniform_pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        uniform_pool_size.descriptorCount = s_in_flight_frames.size();
-        pool_sizes.push_back(uniform_pool_size);
-
-        VkDescriptorPoolSize sampler_pool_size = {};
-        sampler_pool_size.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        sampler_pool_size.descriptorCount = s_in_flight_frames.size();
-        pool_sizes.push_back(sampler_pool_size);
-
-        VkDescriptorPoolCreateInfo create_info = {};
-        create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        create_info.poolSizeCount = (u32)pool_sizes.size();
-        create_info.pPoolSizes = pool_sizes.data();
-        create_info.maxSets = s_in_flight_frames.size();
-
-        VULKAN_ASSERT(vkCreateDescriptorPool(context.device.device_handle, &create_info, nullptr, &s_descriptor_pool));
-
-        // descriptor sets
-        std::vector<VkDescriptorSetLayout> layouts(s_in_flight_frames.size(), s_viking_room_renderable_mesh.descriptor_set_layout.handle);
-
-        VkDescriptorSetAllocateInfo alloc_info = {};
-        alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        alloc_info.descriptorPool = s_descriptor_pool;
-        alloc_info.descriptorSetCount = s_in_flight_frames.size();
-        alloc_info.pSetLayouts = layouts.data();
-
-        s_descriptor_sets.resize(s_in_flight_frames.size());
-        VULKAN_ASSERT(vkAllocateDescriptorSets(context.device.device_handle, &alloc_info, s_descriptor_sets.data()));
-
-        // descriptor set writes
-        struct descriptor_set_write_info_t
         {
-            VkDescriptorType type;
-            union
-            {
-                VkDescriptorBufferInfo buffer_write_info;
-                VkDescriptorImageInfo image_write_info;
-            };
-        };
-        
-        std::vector<descriptor_set_write_info_t> descriptor_set_write_infos;
-        std::vector<VkWriteDescriptorSet> descriptor_set_writes;
+            std::vector<descriptor_set_layout_t> layouts(s_in_flight_frames.size(), s_world_axes_renderable_mesh.descriptor_set_layout);
+            s_world_axes_renderable_mesh.descriptor_sets = descriptor_sets_allocate(context, s_in_flight_frames[0].descriptor_pool, layouts);
+        }
+
+        descriptor_sets_writes_t descriptor_sets_writes;
 
         for(i32 i = 0; i < s_in_flight_frames.size(); i++)
         {
-            descriptor_set_write_infos.clear();
-            descriptor_set_writes.clear(); 
-
-            // set up uniform write
-            descriptor_set_write_info_t uniform_write_info = {};
-            uniform_write_info.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            uniform_write_info.buffer_write_info.buffer = s_uniform_buffers[i].handle;
-            uniform_write_info.buffer_write_info.offset = 0;
-            uniform_write_info.buffer_write_info.range = s_uniform_buffers[i].size;
-            descriptor_set_write_infos.push_back(uniform_write_info);
-
-            VkWriteDescriptorSet uniform_write = {};
-            uniform_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            uniform_write.dstBinding = 0;
-            uniform_write.dstArrayElement = 0;
-            uniform_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            uniform_write.descriptorCount = 1;
-            descriptor_set_writes.push_back(uniform_write);
-
-            // set up sampler write
-            descriptor_set_write_info_t sampler_write_info = {};
-            sampler_write_info.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            sampler_write_info.image_write_info.imageView = s_viking_room_texture.image_view;
-            sampler_write_info.image_write_info.sampler = s_viking_room_sampler.handle;
-            sampler_write_info.image_write_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            descriptor_set_write_infos.push_back(sampler_write_info);
-
-            VkWriteDescriptorSet sampler_write = {};
-            sampler_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            sampler_write.dstBinding = 1;
-            sampler_write.dstArrayElement = 0;
-            sampler_write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            sampler_write.descriptorCount = 1;
-            descriptor_set_writes.push_back(sampler_write);
-
-            // finish binding the write infos based on type
-            for (u32 j = 0; j < descriptor_set_writes.size(); j++)
-            {
-                descriptor_set_writes[j].dstSet = s_descriptor_sets[i];
-                switch (descriptor_set_writes[j].descriptorType)
-                {
-                    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: descriptor_set_writes[j].pBufferInfo = &descriptor_set_write_infos[j].buffer_write_info; break;
-                    case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: descriptor_set_writes[j].pImageInfo = &descriptor_set_write_infos[j].image_write_info; break;
-                    case VK_DESCRIPTOR_TYPE_SAMPLER:
-                    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-                    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-                    case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-                    case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-                    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-                    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-                    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-                    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-                    case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
-                    case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
-                    case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV:
-                    case VK_DESCRIPTOR_TYPE_MUTABLE_VALVE:
-                    case VK_DESCRIPTOR_TYPE_SAMPLE_WEIGHT_IMAGE_QCOM:
-                    case VK_DESCRIPTOR_TYPE_BLOCK_MATCH_IMAGE_QCOM:
-                    case VK_DESCRIPTOR_TYPE_MAX_ENUM:
-                        ASSERT("Trying to set up a descriptor set write that isn't supported yet\n");
-                        break;
-                    }
-            }
-
-            // do the writes
-            vkUpdateDescriptorSets(context.device.device_handle, (u32)descriptor_set_writes.size(), descriptor_set_writes.data(), 0, nullptr);
+            descriptor_sets_writes_reset(descriptor_sets_writes);
+            descriptor_sets_writes_add_uniform_buffer(descriptor_sets_writes, s_viking_room_renderable_mesh.descriptor_sets[i], s_uniform_buffers[i], 0, 0, 0, 1);
+            descriptor_sets_writes_add_combined_image_sampler(descriptor_sets_writes, s_viking_room_renderable_mesh.descriptor_sets[i], s_viking_room_texture, s_viking_room_sampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 0, 1);
+            descriptor_sets_writes_add_uniform_buffer(descriptor_sets_writes, s_world_axes_renderable_mesh.descriptor_sets[i], s_uniform_buffers[i], 0, 0, 0, 1);
+            descriptor_sets_writes_add_combined_image_sampler(descriptor_sets_writes, s_world_axes_renderable_mesh.descriptor_sets[i], s_viking_room_texture, s_viking_room_sampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 0, 1);
+            descriptor_sets_write(context, descriptor_sets_writes);
         }
     }
 
@@ -1272,8 +1280,6 @@ void swapchain_teardown(context_t& context)
 	{
         buffer_destroy(context, s_uniform_buffers[i]);
 	}
-
-    descriptor_pool_destroy(context, s_descriptor_pool);
 }
 
 static
@@ -1319,12 +1325,18 @@ frame_t frame_create(context_t& context)
                                                                  VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
                                                                  VK_SAMPLE_COUNT_1_BIT);
 
+    descriptor_pool_sizes_t pool_sizes;
+    descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4);
+    descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4);
+    frame.descriptor_pool = descriptor_pool_create(context, pool_sizes, 4);
+
     return frame;
 }
 
 static
 void frame_destroy(context_t& context, frame_t& frame)
 {
+    descriptor_pool_destroy(context, frame.descriptor_pool);
     framebuffer_destroy(context, frame.main_draw_framebuffer);
     texture_destroy(context, frame.main_draw_color_target);
     texture_destroy(context, frame.main_draw_depth_target);
@@ -1516,13 +1528,13 @@ void frame_generate_command_buffers(context_t& context, frame_t& frame)
 
         command_buffer_begin_render_pass(command_buffer, s_render_pass.handle, frame.main_draw_framebuffer.handle, offset, context.swapchain.extent, clear_colors);
             {
-                std::vector<VkDescriptorSet> draw_descriptor_sets = { s_descriptor_sets[s_cur_frame] };
+                std::vector<VkDescriptorSet> draw_descriptor_sets = { s_viking_room_renderable_mesh.descriptor_sets[s_cur_frame].descriptor_set };
                 command_draw_renderable_mesh(command_buffer, s_viking_room_renderable_mesh, draw_descriptor_sets);
             }
              
             if(s_debug_render)
             {
-                std::vector<VkDescriptorSet> draw_descriptor_sets = { s_descriptor_sets[s_cur_frame] };
+                std::vector<VkDescriptorSet> draw_descriptor_sets = { s_world_axes_renderable_mesh.descriptor_sets[s_cur_frame].descriptor_set };
                 command_draw_renderable_mesh(command_buffer, s_world_axes_renderable_mesh, draw_descriptor_sets);
             }
         command_buffer_end_render_pass(command_buffer);
