@@ -1097,9 +1097,6 @@ static std::vector<buffer_t> s_uniform_buffers;
 
 static render_pass_t s_render_pass;
 
-//static VkDescriptorPool s_descriptor_pool = VK_NULL_HANDLE;
-//std::vector<VkDescriptorSet> s_descriptor_sets;
-
 static std::vector<VkFence> s_swapchain_images_in_flight;
 std::vector<frame_t> s_in_flight_frames;
 
@@ -1166,16 +1163,6 @@ void renderer_init_resources(context_t& context)
 
     // descriptor sets
     {
-        {
-            std::vector<descriptor_set_layout_t> layouts(s_in_flight_frames.size(), s_viking_room_renderable_mesh.descriptor_set_layout);
-            s_viking_room_renderable_mesh.descriptor_sets = descriptor_sets_allocate(context, s_in_flight_frames[0].descriptor_pool, layouts);
-        }
-
-        {
-            std::vector<descriptor_set_layout_t> layouts(s_in_flight_frames.size(), s_world_axes_renderable_mesh.descriptor_set_layout);
-            s_world_axes_renderable_mesh.descriptor_sets = descriptor_sets_allocate(context, s_in_flight_frames[0].descriptor_pool, layouts);
-        }
-
         descriptor_sets_writes_t descriptor_sets_writes;
 
         for(i32 i = 0; i < s_in_flight_frames.size(); i++)
@@ -1386,14 +1373,6 @@ void renderer_init(window_t* app_window)
         s_in_flight_frames[i] = frame_create(*s_context);
     }
 
-    // manually init swapchain images to the correct starting layout
-    VkCommandBuffer setup_swapchain_images_commands = command_begin_single_time(*s_context);
-    for(i32 i = 0; i < s_context->swapchain.num_images; i++)
-    {
-        command_transition_image_layout(setup_swapchain_images_commands, s_context->swapchain.images[i], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 1);
-    }
-    command_end_single_time(*s_context, setup_swapchain_images_commands);
-
     {
         // set up descriptor set layout
         std::vector<VkDescriptorSetLayoutBinding> bindings;
@@ -1459,6 +1438,16 @@ void renderer_init(window_t* app_window)
         VULKAN_ASSERT(vkCreateDescriptorSetLayout(s_context->device.device_handle, &layout_create_info, nullptr, &world_axes_descriptor_set_layout.handle));
         s_world_axes_mesh = mesh_load_axes();
         s_world_axes_renderable_mesh = renderable_mesh_create(*s_context, s_world_axes_mesh, world_axes_descriptor_set_layout);
+    }
+
+    {
+        std::vector<descriptor_set_layout_t> layouts(s_in_flight_frames.size(), s_viking_room_renderable_mesh.descriptor_set_layout);
+        s_viking_room_renderable_mesh.descriptor_sets = descriptor_sets_allocate(*s_context, s_in_flight_frames[0].descriptor_pool, layouts);
+    }
+
+    {
+        std::vector<descriptor_set_layout_t> layouts(s_in_flight_frames.size(), s_world_axes_renderable_mesh.descriptor_set_layout);
+        s_world_axes_renderable_mesh.descriptor_sets = descriptor_sets_allocate(*s_context, s_in_flight_frames[0].descriptor_pool, layouts);
     }
 
     // texture and sampler

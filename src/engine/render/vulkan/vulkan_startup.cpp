@@ -1,6 +1,7 @@
 #include "engine/core/config.h"
 #include "engine/core/debug.h"
 #include "engine/core/macros.h"
+#include "engine/render/vulkan/vulkan_commands.h"
 #include "engine/render/window.h"
 #include "engine/render/vulkan/vulkan_startup.h"
 #include "engine/render/vulkan/vulkan_temp.h"
@@ -590,6 +591,18 @@ swapchain_t swapchain_create(device_t& device, surface_t& surface, window_t& win
 }
 
 static
+void swapchain_do_initial_transitions(context_t& context)
+{
+    // manually init swapchain images to the correct starting layout
+    VkCommandBuffer setup_swapchain_images_commands = command_begin_single_time(context);
+    for(i32 i = 0; i < context.swapchain.num_images; i++)
+    {
+        command_transition_image_layout(setup_swapchain_images_commands, context.swapchain.images[i], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 1);
+    }
+    command_end_single_time(context, setup_swapchain_images_commands);
+}
+
+static
 command_pool_t command_pool_create(device_t& device, VkQueueFlags queue_families, VkCommandPoolCreateFlags create_flags)
 {
     queue_family_indices_t queue_family_indices = device.queue_families;
@@ -652,6 +665,7 @@ context_t* context_create(window_t* window)
     context->device = device_create(context->instance, context->surface);
     context->swapchain = swapchain_create(context->device, context->surface, *context->window);
     context->graphics_command_pool = command_pool_create(context->device, VK_QUEUE_GRAPHICS_BIT, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+    swapchain_do_initial_transitions(*context);
     return context;
 }
 
@@ -675,4 +689,5 @@ void context_refresh_swapchain(context_t& context)
         
     swapchain_destroy(context.device, context.swapchain);    
     context.swapchain = swapchain_create(context.device, context.surface, *context.window);
+    swapchain_do_initial_transitions(context);
 }
