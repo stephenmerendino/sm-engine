@@ -10,6 +10,18 @@
 struct mesh_t;
 struct window_t;
 
+struct mvp_buffer_t
+{
+	mat44 model;
+	mat44 view;
+	mat44 projection;
+};
+
+struct transform_t
+{
+    mat44 model;
+};
+
 struct semaphore_t
 {   
     VkSemaphore handle;
@@ -165,18 +177,6 @@ struct pipeline_t
     VkPipelineLayout layout_handle = VK_NULL_HANDLE;
 };
 
-struct mvp_buffer_t
-{
-	mat44 model;
-	mat44 view;
-	mat44 projection;
-};
-
-struct transform_t
-{
-    mat44 model;
-};
-
 struct pipeline_shader_stages_t
 {
     std::vector<VkShaderModule> shaders;
@@ -246,6 +246,22 @@ struct descriptor_pool_t
 struct descriptor_set_t
 {
     VkDescriptorSet descriptor_set;
+};
+
+struct descriptor_set_write_info_t
+{
+    VkDescriptorType type;
+    union
+    {
+        VkDescriptorBufferInfo buffer_write_info;
+        VkDescriptorImageInfo image_write_info;
+    };
+};
+
+struct descriptor_sets_writes_t
+{
+    std::vector<descriptor_set_write_info_t> descriptor_sets_write_infos;
+    std::vector<VkWriteDescriptorSet> descriptor_sets_writes;
 };
 
 struct renderable_mesh_t

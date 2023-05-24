@@ -985,21 +985,22 @@ std::vector<descriptor_set_t> descriptor_sets_allocate(context_t& context, descr
     return descriptor_sets;
 }
 
-struct descriptor_set_write_info_t
+struct descriptor_set_layout_bindings_t
 {
-    VkDescriptorType type;
-    union
-    {
-        VkDescriptorBufferInfo buffer_write_info;
-        VkDescriptorImageInfo image_write_info;
-    };
+    std::vector<VkDescriptorSetLayoutBinding> bindings;
 };
 
-struct descriptor_sets_writes_t
+static
+void descriptor_set_layout_add_binding(descriptor_set_layout_bindings_t& bindings, u32 binding_index, u32 descriptor_count, VkDescriptorType descriptor_type, VkShaderStageFlagBits shader_stages)
 {
-    std::vector<descriptor_set_write_info_t> descriptor_sets_write_infos;
-    std::vector<VkWriteDescriptorSet> descriptor_sets_writes;
-};
+    VkDescriptorSetLayoutBinding new_binding = {};
+    new_binding.binding = binding_index;
+    new_binding.descriptorCount = descriptor_count;
+    new_binding.descriptorType = descriptor_type;
+    new_binding.stageFlags = shader_stages;
+    new_binding.pImmutableSamplers = nullptr;
+    bindings.bindings.push_back(new_binding);
+}
 
 static
 void descriptor_sets_writes_add_uniform_buffer(descriptor_sets_writes_t& descriptor_sets_writes, descriptor_set_t& descriptor_set, buffer_t& buffer, u32 buffer_offset, u32 dst_binding, u32 dst_array_element, u32 descriptor_count)
@@ -1019,6 +1020,19 @@ void descriptor_sets_writes_add_uniform_buffer(descriptor_sets_writes_t& descrip
     uniform_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     uniform_write.descriptorCount = descriptor_count;
     descriptor_sets_writes.descriptor_sets_writes.push_back(uniform_write);
+}
+
+static
+descriptor_set_layout_t descriptor_set_layout_create(context_t& context, descriptor_set_layout_bindings_t& bindings)
+{
+    VkDescriptorSetLayoutCreateInfo layout_create_info = {};
+    layout_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layout_create_info.bindingCount = (u32)bindings.bindings.size();
+    layout_create_info.pBindings = bindings.bindings.data();
+
+    descriptor_set_layout_t descriptor_set_layout;
+    VULKAN_ASSERT(vkCreateDescriptorSetLayout(context.device.device_handle, &layout_create_info, nullptr, &descriptor_set_layout.handle));
+    return descriptor_set_layout;
 }
 
 static
@@ -1373,86 +1387,41 @@ void renderer_init(window_t* app_window)
         s_in_flight_frames[i] = frame_create(*s_context);
     }
 
+    // viking room
     {
-        // set up descriptor set layout
-        std::vector<VkDescriptorSetLayoutBinding> bindings;
-        descriptor_set_layout_t viking_room_descriptor_set_layout;
-
-        VkDescriptorSetLayoutBinding uniform_binding = {};
-        uniform_binding.binding = 0;
-        uniform_binding.descriptorCount = 1;
-        uniform_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        uniform_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        uniform_binding.pImmutableSamplers = nullptr;
-        bindings.push_back(uniform_binding);
-
-        VkDescriptorSetLayoutBinding sampler_binding = {};
-        sampler_binding.binding = 1;
-        sampler_binding.descriptorCount = 1;
-        sampler_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        sampler_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        sampler_binding.pImmutableSamplers = nullptr;
-        bindings.push_back(sampler_binding);
-
-        VkDescriptorSetLayoutCreateInfo layout_create_info = {};
-        layout_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layout_create_info.bindingCount = (u32)bindings.size();
-        layout_create_info.pBindings = bindings.data();
-
-        VULKAN_ASSERT(vkCreateDescriptorSetLayout(s_context->device.device_handle, &layout_create_info, nullptr, &viking_room_descriptor_set_layout.handle));
+        descriptor_set_layout_bindings_t bindings;
+        descriptor_set_layout_add_binding(bindings, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
+        descriptor_set_layout_add_binding(bindings, 1, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
+        descriptor_set_layout_t descriptor_set_layout = descriptor_set_layout_create(*s_context, bindings);
 
         // meshes
         s_viking_room_mesh = mesh_load_from_obj("models/viking_room.obj");
-        s_viking_room_renderable_mesh = renderable_mesh_create(*s_context, s_viking_room_mesh, viking_room_descriptor_set_layout);
+        s_viking_room_renderable_mesh = renderable_mesh_create(*s_context, s_viking_room_mesh, descriptor_set_layout);
 
         // setup initial position
         translate(s_viking_room_renderable_mesh.transform.model, make_vec3(3.0f, 0.0f, 0.0f));
-    }
 
-    {
-        // set up descriptor set layout
-        std::vector<VkDescriptorSetLayoutBinding> bindings;
-        descriptor_set_layout_t world_axes_descriptor_set_layout;
-
-        VkDescriptorSetLayoutBinding uniform_binding = {};
-        uniform_binding.binding = 0;
-        uniform_binding.descriptorCount = 1;
-        uniform_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        uniform_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        uniform_binding.pImmutableSamplers = nullptr;
-        bindings.push_back(uniform_binding);
-
-        VkDescriptorSetLayoutBinding sampler_binding = {};
-        sampler_binding.binding = 1;
-        sampler_binding.descriptorCount = 1;
-        sampler_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        sampler_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        sampler_binding.pImmutableSamplers = nullptr;
-        bindings.push_back(sampler_binding);
-
-        VkDescriptorSetLayoutCreateInfo layout_create_info = {};
-        layout_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layout_create_info.bindingCount = (u32)bindings.size();
-        layout_create_info.pBindings = bindings.data();
-
-        VULKAN_ASSERT(vkCreateDescriptorSetLayout(s_context->device.device_handle, &layout_create_info, nullptr, &world_axes_descriptor_set_layout.handle));
-        s_world_axes_mesh = mesh_load_axes();
-        s_world_axes_renderable_mesh = renderable_mesh_create(*s_context, s_world_axes_mesh, world_axes_descriptor_set_layout);
-    }
-
-    {
         std::vector<descriptor_set_layout_t> layouts(s_in_flight_frames.size(), s_viking_room_renderable_mesh.descriptor_set_layout);
         s_viking_room_renderable_mesh.descriptor_sets = descriptor_sets_allocate(*s_context, s_in_flight_frames[0].descriptor_pool, layouts);
+
+        // texture and sampler
+        s_viking_room_texture = texture_create_from_file(*s_context, "textures/viking_room.png");
+        s_viking_room_sampler = sampler_create(*s_context, s_viking_room_texture.num_mips);
     }
 
+    // world axes
     {
+        descriptor_set_layout_bindings_t bindings;
+        descriptor_set_layout_add_binding(bindings, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
+        descriptor_set_layout_add_binding(bindings, 1, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
+        descriptor_set_layout_t descriptor_set_layout = descriptor_set_layout_create(*s_context, bindings);
+
+        s_world_axes_mesh = mesh_load_axes();
+        s_world_axes_renderable_mesh = renderable_mesh_create(*s_context, s_world_axes_mesh, descriptor_set_layout);
+
         std::vector<descriptor_set_layout_t> layouts(s_in_flight_frames.size(), s_world_axes_renderable_mesh.descriptor_set_layout);
         s_world_axes_renderable_mesh.descriptor_sets = descriptor_sets_allocate(*s_context, s_in_flight_frames[0].descriptor_pool, layouts);
     }
-
-    // texture and sampler
-    s_viking_room_texture = texture_create_from_file(*s_context, "textures/viking_room.png");
-    s_viking_room_sampler = sampler_create(*s_context, s_viking_room_texture.num_mips);
 
     renderer_init_resources(*s_context);
 }
