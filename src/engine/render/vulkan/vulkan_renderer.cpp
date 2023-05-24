@@ -620,18 +620,6 @@ void sampler_destroy(context_t& context, sampler_t& sampler)
     vkDestroySampler(context.device.device_handle, sampler.handle, nullptr);
 }
 
-static
-void descriptor_set_layout_destroy(context_t& context, VkDescriptorSetLayout layout)
-{
-	vkDestroyDescriptorSetLayout(context.device.device_handle, layout, nullptr);
-}
-
-static
-void descriptor_pool_destroy(context_t& context, VkDescriptorPool pool)
-{
-	vkDestroyDescriptorPool(context.device.device_handle, pool, nullptr);
-}
-
 static 
 void render_pass_destroy(context_t& context, render_pass_t& render_pass)
 {
@@ -1107,26 +1095,32 @@ static renderable_mesh_t s_viking_room_renderable_mesh;
 static renderable_mesh_t s_world_axes_renderable_mesh;
 static texture_t s_viking_room_texture;
 static sampler_t s_viking_room_sampler;
-static std::vector<buffer_t> s_uniform_buffers;
 
-static render_pass_t s_render_pass;
+struct scene_t
+{
+    // meshes to draw
+    std::vector<renderable_mesh_t> meshes;
+};
 
-static std::vector<VkFence> s_swapchain_images_in_flight;
-std::vector<frame_t> s_in_flight_frames;
+struct renderer_globals_t
+{
+    std::vector<frame_t> in_flight_frames;
+    std::vector<VkFence> swapchain_images_in_flight;
+    u32 cur_frame = 0;
 
-static bool s_debug_render = false;
+    //render_pass_t depth_only_render_pass;
+    render_pass_t main_draw_render_pass;
+    //render_pass_t post_process_render_pass;
+    
+    camera_t* main_camera = nullptr;
+
+    bool debug_render = false;
+};
 
 static
-void renderer_init_resources(context_t& context)
+void renderer_init_resources(context_t& context, renderer_globals_t& globals)
 {
-    render_pass_reset(s_render_pass);
-
-    // uniform buffers
-	s_uniform_buffers.resize(s_in_flight_frames.size());
-	for (i32 i = 0; i < (i32)s_uniform_buffers.size(); i++)
-	{
-        s_uniform_buffers[i] = buffer_create(context, BufferType::kUniformBuffer, sizeof(mvp_buffer_t));
-	}
+    render_pass_reset(globals.main_draw_render_pass);
 
     VkFormat depth_format = format_find_depth(context);
 
@@ -1162,31 +1156,16 @@ void renderer_init_resources(context_t& context)
                                                      0,
                                                      VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
 
-        s_render_pass = render_pass_create(context, attachments, subpasses, subpass_dependencies);
+        globals.main_draw_render_pass = render_pass_create(context, attachments, subpasses, subpass_dependencies);
 
-        for(i32 i = 0; i < s_in_flight_frames.size(); i++)
+        for(i32 i = 0; i < globals.in_flight_frames.size(); i++)
         {
-            frame_t& frame = s_in_flight_frames[i];
+            frame_t& frame = globals.in_flight_frames[i];
             std::vector<VkImageView> attachments { frame.main_draw_color_target.image_view, 
                                                    frame.main_draw_depth_target.image_view, 
                                                    frame.main_draw_resolve_target.image_view };
 
-            frame.main_draw_framebuffer = framebuffer_create(context, s_render_pass, attachments, context.swapchain.extent.width, context.swapchain.extent.height, 1);
-        }
-    }
-
-    // descriptor sets
-    {
-        descriptor_sets_writes_t descriptor_sets_writes;
-
-        for(i32 i = 0; i < s_in_flight_frames.size(); i++)
-        {
-            descriptor_sets_writes_reset(descriptor_sets_writes);
-            descriptor_sets_writes_add_uniform_buffer(descriptor_sets_writes, s_viking_room_renderable_mesh.descriptor_sets[i], s_uniform_buffers[i], 0, 0, 0, 1);
-            descriptor_sets_writes_add_combined_image_sampler(descriptor_sets_writes, s_viking_room_renderable_mesh.descriptor_sets[i], s_viking_room_texture, s_viking_room_sampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 0, 1);
-            descriptor_sets_writes_add_uniform_buffer(descriptor_sets_writes, s_world_axes_renderable_mesh.descriptor_sets[i], s_uniform_buffers[i], 0, 0, 0, 1);
-            descriptor_sets_writes_add_combined_image_sampler(descriptor_sets_writes, s_world_axes_renderable_mesh.descriptor_sets[i], s_viking_room_texture, s_viking_room_sampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 0, 1);
-            descriptor_sets_write(context, descriptor_sets_writes);
+            frame.main_draw_framebuffer = framebuffer_create(context, globals.main_draw_render_pass, attachments, context.swapchain.extent.width, context.swapchain.extent.height, 1);
         }
     }
 
@@ -1226,7 +1205,7 @@ void renderer_init_resources(context_t& context)
                                                                               depth_stencil_state, 
                                                                               color_blend_state, 
                                                                               pipeline_layout, 
-                                                                              s_render_pass);
+                                                                              globals.main_draw_render_pass);
 
             pipeline_destroy_shader_stages(context, shader_stages);
         }
@@ -1265,7 +1244,7 @@ void renderer_init_resources(context_t& context)
                                                                               depth_stencil_state, 
                                                                               color_blend_state, 
                                                                               pipeline_layout, 
-                                                                              s_render_pass);
+                                                                              globals.main_draw_render_pass);
 
             pipeline_destroy_shader_stages(context, shader_stages);
         }
@@ -1273,18 +1252,13 @@ void renderer_init_resources(context_t& context)
 }
 
 static
-void swapchain_teardown(context_t& context)
+void swapchain_teardown(context_t& context, renderer_globals_t& globals)
 {
-    render_pass_destroy(context, s_render_pass);
-
-	for (u32 i = 0; i < s_in_flight_frames.size(); i++)
-	{
-        buffer_destroy(context, s_uniform_buffers[i]);
-	}
+    render_pass_destroy(context, globals.main_draw_render_pass);
 }
 
 static
-void swapchain_recreate(context_t& context)
+void swapchain_recreate(context_t& context, renderer_globals_t& globals)
 {
     if(context.window->was_closed || context.window->width == 0 || context.window->height == 0)
     {
@@ -1293,9 +1267,9 @@ void swapchain_recreate(context_t& context)
 
     vkDeviceWaitIdle(context.device.device_handle);
 
-    swapchain_teardown(context);
+    swapchain_teardown(context, globals);
     context_refresh_swapchain(context);
-    renderer_init_resources(context);
+    renderer_init_resources(context, globals);
 }
 
 static
@@ -1331,12 +1305,21 @@ frame_t frame_create(context_t& context)
     descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4);
     frame.descriptor_pool = descriptor_pool_create(context, pool_sizes, 4);
 
+    buffer_t viking_room_mvp_buffer = buffer_create(context, BufferType::kUniformBuffer, sizeof(mvp_buffer_t));
+    buffer_t world_axes_mvp_buffer = buffer_create(context, BufferType::kUniformBuffer, sizeof(mvp_buffer_t));
+    frame.uniform_buffers.push_back(viking_room_mvp_buffer);
+    frame.uniform_buffers.push_back(world_axes_mvp_buffer);
+
     return frame;
 }
 
 static
 void frame_destroy(context_t& context, frame_t& frame)
 {
+	for (i32 i = 0; i < (i32)frame.uniform_buffers.size(); i++)
+	{
+        buffer_destroy(context, frame.uniform_buffers[i]);
+	}
     descriptor_pool_destroy(context, frame.descriptor_pool);
     framebuffer_destroy(context, frame.main_draw_framebuffer);
     texture_destroy(context, frame.main_draw_color_target);
@@ -1349,30 +1332,35 @@ void frame_destroy(context_t& context, frame_t& frame)
 }
 
 static
-void update_uniform_buffer(context_t& context, camera_t& camera, u32 current_image)
+void update_uniform_buffers(context_t& context, camera_t& camera, frame_t& frame)
 {
-	mvp_buffer_t ubo;
-
-	static f32 dt = 0.0f;
-	dt += 0.016f;
-
-	const f32 speed = 0.0f;
-
-	mat44 rot = MAT44_IDENTITY;
-    rotate_z_deg(rot, dt * speed);
-	ubo.model = rot;
-
-	ubo.view = camera_get_view_tranform(camera);
-
+	mat44 view = camera_get_view_tranform(camera);
     f32 aspect = (f32)context.swapchain.extent.width / (f32)context.swapchain.extent.height;
-	ubo.projection = create_perspective_projection(45.0, 0.01f, 110.0f, aspect);
+	mat44 projection = create_perspective_projection(45.0, 0.01f, 110.0f, aspect);
 
-    buffer_update_data(context, s_uniform_buffers[current_image], &ubo);
+    {
+        s_viking_room_renderable_mesh.uniform_buffer = frame.uniform_buffers[0];
+
+        mvp_buffer_t mvp;
+        mvp.model = s_viking_room_renderable_mesh.transform.model;
+        mvp.view = view;
+        mvp.projection = projection;
+        buffer_update_data(context, s_viking_room_renderable_mesh.uniform_buffer, &mvp);
+    }
+
+    {
+        s_world_axes_renderable_mesh.uniform_buffer = frame.uniform_buffers[1];
+
+        mvp_buffer_t mvp;
+        mvp.model = MAT44_IDENTITY;
+        mvp.view = view;
+        mvp.projection = projection;
+        buffer_update_data(context, s_world_axes_renderable_mesh.uniform_buffer, &mvp);
+    }
 }
 
-static u32 s_cur_frame = 0;
 static context_t* s_context;
-static camera_t* s_camera = nullptr;
+static renderer_globals_t* s_globals = nullptr;
 
 void renderer_init(window_t* app_window)
 {
@@ -1380,11 +1368,14 @@ void renderer_init(window_t* app_window)
 
     s_context = context_create(app_window);
 
+    s_globals = new renderer_globals_t;
+    s_globals->debug_render = is_debug();
+
     // frames
-    s_in_flight_frames.resize(MAX_NUM_FRAMES_IN_FLIGHT);
+    s_globals->in_flight_frames.resize(MAX_NUM_FRAMES_IN_FLIGHT);
     for (i32 i = 0; i < MAX_NUM_FRAMES_IN_FLIGHT; i++)
     {
-        s_in_flight_frames[i] = frame_create(*s_context);
+        s_globals->in_flight_frames[i] = frame_create(*s_context);
     }
 
     // viking room
@@ -1399,10 +1390,7 @@ void renderer_init(window_t* app_window)
         s_viking_room_renderable_mesh = renderable_mesh_create(*s_context, s_viking_room_mesh, descriptor_set_layout);
 
         // setup initial position
-        translate(s_viking_room_renderable_mesh.transform.model, make_vec3(3.0f, 0.0f, 0.0f));
-
-        std::vector<descriptor_set_layout_t> layouts(s_in_flight_frames.size(), s_viking_room_renderable_mesh.descriptor_set_layout);
-        s_viking_room_renderable_mesh.descriptor_sets = descriptor_sets_allocate(*s_context, s_in_flight_frames[0].descriptor_pool, layouts);
+        translate(s_viking_room_renderable_mesh.transform.model, make_vec3(-1.0f, -1.0f, 0.0f));
 
         // texture and sampler
         s_viking_room_texture = texture_create_from_file(*s_context, "textures/viking_room.png");
@@ -1418,18 +1406,15 @@ void renderer_init(window_t* app_window)
 
         s_world_axes_mesh = mesh_load_axes();
         s_world_axes_renderable_mesh = renderable_mesh_create(*s_context, s_world_axes_mesh, descriptor_set_layout);
-
-        std::vector<descriptor_set_layout_t> layouts(s_in_flight_frames.size(), s_world_axes_renderable_mesh.descriptor_set_layout);
-        s_world_axes_renderable_mesh.descriptor_sets = descriptor_sets_allocate(*s_context, s_in_flight_frames[0].descriptor_pool, layouts);
     }
 
-    renderer_init_resources(*s_context);
+    renderer_init_resources(*s_context, *s_globals);
 }
 
 void renderer_set_main_camera(camera_t* camera)
 {
     ASSERT(nullptr != camera); 
-    s_camera = camera;
+    s_globals->main_camera = camera;
 }
 
 static
@@ -1465,7 +1450,7 @@ VkResult frame_present(context_t& context, frame_t& frame)
 }
 
 static
-void frame_generate_command_buffers(context_t& context, frame_t& frame)
+void frame_generate_command_buffers(context_t& context, renderer_globals_t& globals, frame_t& frame)
 {
     VkCommandBuffer command_buffer = frame.command_buffers[0];
     vkResetCommandBuffer(command_buffer, 0);
@@ -1484,15 +1469,15 @@ void frame_generate_command_buffers(context_t& context, frame_t& frame)
         clear_colors.push_back(color_target_clear);
         clear_colors.push_back(depth_target_clear);
 
-        command_buffer_begin_render_pass(command_buffer, s_render_pass.handle, frame.main_draw_framebuffer.handle, offset, context.swapchain.extent, clear_colors);
+        command_buffer_begin_render_pass(command_buffer, globals.main_draw_render_pass.handle, frame.main_draw_framebuffer.handle, offset, context.swapchain.extent, clear_colors);
             {
-                std::vector<VkDescriptorSet> draw_descriptor_sets = { s_viking_room_renderable_mesh.descriptor_sets[s_cur_frame].descriptor_set };
+                std::vector<VkDescriptorSet> draw_descriptor_sets = { s_viking_room_renderable_mesh.descriptor_sets[0].descriptor_set };
                 command_draw_renderable_mesh(command_buffer, s_viking_room_renderable_mesh, draw_descriptor_sets);
             }
              
-            if(s_debug_render)
+            if(globals.debug_render)
             {
-                std::vector<VkDescriptorSet> draw_descriptor_sets = { s_world_axes_renderable_mesh.descriptor_sets[s_cur_frame].descriptor_set };
+                std::vector<VkDescriptorSet> draw_descriptor_sets = { s_world_axes_renderable_mesh.descriptor_sets[0].descriptor_set };
                 command_draw_renderable_mesh(command_buffer, s_world_axes_renderable_mesh, draw_descriptor_sets);
             }
         command_buffer_end_render_pass(command_buffer);
@@ -1511,13 +1496,37 @@ void renderer_update()
 {
     if(input_was_key_pressed(KeyCode::KEY_F1))
     {
-        s_debug_render = !s_debug_render; 
+        s_globals->debug_render = !s_globals->debug_render; 
     }
+}
+
+static
+void update_descriptors(context_t& context, frame_t& frame)
+{
+    descriptor_pool_reset(context, frame.descriptor_pool);
+
+    // descriptor sets allocate
+    std::vector<descriptor_set_layout_t> viking_room_layouts(1, s_viking_room_renderable_mesh.descriptor_set_layout);
+    s_viking_room_renderable_mesh.descriptor_sets = descriptor_sets_allocate(*s_context, frame.descriptor_pool, viking_room_layouts);
+
+    std::vector<descriptor_set_layout_t> world_axes_layouts(1, s_world_axes_renderable_mesh.descriptor_set_layout);
+    s_world_axes_renderable_mesh.descriptor_sets = descriptor_sets_allocate(*s_context, frame.descriptor_pool, world_axes_layouts);
+
+    // descriptor sets writes
+    descriptor_sets_writes_t descriptor_sets_writes;
+
+    descriptor_sets_writes_reset(descriptor_sets_writes);
+    descriptor_sets_writes_add_uniform_buffer(descriptor_sets_writes, s_viking_room_renderable_mesh.descriptor_sets[0], s_viking_room_renderable_mesh.uniform_buffer, 0, 0, 0, 1);
+    descriptor_sets_writes_add_combined_image_sampler(descriptor_sets_writes, s_viking_room_renderable_mesh.descriptor_sets[0], s_viking_room_texture, s_viking_room_sampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 0, 1);
+    descriptor_sets_writes_add_uniform_buffer(descriptor_sets_writes, s_world_axes_renderable_mesh.descriptor_sets[0], s_world_axes_renderable_mesh.uniform_buffer, 0, 0, 0, 1);
+    descriptor_sets_writes_add_combined_image_sampler(descriptor_sets_writes, s_world_axes_renderable_mesh.descriptor_sets[0], s_viking_room_texture, s_viking_room_sampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 0, 1);
+    descriptor_sets_write(context, descriptor_sets_writes);
+
 }
 
 void renderer_render_frame()
 {
-    frame_t& frame = s_in_flight_frames[s_cur_frame];
+    frame_t& frame = s_globals->in_flight_frames[s_globals->cur_frame];
 
 	// Wait for frame to finish in case its still in flight, this blocks on CPU
     fence_wait(*s_context, frame.frame_completed_fence);
@@ -1526,12 +1535,13 @@ void renderer_render_frame()
 	VkResult res = frame_acquire_next_image(*s_context, frame); 
 	if (res == VK_ERROR_OUT_OF_DATE_KHR)
 	{
-        swapchain_recreate(*s_context);
+        swapchain_recreate(*s_context, *s_globals);
 	    return;
 	}
 	ASSERT(res == VK_SUCCESS || res == VK_SUBOPTIMAL_KHR);
 
-	update_uniform_buffer(*s_context, *s_camera, s_cur_frame);
+	update_uniform_buffers(*s_context, *s_globals->main_camera, frame);
+    update_descriptors(*s_context, frame);
 
 	if (VK_NULL_HANDLE != s_context->swapchain.image_in_flight_fences[frame.swapchain_image_index].handle)
 	{
@@ -1550,7 +1560,7 @@ void renderer_render_frame()
 	submit_info.pWaitSemaphores = wait_semaphores;
 	submit_info.pWaitDstStageMask = wait_stages;
 
-    frame_generate_command_buffers(*s_context, frame);
+    frame_generate_command_buffers(*s_context, *s_globals, frame);
 	submit_info.commandBufferCount = frame.command_buffers.size();
 	submit_info.pCommandBuffers = frame.command_buffers.data();
 
@@ -1565,25 +1575,25 @@ void renderer_render_frame()
     VkResult present_res = frame_present(*s_context, frame);
 	if (present_res == VK_ERROR_OUT_OF_DATE_KHR || present_res == VK_SUBOPTIMAL_KHR || s_context->window->was_resized)
 	{
-        swapchain_recreate(*s_context);
+        swapchain_recreate(*s_context, *s_globals);
 	}
 	else
 	{
 		VULKAN_ASSERT(res);
 	}
 
-	s_cur_frame = (s_cur_frame + 1) % MAX_NUM_FRAMES_IN_FLIGHT;
+    s_globals->cur_frame = (s_globals->cur_frame + 1) % MAX_NUM_FRAMES_IN_FLIGHT;
 }
 
 void renderer_deinit()
 {
     vkDeviceWaitIdle(s_context->device.device_handle);
 
-    swapchain_teardown(*s_context);
+    swapchain_teardown(*s_context, *s_globals);
 
     for (i32 i = 0; i < MAX_NUM_FRAMES_IN_FLIGHT; i++)
 	{
-        frame_destroy(*s_context, s_in_flight_frames[i]);
+        frame_destroy(*s_context, s_globals->in_flight_frames[i]);
 	}
 
     sampler_destroy(*s_context, s_viking_room_sampler);

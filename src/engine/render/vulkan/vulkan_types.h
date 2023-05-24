@@ -273,6 +273,7 @@ struct renderable_mesh_t
     pipeline_t pipeline;
     descriptor_set_layout_t descriptor_set_layout;
     std::vector<descriptor_set_t> descriptor_sets;
+    buffer_t uniform_buffer;
 };
 
 struct frame_t
@@ -285,6 +286,8 @@ struct frame_t
     std::vector<VkCommandBuffer> command_buffers;
 
     descriptor_pool_t descriptor_pool;
+
+    std::vector<buffer_t> uniform_buffers;
 
     framebuffer_t main_draw_framebuffer;
     texture_t main_draw_color_target;
