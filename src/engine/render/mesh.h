@@ -1,12 +1,16 @@
 #pragma once
 
+#include "engine/core/hash.h"
 #include "engine/core/types.h"
 #include "engine/render/vertex.h"
 
 #include <vector>
 
+typedef hash_id_t mesh_id_t;
+
 struct mesh_t
 {
+    mesh_id_t id;
     std::vector<vertex_pct_t> m_vertices;
     std::vector<u32> m_indices;
 };

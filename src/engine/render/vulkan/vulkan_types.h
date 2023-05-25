@@ -3,6 +3,7 @@
 #include "engine/core/config.h"
 #include "engine/core/types.h"
 #include "engine/math/mat44.h"
+#include "engine/render/mesh.h"
 #include "engine/render/vulkan/vulkan_include.h"
 #include "engine/thirdparty/vulkan/vulkan_core.h"
 #include <vector>
@@ -10,7 +11,7 @@
 struct mesh_t;
 struct window_t;
 
-struct mvp_buffer_t
+struct object_shader_inputs_t
 {
 	mat44 mvp;
 };
@@ -311,16 +312,24 @@ struct material_instance_t
     material_t* source_material;
 };
 
-struct renderable_mesh_t
+struct mesh_render_data_t
 {
-    mesh_t* mesh = nullptr;
+    mesh_id_t mesh_id;
     buffer_t vertex_buffer;
     buffer_t index_buffer;
+    pipeline_vertex_input_t vertex_input; 
+};
+
+struct mesh_instance_t 
+{
+    mesh_t* mesh = nullptr;
     transform_t transform;
     pipeline_t pipeline;
     descriptor_set_layout_t descriptor_set_layout;
     std::vector<descriptor_set_t> descriptor_sets;
     buffer_t uniform_buffer;
+    buffer_t vertex_buffer;
+    buffer_t index_buffer;
 };
 
 struct frame_t

@@ -11,6 +11,8 @@ add_library(sm-engine STATIC src/engine/core/assert.cpp
                              src/engine/core/file.cpp
                              src/engine/core/file.h
                              src/engine/core/funcs.h
+                             src/engine/core/hash.cpp
+                             src/engine/core/hash.h
                              src/engine/core/macros.h
                              src/engine/core/time.cpp
                              src/engine/core/time.h

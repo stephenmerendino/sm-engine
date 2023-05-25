@@ -19,6 +19,7 @@ size_t mesh_calc_index_buffer_size(mesh_t* mesh)
 mesh_t* mesh_load_from_obj(const char* obj_filepath)
 {
     mesh_t* mesh = new mesh_t;
+    mesh->id = hash(obj_filepath);
 
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;
@@ -59,6 +60,7 @@ mesh_t* mesh_load_from_obj(const char* obj_filepath)
 mesh_t* mesh_load_cube()
 {
 	mesh_t* mesh = new mesh_t;
+    mesh->id = hash("cube");
 
 	const f32 kSize = 1.0f;
 	const vec4 white = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -326,6 +328,7 @@ mesh_t* mesh_load_cube()
 mesh_t* mesh_load_axes()
 {
 	mesh_t* mesh = new mesh_t;
+    mesh->id = hash("axes");
 
 	std::vector<vertex_pct_t> vertices;
 	std::vector<u32> indices;

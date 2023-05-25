@@ -268,20 +268,20 @@ std::vector<VkVertexInputAttributeDescription> mesh_get_vertex_input_attr_descs(
 }
 
 static
-renderable_mesh_t renderable_mesh_create(context_t& context, mesh_t* mesh, descriptor_set_layout_t& descriptor_set_layout)
+mesh_instance_t mesh_instance_create(context_t& context, mesh_t* mesh, descriptor_set_layout_t& descriptor_set_layout)
 {
-    renderable_mesh_t renderable_mesh;
-    renderable_mesh.mesh = mesh;
+    mesh_instance_t mesh_instance;
+    mesh_instance.mesh = mesh;
 
     // set up vertex and index buffers
-    renderable_mesh.vertex_buffer = buffer_create(context, BufferType::kVertexBuffer, mesh_calc_vertex_buffer_size(mesh));
-    renderable_mesh.index_buffer = buffer_create(context, BufferType::kIndexBuffer, mesh_calc_index_buffer_size(mesh));
-    buffer_update(context, renderable_mesh.vertex_buffer, context.graphics_command_pool, mesh->m_vertices.data());
-    buffer_update(context, renderable_mesh.index_buffer, context.graphics_command_pool, mesh->m_indices.data());
+    mesh_instance.vertex_buffer = buffer_create(context, BufferType::kVertexBuffer, mesh_calc_vertex_buffer_size(mesh));
+    mesh_instance.index_buffer = buffer_create(context, BufferType::kIndexBuffer, mesh_calc_index_buffer_size(mesh));
+    buffer_update(context, mesh_instance.vertex_buffer, context.graphics_command_pool, mesh->m_vertices.data());
+    buffer_update(context, mesh_instance.index_buffer, context.graphics_command_pool, mesh->m_indices.data());
 
-    renderable_mesh.transform.model = MAT44_IDENTITY;
-    renderable_mesh.descriptor_set_layout = descriptor_set_layout;
-    return renderable_mesh;
+    mesh_instance.transform.model = MAT44_IDENTITY;
+    mesh_instance.descriptor_set_layout = descriptor_set_layout;
+    return mesh_instance;
 }
 
 static
@@ -298,7 +298,7 @@ void pipeline_destroy(context_t& context, pipeline_t& pipeline)
 }
 
 static
-void renderable_mesh_destroy(context_t& context, renderable_mesh_t& rm)
+void mesh_instance_destroy(context_t& context, mesh_instance_t& rm)
 {
     pipeline_destroy(context, rm.pipeline);
     descriptor_set_layout_destroy(context, rm.descriptor_set_layout);
@@ -731,11 +731,11 @@ pipeline_input_assembly_t pipeline_create_input_assembly(VkPrimitiveTopology top
 }
 
 static
-pipeline_vertex_input_t pipeline_create_vertex_input(renderable_mesh_t& renderable_mesh)
+pipeline_vertex_input_t pipeline_create_vertex_input(mesh_instance_t& mesh_instance)
 {
     pipeline_vertex_input_t vertex_input; 
-    vertex_input.input_binding_descs = mesh_get_vertex_input_binding_descs(renderable_mesh.mesh);
-    vertex_input.input_attr_descs = mesh_get_vertex_input_attr_descs(renderable_mesh.mesh);
+    vertex_input.input_binding_descs = mesh_get_vertex_input_binding_descs(mesh_instance.mesh);
+    vertex_input.input_attr_descs = mesh_get_vertex_input_attr_descs(mesh_instance.mesh);
     vertex_input.vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertex_input.vertex_input_info.vertexBindingDescriptionCount = (u32)vertex_input.input_binding_descs.size();
     vertex_input.vertex_input_info.pVertexBindingDescriptions = vertex_input.input_binding_descs.data();
@@ -859,7 +859,7 @@ void pipeline_create_color_blend_state(pipeline_color_blend_state_t& color_blend
     color_blend_state.color_blend_state.pAttachments = color_blend_state.color_blend_attachments.data();
 }
 
-pipeline_layout_t pipeline_create_layout(context_t& context, renderable_mesh_t& rm)
+pipeline_layout_t pipeline_create_layout(context_t& context, mesh_instance_t& rm)
 {
     std::vector<VkDescriptorSetLayout> descriptor_set_layouts = { rm.descriptor_set_layout.handle };
     VkPipelineLayoutCreateInfo layout_info = {};
@@ -1091,8 +1091,8 @@ void descriptor_sets_write(context_t& context, descriptor_sets_writes_t& descrip
 
 static mesh_t* s_viking_room_mesh = nullptr;
 static mesh_t* s_world_axes_mesh = nullptr;
-static renderable_mesh_t s_viking_room_renderable_mesh;
-static renderable_mesh_t s_world_axes_renderable_mesh;
+static mesh_instance_t s_viking_room_mesh_instance;
+static mesh_instance_t s_world_axes_mesh_instance;
 static texture_t s_viking_room_texture;
 static sampler_t s_viking_room_sampler;
 
@@ -1167,13 +1167,13 @@ void renderer_init_resources(context_t& context, renderer_globals_t& globals)
     {
         // Viking Room
         {
-            if(VK_NULL_HANDLE != s_viking_room_renderable_mesh.pipeline.pipeline_handle)
+            if(VK_NULL_HANDLE != s_viking_room_mesh_instance.pipeline.pipeline_handle)
             {
-                pipeline_destroy(context, s_viking_room_renderable_mesh.pipeline);
+                pipeline_destroy(context, s_viking_room_mesh_instance.pipeline);
             }
 
             pipeline_shader_stages_t shader_stages = pipeline_create_shader_stages(context, "shaders/tri-vert.spv", "main", "shaders/tri-frag.spv", "main");
-            pipeline_vertex_input_t vertex_input = pipeline_create_vertex_input(s_viking_room_renderable_mesh);
+            pipeline_vertex_input_t vertex_input = pipeline_create_vertex_input(s_viking_room_mesh_instance);
             pipeline_input_assembly_t input_assembly = pipeline_create_input_assembly(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
             pipeline_raster_state_t raster_state = pipeline_create_raster_state();
             pipeline_viewport_state_t viewport_state;
@@ -1189,8 +1189,8 @@ void renderer_init_resources(context_t& context, renderer_globals_t& globals)
                                                                            VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD, 
                                                                            VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
             pipeline_create_color_blend_state(color_blend_state, false, VK_LOGIC_OP_COPY, 0.0f, 0.0f, 0.0f, 0.0f);
-            pipeline_layout_t pipeline_layout = pipeline_create_layout(context, s_viking_room_renderable_mesh);
-            s_viking_room_renderable_mesh.pipeline = pipeline_create(context, shader_stages, 
+            pipeline_layout_t pipeline_layout = pipeline_create_layout(context, s_viking_room_mesh_instance);
+            s_viking_room_mesh_instance.pipeline = pipeline_create(context, shader_stages, 
                                                                               vertex_input, 
                                                                               input_assembly, 
                                                                               raster_state, 
@@ -1206,13 +1206,13 @@ void renderer_init_resources(context_t& context, renderer_globals_t& globals)
 
         // World axes
         {
-            if(VK_NULL_HANDLE != s_world_axes_renderable_mesh.pipeline.pipeline_handle)
+            if(VK_NULL_HANDLE != s_world_axes_mesh_instance.pipeline.pipeline_handle)
             {
-                pipeline_destroy(context, s_world_axes_renderable_mesh.pipeline);
+                pipeline_destroy(context, s_world_axes_mesh_instance.pipeline);
             }
 
             pipeline_shader_stages_t shader_stages = pipeline_create_shader_stages(context, "shaders/simple-color-vert.spv", "main", "shaders/simple-color-frag.spv", "main");
-            pipeline_vertex_input_t vertex_input = pipeline_create_vertex_input(s_world_axes_renderable_mesh);
+            pipeline_vertex_input_t vertex_input = pipeline_create_vertex_input(s_world_axes_mesh_instance);
             pipeline_input_assembly_t input_assembly = pipeline_create_input_assembly(VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
             pipeline_raster_state_t raster_state = pipeline_create_raster_state();
             pipeline_viewport_state_t viewport_state;
@@ -1228,8 +1228,8 @@ void renderer_init_resources(context_t& context, renderer_globals_t& globals)
                                                                            VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD, 
                                                                            VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
             pipeline_create_color_blend_state(color_blend_state, false, VK_LOGIC_OP_COPY, 0.0f, 0.0f, 0.0f, 0.0f);
-            pipeline_layout_t pipeline_layout = pipeline_create_layout(context, s_world_axes_renderable_mesh);
-            s_world_axes_renderable_mesh.pipeline = pipeline_create(context, shader_stages, 
+            pipeline_layout_t pipeline_layout = pipeline_create_layout(context, s_world_axes_mesh_instance);
+            s_world_axes_mesh_instance.pipeline = pipeline_create(context, shader_stages, 
                                                                               vertex_input, 
                                                                               input_assembly, 
                                                                               raster_state, 
@@ -1299,10 +1299,10 @@ frame_t frame_create(context_t& context)
     descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4);
     frame.descriptor_pool = descriptor_pool_create(context, pool_sizes, 4);
 
-    buffer_t viking_room_mvp_buffer = buffer_create(context, BufferType::kUniformBuffer, sizeof(mvp_buffer_t));
-    buffer_t world_axes_mvp_buffer = buffer_create(context, BufferType::kUniformBuffer, sizeof(mvp_buffer_t));
-    frame.uniform_buffers.push_back(viking_room_mvp_buffer);
-    frame.uniform_buffers.push_back(world_axes_mvp_buffer);
+    buffer_t viking_room_shader_inputs_buffer = buffer_create(context, BufferType::kUniformBuffer, sizeof(object_shader_inputs_t));
+    buffer_t world_axes_shader_inputs_buffer = buffer_create(context, BufferType::kUniformBuffer, sizeof(object_shader_inputs_t));
+    frame.uniform_buffers.push_back(viking_room_shader_inputs_buffer);
+    frame.uniform_buffers.push_back(world_axes_shader_inputs_buffer);
 
     return frame;
 }
@@ -1333,21 +1333,19 @@ void update_uniform_buffers(context_t& context, camera_t& camera, frame_t& frame
 	mat44 projection = create_perspective_projection(45.0, 0.01f, 110.0f, aspect);
 
     {
-        s_viking_room_renderable_mesh.uniform_buffer = frame.uniform_buffers[0];
+        s_viking_room_mesh_instance.uniform_buffer = frame.uniform_buffers[0];
 
-        mvp_buffer_t mvp;
-        mvp.mvp = s_viking_room_renderable_mesh.transform.model * view * projection;
-        //mvp.view = view;
-        //mvp.projection = projection;
-        buffer_update_data(context, s_viking_room_renderable_mesh.uniform_buffer, &mvp);
+        object_shader_inputs_t shader_inputs;
+        shader_inputs.mvp = s_viking_room_mesh_instance.transform.model * view * projection;
+        buffer_update_data(context, s_viking_room_mesh_instance.uniform_buffer, &shader_inputs);
     }
 
     {
-        s_world_axes_renderable_mesh.uniform_buffer = frame.uniform_buffers[1];
+        s_world_axes_mesh_instance.uniform_buffer = frame.uniform_buffers[1];
 
-        mvp_buffer_t mvp;
-        mvp.mvp = MAT44_IDENTITY * view * projection;
-        buffer_update_data(context, s_world_axes_renderable_mesh.uniform_buffer, &mvp);
+        object_shader_inputs_t shader_inputs;
+        shader_inputs.mvp = MAT44_IDENTITY * view * projection;
+        buffer_update_data(context, s_world_axes_mesh_instance.uniform_buffer, &shader_inputs);
     }
 }
 
@@ -1379,10 +1377,10 @@ void renderer_init(window_t* app_window)
 
         // meshes
         s_viking_room_mesh = mesh_load_from_obj("models/viking_room.obj");
-        s_viking_room_renderable_mesh = renderable_mesh_create(*s_context, s_viking_room_mesh, descriptor_set_layout);
+        s_viking_room_mesh_instance = mesh_instance_create(*s_context, s_viking_room_mesh, descriptor_set_layout);
 
         // setup initial position
-        translate(s_viking_room_renderable_mesh.transform.model, make_vec3(-1.0f, -1.0f, 0.0f));
+        translate(s_viking_room_mesh_instance.transform.model, make_vec3(-1.0f, -1.0f, 0.0f));
 
         // texture and sampler
         s_viking_room_texture = texture_create_from_file(*s_context, "textures/viking_room.png");
@@ -1397,7 +1395,7 @@ void renderer_init(window_t* app_window)
         descriptor_set_layout_t descriptor_set_layout = descriptor_set_layout_create(*s_context, bindings);
 
         s_world_axes_mesh = mesh_load_axes();
-        s_world_axes_renderable_mesh = renderable_mesh_create(*s_context, s_world_axes_mesh, descriptor_set_layout);
+        s_world_axes_mesh_instance = mesh_instance_create(*s_context, s_world_axes_mesh, descriptor_set_layout);
     }
 
     renderer_init_resources(*s_context, *s_globals);
@@ -1463,14 +1461,14 @@ void frame_generate_command_buffers(context_t& context, renderer_globals_t& glob
 
         command_buffer_begin_render_pass(command_buffer, globals.main_draw_render_pass.handle, frame.main_draw_framebuffer.handle, offset, context.swapchain.extent, clear_colors);
             {
-                std::vector<VkDescriptorSet> draw_descriptor_sets = { s_viking_room_renderable_mesh.descriptor_sets[0].descriptor_set };
-                command_draw_renderable_mesh(command_buffer, s_viking_room_renderable_mesh, draw_descriptor_sets);
+                std::vector<VkDescriptorSet> draw_descriptor_sets = { s_viking_room_mesh_instance.descriptor_sets[0].descriptor_set };
+                command_draw_mesh_instance(command_buffer, s_viking_room_mesh_instance, draw_descriptor_sets);
             }
              
             if(globals.debug_render)
             {
-                std::vector<VkDescriptorSet> draw_descriptor_sets = { s_world_axes_renderable_mesh.descriptor_sets[0].descriptor_set };
-                command_draw_renderable_mesh(command_buffer, s_world_axes_renderable_mesh, draw_descriptor_sets);
+                std::vector<VkDescriptorSet> draw_descriptor_sets = { s_world_axes_mesh_instance.descriptor_sets[0].descriptor_set };
+                command_draw_mesh_instance(command_buffer, s_world_axes_mesh_instance, draw_descriptor_sets);
             }
         command_buffer_end_render_pass(command_buffer);
 
@@ -1498,20 +1496,20 @@ void update_descriptors(context_t& context, frame_t& frame)
     descriptor_pool_reset(context, frame.descriptor_pool);
 
     // descriptor sets allocate
-    std::vector<descriptor_set_layout_t> viking_room_layouts(1, s_viking_room_renderable_mesh.descriptor_set_layout);
-    s_viking_room_renderable_mesh.descriptor_sets = descriptor_sets_allocate(*s_context, frame.descriptor_pool, viking_room_layouts);
+    std::vector<descriptor_set_layout_t> viking_room_layouts(1, s_viking_room_mesh_instance.descriptor_set_layout);
+    s_viking_room_mesh_instance.descriptor_sets = descriptor_sets_allocate(*s_context, frame.descriptor_pool, viking_room_layouts);
 
-    std::vector<descriptor_set_layout_t> world_axes_layouts(1, s_world_axes_renderable_mesh.descriptor_set_layout);
-    s_world_axes_renderable_mesh.descriptor_sets = descriptor_sets_allocate(*s_context, frame.descriptor_pool, world_axes_layouts);
+    std::vector<descriptor_set_layout_t> world_axes_layouts(1, s_world_axes_mesh_instance.descriptor_set_layout);
+    s_world_axes_mesh_instance.descriptor_sets = descriptor_sets_allocate(*s_context, frame.descriptor_pool, world_axes_layouts);
 
     // descriptor sets writes
     descriptor_sets_writes_t descriptor_sets_writes;
 
     descriptor_sets_writes_reset(descriptor_sets_writes);
-    descriptor_sets_writes_add_uniform_buffer(descriptor_sets_writes, s_viking_room_renderable_mesh.descriptor_sets[0], s_viking_room_renderable_mesh.uniform_buffer, 0, 0, 0, 1);
-    descriptor_sets_writes_add_combined_image_sampler(descriptor_sets_writes, s_viking_room_renderable_mesh.descriptor_sets[0], s_viking_room_texture, s_viking_room_sampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 0, 1);
-    descriptor_sets_writes_add_uniform_buffer(descriptor_sets_writes, s_world_axes_renderable_mesh.descriptor_sets[0], s_world_axes_renderable_mesh.uniform_buffer, 0, 0, 0, 1);
-    descriptor_sets_writes_add_combined_image_sampler(descriptor_sets_writes, s_world_axes_renderable_mesh.descriptor_sets[0], s_viking_room_texture, s_viking_room_sampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 0, 1);
+    descriptor_sets_writes_add_uniform_buffer(descriptor_sets_writes, s_viking_room_mesh_instance.descriptor_sets[0], s_viking_room_mesh_instance.uniform_buffer, 0, 0, 0, 1);
+    descriptor_sets_writes_add_combined_image_sampler(descriptor_sets_writes, s_viking_room_mesh_instance.descriptor_sets[0], s_viking_room_texture, s_viking_room_sampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 0, 1);
+    descriptor_sets_writes_add_uniform_buffer(descriptor_sets_writes, s_world_axes_mesh_instance.descriptor_sets[0], s_world_axes_mesh_instance.uniform_buffer, 0, 0, 0, 1);
+    descriptor_sets_writes_add_combined_image_sampler(descriptor_sets_writes, s_world_axes_mesh_instance.descriptor_sets[0], s_viking_room_texture, s_viking_room_sampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 0, 1);
     descriptor_sets_write(context, descriptor_sets_writes);
 
 }
@@ -1591,8 +1589,8 @@ void renderer_deinit()
     sampler_destroy(*s_context, s_viking_room_sampler);
     texture_destroy(*s_context, s_viking_room_texture);
 
-    renderable_mesh_destroy(*s_context, s_world_axes_renderable_mesh);
-    renderable_mesh_destroy(*s_context, s_viking_room_renderable_mesh);
+    mesh_instance_destroy(*s_context, s_world_axes_mesh_instance);
+    mesh_instance_destroy(*s_context, s_viking_room_mesh_instance);
     delete s_world_axes_mesh;
     delete s_viking_room_mesh;
 
