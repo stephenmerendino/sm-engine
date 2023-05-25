@@ -1096,12 +1096,6 @@ static renderable_mesh_t s_world_axes_renderable_mesh;
 static texture_t s_viking_room_texture;
 static sampler_t s_viking_room_sampler;
 
-struct scene_t
-{
-    // meshes to draw
-    std::vector<renderable_mesh_t> meshes;
-};
-
 struct renderer_globals_t
 {
     std::vector<frame_t> in_flight_frames;
@@ -1342,9 +1336,9 @@ void update_uniform_buffers(context_t& context, camera_t& camera, frame_t& frame
         s_viking_room_renderable_mesh.uniform_buffer = frame.uniform_buffers[0];
 
         mvp_buffer_t mvp;
-        mvp.model = s_viking_room_renderable_mesh.transform.model;
-        mvp.view = view;
-        mvp.projection = projection;
+        mvp.mvp = s_viking_room_renderable_mesh.transform.model * view * projection;
+        //mvp.view = view;
+        //mvp.projection = projection;
         buffer_update_data(context, s_viking_room_renderable_mesh.uniform_buffer, &mvp);
     }
 
@@ -1352,9 +1346,7 @@ void update_uniform_buffers(context_t& context, camera_t& camera, frame_t& frame
         s_world_axes_renderable_mesh.uniform_buffer = frame.uniform_buffers[1];
 
         mvp_buffer_t mvp;
-        mvp.model = MAT44_IDENTITY;
-        mvp.view = view;
-        mvp.projection = projection;
+        mvp.mvp = MAT44_IDENTITY * view * projection;
         buffer_update_data(context, s_world_axes_renderable_mesh.uniform_buffer, &mvp);
     }
 }

@@ -12,9 +12,7 @@ struct window_t;
 
 struct mvp_buffer_t
 {
-	mat44 model;
-	mat44 view;
-	mat44 projection;
+	mat44 mvp;
 };
 
 struct transform_t
@@ -262,6 +260,55 @@ struct descriptor_sets_writes_t
 {
     std::vector<descriptor_set_write_info_t> descriptor_sets_write_infos;
     std::vector<VkWriteDescriptorSet> descriptor_sets_writes;
+};
+
+struct descriptor_info_t
+{
+    u32 binding_index;
+    u32 count;
+    VkDescriptorType type;
+    VkShaderStageFlagBits shader_stages;
+};
+
+struct descriptor_resource_info_t
+{
+    VkDescriptorType type;
+
+    union
+    {
+        struct
+        {
+            void* buffer;       
+            size_t buffer_size;
+        };
+
+        struct
+        {
+            texture_t texture;
+            sampler_t sampler;
+        };
+    };
+};
+
+struct shader_info_t
+{
+    const char* shader_filepath;
+    const char* shader_entry;
+};
+
+struct material_t
+{
+    // shader infos
+    std::vector<shader_info_t> shaders;
+    // descriptor infos
+    std::vector<descriptor_info_t> descriptor_infos;
+    // descriptor set layout
+    descriptor_set_layout_t descriptor_set_layout;
+};
+
+struct material_instance_t
+{
+    material_t* source_material;
 };
 
 struct renderable_mesh_t
