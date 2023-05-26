@@ -1,5 +1,6 @@
 #include "engine/render/mesh.h"
 #include "engine/render/vertex.h"
+#include "engine/render/vulkan/vulkan_renderer.h"
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "engine/thirdparty/tinyobjloader/tiny_obj_loader.h"
@@ -42,13 +43,19 @@ mesh_t* loaded_mesh_acquire_or_create(mesh_id_t mesh_id, bool* out_was_already_l
 
 void mesh_release(mesh_t* mesh)
 {
+    mesh_release(mesh->id);
+}
+
+void mesh_release(mesh_id_t mesh_id)
+{
     for(i32 i = 0; i < (i32)s_loaded_meshes.size(); i++)
     {
-        if(s_loaded_meshes[i].mesh->id == mesh->id)
+        if(s_loaded_meshes[i].mesh->id == mesh_id)
         {
             s_loaded_meshes[i].ref_count--;
             if(s_loaded_meshes[i].ref_count == 0)
             {
+                renderer_unload_mesh(mesh_id);
                 delete s_loaded_meshes[i].mesh;
                 s_loaded_meshes.erase(s_loaded_meshes.begin() + i);
             }
@@ -111,6 +118,8 @@ mesh_t* mesh_load_from_obj(const char* obj_filepath)
 
     mesh->m_vertices = vertices;
     mesh->m_indices = indices;
+
+    renderer_load_mesh(mesh);
 
 	return mesh;
 }
@@ -385,6 +394,9 @@ mesh_t* mesh_load_cube()
 
     mesh->m_vertices = vertices;
     mesh->m_indices = indices;
+
+    renderer_load_mesh(mesh);
+
     return mesh;
 }
 
@@ -450,5 +462,8 @@ mesh_t* mesh_load_axes()
 
     mesh->m_vertices = vertices;
     mesh->m_indices = indices;
+
+    renderer_load_mesh(mesh);
+
     return mesh;
 }

@@ -307,29 +307,23 @@ struct material_t
     descriptor_set_layout_t descriptor_set_layout;
 };
 
-struct material_instance_t
-{
-    material_t* source_material;
-};
-
 struct mesh_render_data_t
 {
     mesh_id_t mesh_id;
+    u32 index_count;
     buffer_t vertex_buffer;
     buffer_t index_buffer;
-    pipeline_vertex_input_t vertex_input; 
+    pipeline_vertex_input_t pipeline_vertex_input; 
 };
 
 struct mesh_instance_t 
 {
-    mesh_t* mesh = nullptr;
+    mesh_id_t mesh_id;
     transform_t transform;
     pipeline_t pipeline;
     descriptor_set_layout_t descriptor_set_layout;
     std::vector<descriptor_set_t> descriptor_sets;
     buffer_t uniform_buffer;
-    buffer_t vertex_buffer;
-    buffer_t index_buffer;
 };
 
 struct frame_t

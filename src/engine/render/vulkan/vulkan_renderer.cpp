@@ -24,6 +24,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "engine/thirdparty/stb/stb_image.h"
 
+static std::vector<mesh_render_data_t*> s_loaded_mesh_render_data;
+
 static
 bool format_has_stencil_component(VkFormat format)
 {
@@ -268,17 +270,10 @@ std::vector<VkVertexInputAttributeDescription> mesh_get_vertex_input_attr_descs(
 }
 
 static
-mesh_instance_t mesh_instance_create(context_t& context, mesh_t* mesh, descriptor_set_layout_t& descriptor_set_layout)
+mesh_instance_t mesh_instance_create(context_t& context, mesh_id_t mesh_id, descriptor_set_layout_t& descriptor_set_layout)
 {
     mesh_instance_t mesh_instance;
-    mesh_instance.mesh = mesh;
-
-    // set up vertex and index buffers
-    mesh_instance.vertex_buffer = buffer_create(context, BufferType::kVertexBuffer, mesh_calc_vertex_buffer_size(mesh));
-    mesh_instance.index_buffer = buffer_create(context, BufferType::kIndexBuffer, mesh_calc_index_buffer_size(mesh));
-    buffer_update(context, mesh_instance.vertex_buffer, context.graphics_command_pool, mesh->m_vertices.data());
-    buffer_update(context, mesh_instance.index_buffer, context.graphics_command_pool, mesh->m_indices.data());
-
+    mesh_instance.mesh_id = mesh_id;
     mesh_instance.transform.model = MAT44_IDENTITY;
     mesh_instance.descriptor_set_layout = descriptor_set_layout;
     return mesh_instance;
@@ -302,9 +297,7 @@ void mesh_instance_destroy(context_t& context, mesh_instance_t& mesh_instance)
 {
     pipeline_destroy(context, mesh_instance.pipeline);
     descriptor_set_layout_destroy(context, mesh_instance.descriptor_set_layout);
-    buffer_destroy(context, mesh_instance.index_buffer);
-    buffer_destroy(context, mesh_instance.vertex_buffer);
-    mesh_release(mesh_instance.mesh);
+    mesh_release(mesh_instance.mesh_id);
 }
 
 static
@@ -732,17 +725,21 @@ pipeline_input_assembly_t pipeline_create_input_assembly(VkPrimitiveTopology top
 }
 
 static
-pipeline_vertex_input_t pipeline_create_vertex_input(mesh_instance_t& mesh_instance)
+pipeline_vertex_input_t  mesh_render_data_get_pipeline_vertex_input(mesh_id_t mesh_id)
 {
-    pipeline_vertex_input_t vertex_input; 
-    vertex_input.input_binding_descs = mesh_get_vertex_input_binding_descs(mesh_instance.mesh);
-    vertex_input.input_attr_descs = mesh_get_vertex_input_attr_descs(mesh_instance.mesh);
-    vertex_input.vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertex_input.vertex_input_info.vertexBindingDescriptionCount = (u32)vertex_input.input_binding_descs.size();
-    vertex_input.vertex_input_info.pVertexBindingDescriptions = vertex_input.input_binding_descs.data();
-    vertex_input.vertex_input_info.vertexAttributeDescriptionCount = (u32)(vertex_input.input_attr_descs.size());
-    vertex_input.vertex_input_info.pVertexAttributeDescriptions = vertex_input.input_attr_descs.data();
-    return vertex_input;
+    i32 data_index = -1;
+    for(i32 i = 0; i < (i32)s_loaded_mesh_render_data.size(); i++)
+    {
+        if(s_loaded_mesh_render_data[i]->mesh_id == mesh_id)
+        {
+            data_index = i;
+            break;
+        }
+    }
+
+    ASSERT(-1 != data_index);
+
+    return s_loaded_mesh_render_data[data_index]->pipeline_vertex_input;
 }
 
 static
@@ -1090,8 +1087,6 @@ void descriptor_sets_write(context_t& context, descriptor_sets_writes_t& descrip
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static mesh_t* s_viking_room_mesh = nullptr;
-static mesh_t* s_world_axes_mesh = nullptr;
 static mesh_instance_t s_viking_room_mesh_instance;
 static mesh_instance_t s_world_axes_mesh_instance;
 static texture_t s_viking_room_texture;
@@ -1174,7 +1169,7 @@ void renderer_init_resources(context_t& context, renderer_globals_t& globals)
             }
 
             pipeline_shader_stages_t shader_stages = pipeline_create_shader_stages(context, "shaders/tri-vert.spv", "main", "shaders/tri-frag.spv", "main");
-            pipeline_vertex_input_t vertex_input = pipeline_create_vertex_input(s_viking_room_mesh_instance);
+            pipeline_vertex_input_t vertex_input = mesh_render_data_get_pipeline_vertex_input(s_viking_room_mesh_instance.mesh_id);
             pipeline_input_assembly_t input_assembly = pipeline_create_input_assembly(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
             pipeline_raster_state_t raster_state = pipeline_create_raster_state();
             pipeline_viewport_state_t viewport_state;
@@ -1213,7 +1208,7 @@ void renderer_init_resources(context_t& context, renderer_globals_t& globals)
             }
 
             pipeline_shader_stages_t shader_stages = pipeline_create_shader_stages(context, "shaders/simple-color-vert.spv", "main", "shaders/simple-color-frag.spv", "main");
-            pipeline_vertex_input_t vertex_input = pipeline_create_vertex_input(s_world_axes_mesh_instance);
+            pipeline_vertex_input_t vertex_input = mesh_render_data_get_pipeline_vertex_input(s_world_axes_mesh_instance.mesh_id);
             pipeline_input_assembly_t input_assembly = pipeline_create_input_assembly(VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
             pipeline_raster_state_t raster_state = pipeline_create_raster_state();
             pipeline_viewport_state_t viewport_state;
@@ -1377,8 +1372,8 @@ void renderer_init(window_t* app_window)
         descriptor_set_layout_t descriptor_set_layout = descriptor_set_layout_create(*s_context, bindings);
 
         // meshes
-        s_viking_room_mesh = mesh_load_from_obj("models/viking_room.obj");
-        s_viking_room_mesh_instance = mesh_instance_create(*s_context, s_viking_room_mesh, descriptor_set_layout);
+        mesh_t* viking_room_mesh = mesh_load_from_obj("models/viking_room.obj");
+        s_viking_room_mesh_instance = mesh_instance_create(*s_context, viking_room_mesh->id, descriptor_set_layout);
 
         // setup initial position
         translate(s_viking_room_mesh_instance.transform.model, make_vec3(-1.0f, -1.0f, 0.0f));
@@ -1395,8 +1390,8 @@ void renderer_init(window_t* app_window)
         descriptor_set_layout_add_binding(bindings, 1, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
         descriptor_set_layout_t descriptor_set_layout = descriptor_set_layout_create(*s_context, bindings);
 
-        s_world_axes_mesh = mesh_load_axes();
-        s_world_axes_mesh_instance = mesh_instance_create(*s_context, s_world_axes_mesh, descriptor_set_layout);
+        mesh_t* world_axes_mesh = mesh_load_axes();
+        s_world_axes_mesh_instance = mesh_instance_create(*s_context, world_axes_mesh->id, descriptor_set_layout);
     }
 
     renderer_init_resources(*s_context, *s_globals);
@@ -1441,6 +1436,26 @@ VkResult frame_present(context_t& context, frame_t& frame)
 }
 
 static
+mesh_render_data_t* mesh_render_data_find(mesh_id_t mesh_id)
+{
+    const static i32 INVALID_INDEX = -1;
+    i32 render_data_index = INVALID_INDEX;
+
+    for(i32 i = 0; i < s_loaded_mesh_render_data.size(); i++)
+    {
+        if(s_loaded_mesh_render_data[i]->mesh_id == mesh_id)
+        {
+            render_data_index = i;
+            break;
+        }
+    }
+
+    ASSERT(INVALID_INDEX != render_data_index);
+
+    return s_loaded_mesh_render_data[render_data_index];
+}
+
+static
 void frame_generate_command_buffers(context_t& context, renderer_globals_t& globals, frame_t& frame)
 {
     VkCommandBuffer command_buffer = frame.command_buffers[0];
@@ -1462,14 +1477,16 @@ void frame_generate_command_buffers(context_t& context, renderer_globals_t& glob
 
         command_buffer_begin_render_pass(command_buffer, globals.main_draw_render_pass.handle, frame.main_draw_framebuffer.handle, offset, context.swapchain.extent, clear_colors);
             {
+                const mesh_render_data_t* mesh_render_data = mesh_render_data_find(s_viking_room_mesh_instance.mesh_id);
                 std::vector<VkDescriptorSet> draw_descriptor_sets = { s_viking_room_mesh_instance.descriptor_sets[0].descriptor_set };
-                command_draw_mesh_instance(command_buffer, s_viking_room_mesh_instance, draw_descriptor_sets);
+                command_draw_mesh_instance(command_buffer, s_viking_room_mesh_instance, *mesh_render_data, draw_descriptor_sets);
             }
              
             if(globals.debug_render)
             {
+                const mesh_render_data_t* mesh_render_data = mesh_render_data_find(s_world_axes_mesh_instance.mesh_id);
                 std::vector<VkDescriptorSet> draw_descriptor_sets = { s_world_axes_mesh_instance.descriptor_sets[0].descriptor_set };
-                command_draw_mesh_instance(command_buffer, s_world_axes_mesh_instance, draw_descriptor_sets);
+                command_draw_mesh_instance(command_buffer, s_world_axes_mesh_instance, *mesh_render_data, draw_descriptor_sets);
             }
         command_buffer_end_render_pass(command_buffer);
 
@@ -1594,4 +1611,56 @@ void renderer_deinit()
     mesh_instance_destroy(*s_context, s_viking_room_mesh_instance);
 
     context_destroy(s_context);
+}
+
+void renderer_load_mesh(mesh_t* mesh)
+{
+    for(i32 i = 0; i < (i32)s_loaded_mesh_render_data.size(); i++)
+    {
+        if(s_loaded_mesh_render_data[i]->mesh_id == mesh->id)
+        {
+            return;
+        }
+    }
+
+    mesh_render_data_t* mesh_render_data = new mesh_render_data_t;
+    mesh_render_data->mesh_id = mesh->id;
+    mesh_render_data->index_count = (u32)mesh->m_indices.size();
+
+    mesh_render_data->vertex_buffer = buffer_create(*s_context, BufferType::kVertexBuffer, mesh_calc_vertex_buffer_size(mesh));
+    mesh_render_data->index_buffer = buffer_create(*s_context, BufferType::kIndexBuffer, mesh_calc_index_buffer_size(mesh));
+    buffer_update(*s_context, mesh_render_data->vertex_buffer, s_context->graphics_command_pool, mesh->m_vertices.data());
+    buffer_update(*s_context, mesh_render_data->index_buffer, s_context->graphics_command_pool, mesh->m_indices.data());
+
+    mesh_render_data->pipeline_vertex_input.input_binding_descs = mesh_get_vertex_input_binding_descs(mesh);
+    mesh_render_data->pipeline_vertex_input.input_attr_descs = mesh_get_vertex_input_attr_descs(mesh);
+    mesh_render_data->pipeline_vertex_input.vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    mesh_render_data->pipeline_vertex_input.vertex_input_info.vertexBindingDescriptionCount = (u32)mesh_render_data->pipeline_vertex_input.input_binding_descs.size();
+    mesh_render_data->pipeline_vertex_input.vertex_input_info.pVertexBindingDescriptions = mesh_render_data->pipeline_vertex_input.input_binding_descs.data();
+    mesh_render_data->pipeline_vertex_input.vertex_input_info.vertexAttributeDescriptionCount = (u32)(mesh_render_data->pipeline_vertex_input.input_attr_descs.size());
+    mesh_render_data->pipeline_vertex_input.vertex_input_info.pVertexAttributeDescriptions = mesh_render_data->pipeline_vertex_input.input_attr_descs.data();
+
+    s_loaded_mesh_render_data.push_back(mesh_render_data);
+}
+
+void renderer_unload_mesh(mesh_id_t mesh_id)
+{
+    i32 data_index = -1;
+    for(i32 i = 0; i < (i32)s_loaded_mesh_render_data.size(); i++)
+    {
+        if(s_loaded_mesh_render_data[i]->mesh_id == mesh_id)
+        {
+            data_index = i;
+            break;
+        }
+    }
+
+    if(-1 == data_index) return;
+     
+    buffer_destroy(*s_context, s_loaded_mesh_render_data[data_index]->vertex_buffer);
+    buffer_destroy(*s_context, s_loaded_mesh_render_data[data_index]->index_buffer);
+
+    delete s_loaded_mesh_render_data[data_index];
+
+    s_loaded_mesh_render_data.erase(s_loaded_mesh_render_data.begin() + data_index);
 }
