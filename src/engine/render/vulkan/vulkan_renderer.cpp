@@ -298,12 +298,13 @@ void pipeline_destroy(context_t& context, pipeline_t& pipeline)
 }
 
 static
-void mesh_instance_destroy(context_t& context, mesh_instance_t& rm)
+void mesh_instance_destroy(context_t& context, mesh_instance_t& mesh_instance)
 {
-    pipeline_destroy(context, rm.pipeline);
-    descriptor_set_layout_destroy(context, rm.descriptor_set_layout);
-    buffer_destroy(context, rm.index_buffer);
-    buffer_destroy(context, rm.vertex_buffer);
+    pipeline_destroy(context, mesh_instance.pipeline);
+    descriptor_set_layout_destroy(context, mesh_instance.descriptor_set_layout);
+    buffer_destroy(context, mesh_instance.index_buffer);
+    buffer_destroy(context, mesh_instance.vertex_buffer);
+    mesh_release(mesh_instance.mesh);
 }
 
 static
@@ -859,9 +860,9 @@ void pipeline_create_color_blend_state(pipeline_color_blend_state_t& color_blend
     color_blend_state.color_blend_state.pAttachments = color_blend_state.color_blend_attachments.data();
 }
 
-pipeline_layout_t pipeline_create_layout(context_t& context, mesh_instance_t& rm)
+pipeline_layout_t pipeline_create_layout(context_t& context, mesh_instance_t& mesh_instance)
 {
-    std::vector<VkDescriptorSetLayout> descriptor_set_layouts = { rm.descriptor_set_layout.handle };
+    std::vector<VkDescriptorSetLayout> descriptor_set_layouts = { mesh_instance.descriptor_set_layout.handle };
     VkPipelineLayoutCreateInfo layout_info = {};
     layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     layout_info.setLayoutCount = (u32)descriptor_set_layouts.size();
@@ -1591,8 +1592,6 @@ void renderer_deinit()
 
     mesh_instance_destroy(*s_context, s_world_axes_mesh_instance);
     mesh_instance_destroy(*s_context, s_viking_room_mesh_instance);
-    delete s_world_axes_mesh;
-    delete s_viking_room_mesh;
 
     context_destroy(s_context);
 }
