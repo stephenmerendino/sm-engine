@@ -39,22 +39,23 @@ struct renderer_globals_t
 
     descriptor_set_layout_t mesh_instance_render_data_ds_layout;
 
+    sampler_t linear_sampler_2d;
+    descriptor_set_layout_t global_data_ds_layout;
+    descriptor_pool_t global_data_dp;
+    descriptor_set_t global_ds;
+
+    descriptor_set_t empty_descriptor_set;
+
     ///////////////////
     // temp (or maybe not??)
     descriptor_set_layout_t material_data_ds_layout;
     descriptor_set_layout_t frame_data_ds_layout;
-    descriptor_set_layout_t global_data_ds_layout;
 
-    descriptor_pool_t global_data_dp;
     descriptor_pool_t frame_data_dp;
     descriptor_pool_t material_data_dp;
 
-    descriptor_set_t global_ds;
     descriptor_set_t frame_ds;
     descriptor_set_t material_ds;
-
-    texture_t viking_room_texture;
-    sampler_t linear_sampler_2d;
 
     frame_render_data_t frame_render_data;
     buffer_t frame_render_data_buffer;
@@ -973,6 +974,14 @@ std::vector<descriptor_set_t> descriptor_sets_allocate(context_t& context, descr
     return descriptor_sets;
 }
 
+static
+descriptor_set_t descriptor_set_allocate(context_t& context, descriptor_pool_t& descriptor_pool, descriptor_set_layout_t& layout)
+{
+    std::vector<descriptor_set_layout_t> layouts(1, layout);
+    std::vector<descriptor_set_t> ds = descriptor_sets_allocate(context, descriptor_pool, layouts);
+    return ds[0];
+}
+
 struct descriptor_set_layout_bindings_t
 {
     std::vector<VkDescriptorSetLayoutBinding> bindings;
@@ -1232,10 +1241,11 @@ void renderer_globals_create(context_t& context)
         descriptor_set_layout_add_binding(bindings, 0, 1, VK_DESCRIPTOR_TYPE_SAMPLER, VK_SHADER_STAGE_ALL);
         s_globals->global_data_ds_layout = descriptor_set_layout_create(context, bindings);
 
-        const i32 INITIAL_MAX_SETS = 1;
+        const i32 EMPTY_SET = 1;
+        const i32 MAX_SETS = 1;
         descriptor_pool_sizes_t pool_sizes;
-        descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_SAMPLER, INITIAL_MAX_SETS);
-        s_globals->global_data_dp = descriptor_pool_create(context, pool_sizes, INITIAL_MAX_SETS);
+        descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_SAMPLER, MAX_SETS);
+        s_globals->global_data_dp = descriptor_pool_create(context, pool_sizes, MAX_SETS + EMPTY_SET);
 
         std::vector<descriptor_set_layout_t> layouts(1, s_globals->global_data_ds_layout);
         std::vector<descriptor_set_t> sets = descriptor_sets_allocate(context, s_globals->global_data_dp, layouts);
@@ -1264,7 +1274,7 @@ void renderer_globals_create(context_t& context)
         descriptor_set_layout_add_binding(bindings, 0, 1, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT);
         s_globals->material_data_ds_layout = descriptor_set_layout_create(context, bindings);
 
-        const i32 INITIAL_MAX_SETS = 1;
+        const i32 INITIAL_MAX_SETS = 100;
         descriptor_pool_sizes_t pool_sizes;
         descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, INITIAL_MAX_SETS);
         s_globals->material_data_dp = descriptor_pool_create(context, pool_sizes, INITIAL_MAX_SETS);
@@ -1274,15 +1284,18 @@ void renderer_globals_create(context_t& context)
         s_globals->material_ds = sets[0];
     }
 
-    // viking room texture
+    // empty descriptor set for binding in places where we don't need a ds for materials
     {
-        s_globals->viking_room_texture = texture_create_from_file(*s_context, "textures/viking_room.png");
+        descriptor_set_layout_bindings_t bindings;
+        descriptor_set_layout_t empty_layout = descriptor_set_layout_create(*s_context, bindings);
+        s_globals->empty_descriptor_set = descriptor_set_allocate(*s_context, s_globals->global_data_dp, empty_layout);
+        descriptor_set_layout_destroy(context, empty_layout);
     }
 
     // linear sampler 2d
-    // TODO: how should we do num mips? Can't base it off of viking room
+    // TODO: how should we do num mips? Can't base it off of viking room. Set to 10 for now
     {
-        s_globals->linear_sampler_2d = sampler_create(*s_context, s_globals->viking_room_texture.num_mips);
+        s_globals->linear_sampler_2d = sampler_create(*s_context, 10);
     }
 
     {
@@ -1290,12 +1303,11 @@ void renderer_globals_create(context_t& context)
        buffer_update(context, s_globals->frame_render_data_buffer, context.graphics_command_pool, &s_globals->frame_render_data);
     }
 
-    // write to the global, frame, and material ds
+    // write to the global, frame
     {
         descriptor_sets_writes_t descriptor_sets_writes;
         descriptor_sets_writes_add_sampler(descriptor_sets_writes, s_globals->global_ds, s_globals->linear_sampler_2d, 0, 0, 1);
         descriptor_sets_writes_add_uniform_buffer(descriptor_sets_writes, s_globals->frame_ds, s_globals->frame_render_data_buffer, 0, 0, 0, 1);
-        descriptor_sets_writes_add_sampled_image(descriptor_sets_writes, s_globals->material_ds, s_globals->viking_room_texture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 0, 1);
         descriptor_sets_write(context, descriptor_sets_writes);
     }
 
@@ -1336,7 +1348,7 @@ void renderer_init_pipelines(context_t& context)
             pipeline_destroy(context, s_viking_room_mesh_instance.pipeline);
         }
 
-        pipeline_shader_stages_t shader_stages = pipeline_create_shader_stages(context, "shaders/tri-vert.spv", "main", "shaders/tri-frag.spv", "main");
+        pipeline_shader_stages_t shader_stages = s_viking_room_mesh_instance.material.shaders;
         pipeline_vertex_input_t vertex_input = mesh_render_data_get_pipeline_vertex_input(s_viking_room_mesh_instance.mesh_id);
         pipeline_input_assembly_t input_assembly = pipeline_create_input_assembly(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
         pipeline_raster_state_t raster_state = pipeline_create_raster_state();
@@ -1365,7 +1377,8 @@ void renderer_init_pipelines(context_t& context)
                                                                         pipeline_layout, 
                                                                         s_globals->main_draw_render_pass);
 
-        pipeline_destroy_shader_stages(context, shader_stages);
+        // TODO: we are probably messing up the shader stored in the material by doing this
+        // pipeline_destroy_shader_stages(context, shader_stages);
     }
 
     // World axes
@@ -1375,7 +1388,7 @@ void renderer_init_pipelines(context_t& context)
             pipeline_destroy(context, s_world_axes_mesh_instance.pipeline);
         }
 
-        pipeline_shader_stages_t shader_stages = pipeline_create_shader_stages(context, "shaders/simple-color-vert.spv", "main", "shaders/simple-color-frag.spv", "main");
+        pipeline_shader_stages_t shader_stages = s_world_axes_mesh_instance.material.shaders;
         pipeline_vertex_input_t vertex_input = mesh_render_data_get_pipeline_vertex_input(s_world_axes_mesh_instance.mesh_id);
         pipeline_input_assembly_t input_assembly = pipeline_create_input_assembly(VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
         pipeline_raster_state_t raster_state = pipeline_create_raster_state();
@@ -1404,7 +1417,8 @@ void renderer_init_pipelines(context_t& context)
                                                                        pipeline_layout, 
                                                                        s_globals->main_draw_render_pass);
 
-        pipeline_destroy_shader_stages(context, shader_stages);
+        // TODO: we are probably messing up the shader stored in the material by doing this
+        // pipeline_destroy_shader_stages(context, shader_stages);
     }
 }
 
@@ -1434,6 +1448,7 @@ void swapchain_recreate(context_t& context, renderer_globals_t& globals)
 static
 instance_draw_id_t frame_get_or_allocate_instance_draw_data(context_t& context, frame_t& frame)
 {
+    // TODO: we are duplicating the ds layout code here, clean up
     for(i32 i = 0; i < (i32)frame.mesh_instance_render_data.size(); i++)
     {
         if(!frame.mesh_instance_render_data[i].is_assigned)
@@ -1535,6 +1550,41 @@ void renderer_init(window_t* app_window)
         s_world_axes_mesh_instance = mesh_instance_create(*s_context, world_axes_mesh->id);
     }
 
+    {
+        material_t viking_room_material;
+        viking_room_material.shaders = pipeline_create_shader_stages(*s_context, "shaders/tri-vert.spv", "main", "shaders/tri-frag.spv", "main");
+
+        descriptor_info_t diffuse_descriptor_info = {};
+        diffuse_descriptor_info.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        diffuse_descriptor_info.binding_index = 0;
+        diffuse_descriptor_info.count = 1;
+        diffuse_descriptor_info.shader_stages = VK_SHADER_STAGE_FRAGMENT_BIT;
+        viking_room_material.descriptor_infos.push_back(diffuse_descriptor_info);
+
+        descriptor_resource_info_t diffuse_resource;
+        diffuse_resource.texture = texture_create_from_file(*s_context, "textures/viking_room.png");
+        viking_room_material.descriptor_resources.push_back(diffuse_resource);
+
+        descriptor_set_layout_bindings_t bindings;
+        descriptor_set_layout_add_binding(bindings, 0, 1, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT);
+        viking_room_material.descriptor_set_layout = descriptor_set_layout_create(*s_context, bindings);
+        viking_room_material.descriptor_set = descriptor_set_allocate(*s_context, s_globals->material_data_dp, viking_room_material.descriptor_set_layout);
+
+        descriptor_sets_writes_t descriptor_sets_writes;
+        descriptor_sets_writes_add_sampled_image(descriptor_sets_writes, viking_room_material.descriptor_set, viking_room_material.descriptor_resources[0].texture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 0, 1);
+        descriptor_sets_write(*s_context, descriptor_sets_writes);
+
+        s_viking_room_mesh_instance.material = viking_room_material;
+    }
+
+    {
+        material_t world_axes_material;
+        world_axes_material.shaders = pipeline_create_shader_stages(*s_context, "shaders/simple-color-vert.spv", "main", "shaders/simple-color-frag.spv", "main");
+
+        world_axes_material.descriptor_set = s_globals->empty_descriptor_set;
+        s_world_axes_mesh_instance.material = world_axes_material;
+    }
+
     renderer_init_pipelines(*s_context);
 }
 
@@ -1623,7 +1673,7 @@ void frame_generate_command_buffers(context_t& context, frame_t& frame)
                 std::vector<VkDescriptorSet> draw_descriptor_sets = { 
                                                                         s_globals->global_ds.descriptor_set,
                                                                         s_globals->frame_ds.descriptor_set,
-                                                                        s_globals->material_ds.descriptor_set,
+                                                                        s_viking_room_mesh_instance.material.descriptor_set.descriptor_set,
                                                                         instance_render_data.descriptor_set.descriptor_set  
                                                                     };
                 command_draw_mesh_instance(command_buffer, s_viking_room_mesh_instance, *mesh_render_data, draw_descriptor_sets);
@@ -1636,7 +1686,7 @@ void frame_generate_command_buffers(context_t& context, frame_t& frame)
                 std::vector<VkDescriptorSet> draw_descriptor_sets = { 
                                                                         s_globals->global_ds.descriptor_set,
                                                                         s_globals->frame_ds.descriptor_set,
-                                                                        s_globals->material_ds.descriptor_set,
+                                                                        s_world_axes_mesh_instance.material.descriptor_set.descriptor_set,
                                                                         instance_render_data.descriptor_set.descriptor_set  
                                                                     };
                 command_draw_mesh_instance(command_buffer, s_world_axes_mesh_instance, *mesh_render_data, draw_descriptor_sets);

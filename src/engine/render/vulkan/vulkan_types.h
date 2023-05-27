@@ -246,7 +246,7 @@ struct descriptor_pool_t
 
 struct descriptor_set_t
 {
-    VkDescriptorSet descriptor_set;
+    VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
 };
 
 struct descriptor_set_write_info_t
@@ -267,30 +267,15 @@ struct descriptor_sets_writes_t
 
 struct descriptor_info_t
 {
+    VkDescriptorType type;
     u32 binding_index;
     u32 count;
-    VkDescriptorType type;
     VkShaderStageFlagBits shader_stages;
 };
 
 struct descriptor_resource_info_t
 {
-    VkDescriptorType type;
-
-    union
-    {
-        struct
-        {
-            void* buffer;       
-            size_t buffer_size;
-        };
-
-        struct
-        {
-            texture_t texture;
-            sampler_t sampler;
-        };
-    };
+    texture_t texture;
 };
 
 struct shader_info_t
@@ -301,10 +286,11 @@ struct shader_info_t
 
 struct material_t
 {
-    std::vector<shader_info_t> shaders;
-    descriptor_set_layout_t descriptor_set_layout;
+    pipeline_shader_stages_t shaders;
     std::vector<descriptor_info_t> descriptor_infos;
     std::vector<descriptor_resource_info_t> descriptor_resources;
+    descriptor_set_layout_t descriptor_set_layout;
+    descriptor_set_t descriptor_set;
 };
 
 struct mesh_render_data_t
@@ -329,6 +315,7 @@ struct mesh_instance_t
     mesh_id_t mesh_id;
     instance_draw_id_t instance_id;
     transform_t transform;
+    material_t material;
     pipeline_t pipeline;
 };
 
