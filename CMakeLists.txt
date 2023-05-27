@@ -43,10 +43,10 @@ add_library(sm-engine STATIC src/engine/core/assert.cpp
                              src/engine/render/vulkan/vulkan_include.h
                              src/engine/render/vulkan/vulkan_renderer.cpp
                              src/engine/render/vulkan/vulkan_renderer.h
+                             src/engine/render/vulkan/vulkan_resources.cpp
+                             src/engine/render/vulkan/vulkan_resources.h
                              src/engine/render/vulkan/vulkan_startup.cpp
                              src/engine/render/vulkan/vulkan_startup.h
-                             src/engine/render/vulkan/vulkan_temp.cpp
-                             src/engine/render/vulkan/vulkan_temp.h
                              src/engine/render/vulkan/vulkan_types.h
                              src/engine/render/window.cpp
                              src/engine/render/window.h

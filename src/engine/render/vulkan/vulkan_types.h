@@ -59,6 +59,7 @@ struct device_t
     VkSampleCountFlagBits max_num_msaa_samples = VK_SAMPLE_COUNT_1_BIT;
     queue_family_indices_t queue_families;
     VkPhysicalDeviceProperties phys_device_properties;
+    VkFormat depth_format;
 };
 
 struct swapchain_details_t 

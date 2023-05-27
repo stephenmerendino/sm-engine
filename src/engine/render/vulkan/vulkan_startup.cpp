@@ -4,7 +4,7 @@
 #include "engine/render/vulkan/vulkan_commands.h"
 #include "engine/render/window.h"
 #include "engine/render/vulkan/vulkan_startup.h"
-#include "engine/render/vulkan/vulkan_temp.h"
+#include "engine/render/vulkan/vulkan_resources.h"
 #include "engine/thirdparty/vulkan/vulkan_core.h"
 
 #include <set>
@@ -480,6 +480,7 @@ device_t device_create(instance_t& instance, surface_t& surface)
     device.max_num_msaa_samples = max_num_msaa_samples;
     device.queue_families = queue_families;
     device.phys_device_properties = selected_physical_device_props;
+    device.depth_format = format_find_depth(device);
     return device;
 }
 
