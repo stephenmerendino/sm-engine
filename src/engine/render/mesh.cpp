@@ -118,6 +118,7 @@ mesh_t* mesh_load_from_obj(const char* obj_filepath)
 
     mesh->m_vertices = vertices;
     mesh->m_indices = indices;
+    mesh->topology = PrimitiveTopology::kTriangleList;
 
     renderer_load_mesh(mesh);
 
@@ -394,6 +395,7 @@ mesh_t* mesh_load_cube()
 
     mesh->m_vertices = vertices;
     mesh->m_indices = indices;
+    mesh->topology = PrimitiveTopology::kTriangleList;
 
     renderer_load_mesh(mesh);
 
@@ -462,6 +464,7 @@ mesh_t* mesh_load_axes()
 
     mesh->m_vertices = vertices;
     mesh->m_indices = indices;
+    mesh->topology = PrimitiveTopology::kLineList;
 
     renderer_load_mesh(mesh);
 

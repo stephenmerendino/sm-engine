@@ -275,16 +275,6 @@ std::vector<VkVertexInputAttributeDescription> mesh_get_vertex_input_attr_descs(
     ASSERT(nullptr != mesh);
 	return get_vertex_input_attr_descs(mesh->m_vertices[0]);
 }
-
-static
-mesh_instance_t mesh_instance_create(context_t& context, mesh_id_t mesh_id)
-{
-    mesh_instance_t mesh_instance;
-    mesh_instance.mesh_id = mesh_id;
-    mesh_instance.transform.model = MAT44_IDENTITY;
-    return mesh_instance;
-}
-
 static
 void descriptor_set_layout_destroy(context_t& context, descriptor_set_layout_t& layout)
 {
@@ -296,6 +286,8 @@ void pipeline_destroy(context_t& context, pipeline_t& pipeline)
 {
 	vkDestroyPipeline(context.device.device_handle, pipeline.pipeline_handle, nullptr);
     vkDestroyPipelineLayout(context.device.device_handle, pipeline.layout_handle, nullptr);
+    pipeline.pipeline_handle = VK_NULL_HANDLE;
+    pipeline.layout_handle = VK_NULL_HANDLE;
 }
 
 static
@@ -701,6 +693,12 @@ pipeline_shader_stages_t pipeline_create_shader_stages(context_t& context, const
 }
 
 static
+pipeline_shader_stages_t pipeline_create_shader_stages(context_t& context, shader_info_t& vertex_shader_info, shader_info_t& fragment_shader_info)
+{
+    return pipeline_create_shader_stages(context, vertex_shader_info.shader_filepath, vertex_shader_info.shader_entry, fragment_shader_info.shader_filepath, fragment_shader_info.shader_entry); 
+}
+
+static
 void pipeline_destroy_shader_stages(context_t& context, pipeline_shader_stages_t& shader_stages)
 {
     // cleanup
@@ -718,24 +716,6 @@ pipeline_input_assembly_t pipeline_create_input_assembly(VkPrimitiveTopology top
     input_assembly.input_assembly_info.topology = topology;
     input_assembly.input_assembly_info.primitiveRestartEnable = primitive_restart_enable;
     return input_assembly;
-}
-
-static
-pipeline_vertex_input_t  mesh_render_data_get_pipeline_vertex_input(mesh_id_t mesh_id)
-{
-    i32 data_index = -1;
-    for(i32 i = 0; i < (i32)s_globals->loaded_mesh_render_data.size(); i++)
-    {
-        if(s_globals->loaded_mesh_render_data[i]->mesh_id == mesh_id)
-        {
-            data_index = i;
-            break;
-        }
-    }
-
-    ASSERT(-1 != data_index);
-
-    return s_globals->loaded_mesh_render_data[data_index]->pipeline_vertex_input;
 }
 
 static
@@ -1123,8 +1103,106 @@ void descriptor_sets_write(context_t& context, descriptor_sets_writes_t& descrip
     vkUpdateDescriptorSets(context.device.device_handle, (u32)descriptor_sets_writes.descriptor_sets_writes.size(), descriptor_sets_writes.descriptor_sets_writes.data(), 0, nullptr);
 }
 
+static
+pipeline_vertex_input_t  mesh_render_data_get_pipeline_vertex_input(mesh_id_t mesh_id)
+{
+    i32 data_index = -1;
+    for(i32 i = 0; i < (i32)s_globals->loaded_mesh_render_data.size(); i++)
+    {
+        if(s_globals->loaded_mesh_render_data[i]->mesh_id == mesh_id)
+        {
+            data_index = i;
+            break;
+        }
+    }
+
+    ASSERT(-1 != data_index);
+
+    return s_globals->loaded_mesh_render_data[data_index]->pipeline_vertex_input;
+}
+
+static
+VkPrimitiveTopology mesh_render_data_get_topology(mesh_id_t mesh_id)
+{
+    i32 data_index = -1;
+    for(i32 i = 0; i < (i32)s_globals->loaded_mesh_render_data.size(); i++)
+    {
+        if(s_globals->loaded_mesh_render_data[i]->mesh_id == mesh_id)
+        {
+            data_index = i;
+            break;
+        }
+    }
+
+    ASSERT(-1 != data_index);
+
+    return s_globals->loaded_mesh_render_data[data_index]->topology;
+}
+
+static
+void mesh_instance_pipeline_create(context_t& context, mesh_instance_t& mesh_instance)
+{
+    ASSERT(VK_NULL_HANDLE == mesh_instance.pipeline.pipeline_handle);
+
+    pipeline_shader_stages_t shader_stages = mesh_instance.material.shaders;
+    pipeline_vertex_input_t vertex_input = mesh_render_data_get_pipeline_vertex_input(mesh_instance.mesh_id);
+    VkPrimitiveTopology mesh_topology = mesh_render_data_get_topology(mesh_instance.mesh_id);
+    pipeline_input_assembly_t input_assembly = pipeline_create_input_assembly(mesh_topology);
+    pipeline_raster_state_t raster_state = pipeline_create_raster_state();
+    pipeline_viewport_state_t viewport_state;
+    pipeline_create_viewport_state(viewport_state, 0.0f, 0.0f, 
+                                                   context.swapchain.extent.width, context.swapchain.extent.height, 
+                                                   0.0f, 1.0f, 
+                                                   0, 0, 
+                                                   context.swapchain.extent.width, context.swapchain.extent.width);
+    pipeline_multisample_state_t multisample_state = pipeline_create_multisample_state(context.device.max_num_msaa_samples);
+    pipeline_depth_stencil_state_t depth_stencil_state = pipeline_create_depth_stencil_state(true, true, VK_COMPARE_OP_LESS, false, 0.0f, 1.0f);
+    pipeline_color_blend_state_t color_blend_state;
+    pipeline_add_color_blend_attachments(color_blend_state, false, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD, 
+                                                                   VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD, 
+                                                                   VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
+    pipeline_create_color_blend_state(color_blend_state, false, VK_LOGIC_OP_COPY, 0.0f, 0.0f, 0.0f, 0.0f);
+    pipeline_layout_t pipeline_layout = pipeline_create_layout(context, mesh_instance);
+    mesh_instance.pipeline = pipeline_create(context, shader_stages, 
+                                                      vertex_input, 
+                                                      input_assembly, 
+                                                      raster_state, 
+                                                      viewport_state, 
+                                                      multisample_state, 
+                                                      depth_stencil_state, 
+                                                      color_blend_state, 
+                                                      pipeline_layout, 
+                                                      s_globals->main_draw_render_pass);
+
+    // TODO: we are probably messing up the shader stored in the material by doing this
+    // pipeline_destroy_shader_stages(context, shader_stages);
+}
+
+static
+void mesh_instance_pipeline_refresh(context_t& context, mesh_instance_t& mesh_instance)
+{
+    if(VK_NULL_HANDLE != mesh_instance.pipeline.pipeline_handle)
+    {
+        pipeline_destroy(context, mesh_instance.pipeline);
+    }
+    mesh_instance_pipeline_create(context, mesh_instance);
+}
+
+static
+mesh_instance_t mesh_instance_create(context_t& context, mesh_id_t mesh_id, material_t& material)
+{
+    mesh_instance_t mesh_instance;
+    mesh_instance.mesh_id = mesh_id;
+    mesh_instance.transform.model = MAT44_IDENTITY;
+    mesh_instance.material = material;
+    mesh_instance_pipeline_create(context, mesh_instance);
+    return mesh_instance;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////   DMZ DO NOT CROSS
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1339,90 +1417,6 @@ void renderer_globals_destroy(context_t& context)
 }
 
 static
-void renderer_init_pipelines(context_t& context)
-{
-    // Viking Room
-    {
-        if(VK_NULL_HANDLE != s_viking_room_mesh_instance.pipeline.pipeline_handle)
-        {
-            pipeline_destroy(context, s_viking_room_mesh_instance.pipeline);
-        }
-
-        pipeline_shader_stages_t shader_stages = s_viking_room_mesh_instance.material.shaders;
-        pipeline_vertex_input_t vertex_input = mesh_render_data_get_pipeline_vertex_input(s_viking_room_mesh_instance.mesh_id);
-        pipeline_input_assembly_t input_assembly = pipeline_create_input_assembly(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-        pipeline_raster_state_t raster_state = pipeline_create_raster_state();
-        pipeline_viewport_state_t viewport_state;
-        pipeline_create_viewport_state(viewport_state, 0.0f, 0.0f, 
-                                                       context.swapchain.extent.width, context.swapchain.extent.height, 
-                                                       0.0f, 1.0f, 
-                                                       0, 0, 
-                                                       context.swapchain.extent.width, context.swapchain.extent.width);
-        pipeline_multisample_state_t multisample_state = pipeline_create_multisample_state(context.device.max_num_msaa_samples);
-        pipeline_depth_stencil_state_t depth_stencil_state = pipeline_create_depth_stencil_state(true, true, VK_COMPARE_OP_LESS, false, 0.0f, 1.0f);
-        pipeline_color_blend_state_t color_blend_state;
-        pipeline_add_color_blend_attachments(color_blend_state, false, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD, 
-                                                                       VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD, 
-                                                                       VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
-        pipeline_create_color_blend_state(color_blend_state, false, VK_LOGIC_OP_COPY, 0.0f, 0.0f, 0.0f, 0.0f);
-        pipeline_layout_t pipeline_layout = pipeline_create_layout(context, s_viking_room_mesh_instance);
-        s_viking_room_mesh_instance.pipeline = pipeline_create(context, shader_stages, 
-                                                                        vertex_input, 
-                                                                        input_assembly, 
-                                                                        raster_state, 
-                                                                        viewport_state, 
-                                                                        multisample_state, 
-                                                                        depth_stencil_state, 
-                                                                        color_blend_state, 
-                                                                        pipeline_layout, 
-                                                                        s_globals->main_draw_render_pass);
-
-        // TODO: we are probably messing up the shader stored in the material by doing this
-        // pipeline_destroy_shader_stages(context, shader_stages);
-    }
-
-    // World axes
-    {
-        if(VK_NULL_HANDLE != s_world_axes_mesh_instance.pipeline.pipeline_handle)
-        {
-            pipeline_destroy(context, s_world_axes_mesh_instance.pipeline);
-        }
-
-        pipeline_shader_stages_t shader_stages = s_world_axes_mesh_instance.material.shaders;
-        pipeline_vertex_input_t vertex_input = mesh_render_data_get_pipeline_vertex_input(s_world_axes_mesh_instance.mesh_id);
-        pipeline_input_assembly_t input_assembly = pipeline_create_input_assembly(VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
-        pipeline_raster_state_t raster_state = pipeline_create_raster_state();
-        pipeline_viewport_state_t viewport_state;
-        pipeline_create_viewport_state(viewport_state, 0.0f, 0.0f, 
-                                                       context.swapchain.extent.width, context.swapchain.extent.height, 
-                                                       0.0f, 1.0f, 
-                                                       0, 0, 
-                                                       context.swapchain.extent.width, context.swapchain.extent.width);
-        pipeline_multisample_state_t multisample_state = pipeline_create_multisample_state(context.device.max_num_msaa_samples);
-        pipeline_depth_stencil_state_t depth_stencil_state = pipeline_create_depth_stencil_state(true, true, VK_COMPARE_OP_LESS, false, 0.0f, 1.0f);
-        pipeline_color_blend_state_t color_blend_state;
-        pipeline_add_color_blend_attachments(color_blend_state, false, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD, 
-                                                                       VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD, 
-                                                                       VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
-        pipeline_create_color_blend_state(color_blend_state, false, VK_LOGIC_OP_COPY, 0.0f, 0.0f, 0.0f, 0.0f);
-        pipeline_layout_t pipeline_layout = pipeline_create_layout(context, s_world_axes_mesh_instance);
-        s_world_axes_mesh_instance.pipeline = pipeline_create(context, shader_stages, 
-                                                                       vertex_input, 
-                                                                       input_assembly, 
-                                                                       raster_state, 
-                                                                       viewport_state, 
-                                                                       multisample_state, 
-                                                                       depth_stencil_state, 
-                                                                       color_blend_state, 
-                                                                       pipeline_layout, 
-                                                                       s_globals->main_draw_render_pass);
-
-        // TODO: we are probably messing up the shader stored in the material by doing this
-        // pipeline_destroy_shader_stages(context, shader_stages);
-    }
-}
-
-static
 void swapchain_recreate(context_t& context, renderer_globals_t& globals)
 {
     if(context.window->was_closed || context.window->width == 0 || context.window->height == 0)
@@ -1442,7 +1436,8 @@ void swapchain_recreate(context_t& context, renderer_globals_t& globals)
         s_globals->in_flight_frames[i] = frame_create(context);
 	}
 
-    renderer_init_pipelines(context);
+    mesh_instance_pipeline_refresh(context, s_viking_room_mesh_instance);
+    mesh_instance_pipeline_refresh(context, s_world_axes_mesh_instance);
 }
 
 static
@@ -1529,6 +1524,65 @@ void update_instance_data(context_t& context, camera_t& camera, frame_t& frame)
     descriptor_sets_write(context, descriptor_sets_writes);
 }
 
+struct material_create_info_t
+{
+    shader_info_t vertex_shader_info;
+    shader_info_t fragment_shader_info;
+    std::vector<material_resource_t> resources;
+};
+
+static
+material_resource_t material_load_sampled_texture_resource(context_t& context, const char* texture_filepath, u32 binding_index, u32 count, VkShaderStageFlagBits shader_stages)
+{
+    material_resource_t resource = {};
+    resource.descriptor_info.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    resource.descriptor_info.binding_index = binding_index;
+    resource.descriptor_info.count = count;
+    resource.descriptor_info.shader_stages = shader_stages;
+    resource.descriptor_resource.texture = texture_create_from_file(context, texture_filepath);
+    return resource;
+}
+
+static
+material_t material_create(context_t& context, material_create_info_t& create_info)
+{
+    material_t material;
+    material.shaders = pipeline_create_shader_stages(context, create_info.vertex_shader_info, create_info.fragment_shader_info);
+    material.resources = create_info.resources;
+
+    descriptor_set_layout_bindings_t bindings;
+    for(material_resource_t& resource : create_info.resources)
+    {
+        if(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE == resource.descriptor_info.type)
+        {
+            descriptor_set_layout_add_binding(bindings, resource.descriptor_info.binding_index, 
+                                                        resource.descriptor_info.count, 
+                                                        resource.descriptor_info.type, 
+                                                        resource.descriptor_info.shader_stages);
+        }
+    }
+
+    material.descriptor_set_layout = descriptor_set_layout_create(context, bindings);
+    material.descriptor_set = descriptor_set_allocate(context, s_globals->material_data_dp, material.descriptor_set_layout);
+
+    descriptor_sets_writes_t descriptor_sets_writes;
+    for(material_resource_t& resource : create_info.resources)
+    {
+        if(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE == resource.descriptor_info.type)
+        {
+            descriptor_sets_writes_add_sampled_image(descriptor_sets_writes, material.descriptor_set, 
+                                                                             resource.descriptor_resource.texture, 
+                                                                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
+                                                                             resource.descriptor_info.binding_index, 
+                                                                             0, //TODO: need to support arrays in descriptors
+                                                                             resource.descriptor_info.count);
+        }
+    }
+    descriptor_sets_write(context, descriptor_sets_writes);
+
+    return material;
+}
+
 void renderer_init(window_t* app_window)
 {
     ASSERT(nullptr != app_window);
@@ -1536,56 +1590,40 @@ void renderer_init(window_t* app_window)
     s_context = context_create(app_window);
     renderer_globals_create(*s_context);
 
+    {
+        material_create_info_t mat_create_info;
+        mat_create_info.vertex_shader_info = { "shaders/tri-vert.spv", "main" };
+        mat_create_info.fragment_shader_info = { "shaders/tri-frag.spv", "main" };
+
+        material_resource_t diffuse_texture = material_load_sampled_texture_resource(*s_context, "textures/viking_room.png", 0, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
+        mat_create_info.resources.push_back(diffuse_texture);
+
+        material_t viking_room_material = material_create(*s_context, mat_create_info);
+        s_viking_room_mesh_instance.material = viking_room_material;
+    }
+
+    {
+        material_create_info_t mat_create_info;
+        mat_create_info.vertex_shader_info = { "shaders/simple-color-vert.spv", "main" };
+        mat_create_info.fragment_shader_info = { "shaders/simple-color-frag.spv", "main" };
+
+        material_t world_axes_material = material_create(*s_context, mat_create_info);
+        s_world_axes_mesh_instance.material = world_axes_material;
+    }
+
     // viking room
     {
         // meshes
-        //mesh_t* viking_room_mesh = mesh_load_from_obj("models/viking_room.obj");
-        mesh_t* cube_mesh = mesh_load_cube();
-        s_viking_room_mesh_instance = mesh_instance_create(*s_context, cube_mesh->id);
+        mesh_t* viking_room_mesh = mesh_load_from_obj("models/viking_room.obj");
+        //mesh_t* cube_mesh = mesh_load_cube();
+        s_viking_room_mesh_instance = mesh_instance_create(*s_context, viking_room_mesh->id, s_viking_room_mesh_instance.material);
     }
 
     // world axes
     {
         mesh_t* world_axes_mesh = mesh_load_axes();
-        s_world_axes_mesh_instance = mesh_instance_create(*s_context, world_axes_mesh->id);
+        s_world_axes_mesh_instance = mesh_instance_create(*s_context, world_axes_mesh->id, s_world_axes_mesh_instance.material);
     }
-
-    {
-        material_t viking_room_material;
-        viking_room_material.shaders = pipeline_create_shader_stages(*s_context, "shaders/tri-vert.spv", "main", "shaders/tri-frag.spv", "main");
-
-        descriptor_info_t diffuse_descriptor_info = {};
-        diffuse_descriptor_info.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        diffuse_descriptor_info.binding_index = 0;
-        diffuse_descriptor_info.count = 1;
-        diffuse_descriptor_info.shader_stages = VK_SHADER_STAGE_FRAGMENT_BIT;
-        viking_room_material.descriptor_infos.push_back(diffuse_descriptor_info);
-
-        descriptor_resource_info_t diffuse_resource;
-        diffuse_resource.texture = texture_create_from_file(*s_context, "textures/viking_room.png");
-        viking_room_material.descriptor_resources.push_back(diffuse_resource);
-
-        descriptor_set_layout_bindings_t bindings;
-        descriptor_set_layout_add_binding(bindings, 0, 1, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT);
-        viking_room_material.descriptor_set_layout = descriptor_set_layout_create(*s_context, bindings);
-        viking_room_material.descriptor_set = descriptor_set_allocate(*s_context, s_globals->material_data_dp, viking_room_material.descriptor_set_layout);
-
-        descriptor_sets_writes_t descriptor_sets_writes;
-        descriptor_sets_writes_add_sampled_image(descriptor_sets_writes, viking_room_material.descriptor_set, viking_room_material.descriptor_resources[0].texture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 0, 1);
-        descriptor_sets_write(*s_context, descriptor_sets_writes);
-
-        s_viking_room_mesh_instance.material = viking_room_material;
-    }
-
-    {
-        material_t world_axes_material;
-        world_axes_material.shaders = pipeline_create_shader_stages(*s_context, "shaders/simple-color-vert.spv", "main", "shaders/simple-color-frag.spv", "main");
-
-        world_axes_material.descriptor_set = s_globals->empty_descriptor_set;
-        s_world_axes_mesh_instance.material = world_axes_material;
-    }
-
-    renderer_init_pipelines(*s_context);
 }
 
 void renderer_set_main_camera(camera_t* camera)
@@ -1722,8 +1760,8 @@ void renderer_update(f32 ds)
     mat44 rotation = make_rotation_x_deg(cosf(time) * 180.0f);
     rotate_y_deg(rotation, sinf(time) * 180.0f);
 
-    set_translation(s_viking_room_mesh_instance.transform.model, position_ws);
-    set_rotation(s_viking_room_mesh_instance.transform.model, rotation);
+    //set_translation(s_viking_room_mesh_instance.transform.model, position_ws);
+    //set_rotation(s_viking_room_mesh_instance.transform.model, rotation);
 }
 
 void renderer_render_frame()
@@ -1798,6 +1836,19 @@ void renderer_deinit()
     context_destroy(s_context);
 }
 
+static
+VkPrimitiveTopology primitive_topology_to_vk_topology(PrimitiveTopology topology)
+{
+    switch(topology)
+    {
+        case PrimitiveTopology::kTriangleList:  return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        case PrimitiveTopology::kLineList:      return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+        default: ASSERT(1 == 2); // error out if we haven't put the correct cases here, TODO: use an ERROR("") macro
+    }
+
+    return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+}
+
 void renderer_load_mesh(mesh_t* mesh)
 {
     for(i32 i = 0; i < (i32)s_globals->loaded_mesh_render_data.size(); i++)
@@ -1811,6 +1862,7 @@ void renderer_load_mesh(mesh_t* mesh)
     mesh_render_data_t* mesh_render_data = new mesh_render_data_t;
     mesh_render_data->mesh_id = mesh->id;
     mesh_render_data->index_count = (u32)mesh->m_indices.size();
+    mesh_render_data->topology = primitive_topology_to_vk_topology(mesh->topology);
 
     mesh_render_data->vertex_buffer = buffer_create(*s_context, BufferType::kVertexBuffer, mesh_calc_vertex_buffer_size(mesh));
     mesh_render_data->index_buffer = buffer_create(*s_context, BufferType::kIndexBuffer, mesh_calc_index_buffer_size(mesh));

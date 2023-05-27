@@ -18,6 +18,8 @@ bool report_assert_failure(const char* expression, const char* filename, int lin
 
 #define VULKAN_ASSERT(vk_result) ASSERT(VK_SUCCESS == vk_result)
 
+// TODO: Create ASSERT_MSG, ERROR, ERROR_MSG
+
 #else
 
 #define ASSERT

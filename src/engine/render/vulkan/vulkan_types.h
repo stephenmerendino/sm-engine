@@ -265,6 +265,7 @@ struct descriptor_sets_writes_t
     std::vector<VkWriteDescriptorSet> descriptor_sets_writes;
 };
 
+// TODO: need to support arrays in descriptors
 struct descriptor_info_t
 {
     VkDescriptorType type;
@@ -273,7 +274,7 @@ struct descriptor_info_t
     VkShaderStageFlagBits shader_stages;
 };
 
-struct descriptor_resource_info_t
+struct descriptor_resource_t
 {
     texture_t texture;
 };
@@ -284,11 +285,18 @@ struct shader_info_t
     const char* shader_entry;
 };
 
+struct material_resource_t
+{
+    descriptor_info_t descriptor_info;      
+    descriptor_resource_t descriptor_resource;
+};
+
+typedef hash_id_t material_id_t;
 struct material_t
 {
+    material_id_t id;
     pipeline_shader_stages_t shaders;
-    std::vector<descriptor_info_t> descriptor_infos;
-    std::vector<descriptor_resource_info_t> descriptor_resources;
+    std::vector<material_resource_t> resources;
     descriptor_set_layout_t descriptor_set_layout;
     descriptor_set_t descriptor_set;
 };
@@ -297,6 +305,7 @@ struct mesh_render_data_t
 {
     mesh_id_t mesh_id;
     u32 index_count;
+    VkPrimitiveTopology topology;
     buffer_t vertex_buffer;
     buffer_t index_buffer;
     pipeline_vertex_input_t pipeline_vertex_input; 

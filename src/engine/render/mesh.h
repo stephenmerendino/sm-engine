@@ -8,9 +8,16 @@
 
 typedef hash_id_t mesh_id_t;
 
+enum class PrimitiveTopology : u8
+{
+    kTriangleList,
+    kLineList
+};
+
 struct mesh_t
 {
     mesh_id_t id;
+    PrimitiveTopology topology;
     std::vector<vertex_pct_t> m_vertices;
     std::vector<u32> m_indices;
 };
