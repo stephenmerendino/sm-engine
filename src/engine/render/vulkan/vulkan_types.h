@@ -11,7 +11,7 @@
 struct mesh_t;
 struct window_t;
 
-struct object_shader_inputs_t
+struct instance_draw_data_t 
 {
 	mat44 mvp;
 };
@@ -240,6 +240,7 @@ struct descriptor_pool_sizes_t
 struct descriptor_pool_t
 {
     VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
+    u32 max_num_sets = 0;
 };
 
 struct descriptor_set_t
@@ -316,14 +317,20 @@ struct mesh_render_data_t
     pipeline_vertex_input_t pipeline_vertex_input; 
 };
 
+struct mesh_instance_render_data_t
+{
+    buffer_t data_buffer;
+    descriptor_set_t descriptor_set;
+    bool is_assigned = false;
+};
+
+typedef u32 instance_draw_id_t;
 struct mesh_instance_t 
 {
     mesh_id_t mesh_id;
+    instance_draw_id_t instance_id;
     transform_t transform;
     pipeline_t pipeline;
-    descriptor_set_layout_t descriptor_set_layout;
-    std::vector<descriptor_set_t> descriptor_sets;
-    buffer_t uniform_buffer;
 };
 
 struct frame_t
@@ -333,11 +340,10 @@ struct frame_t
     semaphore_t render_finished_semaphore;
     fence_t frame_completed_fence;
 
+    descriptor_pool_t mesh_instance_render_data_descriptor_pool;
+    std::vector<mesh_instance_render_data_t> mesh_instance_render_data;
+
     std::vector<VkCommandBuffer> command_buffers;
-
-    descriptor_pool_t descriptor_pool;
-
-    std::vector<buffer_t> uniform_buffers;
 
     framebuffer_t main_draw_framebuffer;
     texture_t main_draw_color_target;
