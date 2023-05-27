@@ -24,6 +24,11 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "engine/thirdparty/stb/stb_image.h"
 
+struct frame_render_data_t
+{
+    f32 ds = 0.0f;
+};
+
 struct renderer_globals_t
 {
     std::vector<frame_t> in_flight_frames;
@@ -33,6 +38,27 @@ struct renderer_globals_t
     std::vector<mesh_render_data_t*> loaded_mesh_render_data;
 
     descriptor_set_layout_t mesh_instance_render_data_ds_layout;
+
+    ///////////////////
+    // temp (or maybe not??)
+    descriptor_set_layout_t material_data_ds_layout;
+    descriptor_set_layout_t frame_data_ds_layout;
+    descriptor_set_layout_t global_data_ds_layout;
+
+    descriptor_pool_t global_data_dp;
+    descriptor_pool_t frame_data_dp;
+    descriptor_pool_t material_data_dp;
+
+    descriptor_set_t global_ds;
+    descriptor_set_t frame_ds;
+    descriptor_set_t material_ds;
+
+    texture_t viking_room_texture;
+    sampler_t linear_sampler_2d;
+
+    frame_render_data_t frame_render_data;
+    buffer_t frame_render_data_buffer;
+    ///////////////////
 
     //render_pass_t depth_only_render_pass;
     render_pass_t main_draw_render_pass;
@@ -599,15 +625,6 @@ void render_pass_destroy(context_t& context, render_pass_t& render_pass)
 }
 
 static
-void render_pass_reset(render_pass_t& render_pass)
-{
-    render_pass.handle = VK_NULL_HANDLE;
-    render_pass.subpasses.subpasses.clear();
-    render_pass.subpass_dependencies.dependencies.clear();
-    render_pass.attachments.attachments.clear();
-}
-
-static
 semaphore_t semaphore_create(context_t& context)
 {
     VkSemaphoreCreateInfo semaphore_create_info = {};
@@ -837,7 +854,13 @@ void pipeline_create_color_blend_state(pipeline_color_blend_state_t& color_blend
 
 pipeline_layout_t pipeline_create_layout(context_t& context, mesh_instance_t& mesh_instance)
 {
-    std::vector<VkDescriptorSetLayout> descriptor_set_layouts = { s_globals->mesh_instance_render_data_ds_layout.handle };
+    std::vector<VkDescriptorSetLayout> descriptor_set_layouts = { 
+                                                                  s_globals->global_data_ds_layout.handle,
+                                                                  s_globals->frame_data_ds_layout.handle,
+                                                                  s_globals->material_data_ds_layout.handle,
+                                                                  s_globals->mesh_instance_render_data_ds_layout.handle 
+                                                                };
+
     VkPipelineLayoutCreateInfo layout_info = {};
     layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     layout_info.setLayoutCount = (u32)descriptor_set_layouts.size();
@@ -1021,10 +1044,40 @@ void descriptor_sets_writes_add_combined_image_sampler(descriptor_sets_writes_t&
 }
 
 static
-void descriptor_sets_writes_reset(descriptor_sets_writes_t& descriptor_sets_writes)
+void descriptor_sets_writes_add_sampler(descriptor_sets_writes_t& descriptor_sets_writes, descriptor_set_t& descriptor_set, sampler_t& sampler, u32 dst_binding, u32 dst_array_element, u32 descriptor_count)
 {
-    descriptor_sets_writes.descriptor_sets_write_infos.clear();
-    descriptor_sets_writes.descriptor_sets_writes.clear();
+    descriptor_set_write_info_t sampler_write_info = {};
+    sampler_write_info.type = VK_DESCRIPTOR_TYPE_SAMPLER;
+    sampler_write_info.image_write_info.sampler = sampler.handle;
+    descriptor_sets_writes.descriptor_sets_write_infos.push_back(sampler_write_info);
+
+    VkWriteDescriptorSet sampler_write = {};
+    sampler_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    sampler_write.dstSet = descriptor_set.descriptor_set;
+    sampler_write.dstBinding = dst_binding;
+    sampler_write.dstArrayElement = dst_array_element;
+    sampler_write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+    sampler_write.descriptorCount = descriptor_count;
+    descriptor_sets_writes.descriptor_sets_writes.push_back(sampler_write);
+}
+
+static
+void descriptor_sets_writes_add_sampled_image(descriptor_sets_writes_t& descriptor_sets_writes, descriptor_set_t& descriptor_set, texture_t& texture, VkImageLayout image_layout, u32 dst_binding, u32 dst_array_element, u32 descriptor_count)
+{
+    descriptor_set_write_info_t sampled_image_write_info = {};
+    sampled_image_write_info.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    sampled_image_write_info.image_write_info.imageView = texture.image_view;
+    sampled_image_write_info.image_write_info.imageLayout = image_layout;
+    descriptor_sets_writes.descriptor_sets_write_infos.push_back(sampled_image_write_info);
+
+    VkWriteDescriptorSet sampler_write = {};
+    sampler_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    sampler_write.dstSet = descriptor_set.descriptor_set;
+    sampler_write.dstBinding = dst_binding;
+    sampler_write.dstArrayElement = dst_array_element;
+    sampler_write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    sampler_write.descriptorCount = descriptor_count;
+    descriptor_sets_writes.descriptor_sets_writes.push_back(sampler_write);
 }
 
 static
@@ -1037,8 +1090,8 @@ void descriptor_sets_write(context_t& context, descriptor_sets_writes_t& descrip
         {
             case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:             descriptor_sets_writes.descriptor_sets_writes[i].pBufferInfo = &descriptor_sets_writes.descriptor_sets_write_infos[i].buffer_write_info; break;
             case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:     descriptor_sets_writes.descriptor_sets_writes[i].pImageInfo = &descriptor_sets_writes.descriptor_sets_write_infos[i].image_write_info; break;
-            case VK_DESCRIPTOR_TYPE_SAMPLER:
-            case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+            case VK_DESCRIPTOR_TYPE_SAMPLER:                    descriptor_sets_writes.descriptor_sets_writes[i].pImageInfo = &descriptor_sets_writes.descriptor_sets_write_infos[i].image_write_info; break;
+            case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:              descriptor_sets_writes.descriptor_sets_writes[i].pImageInfo = &descriptor_sets_writes.descriptor_sets_write_infos[i].image_write_info; break;
             case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
             case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
             case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
@@ -1068,8 +1121,6 @@ void descriptor_sets_write(context_t& context, descriptor_sets_writes_t& descrip
 
 static mesh_instance_t s_viking_room_mesh_instance;
 static mesh_instance_t s_world_axes_mesh_instance;
-static texture_t s_viking_room_texture;
-static sampler_t s_viking_room_sampler;
 
 static
 frame_t frame_create(context_t& context)
@@ -1100,6 +1151,7 @@ frame_t frame_create(context_t& context)
     std::vector<VkImageView> attachments = { frame.main_draw_color_target.image_view, frame.main_draw_depth_target.image_view, frame.main_draw_resolve_target.image_view };
     frame.main_draw_framebuffer = framebuffer_create(context, s_globals->main_draw_render_pass, attachments, context.swapchain.extent.width, context.swapchain.extent.height, 1);
 
+    // instance render data descriptor pool
     const i32 INITIAL_MAX_SETS = 100;
     descriptor_pool_sizes_t pool_sizes;
     descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, INITIAL_MAX_SETS);
@@ -1174,11 +1226,83 @@ void renderer_globals_create(context_t& context)
         s_globals->main_draw_render_pass = render_pass_create(context, attachments, subpasses, subpass_dependencies);
     }
 
+    // global data descriptor pool and set
+    {
+        descriptor_set_layout_bindings_t bindings;
+        descriptor_set_layout_add_binding(bindings, 0, 1, VK_DESCRIPTOR_TYPE_SAMPLER, VK_SHADER_STAGE_ALL);
+        s_globals->global_data_ds_layout = descriptor_set_layout_create(context, bindings);
+
+        const i32 INITIAL_MAX_SETS = 1;
+        descriptor_pool_sizes_t pool_sizes;
+        descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_SAMPLER, INITIAL_MAX_SETS);
+        s_globals->global_data_dp = descriptor_pool_create(context, pool_sizes, INITIAL_MAX_SETS);
+
+        std::vector<descriptor_set_layout_t> layouts(1, s_globals->global_data_ds_layout);
+        std::vector<descriptor_set_t> sets = descriptor_sets_allocate(context, s_globals->global_data_dp, layouts);
+        s_globals->global_ds = sets[0];
+    }
+
+    // frame data descriptor pool and set
+    {
+        descriptor_set_layout_bindings_t bindings;
+        descriptor_set_layout_add_binding(bindings, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL);
+        s_globals->frame_data_ds_layout = descriptor_set_layout_create(context, bindings);
+
+        const i32 INITIAL_MAX_SETS = 1;
+        descriptor_pool_sizes_t pool_sizes;
+        descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, INITIAL_MAX_SETS);
+        s_globals->frame_data_dp = descriptor_pool_create(context, pool_sizes, INITIAL_MAX_SETS);
+        
+        std::vector<descriptor_set_layout_t> layouts(1, s_globals->frame_data_ds_layout);
+        std::vector<descriptor_set_t> sets = descriptor_sets_allocate(context, s_globals->frame_data_dp, layouts);
+        s_globals->frame_ds = sets[0];
+    }
+
+    // material data descriptor pool and set
+    {
+        descriptor_set_layout_bindings_t bindings;
+        descriptor_set_layout_add_binding(bindings, 0, 1, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT);
+        s_globals->material_data_ds_layout = descriptor_set_layout_create(context, bindings);
+
+        const i32 INITIAL_MAX_SETS = 1;
+        descriptor_pool_sizes_t pool_sizes;
+        descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, INITIAL_MAX_SETS);
+        s_globals->material_data_dp = descriptor_pool_create(context, pool_sizes, INITIAL_MAX_SETS);
+
+        std::vector<descriptor_set_layout_t> layouts(1, s_globals->material_data_ds_layout);
+        std::vector<descriptor_set_t> sets = descriptor_sets_allocate(context, s_globals->material_data_dp, layouts);
+        s_globals->material_ds = sets[0];
+    }
+
+    // viking room texture
+    {
+        s_globals->viking_room_texture = texture_create_from_file(*s_context, "textures/viking_room.png");
+    }
+
+    // linear sampler 2d
+    // TODO: how should we do num mips? Can't base it off of viking room
+    {
+        s_globals->linear_sampler_2d = sampler_create(*s_context, s_globals->viking_room_texture.num_mips);
+    }
+
+    {
+       s_globals->frame_render_data_buffer = buffer_create(context, BufferType::kUniformBuffer, sizeof(frame_render_data_t));
+       buffer_update(context, s_globals->frame_render_data_buffer, context.graphics_command_pool, &s_globals->frame_render_data);
+    }
+
+    // write to the global, frame, and material ds
+    {
+        descriptor_sets_writes_t descriptor_sets_writes;
+        descriptor_sets_writes_add_sampler(descriptor_sets_writes, s_globals->global_ds, s_globals->linear_sampler_2d, 0, 0, 0);
+        descriptor_sets_writes_add_uniform_buffer(descriptor_sets_writes, s_globals->frame_ds, s_globals->frame_render_data_buffer, 0, 0, 0, 1);
+        descriptor_sets_writes_add_sampled_image(descriptor_sets_writes, s_globals->material_ds, s_globals->viking_room_texture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 0, 1);
+        descriptor_sets_write(context, descriptor_sets_writes);
+    }
+
     // mesh instance data descriptor set layout
     {
         descriptor_set_layout_bindings_t bindings;
         descriptor_set_layout_add_binding(bindings, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
-        descriptor_set_layout_add_binding(bindings, 1, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
         s_globals->mesh_instance_render_data_ds_layout = descriptor_set_layout_create(context, bindings);
     }
 
@@ -1203,87 +1327,84 @@ void renderer_globals_destroy(context_t& context)
 }
 
 static
-void renderer_init_resources(context_t& context, renderer_globals_t& globals)
+void renderer_init_pipelines(context_t& context)
 {
-    // pipelines
+    // Viking Room
     {
-        // Viking Room
+        if(VK_NULL_HANDLE != s_viking_room_mesh_instance.pipeline.pipeline_handle)
         {
-            if(VK_NULL_HANDLE != s_viking_room_mesh_instance.pipeline.pipeline_handle)
-            {
-                pipeline_destroy(context, s_viking_room_mesh_instance.pipeline);
-            }
-
-            pipeline_shader_stages_t shader_stages = pipeline_create_shader_stages(context, "shaders/tri-vert.spv", "main", "shaders/tri-frag.spv", "main");
-            pipeline_vertex_input_t vertex_input = mesh_render_data_get_pipeline_vertex_input(s_viking_room_mesh_instance.mesh_id);
-            pipeline_input_assembly_t input_assembly = pipeline_create_input_assembly(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-            pipeline_raster_state_t raster_state = pipeline_create_raster_state();
-            pipeline_viewport_state_t viewport_state;
-            pipeline_create_viewport_state(viewport_state, 0.0f, 0.0f, 
-                                                           context.swapchain.extent.width, context.swapchain.extent.height, 
-                                                           0.0f, 1.0f, 
-                                                           0, 0, 
-                                                           context.swapchain.extent.width, context.swapchain.extent.width);
-            pipeline_multisample_state_t multisample_state = pipeline_create_multisample_state(context.device.max_num_msaa_samples);
-            pipeline_depth_stencil_state_t depth_stencil_state = pipeline_create_depth_stencil_state(true, true, VK_COMPARE_OP_LESS, false, 0.0f, 1.0f);
-            pipeline_color_blend_state_t color_blend_state;
-            pipeline_add_color_blend_attachments(color_blend_state, false, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD, 
-                                                                           VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD, 
-                                                                           VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
-            pipeline_create_color_blend_state(color_blend_state, false, VK_LOGIC_OP_COPY, 0.0f, 0.0f, 0.0f, 0.0f);
-            pipeline_layout_t pipeline_layout = pipeline_create_layout(context, s_viking_room_mesh_instance);
-            s_viking_room_mesh_instance.pipeline = pipeline_create(context, shader_stages, 
-                                                                              vertex_input, 
-                                                                              input_assembly, 
-                                                                              raster_state, 
-                                                                              viewport_state, 
-                                                                              multisample_state, 
-                                                                              depth_stencil_state, 
-                                                                              color_blend_state, 
-                                                                              pipeline_layout, 
-                                                                              globals.main_draw_render_pass);
-
-            pipeline_destroy_shader_stages(context, shader_stages);
+            pipeline_destroy(context, s_viking_room_mesh_instance.pipeline);
         }
 
-        // World axes
+        pipeline_shader_stages_t shader_stages = pipeline_create_shader_stages(context, "shaders/tri-vert.spv", "main", "shaders/tri-frag.spv", "main");
+        pipeline_vertex_input_t vertex_input = mesh_render_data_get_pipeline_vertex_input(s_viking_room_mesh_instance.mesh_id);
+        pipeline_input_assembly_t input_assembly = pipeline_create_input_assembly(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+        pipeline_raster_state_t raster_state = pipeline_create_raster_state();
+        pipeline_viewport_state_t viewport_state;
+        pipeline_create_viewport_state(viewport_state, 0.0f, 0.0f, 
+                                                       context.swapchain.extent.width, context.swapchain.extent.height, 
+                                                       0.0f, 1.0f, 
+                                                       0, 0, 
+                                                       context.swapchain.extent.width, context.swapchain.extent.width);
+        pipeline_multisample_state_t multisample_state = pipeline_create_multisample_state(context.device.max_num_msaa_samples);
+        pipeline_depth_stencil_state_t depth_stencil_state = pipeline_create_depth_stencil_state(true, true, VK_COMPARE_OP_LESS, false, 0.0f, 1.0f);
+        pipeline_color_blend_state_t color_blend_state;
+        pipeline_add_color_blend_attachments(color_blend_state, false, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD, 
+                                                                       VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD, 
+                                                                       VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
+        pipeline_create_color_blend_state(color_blend_state, false, VK_LOGIC_OP_COPY, 0.0f, 0.0f, 0.0f, 0.0f);
+        pipeline_layout_t pipeline_layout = pipeline_create_layout(context, s_viking_room_mesh_instance);
+        s_viking_room_mesh_instance.pipeline = pipeline_create(context, shader_stages, 
+                                                                        vertex_input, 
+                                                                        input_assembly, 
+                                                                        raster_state, 
+                                                                        viewport_state, 
+                                                                        multisample_state, 
+                                                                        depth_stencil_state, 
+                                                                        color_blend_state, 
+                                                                        pipeline_layout, 
+                                                                        s_globals->main_draw_render_pass);
+
+        pipeline_destroy_shader_stages(context, shader_stages);
+    }
+
+    // World axes
+    {
+        if(VK_NULL_HANDLE != s_world_axes_mesh_instance.pipeline.pipeline_handle)
         {
-            if(VK_NULL_HANDLE != s_world_axes_mesh_instance.pipeline.pipeline_handle)
-            {
-                pipeline_destroy(context, s_world_axes_mesh_instance.pipeline);
-            }
-
-            pipeline_shader_stages_t shader_stages = pipeline_create_shader_stages(context, "shaders/simple-color-vert.spv", "main", "shaders/simple-color-frag.spv", "main");
-            pipeline_vertex_input_t vertex_input = mesh_render_data_get_pipeline_vertex_input(s_world_axes_mesh_instance.mesh_id);
-            pipeline_input_assembly_t input_assembly = pipeline_create_input_assembly(VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
-            pipeline_raster_state_t raster_state = pipeline_create_raster_state();
-            pipeline_viewport_state_t viewport_state;
-            pipeline_create_viewport_state(viewport_state, 0.0f, 0.0f, 
-                                                           context.swapchain.extent.width, context.swapchain.extent.height, 
-                                                           0.0f, 1.0f, 
-                                                           0, 0, 
-                                                           context.swapchain.extent.width, context.swapchain.extent.width);
-            pipeline_multisample_state_t multisample_state = pipeline_create_multisample_state(context.device.max_num_msaa_samples);
-            pipeline_depth_stencil_state_t depth_stencil_state = pipeline_create_depth_stencil_state(true, true, VK_COMPARE_OP_LESS, false, 0.0f, 1.0f);
-            pipeline_color_blend_state_t color_blend_state;
-            pipeline_add_color_blend_attachments(color_blend_state, false, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD, 
-                                                                           VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD, 
-                                                                           VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
-            pipeline_create_color_blend_state(color_blend_state, false, VK_LOGIC_OP_COPY, 0.0f, 0.0f, 0.0f, 0.0f);
-            pipeline_layout_t pipeline_layout = pipeline_create_layout(context, s_world_axes_mesh_instance);
-            s_world_axes_mesh_instance.pipeline = pipeline_create(context, shader_stages, 
-                                                                              vertex_input, 
-                                                                              input_assembly, 
-                                                                              raster_state, 
-                                                                              viewport_state, 
-                                                                              multisample_state, 
-                                                                              depth_stencil_state, 
-                                                                              color_blend_state, 
-                                                                              pipeline_layout, 
-                                                                              globals.main_draw_render_pass);
-
-            pipeline_destroy_shader_stages(context, shader_stages);
+            pipeline_destroy(context, s_world_axes_mesh_instance.pipeline);
         }
+
+        pipeline_shader_stages_t shader_stages = pipeline_create_shader_stages(context, "shaders/simple-color-vert.spv", "main", "shaders/simple-color-frag.spv", "main");
+        pipeline_vertex_input_t vertex_input = mesh_render_data_get_pipeline_vertex_input(s_world_axes_mesh_instance.mesh_id);
+        pipeline_input_assembly_t input_assembly = pipeline_create_input_assembly(VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+        pipeline_raster_state_t raster_state = pipeline_create_raster_state();
+        pipeline_viewport_state_t viewport_state;
+        pipeline_create_viewport_state(viewport_state, 0.0f, 0.0f, 
+                                                       context.swapchain.extent.width, context.swapchain.extent.height, 
+                                                       0.0f, 1.0f, 
+                                                       0, 0, 
+                                                       context.swapchain.extent.width, context.swapchain.extent.width);
+        pipeline_multisample_state_t multisample_state = pipeline_create_multisample_state(context.device.max_num_msaa_samples);
+        pipeline_depth_stencil_state_t depth_stencil_state = pipeline_create_depth_stencil_state(true, true, VK_COMPARE_OP_LESS, false, 0.0f, 1.0f);
+        pipeline_color_blend_state_t color_blend_state;
+        pipeline_add_color_blend_attachments(color_blend_state, false, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD, 
+                                                                       VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD, 
+                                                                       VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
+        pipeline_create_color_blend_state(color_blend_state, false, VK_LOGIC_OP_COPY, 0.0f, 0.0f, 0.0f, 0.0f);
+        pipeline_layout_t pipeline_layout = pipeline_create_layout(context, s_world_axes_mesh_instance);
+        s_world_axes_mesh_instance.pipeline = pipeline_create(context, shader_stages, 
+                                                                       vertex_input, 
+                                                                       input_assembly, 
+                                                                       raster_state, 
+                                                                       viewport_state, 
+                                                                       multisample_state, 
+                                                                       depth_stencil_state, 
+                                                                       color_blend_state, 
+                                                                       pipeline_layout, 
+                                                                       s_globals->main_draw_render_pass);
+
+        pipeline_destroy_shader_stages(context, shader_stages);
     }
 }
 
@@ -1307,7 +1428,7 @@ void swapchain_recreate(context_t& context, renderer_globals_t& globals)
         s_globals->in_flight_frames[i] = frame_create(context);
 	}
 
-    renderer_init_resources(context, globals);
+    renderer_init_pipelines(context);
 }
 
 static
@@ -1388,7 +1509,7 @@ void update_instance_data(context_t& context, camera_t& camera, frame_t& frame)
         }
 
         descriptor_sets_writes_add_uniform_buffer(descriptor_sets_writes, data.descriptor_set, data.data_buffer, 0, 0, 0, 1);
-        descriptor_sets_writes_add_combined_image_sampler(descriptor_sets_writes, data.descriptor_set, s_viking_room_texture, s_viking_room_sampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 0, 1);
+        //descriptor_sets_writes_add_combined_image_sampler(descriptor_sets_writes, data.descriptor_set, s_viking_room_texture, s_viking_room_sampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 0, 1);
     }
     descriptor_sets_write(context, descriptor_sets_writes);
 }
@@ -1406,10 +1527,6 @@ void renderer_init(window_t* app_window)
         //mesh_t* viking_room_mesh = mesh_load_from_obj("models/viking_room.obj");
         mesh_t* cube_mesh = mesh_load_cube();
         s_viking_room_mesh_instance = mesh_instance_create(*s_context, cube_mesh->id);
-
-        // texture and sampler
-        s_viking_room_texture = texture_create_from_file(*s_context, "textures/viking_room.png");
-        s_viking_room_sampler = sampler_create(*s_context, s_viking_room_texture.num_mips);
     }
 
     // world axes
@@ -1418,7 +1535,7 @@ void renderer_init(window_t* app_window)
         s_world_axes_mesh_instance = mesh_instance_create(*s_context, world_axes_mesh->id);
     }
 
-    renderer_init_resources(*s_context, *s_globals);
+    renderer_init_pipelines(*s_context);
 }
 
 void renderer_set_main_camera(camera_t* camera)
@@ -1503,7 +1620,12 @@ void frame_generate_command_buffers(context_t& context, frame_t& frame)
             {
                 const mesh_render_data_t* mesh_render_data = mesh_render_data_find(s_viking_room_mesh_instance.mesh_id);
                 mesh_instance_render_data_t instance_render_data = frame.mesh_instance_render_data[s_viking_room_mesh_instance.instance_id];
-                std::vector<VkDescriptorSet> draw_descriptor_sets = { instance_render_data.descriptor_set.descriptor_set  };
+                std::vector<VkDescriptorSet> draw_descriptor_sets = { 
+                                                                        s_globals->global_ds.descriptor_set,
+                                                                        s_globals->frame_ds.descriptor_set,
+                                                                        s_globals->material_ds.descriptor_set,
+                                                                        instance_render_data.descriptor_set.descriptor_set  
+                                                                    };
                 command_draw_mesh_instance(command_buffer, s_viking_room_mesh_instance, *mesh_render_data, draw_descriptor_sets);
             }
 
@@ -1511,7 +1633,12 @@ void frame_generate_command_buffers(context_t& context, frame_t& frame)
             {
                 const mesh_render_data_t* mesh_render_data = mesh_render_data_find(s_world_axes_mesh_instance.mesh_id);
                 mesh_instance_render_data_t instance_render_data = frame.mesh_instance_render_data[s_world_axes_mesh_instance.instance_id];
-                std::vector<VkDescriptorSet> draw_descriptor_sets = { instance_render_data.descriptor_set.descriptor_set };
+                std::vector<VkDescriptorSet> draw_descriptor_sets = { 
+                                                                        s_globals->global_ds.descriptor_set,
+                                                                        s_globals->frame_ds.descriptor_set,
+                                                                        s_globals->material_ds.descriptor_set,
+                                                                        instance_render_data.descriptor_set.descriptor_set  
+                                                                    };
                 command_draw_mesh_instance(command_buffer, s_world_axes_mesh_instance, *mesh_render_data, draw_descriptor_sets);
             }
         command_buffer_end_render_pass(command_buffer);
@@ -1614,9 +1741,6 @@ void renderer_deinit()
     vkDeviceWaitIdle(s_context->device.device_handle);
 
     renderer_globals_destroy(*s_context);
-
-    sampler_destroy(*s_context, s_viking_room_sampler);
-    texture_destroy(*s_context, s_viking_room_texture);
 
     mesh_instance_destroy(*s_context, s_world_axes_mesh_instance);
     mesh_instance_destroy(*s_context, s_viking_room_mesh_instance);

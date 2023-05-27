@@ -301,12 +301,10 @@ struct shader_info_t
 
 struct material_t
 {
-    // shader infos
     std::vector<shader_info_t> shaders;
-    // descriptor infos
-    std::vector<descriptor_info_t> descriptor_infos;
-    // descriptor set layout
     descriptor_set_layout_t descriptor_set_layout;
+    std::vector<descriptor_info_t> descriptor_infos;
+    std::vector<descriptor_resource_info_t> descriptor_resources;
 };
 
 struct mesh_render_data_t
