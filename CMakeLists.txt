@@ -61,4 +61,5 @@ add_library(sm-engine STATIC src/engine/core/assert.cpp
                              )
 
 target_include_directories(sm-engine PUBLIC src/)
+# TODO: Do we need to explicitly link the static lib?
 target_link_libraries(sm-engine PRIVATE "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/lib/vulkan-1.lib>")

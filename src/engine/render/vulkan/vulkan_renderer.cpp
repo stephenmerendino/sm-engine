@@ -1293,7 +1293,7 @@ void renderer_globals_create(context_t& context)
     // write to the global, frame, and material ds
     {
         descriptor_sets_writes_t descriptor_sets_writes;
-        descriptor_sets_writes_add_sampler(descriptor_sets_writes, s_globals->global_ds, s_globals->linear_sampler_2d, 0, 0, 0);
+        descriptor_sets_writes_add_sampler(descriptor_sets_writes, s_globals->global_ds, s_globals->linear_sampler_2d, 0, 0, 1);
         descriptor_sets_writes_add_uniform_buffer(descriptor_sets_writes, s_globals->frame_ds, s_globals->frame_render_data_buffer, 0, 0, 0, 1);
         descriptor_sets_writes_add_sampled_image(descriptor_sets_writes, s_globals->material_ds, s_globals->viking_room_texture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 0, 1);
         descriptor_sets_write(context, descriptor_sets_writes);
