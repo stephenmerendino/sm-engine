@@ -2,12 +2,10 @@
 
 #include "engine/render/vulkan/vulkan_types.h"
 
-// images
+// textures/images
 VkImageView image_view_create(device_t& device, VkImage image, VkFormat format, VkImageAspectFlags aspect_flags, u32 num_mips);
 VkImageView image_view_create(context_t& context, VkImage image, VkFormat format, VkImageAspectFlags aspect_flags, u32 num_mips);
 void image_create(context_t& context, u32 width, u32 height, u32 num_mips, VkSampleCountFlagBits num_samples, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags mem_props, VkImage& out_image, VkDeviceMemory& out_memory);
-
-// textures
 texture_t texture_create_from_file(context_t& context, const char* filepath);
 texture_t texture_create_color_target(context_t& context, VkFormat format, u32 width, u32 height, VkImageUsageFlags usage, VkSampleCountFlagBits num_samples);
 texture_t texture_create_depth_target(context_t& context, VkFormat format, u32 width, u32 height, VkImageUsageFlags usage, VkSampleCountFlagBits num_samples);
@@ -111,6 +109,20 @@ pipeline_t pipeline_create(context_t& context, pipeline_shader_stages_t& shader_
 void pipeline_destroy_shader_stages(context_t& context, pipeline_shader_stages_t& shader_stages);
 void pipeline_destroy(context_t& context, pipeline_t& pipeline);
 
+// framebuffers
+framebuffer_t framebuffer_create(context_t& context, render_pass_t& render_pass, const std::vector<VkImageView> attachments, u32 width, u32 height, u32 layers);
+void framebuffer_destroy(context_t& context, framebuffer_t& framebuffer);
+
+// synchronization
+semaphore_t semaphore_create(context_t& context);
+void semaphore_destroy(context_t& context, semaphore_t& semaphore);
+fence_t fence_create(context_t& context);
+void fence_reset(context_t& context, fence_t& fence);
+void fence_wait(context_t& context, fence_t& fence, u64 timeout = UINT64_MAX);
+void fence_destroy(context_t& context, fence_t& fence);
+
+// TODO: move these somewhere else, these are renderer concepts, not vulkan concepts
+
 // materials
 material_t material_create(context_t& context, material_create_info_t& create_info);
 void material_destroy(context_t& context, material_t& material);
@@ -122,18 +134,6 @@ void mesh_instance_destroy(context_t& context, mesh_instance_t& mesh_instance);
 void mesh_instance_pipeline_create(context_t& context, mesh_instance_t& mesh_instance);
 void mesh_instance_pipeline_refresh(context_t& context, mesh_instance_t& mesh_instance);
 
-// framebuffers
-framebuffer_t framebuffer_create(context_t& context, render_pass_t& render_pass, const std::vector<VkImageView> attachments, u32 width, u32 height, u32 layers);
-void framebuffer_destroy(context_t& context, framebuffer_t& framebuffer);
-
 // frames
 frame_t frame_create(context_t& context);
 void frame_destroy(context_t& context, frame_t& frame);
-
-// synchronization
-semaphore_t semaphore_create(context_t& context);
-void semaphore_destroy(context_t& context, semaphore_t& semaphore);
-fence_t fence_create(context_t& context);
-void fence_reset(context_t& context, fence_t& fence);
-void fence_wait(context_t& context, fence_t& fence, u64 timeout = UINT64_MAX);
-void fence_destroy(context_t& context, fence_t& fence);

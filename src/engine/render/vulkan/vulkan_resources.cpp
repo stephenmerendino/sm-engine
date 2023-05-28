@@ -848,6 +848,68 @@ void pipeline_destroy(context_t& context, pipeline_t& pipeline)
     pipeline.layout_handle = VK_NULL_HANDLE;
 }
 
+framebuffer_t framebuffer_create(context_t& context, render_pass_t& render_pass, const std::vector<VkImageView> attachments, u32 width, u32 height, u32 layers)
+{
+    VkFramebufferCreateInfo create_info = {};
+    create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    create_info.renderPass = render_pass.handle;
+    create_info.pAttachments = attachments.data();
+    create_info.attachmentCount = (u32)attachments.size();
+    create_info.width = width;
+    create_info.height = height;
+    create_info.layers = layers;
+
+    framebuffer_t framebuffer;
+    VULKAN_ASSERT(vkCreateFramebuffer(context.device.device_handle, &create_info, nullptr, &framebuffer.handle));
+    return framebuffer;
+}
+
+void framebuffer_destroy(context_t& context, framebuffer_t& framebuffer)
+{
+    vkDestroyFramebuffer(context.device.device_handle, framebuffer.handle, nullptr);
+}
+
+semaphore_t semaphore_create(context_t& context)
+{
+    VkSemaphoreCreateInfo semaphore_create_info = {};
+    semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    semaphore_t semaphore;
+    VULKAN_ASSERT(vkCreateSemaphore(context.device.device_handle, &semaphore_create_info, nullptr, &semaphore.handle));
+    return semaphore;
+}
+
+void semaphore_destroy(context_t& context, semaphore_t& semaphore)
+{
+    vkDestroySemaphore(context.device.device_handle, semaphore.handle, nullptr);
+}
+
+fence_t fence_create(context_t& context)
+{
+    VkFenceCreateInfo fence_create_info = {};
+    fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+    fence_t fence;
+    VULKAN_ASSERT(vkCreateFence(context.device.device_handle, &fence_create_info, nullptr, &fence.handle));
+    return fence;
+}
+
+void fence_reset(context_t& context, fence_t& fence)
+{
+    vkResetFences(context.device.device_handle, 1, &fence.handle);
+}
+
+void fence_wait(context_t& context, fence_t& fence, u64 timeout)
+{
+    vkWaitForFences(context.device.device_handle, 1, &fence.handle, VK_TRUE, UINT64_MAX); 
+}
+
+void fence_destroy(context_t& context, fence_t& fence)
+{
+    vkDestroyFence(context.device.device_handle, fence.handle, nullptr);
+}
+
 material_t material_create(context_t& context, material_create_info_t& create_info)
 {
     material_t material;
@@ -958,9 +1020,6 @@ void mesh_instance_pipeline_create(context_t& context, mesh_instance_t& mesh_ins
                                                       color_blend_state, 
                                                       pipeline_layout, 
                                                       get_renderer_globals()->main_draw_render_pass);
-
-    // TODO: we are probably messing up the shader stored in the material by doing this
-    // pipeline_destroy_shader_stages(context, shader_stages);
 }
 
 void mesh_instance_pipeline_refresh(context_t& context, mesh_instance_t& mesh_instance)
@@ -970,28 +1029,6 @@ void mesh_instance_pipeline_refresh(context_t& context, mesh_instance_t& mesh_in
         pipeline_destroy(context, mesh_instance.pipeline);
     }
     mesh_instance_pipeline_create(context, mesh_instance);
-}
-
-
-framebuffer_t framebuffer_create(context_t& context, render_pass_t& render_pass, const std::vector<VkImageView> attachments, u32 width, u32 height, u32 layers)
-{
-    VkFramebufferCreateInfo create_info = {};
-    create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    create_info.renderPass = render_pass.handle;
-    create_info.pAttachments = attachments.data();
-    create_info.attachmentCount = (u32)attachments.size();
-    create_info.width = width;
-    create_info.height = height;
-    create_info.layers = layers;
-
-    framebuffer_t framebuffer;
-    VULKAN_ASSERT(vkCreateFramebuffer(context.device.device_handle, &create_info, nullptr, &framebuffer.handle));
-    return framebuffer;
-}
-
-void framebuffer_destroy(context_t& context, framebuffer_t& framebuffer)
-{
-    vkDestroyFramebuffer(context.device.device_handle, framebuffer.handle, nullptr);
 }
 
 frame_t frame_create(context_t& context)
@@ -1005,19 +1042,19 @@ frame_t frame_create(context_t& context)
 
     // render targets / framebuffer
     frame.main_draw_color_target = texture_create_color_target(context, context.swapchain.format, 
-                                                               context.swapchain.extent.width, context.swapchain.extent.height, 
-                                                               VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, 
-                                                               context.device.max_num_msaa_samples);
+            context.swapchain.extent.width, context.swapchain.extent.height, 
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, 
+            context.device.max_num_msaa_samples);
 
     frame.main_draw_depth_target = texture_create_depth_target(context, context.device.depth_format, 
-                                                               context.swapchain.extent.width, context.swapchain.extent.height, 
-                                                               VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, 
-                                                               context.device.max_num_msaa_samples);
+            context.swapchain.extent.width, context.swapchain.extent.height, 
+            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, 
+            context.device.max_num_msaa_samples);
 
     frame.main_draw_resolve_target = texture_create_color_target(context, context.swapchain.format, 
-                                                                 context.swapchain.extent.width, context.swapchain.extent.height, 
-                                                                 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-                                                                 VK_SAMPLE_COUNT_1_BIT);
+            context.swapchain.extent.width, context.swapchain.extent.height, 
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+            VK_SAMPLE_COUNT_1_BIT);
 
     std::vector<VkImageView> attachments = { frame.main_draw_color_target.image_view, frame.main_draw_depth_target.image_view, frame.main_draw_resolve_target.image_view };
     frame.main_draw_framebuffer = framebuffer_create(context, get_renderer_globals()->main_draw_render_pass, attachments, context.swapchain.extent.width, context.swapchain.extent.height, 1);
@@ -1034,10 +1071,10 @@ frame_t frame_create(context_t& context)
 
 void frame_destroy(context_t& context, frame_t& frame)
 {
-	for (i32 i = 0; i < (i32)frame.mesh_instance_render_data.size(); i++)
-	{
+    for (i32 i = 0; i < (i32)frame.mesh_instance_render_data.size(); i++)
+    {
         mesh_instance_render_data_destroy(context, frame.mesh_instance_render_data[i]);
-	}
+    }
     descriptor_pool_destroy(context, frame.mesh_instance_render_data_descriptor_pool);
     framebuffer_destroy(context, frame.main_draw_framebuffer);
     texture_destroy(context, frame.main_draw_color_target);
@@ -1048,45 +1085,3 @@ void frame_destroy(context_t& context, frame_t& frame)
     semaphore_destroy(context, frame.render_finished_semaphore);
     fence_destroy(context, frame.frame_completed_fence);
 }
-
-semaphore_t semaphore_create(context_t& context)
-{
-    VkSemaphoreCreateInfo semaphore_create_info = {};
-    semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-    semaphore_t semaphore;
-    VULKAN_ASSERT(vkCreateSemaphore(context.device.device_handle, &semaphore_create_info, nullptr, &semaphore.handle));
-    return semaphore;
-}
-
-void semaphore_destroy(context_t& context, semaphore_t& semaphore)
-{
-    vkDestroySemaphore(context.device.device_handle, semaphore.handle, nullptr);
-}
-
-fence_t fence_create(context_t& context)
-{
-    VkFenceCreateInfo fence_create_info = {};
-    fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-    fence_t fence;
-    VULKAN_ASSERT(vkCreateFence(context.device.device_handle, &fence_create_info, nullptr, &fence.handle));
-    return fence;
-}
-
-void fence_reset(context_t& context, fence_t& fence)
-{
-    vkResetFences(context.device.device_handle, 1, &fence.handle);
-}
-
-void fence_wait(context_t& context, fence_t& fence, u64 timeout)
-{
-    vkWaitForFences(context.device.device_handle, 1, &fence.handle, VK_TRUE, UINT64_MAX); 
-}
-
-void fence_destroy(context_t& context, fence_t& fence)
-{
-    vkDestroyFence(context.device.device_handle, fence.handle, nullptr);
-}
-

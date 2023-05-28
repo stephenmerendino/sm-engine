@@ -172,11 +172,6 @@ renderer_globals_t* get_renderer_globals()
     return s_globals;
 }
 
-void mesh_instance_render_data_destroy(context_t& context, mesh_instance_render_data_t& data)
-{
-    buffer_destroy(context, data.data_buffer);
-}
-
 VkPrimitiveTopology mesh_render_data_get_topology(mesh_id_t mesh_id)
 {
     i32 data_index = -1;
@@ -244,4 +239,9 @@ instance_draw_id_t frame_get_or_allocate_instance_draw_data(context_t& context, 
 void frame_update_instance_data(context_t& context, frame_t& frame, instance_draw_id_t instance_id, instance_draw_data_t& instance_draw_data)
 {
     buffer_update_data(context, frame.mesh_instance_render_data[instance_id].data_buffer, &instance_draw_data);
+}
+
+void mesh_instance_render_data_destroy(context_t& context, mesh_instance_render_data_t& data)
+{
+    buffer_destroy(context, data.data_buffer);
 }

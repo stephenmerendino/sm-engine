@@ -1,14 +1,30 @@
 #pragma once
 
 #include "engine/render/vulkan/vulkan_types.h"
+#include "engine/thirdparty/vulkan/vulkan_core.h"
 
 void renderer_globals_create(context_t& context);
 void renderer_globals_destroy(context_t& context);
 renderer_globals_t* get_renderer_globals();
 
-void mesh_instance_render_data_destroy(context_t& context, mesh_instance_render_data_t& data);
 VkPrimitiveTopology mesh_render_data_get_topology(mesh_id_t mesh_id);
 pipeline_vertex_input_t  mesh_render_data_get_pipeline_vertex_input(mesh_id_t mesh_id);
 
 instance_draw_id_t frame_get_or_allocate_instance_draw_data(context_t& context, frame_t& frame);
 void frame_update_instance_data(context_t& context, frame_t& frame, instance_draw_id_t instance_id, instance_draw_data_t& instance_draw_data);
+void mesh_instance_render_data_destroy(context_t& context, mesh_instance_render_data_t& data);
+
+//void rm_globals_create();
+//void rm_globals_destroy();
+//mesh_id_t rm_mesh_acquire_or_create();
+//void rm_mesh_release(mesh_id_t mesh_id);
+//VkPrimitiveTopology rm_mesh_get_topology(mesh_id_t mesh_id);
+//VkPrimitiveTopology rm_mesh_get_pipeline_vertex_input(mesh_id_t mesh_id);
+//void rm_shaders_create_or_acquire();
+//void rm_shaders_release();
+//void rm_material_acquire_or_create();
+//void rm_material_release();
+//void rm_texture_acquire_or_create();
+//void rm_texture_release();
+//void rm_pipeline_acquire_or_create();
+//void rm_pipeline_release();

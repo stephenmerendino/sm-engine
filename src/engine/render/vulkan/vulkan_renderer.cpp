@@ -25,75 +25,6 @@
 
 static context_t* s_context = nullptr;
 
-static
-std::vector<VkVertexInputBindingDescription> get_vertex_input_binding_descs(const vertex_pct_t& v)
-{
-    UNUSED(v);
-
-    std::vector<VkVertexInputBindingDescription> vertex_input_binding_descs;
-    vertex_input_binding_descs.resize(1);
-    vertex_input_binding_descs[0].binding = 0;
-    vertex_input_binding_descs[0].stride = sizeof(v);
-    vertex_input_binding_descs[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-	return vertex_input_binding_descs;
-}
-
-static
-std::vector<VkVertexInputAttributeDescription> get_vertex_input_attr_descs(const vertex_pct_t& v)
-{
-    UNUSED(v);
-
-	std::vector<VkVertexInputAttributeDescription> attr_descs;
-	attr_descs.resize(3);
-
-	//pos
-	VkVertexInputAttributeDescription pos;
-	pos.binding = 0;
-	pos.location = 0;
-	pos.offset = offsetof(vertex_pct_t, m_pos);
-	pos.format = VK_FORMAT_R32G32B32_SFLOAT;
-
-	// color
-	VkVertexInputAttributeDescription color;
-	color.binding = 0;
-	color.location = 1;
-	color.offset = offsetof(vertex_pct_t, m_color);
-	color.format = VK_FORMAT_R32G32B32A32_SFLOAT;
-
-	// tex coord
-	VkVertexInputAttributeDescription uv;
-	uv.binding = 0;
-	uv.location = 2;
-	uv.offset = offsetof(vertex_pct_t, m_uv);
-	uv.format = VK_FORMAT_R32G32_SFLOAT;
-
-	attr_descs[0] = pos;
-	attr_descs[1] = color;
-	attr_descs[2] = uv;
-
-	return attr_descs;
-}
-
-static
-std::vector<VkVertexInputBindingDescription> mesh_get_vertex_input_binding_descs(mesh_t* mesh)
-{
-    ASSERT(nullptr != mesh);
-	return get_vertex_input_binding_descs(mesh->m_vertices[0]);
-}
-
-static
-std::vector<VkVertexInputAttributeDescription> mesh_get_vertex_input_attr_descs(mesh_t* mesh)
-{
-    ASSERT(nullptr != mesh);
-	return get_vertex_input_attr_descs(mesh->m_vertices[0]);
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////   DMZ DO NOT CROSS
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 static mesh_instance_t s_viking_room_mesh_instance;
 static mesh_instance_t s_world_axes_mesh_instance;
 
@@ -163,7 +94,6 @@ void update_instance_data(context_t& context, camera_t& camera, frame_t& frame)
         }
 
         descriptor_sets_writes_add_uniform_buffer(descriptor_sets_writes, data.descriptor_set, data.data_buffer, 0, 0, 0, 1);
-        //descriptor_sets_writes_add_combined_image_sampler(descriptor_sets_writes, data.descriptor_set, s_viking_room_texture, s_viking_room_sampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 0, 1);
     }
     descriptor_sets_write(context, descriptor_sets_writes);
 }
