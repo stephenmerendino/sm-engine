@@ -93,6 +93,14 @@ void renderer_globals_create(context_t& context)
         s_globals->material_ds = sets[0];
     }
 
+    // mesh instance data descriptor set layout
+    {
+        descriptor_set_layout_bindings_t bindings;
+        descriptor_set_layout_add_binding(bindings, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
+        s_globals->mesh_instance_render_data_ds_layout = descriptor_set_layout_create(context, bindings);
+    }
+
+
     // empty descriptor set for binding in places where we don't need a ds for materials
     {
         descriptor_set_layout_bindings_t bindings;
@@ -120,13 +128,6 @@ void renderer_globals_create(context_t& context)
         descriptor_sets_write(context, descriptor_sets_writes);
     }
 
-    // mesh instance data descriptor set layout
-    {
-        descriptor_set_layout_bindings_t bindings;
-        descriptor_set_layout_add_binding(bindings, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
-        s_globals->mesh_instance_render_data_ds_layout = descriptor_set_layout_create(context, bindings);
-    }
-
     // frames
     s_globals->in_flight_frames.resize(MAX_NUM_FRAMES_IN_FLIGHT);
     for (i32 i = 0; i < MAX_NUM_FRAMES_IN_FLIGHT; i++)
@@ -141,7 +142,26 @@ void renderer_globals_destroy(context_t& context)
 	{
         frame_destroy(context, s_globals->in_flight_frames[i]);
 	}
+
+    descriptor_set_layout_destroy(context, s_globals->global_data_ds_layout);
+    descriptor_set_layout_destroy(context, s_globals->frame_data_ds_layout);
+    descriptor_set_layout_destroy(context, s_globals->material_data_ds_layout);
     descriptor_set_layout_destroy(context, s_globals->mesh_instance_render_data_ds_layout);
+
+    descriptor_pool_destroy(context, s_globals->frame_data_dp);
+    descriptor_pool_destroy(context, s_globals->material_data_dp);
+    descriptor_pool_destroy(context, s_globals->global_data_dp);
+
+    sampler_destroy(context, s_globals->linear_sampler_2d);
+
+    buffer_destroy(context, s_globals->frame_render_data_buffer);
+
+    for(i32 i = 0; i < (i32)s_globals->loaded_mesh_render_data.size(); i++)
+    {
+        buffer_destroy(context, s_globals->loaded_mesh_render_data[i]->vertex_buffer);
+        buffer_destroy(context, s_globals->loaded_mesh_render_data[i]->index_buffer);
+    }
+
     render_pass_destroy(context, s_globals->main_draw_render_pass);
     delete s_globals;
 }

@@ -29,12 +29,15 @@ void sampler_destroy(context_t& context, sampler_t& sampler);
 descriptor_set_layout_t descriptor_set_layout_create(context_t& context, descriptor_set_layout_bindings_t& bindings);
 void descriptor_set_layout_destroy(context_t& context, descriptor_set_layout_t& layout);
 void descriptor_set_layout_add_binding(descriptor_set_layout_bindings_t& bindings, u32 binding_index, u32 descriptor_count, VkDescriptorType descriptor_type, VkShaderStageFlagBits shader_stages);
+
 descriptor_pool_t descriptor_pool_create(context_t& context, descriptor_pool_sizes_t& pool_sizes, u32 max_sets);
 void descriptor_pool_destroy(context_t& context, descriptor_pool_t& descriptor_pool);
 void descriptor_pool_reset(context_t& context, descriptor_pool_t& descriptor_pool, VkDescriptorPoolResetFlags flags = 0);
 void descriptor_pool_add_size(descriptor_pool_sizes_t& pool_sizes, VkDescriptorType type, u32 count);
+
 std::vector<descriptor_set_t> descriptor_sets_allocate(context_t& context, descriptor_pool_t& descriptor_pool, std::vector<descriptor_set_layout_t>& layouts);
 descriptor_set_t descriptor_set_allocate(context_t& context, descriptor_pool_t& descriptor_pool, descriptor_set_layout_t& layout);
+
 void descriptor_sets_writes_add_uniform_buffer(descriptor_sets_writes_t& descriptor_sets_writes, descriptor_set_t& descriptor_set, buffer_t& buffer, u32 buffer_offset, u32 dst_binding, u32 dst_array_element, u32 descriptor_count);
 void descriptor_sets_writes_add_combined_image_sampler(descriptor_sets_writes_t& descriptor_sets_writes, descriptor_set_t& descriptor_set, texture_t& texture, sampler_t& sampler, VkImageLayout image_layout, u32 dst_binding, u32 dst_array_element, u32 descriptor_count);
 void descriptor_sets_writes_add_sampler(descriptor_sets_writes_t& descriptor_sets_writes, descriptor_set_t& descriptor_set, sampler_t& sampler, u32 dst_binding, u32 dst_array_element, u32 descriptor_count);
@@ -111,6 +114,7 @@ void pipeline_destroy(context_t& context, pipeline_t& pipeline);
 // materials
 material_t material_create(context_t& context, material_create_info_t& create_info);
 void material_destroy(context_t& context, material_t& material);
+material_resource_t material_load_sampled_texture_resource(context_t& context, const char* texture_filepath, u32 binding_index, u32 count, VkShaderStageFlagBits shader_stages);
 
 // mesh instances
 mesh_instance_t mesh_instance_create(context_t& context, mesh_id_t mesh_id, material_t& material);

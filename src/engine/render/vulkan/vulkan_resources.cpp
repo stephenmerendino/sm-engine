@@ -894,6 +894,18 @@ void material_destroy(context_t& context, material_t& material)
         texture_destroy(context, material.resources[i].descriptor_resource.texture); 
     }
     descriptor_set_layout_destroy(context, material.descriptor_set_layout);
+    pipeline_destroy_shader_stages(context, material.shaders);
+}
+
+material_resource_t material_load_sampled_texture_resource(context_t& context, const char* texture_filepath, u32 binding_index, u32 count, VkShaderStageFlagBits shader_stages)
+{
+    material_resource_t resource = {};
+    resource.descriptor_info.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    resource.descriptor_info.binding_index = binding_index;
+    resource.descriptor_info.count = count;
+    resource.descriptor_info.shader_stages = shader_stages;
+    resource.descriptor_resource.texture = texture_create_from_file(context, texture_filepath);
+    return resource;
 }
 
 mesh_instance_t mesh_instance_create(context_t& context, mesh_id_t mesh_id, material_t& material)
