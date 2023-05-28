@@ -122,7 +122,6 @@ void fence_wait(context_t& context, fence_t& fence, u64 timeout = UINT64_MAX);
 void fence_destroy(context_t& context, fence_t& fence);
 
 // TODO: move these somewhere else, these are renderer concepts, not vulkan concepts
-
 // materials
 material_t material_create(context_t& context, material_create_info_t& create_info);
 void material_destroy(context_t& context, material_t& material);

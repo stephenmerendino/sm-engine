@@ -240,8 +240,3 @@ void frame_update_instance_data(context_t& context, frame_t& frame, instance_dra
 {
     buffer_update_data(context, frame.mesh_instance_render_data[instance_id].data_buffer, &instance_draw_data);
 }
-
-void mesh_instance_render_data_destroy(context_t& context, mesh_instance_render_data_t& data)
-{
-    buffer_destroy(context, data.data_buffer);
-}

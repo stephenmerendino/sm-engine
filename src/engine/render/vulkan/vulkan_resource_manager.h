@@ -12,7 +12,6 @@ pipeline_vertex_input_t  mesh_render_data_get_pipeline_vertex_input(mesh_id_t me
 
 instance_draw_id_t frame_get_or_allocate_instance_draw_data(context_t& context, frame_t& frame);
 void frame_update_instance_data(context_t& context, frame_t& frame, instance_draw_id_t instance_id, instance_draw_data_t& instance_draw_data);
-void mesh_instance_render_data_destroy(context_t& context, mesh_instance_render_data_t& data);
 
 //void rm_globals_create();
 //void rm_globals_destroy();

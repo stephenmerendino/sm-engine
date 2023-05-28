@@ -25,6 +25,11 @@
 
 static context_t* s_context = nullptr;
 
+struct scene_t
+{
+    std::vector<mesh_instance_t> mesh_instances;
+};
+
 static mesh_instance_t s_viking_room_mesh_instance;
 static mesh_instance_t s_world_axes_mesh_instance;
 

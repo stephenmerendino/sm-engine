@@ -1071,10 +1071,12 @@ frame_t frame_create(context_t& context)
 
 void frame_destroy(context_t& context, frame_t& frame)
 {
+    // destroy mesh instance render data
     for (i32 i = 0; i < (i32)frame.mesh_instance_render_data.size(); i++)
     {
-        mesh_instance_render_data_destroy(context, frame.mesh_instance_render_data[i]);
+        buffer_destroy(context, frame.mesh_instance_render_data[i].data_buffer);
     }
+
     descriptor_pool_destroy(context, frame.mesh_instance_render_data_descriptor_pool);
     framebuffer_destroy(context, frame.main_draw_framebuffer);
     texture_destroy(context, frame.main_draw_color_target);
