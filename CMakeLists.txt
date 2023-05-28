@@ -37,12 +37,18 @@ add_library(sm-engine STATIC src/engine/core/assert.cpp
                              src/engine/render/vertex.h
                              src/engine/render/vulkan/vulkan_commands.cpp
                              src/engine/render/vulkan/vulkan_commands.h
+                             src/engine/render/vulkan/vulkan_formats.cpp
+                             src/engine/render/vulkan/vulkan_formats.h
                              src/engine/render/vulkan/vulkan_functions.cpp
                              src/engine/render/vulkan/vulkan_functions.h
                              src/engine/render/vulkan/vulkan_functions_manifest.inl
                              src/engine/render/vulkan/vulkan_include.h
                              src/engine/render/vulkan/vulkan_renderer.cpp
                              src/engine/render/vulkan/vulkan_renderer.h
+                             src/engine/render/vulkan/vulkan_resource_manager.cpp
+                             src/engine/render/vulkan/vulkan_resource_manager.h
+                             src/engine/render/vulkan/vulkan_resources.cpp
+                             src/engine/render/vulkan/vulkan_resources.h
                              src/engine/render/vulkan/vulkan_resources.cpp
                              src/engine/render/vulkan/vulkan_resources.h
                              src/engine/render/vulkan/vulkan_startup.cpp

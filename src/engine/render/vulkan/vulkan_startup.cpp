@@ -3,6 +3,7 @@
 #include "engine/core/macros.h"
 #include "engine/render/vulkan/vulkan_commands.h"
 #include "engine/render/window.h"
+#include "engine/render/vulkan/vulkan_formats.h"
 #include "engine/render/vulkan/vulkan_startup.h"
 #include "engine/render/vulkan/vulkan_resources.h"
 #include "engine/thirdparty/vulkan/vulkan_core.h"

@@ -10,6 +10,7 @@
 
 struct mesh_t;
 struct window_t;
+struct camera_t;
 
 struct instance_draw_data_t 
 {
@@ -279,6 +280,11 @@ struct descriptor_resource_t
     texture_t texture;
 };
 
+struct descriptor_set_layout_bindings_t
+{
+    std::vector<VkDescriptorSetLayoutBinding> bindings;
+};
+
 struct shader_info_t
 {
     const char* shader_filepath;
@@ -289,6 +295,13 @@ struct material_resource_t
 {
     descriptor_info_t descriptor_info;      
     descriptor_resource_t descriptor_resource;
+};
+
+struct material_create_info_t
+{
+    shader_info_t vertex_shader_info;
+    shader_info_t fragment_shader_info;
+    std::vector<material_resource_t> resources;
 };
 
 typedef hash_id_t material_id_t;
@@ -328,6 +341,11 @@ struct mesh_instance_t
     pipeline_t pipeline;
 };
 
+struct frame_render_data_t
+{
+    f32 ds = 0.0f;
+};
+
 struct frame_t
 {
     u32 swapchain_image_index;
@@ -345,3 +363,45 @@ struct frame_t
     texture_t main_draw_depth_target;
     texture_t main_draw_resolve_target;
 };
+
+struct renderer_globals_t
+{
+    std::vector<frame_t> in_flight_frames;
+    std::vector<VkFence> swapchain_images_in_flight;
+    u32 cur_frame = 0;
+
+    std::vector<mesh_render_data_t*> loaded_mesh_render_data;
+
+    descriptor_set_layout_t mesh_instance_render_data_ds_layout;
+
+    sampler_t linear_sampler_2d;
+    descriptor_set_layout_t global_data_ds_layout;
+    descriptor_pool_t global_data_dp;
+    descriptor_set_t global_ds;
+
+    descriptor_set_t empty_descriptor_set;
+
+    ///////////////////
+    // temp (or maybe not??)
+    descriptor_set_layout_t material_data_ds_layout;
+    descriptor_set_layout_t frame_data_ds_layout;
+
+    descriptor_pool_t frame_data_dp;
+    descriptor_pool_t material_data_dp;
+
+    descriptor_set_t frame_ds;
+    descriptor_set_t material_ds;
+
+    frame_render_data_t frame_render_data;
+    buffer_t frame_render_data_buffer;
+    ///////////////////
+
+    //render_pass_t depth_only_render_pass;
+    render_pass_t main_draw_render_pass;
+    //render_pass_t post_process_render_pass;
+    
+    camera_t* main_camera = nullptr;
+
+    bool debug_render = false;
+};
+
