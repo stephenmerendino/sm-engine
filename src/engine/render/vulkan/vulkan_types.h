@@ -343,7 +343,8 @@ struct mesh_instance_t
 
 struct frame_render_data_t
 {
-    f32 ds = 0.0f;
+    f32 time = 0.0f;
+    f32 delta_time_seconds = 0.0f;
 };
 
 struct frame_t

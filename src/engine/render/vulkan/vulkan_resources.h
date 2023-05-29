@@ -141,3 +141,4 @@ void mesh_instance_pipeline_refresh(context_t& context, mesh_instance_t& mesh_in
 // frames
 frame_t frame_create(context_t& context);
 void frame_destroy(context_t& context, frame_t& frame);
+void frame_update_render_data(context_t& context, frame_t& frame);

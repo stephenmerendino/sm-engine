@@ -58,7 +58,7 @@ void swapchain_recreate(context_t& context, renderer_globals_t& globals)
 }
 
 static
-void update_instance_data(context_t& context, camera_t& camera, frame_t& frame)
+void update_mesh_instance_render_data(context_t& context, camera_t& camera, frame_t& frame)
 {
     descriptor_pool_reset(context, frame.mesh_instance_render_data_descriptor_pool);
 
@@ -268,6 +268,13 @@ void renderer_update(f32 ds)
         renderer_globals_get()->debug_render = !renderer_globals_get()->debug_render; 
     }
 
+    // update frame render data on cpu side, it gets uploaded to gpu buffer during renderer_render_frame()
+    frame_t& frame = renderer_globals_get()->in_flight_frames[renderer_globals_get()->cur_frame];
+    frame.frame_render_data.time += ds;
+    frame.frame_render_data.delta_time_seconds = ds;
+
+    /////////////////////////////////////////////
+    // TEMP
     static f32 time = 0.0f;
     time += ds;
 
@@ -282,6 +289,7 @@ void renderer_update(f32 ds)
 
     //set_translation(s_viking_room_mesh_instance.transform.model, position_ws);
     //set_rotation(s_viking_room_mesh_instance.transform.model, rotation);
+    /////////////////////////////////////////////
 }
 
 void renderer_render_frame()
@@ -300,7 +308,8 @@ void renderer_render_frame()
 	}
 	ASSERT(res == VK_SUCCESS || res == VK_SUBOPTIMAL_KHR);
 
-    update_instance_data(*s_context, *renderer_globals_get()->main_camera, frame);
+    frame_update_render_data(*s_context, frame);
+    update_mesh_instance_render_data(*s_context, *renderer_globals_get()->main_camera, frame);
 
 	if (VK_NULL_HANDLE != s_context->swapchain.image_in_flight_fences[frame.swapchain_image_index].handle)
 	{

@@ -1199,10 +1199,8 @@ frame_t frame_create(context_t& context)
 
     // set up frame render data
     {
-        frame.frame_render_data_descriptor_set = descriptor_set_allocate(context, renderer_globals_get()->frame_render_data_descriptor_pool, renderer_globals_get()->frame_render_data_descriptor_set_layout);
-
         frame.frame_render_data_buffer = buffer_create(context, BufferType::kUniformBuffer, sizeof(frame_render_data_t));
-        buffer_update(context, frame.frame_render_data_buffer, context.graphics_command_pool, &frame.frame_render_data);
+        frame.frame_render_data_descriptor_set = descriptor_set_allocate(context, renderer_globals_get()->frame_render_data_descriptor_pool, renderer_globals_get()->frame_render_data_descriptor_set_layout);
 
         descriptor_sets_writes_t descriptor_sets_writes;
         descriptor_sets_writes_add_uniform_buffer(descriptor_sets_writes, 
@@ -1240,4 +1238,9 @@ void frame_destroy(context_t& context, frame_t& frame)
     semaphore_destroy(context, frame.swapchain_image_available_semaphore);
     semaphore_destroy(context, frame.render_finished_semaphore);
     fence_destroy(context, frame.frame_completed_fence);
+}
+
+void frame_update_render_data(context_t& context, frame_t& frame)
+{
+    buffer_update(context, frame.frame_render_data_buffer, context.graphics_command_pool, &frame.frame_render_data);
 }
