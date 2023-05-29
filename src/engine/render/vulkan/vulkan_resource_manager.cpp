@@ -1,73 +1,165 @@
 #include "engine/render/vulkan/vulkan_resource_manager.h"
 #include "engine/core/config.h"
 #include "engine/core/debug.h"
+#include "engine/render/mesh.h"
+#include "engine/render/vulkan/vulkan_formats.h"
 #include "engine/render/vulkan/vulkan_resources.h"
+#include "engine/render/vulkan/vulkan_types.h"
 
-VkPrimitiveTopology mesh_render_data_get_topology(mesh_id_t mesh_id)
+struct managed_meshes_t
 {
-    i32 data_index = -1;
-    for(i32 i = 0; i < (i32)renderer_globals_get()->loaded_mesh_render_data.size(); i++)
+    std::vector<mesh_id_t> ids;
+    std::vector<u32> ref_counts;
+    std::vector<mesh_render_data_t*> render_datas;
+};
+
+static const u32 INVALID_MESH_INDEX = UINT_MAX;
+static managed_meshes_t s_managed_meshes;
+
+static
+u32 resource_manager_get_mesh_index(mesh_id_t mesh_id)
+{
+    for(i32 i = 0; i < (i32)s_managed_meshes.ids.size(); i++)
     {
-        if(renderer_globals_get()->loaded_mesh_render_data[i]->mesh_id == mesh_id)
+        if(s_managed_meshes.ids[i] == mesh_id)
         {
-            data_index = i;
-            break;
+            return i;
         }
     }
 
-    ASSERT(-1 != data_index);
-
-    return renderer_globals_get()->loaded_mesh_render_data[data_index]->topology;
+    return INVALID_MESH_INDEX;
 }
 
-pipeline_vertex_input_t  mesh_render_data_get_pipeline_vertex_input(mesh_id_t mesh_id)
+static
+VkPrimitiveTopology primitive_topology_to_vk_topology(PrimitiveTopology topology)
 {
-    i32 data_index = -1;
-    for(i32 i = 0; i < (i32)renderer_globals_get()->loaded_mesh_render_data.size(); i++)
+    switch(topology)
     {
-        if(renderer_globals_get()->loaded_mesh_render_data[i]->mesh_id == mesh_id)
-        {
-            data_index = i;
-            break;
-        }
+        case PrimitiveTopology::kTriangleList:  return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        case PrimitiveTopology::kLineList:      return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+        default: ASSERT(1 == 2); // error out if we haven't put the correct cases here, TODO: use an ERROR("") macro
     }
 
-    ASSERT(-1 != data_index);
-
-    return renderer_globals_get()->loaded_mesh_render_data[data_index]->pipeline_vertex_input;
+    return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 }
 
-instance_draw_id_t frame_get_or_allocate_instance_draw_data(context_t& context, frame_t& frame)
+static
+void resource_manager_track_mesh(context_t& context, mesh_id_t mesh_id, mesh_t* mesh)
 {
-    // TODO: we are duplicating the ds layout code here, clean up
-    for(i32 i = 0; i < (i32)frame.mesh_instance_render_data.size(); i++)
+    // setup render data
+    mesh_render_data_t* mesh_render_data = new mesh_render_data_t;
+    mesh_render_data->index_count = (u32)mesh->m_indices.size();
+    mesh_render_data->topology = primitive_topology_to_vk_topology(mesh->topology);
+
+    mesh_render_data->vertex_buffer = buffer_create(context, BufferType::kVertexBuffer, mesh_calc_vertex_buffer_size(mesh));
+    mesh_render_data->index_buffer = buffer_create(context, BufferType::kIndexBuffer, mesh_calc_index_buffer_size(mesh));
+    buffer_update(context, mesh_render_data->vertex_buffer, context.graphics_command_pool, mesh->m_vertices.data());
+    buffer_update(context, mesh_render_data->index_buffer, context.graphics_command_pool, mesh->m_indices.data());
+
+    mesh_render_data->pipeline_vertex_input.input_binding_descs = mesh_get_vertex_input_binding_descs(mesh);
+    mesh_render_data->pipeline_vertex_input.input_attr_descs = mesh_get_vertex_input_attr_descs(mesh);
+    mesh_render_data->pipeline_vertex_input.vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    mesh_render_data->pipeline_vertex_input.vertex_input_info.vertexBindingDescriptionCount = (u32)mesh_render_data->pipeline_vertex_input.input_binding_descs.size();
+    mesh_render_data->pipeline_vertex_input.vertex_input_info.pVertexBindingDescriptions = mesh_render_data->pipeline_vertex_input.input_binding_descs.data();
+    mesh_render_data->pipeline_vertex_input.vertex_input_info.vertexAttributeDescriptionCount = (u32)(mesh_render_data->pipeline_vertex_input.input_attr_descs.size());
+    mesh_render_data->pipeline_vertex_input.vertex_input_info.pVertexAttributeDescriptions = mesh_render_data->pipeline_vertex_input.input_attr_descs.data();
+
+    s_managed_meshes.ids.push_back(mesh_id);
+    s_managed_meshes.ref_counts.push_back(1);  
+    s_managed_meshes.render_datas.push_back(mesh_render_data);
+}
+
+static
+void resource_manager_track_mesh_forever(mesh_id_t mesh_id)
+{
+    u32 mesh_index = resource_manager_get_mesh_index(mesh_id);
+    s_managed_meshes.ref_counts[mesh_index] = UINT_MAX;
+}
+
+static
+void resource_manager_mesh_render_data_destroy(context_t& context, mesh_render_data_t* mesh_render_data)
+{
+    buffer_destroy(context, mesh_render_data->index_buffer);
+    buffer_destroy(context, mesh_render_data->vertex_buffer);
+    delete mesh_render_data;
+}
+
+void resource_manager_init(context_t& context)
+{
+    resource_manager_track_mesh(context, resource_manager_get_mesh_id(PrimitiveMeshType::kCube), mesh_load_cube());
+    resource_manager_track_mesh(context, resource_manager_get_mesh_id(PrimitiveMeshType::kAxes), mesh_load_axes());
+
+    resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kCube));
+    resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kAxes));
+}
+
+void resource_manager_deinit(context_t& context)
+{
+    for(i32 i = 0; i < (i32)s_managed_meshes.render_datas.size(); i++)
     {
-        if(!frame.mesh_instance_render_data[i].is_assigned)
-        {
-            frame.mesh_instance_render_data[i].is_assigned = true;
-            std::vector<descriptor_set_layout_t> layout(1, renderer_globals_get()->mesh_instance_render_data_ds_layout);
-            std::vector<descriptor_set_t> descriptor_set = descriptor_sets_allocate(context, frame.mesh_instance_render_data_descriptor_pool, layout);
-            ASSERT(1 == descriptor_set.size());
-            frame.mesh_instance_render_data[i].descriptor_set = descriptor_set[0];
-            return (instance_draw_id_t)i;
-        }
+        resource_manager_mesh_render_data_destroy(context, s_managed_meshes.render_datas[i]);
+    }
+}
+
+mesh_id_t resource_manager_get_mesh_id(PrimitiveMeshType primitive_type)
+{
+    mesh_id_t mesh_id = INVALID_MESH_ID;
+
+    switch(primitive_type)
+    {
+        case kCube: mesh_id = resource_manager_get_mesh_id("primitive-cube"); break;
+        case kAxes: mesh_id = resource_manager_get_mesh_id("primitive-axes"); break;
     }
 
-    mesh_instance_render_data_t new_instance_data;
-    new_instance_data.data_buffer = buffer_create(context, BufferType::kUniformBuffer, sizeof(instance_draw_data_t));
-
-    std::vector<descriptor_set_layout_t> layout(1, renderer_globals_get()->mesh_instance_render_data_ds_layout);
-    std::vector<descriptor_set_t> descriptor_set = descriptor_sets_allocate(context, frame.mesh_instance_render_data_descriptor_pool, layout);
-    ASSERT(1 == descriptor_set.size());
-    new_instance_data.descriptor_set = descriptor_set[0];
-
-    new_instance_data.is_assigned = true;
-
-    frame.mesh_instance_render_data.push_back(new_instance_data);
-    return (instance_draw_id_t)(frame.mesh_instance_render_data.size() - 1);
+    return mesh_id;
 }
 
-void frame_update_instance_data(context_t& context, frame_t& frame, instance_draw_id_t instance_id, instance_draw_data_t& instance_draw_data)
+mesh_id_t resource_manager_get_mesh_id(const char* filepath)
 {
-    buffer_update_data(context, frame.mesh_instance_render_data[instance_id].data_buffer, &instance_draw_data);
+    return hash(filepath);
+}
+
+mesh_id_t resource_manager_load_obj_mesh(context_t& context, const char* obj_filepath)
+{
+    // get mesh id from filepath
+    mesh_id_t mesh_id = resource_manager_get_mesh_id(obj_filepath);
+    if(resource_manager_is_mesh_loaded(mesh_id))
+    {
+        u32 mesh_index = resource_manager_get_mesh_index(mesh_id);
+        s_managed_meshes.ref_counts[mesh_index]++;
+        return mesh_id;
+    }
+
+    mesh_t* obj_mesh = mesh_load_from_obj(obj_filepath);
+    resource_manager_track_mesh(context, mesh_id, obj_mesh);
+    delete obj_mesh;
+
+    return mesh_id;
+}
+
+void resource_manager_mesh_release(context_t& context, mesh_id_t mesh_id)
+{
+    u32 mesh_index = resource_manager_get_mesh_index(mesh_id);
+    ASSERT(INVALID_MESH_INDEX != mesh_index);
+    s_managed_meshes.ref_counts[mesh_index]--;
+
+    if(0 == s_managed_meshes.ref_counts[mesh_index])
+    {
+        resource_manager_mesh_render_data_destroy(context, s_managed_meshes.render_datas[mesh_index]);
+        s_managed_meshes.ids.erase(s_managed_meshes.ids.begin() + mesh_index);
+        s_managed_meshes.ref_counts.erase(s_managed_meshes.ref_counts.begin() + mesh_index);
+        s_managed_meshes.render_datas.erase(s_managed_meshes.render_datas.begin() + mesh_index);
+    }
+}
+
+const mesh_render_data_t* resource_manager_get_mesh_render_data(mesh_id_t mesh_id)
+{
+    u32 mesh_index = resource_manager_get_mesh_index(mesh_id);
+    ASSERT(INVALID_MESH_INDEX != mesh_index);
+    return s_managed_meshes.render_datas[mesh_index];
+}
+
+bool resource_manager_is_mesh_loaded(mesh_id_t mesh_id)
+{
+    return INVALID_MESH_INDEX != resource_manager_get_mesh_index(mesh_id);
 }

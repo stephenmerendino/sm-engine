@@ -5,64 +5,6 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "engine/thirdparty/tinyobjloader/tiny_obj_loader.h"
 
-struct loaded_mesh_t
-{
-    u32 ref_count = 0;
-    mesh_t* mesh = nullptr;
-};
-
-static std::vector<loaded_mesh_t> s_loaded_meshes;
-
-static
-mesh_t* loaded_mesh_acquire_or_create(mesh_id_t mesh_id, bool* out_was_already_loaded)
-{
-    mesh_t* mesh = nullptr;
-
-    for(i32 i = 0; i < (i32)s_loaded_meshes.size(); i++)
-    {
-        if(s_loaded_meshes[i].mesh->id == mesh_id)
-        {
-            *out_was_already_loaded = true;
-            s_loaded_meshes[i].ref_count++;
-            return s_loaded_meshes[i].mesh;
-        }
-    }
-
-    *out_was_already_loaded = false;
-
-    mesh = new mesh_t;
-    mesh->id = mesh_id;
-
-    loaded_mesh_t loaded_mesh;
-    loaded_mesh.mesh = mesh;
-    loaded_mesh.ref_count = 1;
-    s_loaded_meshes.push_back(loaded_mesh);
-
-    return mesh;
-}
-
-void mesh_release(mesh_t* mesh)
-{
-    mesh_release(mesh->id);
-}
-
-void mesh_release(mesh_id_t mesh_id)
-{
-    for(i32 i = 0; i < (i32)s_loaded_meshes.size(); i++)
-    {
-        if(s_loaded_meshes[i].mesh->id == mesh_id)
-        {
-            s_loaded_meshes[i].ref_count--;
-            if(s_loaded_meshes[i].ref_count == 0)
-            {
-                renderer_unload_mesh(mesh_id);
-                delete s_loaded_meshes[i].mesh;
-                s_loaded_meshes.erase(s_loaded_meshes.begin() + i);
-            }
-        }
-    }
-}
-
 size_t mesh_calc_vertex_buffer_size(mesh_t* mesh)
 {
     ASSERT(nullptr != mesh);
@@ -77,14 +19,6 @@ size_t mesh_calc_index_buffer_size(mesh_t* mesh)
 
 mesh_t* mesh_load_from_obj(const char* obj_filepath)
 {
-    mesh_id_t mesh_id = hash(obj_filepath);
-    bool was_already_loaded = false;
-    mesh_t* mesh = loaded_mesh_acquire_or_create(mesh_id, &was_already_loaded);
-    if(was_already_loaded)
-    {
-        return mesh;
-    }
-
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;
 	std::vector<tinyobj::material_t> materials;
@@ -116,25 +50,16 @@ mesh_t* mesh_load_from_obj(const char* obj_filepath)
 		}
 	}
 
+    mesh_t* mesh = new mesh_t;
     mesh->m_vertices = vertices;
     mesh->m_indices = indices;
     mesh->topology = PrimitiveTopology::kTriangleList;
-
-    renderer_load_mesh(mesh);
 
 	return mesh;
 }
 
 mesh_t* mesh_load_cube()
 {
-    static mesh_id_t mesh_id = hash("cube");
-    bool was_already_loaded = false;
-    mesh_t* mesh = loaded_mesh_acquire_or_create(mesh_id, &was_already_loaded);
-    if(was_already_loaded)
-    {
-        return mesh;
-    }
-
 	const f32 kSize = 1.0f;
 	const vec4 white = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
@@ -393,25 +318,16 @@ mesh_t* mesh_load_cube()
 		indices.push_back(22);
 	}
 
+    mesh_t* mesh = new mesh_t;
     mesh->m_vertices = vertices;
     mesh->m_indices = indices;
     mesh->topology = PrimitiveTopology::kTriangleList;
-
-    renderer_load_mesh(mesh);
 
     return mesh;
 }
 
 mesh_t* mesh_load_axes()
 {
-    static mesh_id_t mesh_id = hash("axes");
-    bool was_already_loaded = false;
-    mesh_t* mesh = loaded_mesh_acquire_or_create(mesh_id, &was_already_loaded);
-    if(was_already_loaded)
-    {
-        return mesh;
-    }
-
 	std::vector<vertex_pct_t> vertices;
 	std::vector<u32> indices;
 
@@ -462,11 +378,10 @@ mesh_t* mesh_load_axes()
 	indices.push_back(4);
 	indices.push_back(5);
 
+    mesh_t* mesh = new mesh_t;
     mesh->m_vertices = vertices;
     mesh->m_indices = indices;
     mesh->topology = PrimitiveTopology::kLineList;
-
-    renderer_load_mesh(mesh);
 
     return mesh;
 }

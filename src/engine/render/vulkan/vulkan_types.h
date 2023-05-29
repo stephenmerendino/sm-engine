@@ -375,8 +375,6 @@ struct renderer_globals_t
     std::vector<VkFence> swapchain_images_in_flight;
     u32 cur_frame = 0;
 
-    // TODO: move mesh render data to resource manager
-    std::vector<mesh_render_data_t*> loaded_mesh_render_data;
     descriptor_set_layout_t mesh_instance_render_data_ds_layout;
 
     // global descriptors

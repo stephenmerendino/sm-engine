@@ -2,11 +2,6 @@
 
 #include "engine/render/vulkan/vulkan_types.h"
 
-// globals
-void renderer_globals_create(context_t& context);
-void renderer_globals_destroy(context_t& context);
-renderer_globals_t* renderer_globals_get();
-
 // textures/images
 VkImageView image_view_create(device_t& device, VkImage image, VkFormat format, VkImageAspectFlags aspect_flags, u32 num_mips);
 VkImageView image_view_create(context_t& context, VkImage image, VkFormat format, VkImageAspectFlags aspect_flags, u32 num_mips);
@@ -125,20 +120,3 @@ fence_t fence_create(context_t& context);
 void fence_reset(context_t& context, fence_t& fence);
 void fence_wait(context_t& context, fence_t& fence, u64 timeout = UINT64_MAX);
 void fence_destroy(context_t& context, fence_t& fence);
-
-// TODO: move these somewhere else, these are renderer concepts, not vulkan concepts
-// materials
-material_t material_create(context_t& context, material_create_info_t& create_info);
-void material_destroy(context_t& context, material_t& material);
-material_resource_t material_load_sampled_texture_resource(context_t& context, const char* texture_filepath, u32 binding_index, u32 count, VkShaderStageFlagBits shader_stages);
-
-// mesh instances
-mesh_instance_t mesh_instance_create(context_t& context, mesh_id_t mesh_id, material_t& material);
-void mesh_instance_destroy(context_t& context, mesh_instance_t& mesh_instance);
-void mesh_instance_pipeline_create(context_t& context, mesh_instance_t& mesh_instance);
-void mesh_instance_pipeline_refresh(context_t& context, mesh_instance_t& mesh_instance);
-
-// frames
-frame_t frame_create(context_t& context);
-void frame_destroy(context_t& context, frame_t& frame);
-void frame_update_render_data(context_t& context, frame_t& frame);
