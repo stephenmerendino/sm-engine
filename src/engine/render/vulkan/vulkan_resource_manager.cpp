@@ -12,9 +12,18 @@ struct managed_meshes_t
     std::vector<u32> ref_counts;
     std::vector<mesh_render_data_t*> render_datas;
 };
-
 static const u32 INVALID_MESH_INDEX = UINT_MAX;
 static managed_meshes_t s_managed_meshes;
+
+struct managed_materials_t
+{
+    std::vector<const char*> names;
+    std::vector<material_id_t> ids;   
+    std::vector<u32> ref_counts;
+    std::vector<material_t> materials;
+};
+static const u32 INVALID_MATERIAL_INDEX = UINT_MAX;
+static managed_materials_t s_managed_materials;
 
 static
 u32 resource_manager_get_mesh_index(mesh_id_t mesh_id)
@@ -162,4 +171,87 @@ const mesh_render_data_t* resource_manager_get_mesh_render_data(mesh_id_t mesh_i
 bool resource_manager_is_mesh_loaded(mesh_id_t mesh_id)
 {
     return INVALID_MESH_INDEX != resource_manager_get_mesh_index(mesh_id);
+}
+
+static
+u32 resource_manager_get_material_index(material_id_t mat_id)
+{
+    for(i32 i = 0; i < (i32)s_managed_materials.ids.size(); i++)
+    {
+        if(s_managed_materials.ids[i] == mat_id)
+        {
+            return i;
+        }
+    }
+
+    return INVALID_MATERIAL_INDEX;
+}
+
+static
+void material_destroy(context_t& context, material_t& material)
+{
+    for(i32 i = 0; i < (i32)material.resources.size(); i++)
+    {
+        texture_destroy(context, material.resources[i].descriptor_resource.texture); 
+    }
+    descriptor_set_layout_destroy(context, material.descriptor_set_layout);
+    pipeline_destroy_shader_stages(context, material.shaders);
+}
+
+material_id_t resource_manager_get_material_id(const char* mat_name)
+{
+    return hash(mat_name); 
+}
+
+void resource_manager_material_release(context_t& context, material_id_t mat_id)
+{
+    u32 mat_index = resource_manager_get_material_index(mat_id);
+    ASSERT(INVALID_MATERIAL_INDEX != mat_index);
+    s_managed_materials.ref_counts[mat_index]--;
+
+    if(0 == s_managed_materials.ref_counts[mat_index])
+    {
+        s_managed_materials.names.erase(s_managed_materials.names.begin() + mat_index);
+        s_managed_materials.ids.erase(s_managed_materials.ids.begin() + mat_index);
+        s_managed_materials.ref_counts.erase(s_managed_materials.ref_counts.begin() + mat_index);
+        material_destroy(context, s_managed_materials.materials[mat_index]);
+        s_managed_materials.materials.erase(s_managed_materials.materials.begin() + mat_index);
+    }
+}
+
+const material_t* resource_manager_get_material(material_id_t mat_id)
+{
+    u32 mat_index = resource_manager_get_material_index(mat_id);
+    ASSERT(INVALID_MATERIAL_INDEX != mat_index);
+    return &s_managed_materials.materials[mat_index];
+}
+
+bool resource_manager_is_material_loaded(material_id_t mat_id)
+{
+    return INVALID_MATERIAL_INDEX != resource_manager_get_material_index(mat_id);
+}
+
+void resource_manager_acquire_material(material_id_t mat_id)
+{
+    u32 mat_index = resource_manager_get_material_index(mat_id);
+    ASSERT(INVALID_MATERIAL_INDEX != mat_index);
+    s_managed_materials.ref_counts[mat_index]++;
+}
+
+material_id_t resource_manager_track_material_TEMP(const char* mat_name, material_t& mat)
+{
+    material_id_t mat_id = resource_manager_get_material_id(mat_name);
+    if(resource_manager_is_material_loaded(mat_id))
+    {
+        u32 mat_index = resource_manager_get_material_index(mat_id);
+        s_managed_materials.ref_counts[mat_index]++;
+        return mat_id;
+    }
+
+    s_managed_materials.names.push_back(mat_name);
+    s_managed_materials.ids.push_back(mat_id);
+    s_managed_materials.ref_counts.push_back(1);  
+    s_managed_materials.materials.push_back(mat);
+
+    return mat_id;
 }

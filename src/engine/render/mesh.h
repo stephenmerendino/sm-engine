@@ -6,8 +6,6 @@
 
 #include <vector>
 
-typedef hash_id_t mesh_id_t;
-
 enum class PrimitiveTopology : u8
 {
     kTriangleList,

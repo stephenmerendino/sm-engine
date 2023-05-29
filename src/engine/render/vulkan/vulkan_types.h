@@ -12,6 +12,9 @@ struct mesh_t;
 struct window_t;
 struct camera_t;
 
+typedef hash_id_t mesh_id_t;
+typedef hash_id_t material_id_t;
+
 struct instance_draw_data_t 
 {
 	mat44 mvp;
@@ -277,7 +280,7 @@ struct descriptor_info_t
 
 struct descriptor_resource_t
 {
-    texture_t texture;
+    texture_t texture; // TODO: make this a texture_id_t texture_id;
 };
 
 struct descriptor_set_layout_bindings_t
@@ -336,9 +339,9 @@ struct mesh_instance_t
 {
     mesh_id_t mesh_id;
     instance_draw_id_t instance_id;
+    material_id_t material_id;
     transform_t transform;
-    material_t material;
-    pipeline_t pipeline;
+    pipeline_t pipeline; // TODO: move this to resource manager
 };
 
 struct frame_render_data_t

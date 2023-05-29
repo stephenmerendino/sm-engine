@@ -76,17 +76,6 @@ material_t material_create(context_t& context, material_create_info_t& create_in
 }
 
 static
-void material_destroy(context_t& context, material_t& material)
-{
-    for(i32 i = 0; i < (i32)material.resources.size(); i++)
-    {
-        texture_destroy(context, material.resources[i].descriptor_resource.texture); 
-    }
-    descriptor_set_layout_destroy(context, material.descriptor_set_layout);
-    pipeline_destroy_shader_stages(context, material.shaders);
-}
-
-static
 material_resource_t material_load_sampled_texture_resource(context_t& context, const char* texture_filepath, u32 binding_index, u32 count, VkShaderStageFlagBits shader_stages)
 {
     material_resource_t resource = {};
@@ -103,8 +92,10 @@ static
 void mesh_instance_pipeline_create(context_t& context, mesh_instance_t& mesh_instance)
 {
     ASSERT(VK_NULL_HANDLE == mesh_instance.pipeline.pipeline_handle);
+    
+    const material_t* mat = resource_manager_get_material(mesh_instance.material_id);
+    pipeline_shader_stages_t shader_stages = mat->shaders;
 
-    pipeline_shader_stages_t shader_stages = mesh_instance.material.shaders;
     const mesh_render_data_t* mesh_render_data = resource_manager_get_mesh_render_data(mesh_instance.mesh_id);
     pipeline_vertex_input_t vertex_input = mesh_render_data->pipeline_vertex_input;
     VkPrimitiveTopology mesh_topology = mesh_render_data->topology;
@@ -137,21 +128,28 @@ void mesh_instance_pipeline_create(context_t& context, mesh_instance_t& mesh_ins
 }
 
 static
-mesh_instance_t mesh_instance_create(context_t& context, mesh_id_t mesh_id, material_t& material)
+mesh_instance_t mesh_instance_create(context_t& context, mesh_id_t mesh_id, material_id_t mat_id)
 {
     mesh_instance_t mesh_instance;
     mesh_instance.mesh_id = mesh_id;
     mesh_instance.transform.model = MAT44_IDENTITY;
-    mesh_instance.material = material;
+    mesh_instance.material_id = mat_id;
     mesh_instance_pipeline_create(context, mesh_instance);
+    resource_manager_acquire_material(mat_id);
     return mesh_instance;
+}
+
+static
+mesh_instance_t mesh_instance_create(context_t& context, mesh_id_t mesh_id, const char* mat_name)
+{
+   return mesh_instance_create(context, mesh_id, resource_manager_get_material_id(mat_name));
 }
 
 static
 void mesh_instance_destroy(context_t& context, mesh_instance_t& mesh_instance)
 {
     pipeline_destroy(context, mesh_instance.pipeline);
-    material_destroy(context, mesh_instance.material);
+    resource_manager_material_release(context, mesh_instance.material_id);
     resource_manager_mesh_release(context, mesh_instance.mesh_id);
 }
 
@@ -296,9 +294,9 @@ void swapchain_recreate(context_t& context)
     context_refresh_swapchain(context);
 
     // recreate in flight frames
+	descriptor_pool_reset(context, s_globals->frame_render_data_descriptor_pool);
     for (i32 i = 0; i < MAX_NUM_FRAMES_IN_FLIGHT; i++)
 	{
-        descriptor_pool_reset(context, s_globals->frame_render_data_descriptor_pool);
         frame_destroy(*s_context, s_globals->in_flight_frames[i]);
         s_globals->in_flight_frames[i] = frame_create(context);
 	}
@@ -491,7 +489,7 @@ void renderer_load_assets(context_t& context)
         mat_create_info.resources.push_back(diffuse_texture);
 
         material_t viking_room_material = material_create(*s_context, mat_create_info);
-        s_viking_room_mesh_instance.material = viking_room_material;
+        resource_manager_track_material_TEMP("viking_room_mat", viking_room_material);
     }
 
     {
@@ -499,8 +497,8 @@ void renderer_load_assets(context_t& context)
         mat_create_info.vertex_shader_info = { "shaders/simple-color-vert.spv", "main" };
         mat_create_info.fragment_shader_info = { "shaders/simple-color-frag.spv", "main" };
 
-        material_t world_axes_material = material_create(*s_context, mat_create_info);
-        s_world_axes_mesh_instance.material = world_axes_material;
+        material_t simple_vert_color_material = material_create(*s_context, mat_create_info);
+        resource_manager_track_material_TEMP("simple_vert_color", simple_vert_color_material);
     }
 
     // viking room
@@ -508,13 +506,13 @@ void renderer_load_assets(context_t& context)
         // meshes
         mesh_id_t viking_room_mesh_id = resource_manager_load_obj_mesh(context, "models/viking_room.obj");
         mesh_id_t cube_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kCube);
-        s_viking_room_mesh_instance = mesh_instance_create(*s_context, cube_mesh_id, s_viking_room_mesh_instance.material);
+        s_viking_room_mesh_instance = mesh_instance_create(*s_context, cube_mesh_id, "viking_room_mat");
     }
 
     // world axes
     {
         mesh_id_t world_axes_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kAxes);
-        s_world_axes_mesh_instance = mesh_instance_create(*s_context, world_axes_mesh_id, s_world_axes_mesh_instance.material);
+        s_world_axes_mesh_instance = mesh_instance_create(*s_context, world_axes_mesh_id, "simple_vert_color");
     }
 }
 
@@ -594,11 +592,12 @@ void frame_generate_command_buffers(context_t& context, frame_t& frame)
         command_buffer_begin_render_pass(command_buffer, s_globals->main_draw_render_pass.handle, frame.main_draw_framebuffer.handle, offset, context.swapchain.extent, clear_colors);
             {
                 const mesh_render_data_t* mesh_render_data = resource_manager_get_mesh_render_data(s_viking_room_mesh_instance.mesh_id);
+                const material_t* mat = resource_manager_get_material(s_viking_room_mesh_instance.material_id);
                 mesh_instance_render_data_t instance_render_data = frame.mesh_instance_render_data[s_viking_room_mesh_instance.instance_id];
                 std::vector<VkDescriptorSet> draw_descriptor_sets = { 
                                                                         s_globals->global_ds.descriptor_set,
                                                                         frame.frame_render_data_descriptor_set.descriptor_set,
-                                                                        s_viking_room_mesh_instance.material.descriptor_set.descriptor_set,
+                                                                        mat->descriptor_set.descriptor_set,
                                                                         instance_render_data.descriptor_set.descriptor_set  
                                                                     };
                 command_draw_mesh_instance(command_buffer, s_viking_room_mesh_instance, *mesh_render_data, draw_descriptor_sets);
@@ -607,11 +606,12 @@ void frame_generate_command_buffers(context_t& context, frame_t& frame)
             if(s_globals->debug_render)
             {
                 const mesh_render_data_t* mesh_render_data = resource_manager_get_mesh_render_data(s_world_axes_mesh_instance.mesh_id);
+                const material_t* mat = resource_manager_get_material(s_viking_room_mesh_instance.material_id);
                 mesh_instance_render_data_t instance_render_data = frame.mesh_instance_render_data[s_world_axes_mesh_instance.instance_id];
                 std::vector<VkDescriptorSet> draw_descriptor_sets = { 
                                                                         s_globals->global_ds.descriptor_set,
                                                                         frame.frame_render_data_descriptor_set.descriptor_set,
-                                                                        s_world_axes_mesh_instance.material.descriptor_set.descriptor_set,
+                                                                        mat->descriptor_set.descriptor_set,
                                                                         instance_render_data.descriptor_set.descriptor_set  
                                                                     };
                 command_draw_mesh_instance(command_buffer, s_world_axes_mesh_instance, *mesh_render_data, draw_descriptor_sets);

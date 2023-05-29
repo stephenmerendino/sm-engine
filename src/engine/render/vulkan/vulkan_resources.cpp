@@ -778,10 +778,11 @@ void pipeline_create_color_blend_state(pipeline_color_blend_state_t& color_blend
 
 pipeline_layout_t pipeline_create_layout(context_t& context, mesh_instance_t& mesh_instance)
 {
+    const material_t* mat = resource_manager_get_material(mesh_instance.material_id);
     std::vector<VkDescriptorSetLayout> descriptor_set_layouts = { 
                                                                   renderer_get_globals()->global_data_ds_layout.handle,
                                                                   renderer_get_globals()->frame_render_data_descriptor_set_layout.handle,
-                                                                  mesh_instance.material.descriptor_set_layout.handle,
+                                                                  mat->descriptor_set_layout.handle,
                                                                   renderer_get_globals()->mesh_instance_render_data_ds_layout.handle 
                                                                 };
 

@@ -20,14 +20,9 @@ void resource_manager_mesh_release(context_t& context, mesh_id_t mesh_id);
 const mesh_render_data_t* resource_manager_get_mesh_render_data(mesh_id_t mesh_id);
 bool resource_manager_is_mesh_loaded(mesh_id_t mesh_id);
 
-//void rm_shaders_create_or_acquire();
-//void rm_shaders_release();
-//
-//void rm_material_acquire_or_create();
-//void rm_material_release();
-//
-//void rm_texture_acquire_or_create();
-//void rm_texture_release();
-//
-//void rm_pipeline_acquire_or_create();
-//void rm_pipeline_release();
+material_id_t resource_manager_track_material_TEMP(const char* mat_name, material_t& mat);
+void resource_manager_acquire_material(material_id_t mat_id);
+void resource_manager_material_release(context_t& context, material_id_t mat_id);
+material_id_t resource_manager_get_material_id(const char* mat_name);
+const material_t* resource_manager_get_material(material_id_t mat_id);
+bool resource_manager_is_material_loaded(material_id_t mat_id);
