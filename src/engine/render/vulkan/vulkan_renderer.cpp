@@ -14,8 +14,8 @@
 #include "engine/render/vulkan/vulkan_include.h"
 #include "engine/render/vulkan/vulkan_renderer.h"
 #include "engine/render/vulkan/vulkan_resource_manager.h"
-#include "engine/render/vulkan/vulkan_startup.h"
 #include "engine/render/vulkan/vulkan_resources.h"
+#include "engine/render/vulkan/vulkan_startup.h"
 #include "engine/render/vulkan/vulkan_types.h"
 #include "engine/render/window.h"
 #include "engine/thirdparty/vulkan/vulkan_core.h"
@@ -49,8 +49,8 @@ void swapchain_recreate(context_t& context, renderer_globals_t& globals)
     // recreate in flight frames
     for (i32 i = 0; i < MAX_NUM_FRAMES_IN_FLIGHT; i++)
 	{
-        frame_destroy(*s_context, get_renderer_globals()->in_flight_frames[i]);
-        get_renderer_globals()->in_flight_frames[i] = frame_create(context);
+        frame_destroy(*s_context, renderer_globals_get()->in_flight_frames[i]);
+        renderer_globals_get()->in_flight_frames[i] = frame_create(context);
 	}
 
     mesh_instance_pipeline_refresh(context, s_viking_room_mesh_instance);
@@ -149,7 +149,7 @@ void renderer_init(window_t* app_window)
 void renderer_set_main_camera(camera_t* camera)
 {
     ASSERT(nullptr != camera); 
-    get_renderer_globals()->main_camera = camera;
+    renderer_globals_get()->main_camera = camera;
 }
 
 static
@@ -190,9 +190,9 @@ mesh_render_data_t* mesh_render_data_find(mesh_id_t mesh_id)
     const static i32 INVALID_INDEX = -1;
     i32 render_data_index = INVALID_INDEX;
 
-    for(i32 i = 0; i < get_renderer_globals()->loaded_mesh_render_data.size(); i++)
+    for(i32 i = 0; i < renderer_globals_get()->loaded_mesh_render_data.size(); i++)
     {
-        if(get_renderer_globals()->loaded_mesh_render_data[i]->mesh_id == mesh_id)
+        if(renderer_globals_get()->loaded_mesh_render_data[i]->mesh_id == mesh_id)
         {
             render_data_index = i;
             break;
@@ -201,7 +201,7 @@ mesh_render_data_t* mesh_render_data_find(mesh_id_t mesh_id)
 
     ASSERT(INVALID_INDEX != render_data_index);
 
-    return get_renderer_globals()->loaded_mesh_render_data[render_data_index];
+    return renderer_globals_get()->loaded_mesh_render_data[render_data_index];
 }
 
 static
@@ -224,26 +224,26 @@ void frame_generate_command_buffers(context_t& context, frame_t& frame)
         clear_colors.push_back(color_target_clear);
         clear_colors.push_back(depth_target_clear);
 
-        command_buffer_begin_render_pass(command_buffer, get_renderer_globals()->main_draw_render_pass.handle, frame.main_draw_framebuffer.handle, offset, context.swapchain.extent, clear_colors);
+        command_buffer_begin_render_pass(command_buffer, renderer_globals_get()->main_draw_render_pass.handle, frame.main_draw_framebuffer.handle, offset, context.swapchain.extent, clear_colors);
             {
                 const mesh_render_data_t* mesh_render_data = mesh_render_data_find(s_viking_room_mesh_instance.mesh_id);
                 mesh_instance_render_data_t instance_render_data = frame.mesh_instance_render_data[s_viking_room_mesh_instance.instance_id];
                 std::vector<VkDescriptorSet> draw_descriptor_sets = { 
-                                                                        get_renderer_globals()->global_ds.descriptor_set,
-                                                                        get_renderer_globals()->frame_ds.descriptor_set,
+                                                                        renderer_globals_get()->global_ds.descriptor_set,
+                                                                        frame.frame_render_data_descriptor_set.descriptor_set,
                                                                         s_viking_room_mesh_instance.material.descriptor_set.descriptor_set,
                                                                         instance_render_data.descriptor_set.descriptor_set  
                                                                     };
                 command_draw_mesh_instance(command_buffer, s_viking_room_mesh_instance, *mesh_render_data, draw_descriptor_sets);
             }
 
-            if(get_renderer_globals()->debug_render)
+            if(renderer_globals_get()->debug_render)
             {
                 const mesh_render_data_t* mesh_render_data = mesh_render_data_find(s_world_axes_mesh_instance.mesh_id);
                 mesh_instance_render_data_t instance_render_data = frame.mesh_instance_render_data[s_world_axes_mesh_instance.instance_id];
                 std::vector<VkDescriptorSet> draw_descriptor_sets = { 
-                                                                        get_renderer_globals()->global_ds.descriptor_set,
-                                                                        get_renderer_globals()->frame_ds.descriptor_set,
+                                                                        renderer_globals_get()->global_ds.descriptor_set,
+                                                                        frame.frame_render_data_descriptor_set.descriptor_set,
                                                                         s_world_axes_mesh_instance.material.descriptor_set.descriptor_set,
                                                                         instance_render_data.descriptor_set.descriptor_set  
                                                                     };
@@ -265,7 +265,7 @@ void renderer_update(f32 ds)
 {
     if(input_was_key_pressed(KeyCode::KEY_F1))
     {
-        get_renderer_globals()->debug_render = !get_renderer_globals()->debug_render; 
+        renderer_globals_get()->debug_render = !renderer_globals_get()->debug_render; 
     }
 
     static f32 time = 0.0f;
@@ -286,7 +286,7 @@ void renderer_update(f32 ds)
 
 void renderer_render_frame()
 {
-    frame_t& frame = get_renderer_globals()->in_flight_frames[get_renderer_globals()->cur_frame];
+    frame_t& frame = renderer_globals_get()->in_flight_frames[renderer_globals_get()->cur_frame];
 
 	// Wait for frame to finish in case its still in flight, this blocks on CPU
     fence_wait(*s_context, frame.frame_completed_fence);
@@ -295,12 +295,12 @@ void renderer_render_frame()
 	VkResult res = frame_acquire_next_image(*s_context, frame); 
 	if (res == VK_ERROR_OUT_OF_DATE_KHR)
 	{
-        swapchain_recreate(*s_context, *get_renderer_globals());
+        swapchain_recreate(*s_context, *renderer_globals_get());
 	    return;
 	}
 	ASSERT(res == VK_SUCCESS || res == VK_SUBOPTIMAL_KHR);
 
-    update_instance_data(*s_context, *get_renderer_globals()->main_camera, frame);
+    update_instance_data(*s_context, *renderer_globals_get()->main_camera, frame);
 
 	if (VK_NULL_HANDLE != s_context->swapchain.image_in_flight_fences[frame.swapchain_image_index].handle)
 	{
@@ -334,14 +334,14 @@ void renderer_render_frame()
     VkResult present_res = frame_present(*s_context, frame);
 	if (present_res == VK_ERROR_OUT_OF_DATE_KHR || present_res == VK_SUBOPTIMAL_KHR || s_context->window->was_resized)
 	{
-        swapchain_recreate(*s_context, *get_renderer_globals());
+        swapchain_recreate(*s_context, *renderer_globals_get());
 	}
 	else
 	{
 		VULKAN_ASSERT(res);
 	}
 
-    get_renderer_globals()->cur_frame = (get_renderer_globals()->cur_frame + 1) % MAX_NUM_FRAMES_IN_FLIGHT;
+    renderer_globals_get()->cur_frame = (renderer_globals_get()->cur_frame + 1) % MAX_NUM_FRAMES_IN_FLIGHT;
 }
 
 void renderer_deinit()
@@ -371,9 +371,9 @@ VkPrimitiveTopology primitive_topology_to_vk_topology(PrimitiveTopology topology
 
 void renderer_load_mesh(mesh_t* mesh)
 {
-    for(i32 i = 0; i < (i32)get_renderer_globals()->loaded_mesh_render_data.size(); i++)
+    for(i32 i = 0; i < (i32)renderer_globals_get()->loaded_mesh_render_data.size(); i++)
     {
-        if(get_renderer_globals()->loaded_mesh_render_data[i]->mesh_id == mesh->id)
+        if(renderer_globals_get()->loaded_mesh_render_data[i]->mesh_id == mesh->id)
         {
             return;
         }
@@ -397,15 +397,15 @@ void renderer_load_mesh(mesh_t* mesh)
     mesh_render_data->pipeline_vertex_input.vertex_input_info.vertexAttributeDescriptionCount = (u32)(mesh_render_data->pipeline_vertex_input.input_attr_descs.size());
     mesh_render_data->pipeline_vertex_input.vertex_input_info.pVertexAttributeDescriptions = mesh_render_data->pipeline_vertex_input.input_attr_descs.data();
 
-    get_renderer_globals()->loaded_mesh_render_data.push_back(mesh_render_data);
+    renderer_globals_get()->loaded_mesh_render_data.push_back(mesh_render_data);
 }
 
 void renderer_unload_mesh(mesh_id_t mesh_id)
 {
     i32 data_index = -1;
-    for(i32 i = 0; i < (i32)get_renderer_globals()->loaded_mesh_render_data.size(); i++)
+    for(i32 i = 0; i < (i32)renderer_globals_get()->loaded_mesh_render_data.size(); i++)
     {
-        if(get_renderer_globals()->loaded_mesh_render_data[i]->mesh_id == mesh_id)
+        if(renderer_globals_get()->loaded_mesh_render_data[i]->mesh_id == mesh_id)
         {
             data_index = i;
             break;
@@ -414,10 +414,10 @@ void renderer_unload_mesh(mesh_id_t mesh_id)
 
     if(-1 == data_index) return;
      
-    buffer_destroy(*s_context, get_renderer_globals()->loaded_mesh_render_data[data_index]->vertex_buffer);
-    buffer_destroy(*s_context, get_renderer_globals()->loaded_mesh_render_data[data_index]->index_buffer);
+    buffer_destroy(*s_context, renderer_globals_get()->loaded_mesh_render_data[data_index]->vertex_buffer);
+    buffer_destroy(*s_context, renderer_globals_get()->loaded_mesh_render_data[data_index]->index_buffer);
 
-    delete get_renderer_globals()->loaded_mesh_render_data[data_index];
+    delete renderer_globals_get()->loaded_mesh_render_data[data_index];
 
-    get_renderer_globals()->loaded_mesh_render_data.erase(get_renderer_globals()->loaded_mesh_render_data.begin() + data_index);
+    renderer_globals_get()->loaded_mesh_render_data.erase(renderer_globals_get()->loaded_mesh_render_data.begin() + data_index);
 }

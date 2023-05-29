@@ -8,6 +8,144 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "engine/thirdparty/stb/stb_image.h"
 
+static renderer_globals_t* s_globals = nullptr;
+
+void renderer_globals_create(context_t& context)
+{
+    s_globals = new renderer_globals_t;
+    s_globals->debug_render = false;
+
+    // render pass
+    {
+        render_pass_attachments_t attachments;
+        render_pass_add_attachment(attachments, context.swapchain.format, context.device.max_num_msaa_samples, 
+                                                 VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
+                                                 VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, 
+                                                 VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
+                                                 0);
+        render_pass_add_attachment(attachments, context.device.depth_format, context.device.max_num_msaa_samples, 
+                                                 VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 
+                                                 VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
+                                                 VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
+                                                 0);
+        render_pass_add_attachment(attachments, context.swapchain.format, VK_SAMPLE_COUNT_1_BIT, 
+                                                 VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
+                                                 VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE, 
+                                                 VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
+                                                 0);
+
+        subpasses_t subpasses;
+        subpasses_add_attachment_ref(subpasses, 0, SubpassAttachmentRefType::COLOR, 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        subpasses_add_attachment_ref(subpasses, 0, SubpassAttachmentRefType::DEPTH, 1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+        subpasses_add_attachment_ref(subpasses, 0, SubpassAttachmentRefType::RESOLVE, 2, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+        subpass_dependencies_t subpass_dependencies;
+        subpass_add_dependency(subpass_dependencies, VK_SUBPASS_EXTERNAL, 
+                                                     0, 
+                                                     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+                                                     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+                                                     0,
+                                                     VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+
+        s_globals->main_draw_render_pass = render_pass_create(context, attachments, subpasses, subpass_dependencies);
+    }
+
+    // global data descriptor pool and set
+    {
+        descriptor_set_layout_bindings_t bindings;
+        descriptor_set_layout_add_binding(bindings, 0, 1, VK_DESCRIPTOR_TYPE_SAMPLER, VK_SHADER_STAGE_ALL);
+        s_globals->global_data_ds_layout = descriptor_set_layout_create(context, bindings);
+
+        const i32 EMPTY_SET = 1;
+        const i32 MAX_SETS = 1;
+        descriptor_pool_sizes_t pool_sizes;
+        descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_SAMPLER, MAX_SETS);
+        s_globals->global_data_dp = descriptor_pool_create(context, pool_sizes, MAX_SETS + EMPTY_SET);
+
+        s_globals->global_ds = descriptor_set_allocate(context, s_globals->global_data_dp, s_globals->global_data_ds_layout);
+
+        s_globals->linear_sampler_2d = sampler_create(context, 10);
+
+        descriptor_sets_writes_t descriptor_sets_writes;
+        descriptor_sets_writes_add_sampler(descriptor_sets_writes, s_globals->global_ds, s_globals->linear_sampler_2d, 0, 0, 1);
+        descriptor_sets_write(context, descriptor_sets_writes);
+    }
+
+    // frame data descriptor set layout and pool
+    {
+        descriptor_set_layout_bindings_t bindings;
+        descriptor_set_layout_add_binding(bindings, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL);
+        s_globals->frame_render_data_descriptor_set_layout = descriptor_set_layout_create(context, bindings);
+
+        descriptor_pool_sizes_t pool_sizes;
+        descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_NUM_FRAMES_IN_FLIGHT);
+        s_globals->frame_render_data_descriptor_pool = descriptor_pool_create(context, pool_sizes, MAX_NUM_FRAMES_IN_FLIGHT);
+    }
+
+    // material data descriptor pool
+    {
+        const i32 INITIAL_MAX_SETS = 100;
+        descriptor_pool_sizes_t pool_sizes;
+        descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, INITIAL_MAX_SETS);
+        s_globals->material_data_dp = descriptor_pool_create(context, pool_sizes, INITIAL_MAX_SETS);
+    }
+
+    // mesh instance data descriptor set layout
+    {
+        descriptor_set_layout_bindings_t bindings;
+        descriptor_set_layout_add_binding(bindings, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
+        s_globals->mesh_instance_render_data_ds_layout = descriptor_set_layout_create(context, bindings);
+    }
+
+    // empty descriptor set for binding in places where we don't need a ds for materials
+    {
+        descriptor_set_layout_bindings_t bindings;
+        descriptor_set_layout_t empty_layout = descriptor_set_layout_create(context, bindings);
+        s_globals->empty_descriptor_set = descriptor_set_allocate(context, s_globals->global_data_dp, empty_layout);
+        descriptor_set_layout_destroy(context, empty_layout);
+    }
+
+    // frames
+    s_globals->in_flight_frames.resize(MAX_NUM_FRAMES_IN_FLIGHT);
+    for (i32 i = 0; i < MAX_NUM_FRAMES_IN_FLIGHT; i++)
+    {
+        s_globals->in_flight_frames[i] = frame_create(context);
+    }
+}
+
+void renderer_globals_destroy(context_t& context)
+{
+    for (i32 i = 0; i < MAX_NUM_FRAMES_IN_FLIGHT; i++)
+	{
+        frame_destroy(context, s_globals->in_flight_frames[i]);
+	}
+
+    descriptor_set_layout_destroy(context, s_globals->global_data_ds_layout);
+    descriptor_set_layout_destroy(context, s_globals->frame_render_data_descriptor_set_layout);
+    descriptor_set_layout_destroy(context, s_globals->mesh_instance_render_data_ds_layout);
+
+    descriptor_pool_destroy(context, s_globals->global_data_dp);
+    descriptor_pool_destroy(context, s_globals->frame_render_data_descriptor_pool);
+    descriptor_pool_destroy(context, s_globals->material_data_dp);
+
+    sampler_destroy(context, s_globals->linear_sampler_2d);
+
+    for(i32 i = 0; i < (i32)s_globals->loaded_mesh_render_data.size(); i++)
+    {
+        buffer_destroy(context, s_globals->loaded_mesh_render_data[i]->vertex_buffer);
+        buffer_destroy(context, s_globals->loaded_mesh_render_data[i]->index_buffer);
+    }
+
+    render_pass_destroy(context, s_globals->main_draw_render_pass);
+    delete s_globals;
+}
+
+
+renderer_globals_t* renderer_globals_get()
+{
+    return s_globals;
+}
+
 VkImageView image_view_create(device_t& device, VkImage image, VkFormat format, VkImageAspectFlags aspect_flags, u32 num_mips)
 {
     VkImageViewCreateInfo create_info = {};
@@ -778,10 +916,10 @@ void pipeline_create_color_blend_state(pipeline_color_blend_state_t& color_blend
 pipeline_layout_t pipeline_create_layout(context_t& context, mesh_instance_t& mesh_instance)
 {
     std::vector<VkDescriptorSetLayout> descriptor_set_layouts = { 
-                                                                  get_renderer_globals()->global_data_ds_layout.handle,
-                                                                  get_renderer_globals()->frame_data_ds_layout.handle,
-                                                                  get_renderer_globals()->material_data_ds_layout.handle,
-                                                                  get_renderer_globals()->mesh_instance_render_data_ds_layout.handle 
+                                                                  renderer_globals_get()->global_data_ds_layout.handle,
+                                                                  renderer_globals_get()->frame_render_data_descriptor_set_layout.handle,
+                                                                  mesh_instance.material.descriptor_set_layout.handle,
+                                                                  renderer_globals_get()->mesh_instance_render_data_ds_layout.handle 
                                                                 };
 
     VkPipelineLayoutCreateInfo layout_info = {};
@@ -929,7 +1067,7 @@ material_t material_create(context_t& context, material_create_info_t& create_in
     }
 
     material.descriptor_set_layout = descriptor_set_layout_create(context, bindings);
-    material.descriptor_set = descriptor_set_allocate(context, get_renderer_globals()->material_data_dp, material.descriptor_set_layout);
+    material.descriptor_set = descriptor_set_allocate(context, renderer_globals_get()->material_data_dp, material.descriptor_set_layout);
 
     descriptor_sets_writes_t descriptor_sets_writes;
     for(material_resource_t& resource : create_info.resources)
@@ -1019,7 +1157,7 @@ void mesh_instance_pipeline_create(context_t& context, mesh_instance_t& mesh_ins
                                                       depth_stencil_state, 
                                                       color_blend_state, 
                                                       pipeline_layout, 
-                                                      get_renderer_globals()->main_draw_render_pass);
+                                                      renderer_globals_get()->main_draw_render_pass);
 }
 
 void mesh_instance_pipeline_refresh(context_t& context, mesh_instance_t& mesh_instance)
@@ -1057,7 +1195,22 @@ frame_t frame_create(context_t& context)
             VK_SAMPLE_COUNT_1_BIT);
 
     std::vector<VkImageView> attachments = { frame.main_draw_color_target.image_view, frame.main_draw_depth_target.image_view, frame.main_draw_resolve_target.image_view };
-    frame.main_draw_framebuffer = framebuffer_create(context, get_renderer_globals()->main_draw_render_pass, attachments, context.swapchain.extent.width, context.swapchain.extent.height, 1);
+    frame.main_draw_framebuffer = framebuffer_create(context, renderer_globals_get()->main_draw_render_pass, attachments, context.swapchain.extent.width, context.swapchain.extent.height, 1);
+
+    // set up frame render data
+    {
+        frame.frame_render_data_descriptor_set = descriptor_set_allocate(context, renderer_globals_get()->frame_render_data_descriptor_pool, renderer_globals_get()->frame_render_data_descriptor_set_layout);
+
+        frame.frame_render_data_buffer = buffer_create(context, BufferType::kUniformBuffer, sizeof(frame_render_data_t));
+        buffer_update(context, frame.frame_render_data_buffer, context.graphics_command_pool, &frame.frame_render_data);
+
+        descriptor_sets_writes_t descriptor_sets_writes;
+        descriptor_sets_writes_add_uniform_buffer(descriptor_sets_writes, 
+                                                  frame.frame_render_data_descriptor_set, 
+                                                  frame.frame_render_data_buffer, 
+                                                  0, 0, 0, 1);
+        descriptor_sets_write(context, descriptor_sets_writes);
+    }
 
     // instance render data descriptor pool
     const i32 INITIAL_MAX_SETS = 100;
@@ -1077,6 +1230,7 @@ void frame_destroy(context_t& context, frame_t& frame)
         buffer_destroy(context, frame.mesh_instance_render_data[i].data_buffer);
     }
 
+    buffer_destroy(context, frame.frame_render_data_buffer);
     descriptor_pool_destroy(context, frame.mesh_instance_render_data_descriptor_pool);
     framebuffer_destroy(context, frame.main_draw_framebuffer);
     texture_destroy(context, frame.main_draw_color_target);

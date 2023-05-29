@@ -353,6 +353,10 @@ struct frame_t
     semaphore_t render_finished_semaphore;
     fence_t frame_completed_fence;
 
+    frame_render_data_t frame_render_data;
+    buffer_t frame_render_data_buffer;
+    descriptor_set_t frame_render_data_descriptor_set;
+
     descriptor_pool_t mesh_instance_render_data_descriptor_pool;
     std::vector<mesh_instance_render_data_t> mesh_instance_render_data;
 
@@ -370,30 +374,28 @@ struct renderer_globals_t
     std::vector<VkFence> swapchain_images_in_flight;
     u32 cur_frame = 0;
 
+    // TODO: move mesh render data to resource manager
     std::vector<mesh_render_data_t*> loaded_mesh_render_data;
-
     descriptor_set_layout_t mesh_instance_render_data_ds_layout;
 
+    // global descriptors
     sampler_t linear_sampler_2d;
     descriptor_set_layout_t global_data_ds_layout;
     descriptor_pool_t global_data_dp;
     descriptor_set_t global_ds;
 
+    // frame data descriptor setup
+    descriptor_set_layout_t frame_render_data_descriptor_set_layout;
+    descriptor_pool_t frame_render_data_descriptor_pool;
+
+    // empty descriptor set for binding where we need padding between sets
     descriptor_set_t empty_descriptor_set;
 
     ///////////////////
-    // temp (or maybe not??)
-    descriptor_set_layout_t material_data_ds_layout;
-    descriptor_set_layout_t frame_data_ds_layout;
-
-    descriptor_pool_t frame_data_dp;
+    //temp
+    //descriptor_set_layout_t material_data_ds_layout;
     descriptor_pool_t material_data_dp;
-
-    descriptor_set_t frame_ds;
-    descriptor_set_t material_ds;
-
-    frame_render_data_t frame_render_data;
-    buffer_t frame_render_data_buffer;
+    //descriptor_set_t material_ds;
     ///////////////////
 
     //render_pass_t depth_only_render_pass;

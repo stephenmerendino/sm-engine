@@ -2,6 +2,11 @@
 
 #include "engine/render/vulkan/vulkan_types.h"
 
+// globals
+void renderer_globals_create(context_t& context);
+void renderer_globals_destroy(context_t& context);
+renderer_globals_t* renderer_globals_get();
+
 // textures/images
 VkImageView image_view_create(device_t& device, VkImage image, VkFormat format, VkImageAspectFlags aspect_flags, u32 num_mips);
 VkImageView image_view_create(context_t& context, VkImage image, VkFormat format, VkImageAspectFlags aspect_flags, u32 num_mips);
