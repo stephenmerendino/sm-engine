@@ -30,10 +30,10 @@ struct scene_t
 {
     std::vector<mesh_instance_t> mesh_instances;
 };
+static scene_t s_scene;
 
-static mesh_instance_t s_viking_room_mesh_instance;
-static mesh_instance_t s_world_axes_mesh_instance;
-
+static mesh_instance_id_t s_viking_room_id;
+static mesh_instance_id_t s_world_axes_id;
 
 static
 material_t material_create(context_t& context, material_create_info_t& create_info)
@@ -131,11 +131,12 @@ static
 mesh_instance_t mesh_instance_create(context_t& context, mesh_id_t mesh_id, material_id_t mat_id)
 {
     mesh_instance_t mesh_instance;
+    mesh_instance.mesh_instance_id = guid_generate();
     mesh_instance.mesh_id = mesh_id;
-    mesh_instance.transform.model = MAT44_IDENTITY;
     mesh_instance.material_id = mat_id;
-    mesh_instance_pipeline_create(context, mesh_instance);
     resource_manager_acquire_material(mat_id);
+    mesh_instance.transform.model = MAT44_IDENTITY;
+    mesh_instance_pipeline_create(context, mesh_instance);
     return mesh_instance;
 }
 
@@ -281,6 +282,15 @@ void frame_update_instance_data(context_t& context, frame_t& frame, instance_dra
 }
 
 static
+void scene_refresh_pipelines(context_t& context)
+{
+    for(mesh_instance_t& mesh_instance : s_scene.mesh_instances)
+    {
+        mesh_instance_pipeline_refresh(context, mesh_instance);
+    }
+}
+
+static
 void swapchain_recreate(context_t& context)
 {
     if(context.window->was_closed || context.window->width == 0 || context.window->height == 0)
@@ -301,8 +311,7 @@ void swapchain_recreate(context_t& context)
         s_globals->in_flight_frames[i] = frame_create(context);
 	}
 
-    mesh_instance_pipeline_refresh(context, s_viking_room_mesh_instance);
-    mesh_instance_pipeline_refresh(context, s_world_axes_mesh_instance);
+    scene_refresh_pipelines(context);
 }
 
 static
@@ -320,20 +329,13 @@ void update_mesh_instance_render_data(context_t& context, camera_t& camera, fram
         frame.mesh_instance_render_data[i].is_assigned = false;
     }
 
+    // assign instance id for this frame and update instance draw data for each mesh instance
+    for(mesh_instance_t& mesh_instance : s_scene.mesh_instances)
     {
-        s_viking_room_mesh_instance.instance_id = frame_get_or_allocate_instance_draw_data(context, frame);
-
+        mesh_instance.instance_id = frame_get_or_allocate_instance_draw_data(context, frame);
         instance_draw_data_t instance_draw_data;
-        instance_draw_data.mvp = s_viking_room_mesh_instance.transform.model * view_projection;
-        frame_update_instance_data(context, frame, s_viking_room_mesh_instance.instance_id, instance_draw_data);
-    }
-
-    {
-        s_world_axes_mesh_instance.instance_id = frame_get_or_allocate_instance_draw_data(context, frame);
-
-        instance_draw_data_t instance_draw_data;
-        instance_draw_data.mvp = s_world_axes_mesh_instance.transform.model * view_projection;
-        frame_update_instance_data(context, frame, s_world_axes_mesh_instance.instance_id, instance_draw_data);
+        instance_draw_data.mvp = mesh_instance.transform.model * view_projection;
+        frame_update_instance_data(context, frame, mesh_instance.instance_id, instance_draw_data);
     }
 
     // update descriptors
@@ -456,6 +458,42 @@ void renderer_globals_create(context_t& context)
 }
 
 static
+void scene_add_mesh_instance(mesh_instance_t& mesh_instance)
+{
+    s_scene.mesh_instances.push_back(mesh_instance);
+}
+
+static
+mesh_instance_id_t scene_create_and_add_mesh_instance(context_t& context, mesh_id_t mesh_id, material_id_t mat_id)
+{
+    mesh_instance_t mesh_instance = mesh_instance_create(context, mesh_id, mat_id);
+    scene_add_mesh_instance(mesh_instance);
+    return mesh_instance.mesh_instance_id;
+}
+
+static
+mesh_instance_t* scene_get_mesh_instance(mesh_instance_id_t mesh_instance_id)
+{
+    for(i32 i = 0; i < (i32)s_scene.mesh_instances.size(); i++)
+    {
+        if(s_scene.mesh_instances[i].mesh_instance_id == mesh_instance_id)
+        {
+            return &s_scene.mesh_instances[i];
+        }
+    }
+
+    return nullptr;
+}
+
+static
+void scene_set_mesh_instance_transform(mesh_instance_id_t mesh_instance_id, const transform_t& transform)
+{
+    mesh_instance_t* mesh_instance = scene_get_mesh_instance(mesh_instance_id);
+    ASSERT(nullptr != mesh_instance);
+    mesh_instance->transform = transform;
+}
+
+static
 void renderer_globals_destroy(context_t& context)
 {
     for (i32 i = 0; i < MAX_NUM_FRAMES_IN_FLIGHT; i++)
@@ -506,13 +544,15 @@ void renderer_load_assets(context_t& context)
         // meshes
         mesh_id_t viking_room_mesh_id = resource_manager_load_obj_mesh(context, "models/viking_room.obj");
         mesh_id_t cube_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kCube);
-        s_viking_room_mesh_instance = mesh_instance_create(*s_context, cube_mesh_id, "viking_room_mat");
+        material_id_t viking_room_mat_id = resource_manager_get_material_id("viking_room_mat");
+        s_viking_room_id = scene_create_and_add_mesh_instance(context, cube_mesh_id, viking_room_mat_id);
     }
 
     // world axes
     {
         mesh_id_t world_axes_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kAxes);
-        s_world_axes_mesh_instance = mesh_instance_create(*s_context, world_axes_mesh_id, "simple_vert_color");
+        material_id_t simple_vert_color_mat_id = resource_manager_get_material_id("simple_vert_color");
+        s_world_axes_id = scene_create_and_add_mesh_instance(*s_context, world_axes_mesh_id, simple_vert_color_mat_id);
     }
 }
 
@@ -590,31 +630,18 @@ void frame_generate_command_buffers(context_t& context, frame_t& frame)
         clear_colors.push_back(depth_target_clear);
 
         command_buffer_begin_render_pass(command_buffer, s_globals->main_draw_render_pass.handle, frame.main_draw_framebuffer.handle, offset, context.swapchain.extent, clear_colors);
+            for(mesh_instance_t& mesh_instance : s_scene.mesh_instances)
             {
-                const mesh_render_data_t* mesh_render_data = resource_manager_get_mesh_render_data(s_viking_room_mesh_instance.mesh_id);
-                const material_t* mat = resource_manager_get_material(s_viking_room_mesh_instance.material_id);
-                mesh_instance_render_data_t instance_render_data = frame.mesh_instance_render_data[s_viking_room_mesh_instance.instance_id];
+                const mesh_render_data_t* mesh_render_data = resource_manager_get_mesh_render_data(mesh_instance.mesh_id);
+                const material_t* mat = resource_manager_get_material(mesh_instance.material_id);
+                mesh_instance_render_data_t instance_render_data = frame.mesh_instance_render_data[mesh_instance.instance_id];
                 std::vector<VkDescriptorSet> draw_descriptor_sets = { 
                                                                         s_globals->global_ds.descriptor_set,
                                                                         frame.frame_render_data_descriptor_set.descriptor_set,
                                                                         mat->descriptor_set.descriptor_set,
                                                                         instance_render_data.descriptor_set.descriptor_set  
                                                                     };
-                command_draw_mesh_instance(command_buffer, s_viking_room_mesh_instance, *mesh_render_data, draw_descriptor_sets);
-            }
-
-            if(s_globals->debug_render)
-            {
-                const mesh_render_data_t* mesh_render_data = resource_manager_get_mesh_render_data(s_world_axes_mesh_instance.mesh_id);
-                const material_t* mat = resource_manager_get_material(s_viking_room_mesh_instance.material_id);
-                mesh_instance_render_data_t instance_render_data = frame.mesh_instance_render_data[s_world_axes_mesh_instance.instance_id];
-                std::vector<VkDescriptorSet> draw_descriptor_sets = { 
-                                                                        s_globals->global_ds.descriptor_set,
-                                                                        frame.frame_render_data_descriptor_set.descriptor_set,
-                                                                        mat->descriptor_set.descriptor_set,
-                                                                        instance_render_data.descriptor_set.descriptor_set  
-                                                                    };
-                command_draw_mesh_instance(command_buffer, s_world_axes_mesh_instance, *mesh_render_data, draw_descriptor_sets);
+                command_draw_mesh_instance(command_buffer, mesh_instance, *mesh_render_data, draw_descriptor_sets);
             }
         command_buffer_end_render_pass(command_buffer);
 
@@ -654,8 +681,9 @@ void renderer_update(f32 ds)
     mat44 rotation = make_rotation_x_deg(cosf(time) * 180.0f);
     rotate_y_deg(rotation, sinf(time) * 180.0f);
 
-    set_translation(s_viking_room_mesh_instance.transform.model, position_ws);
-    set_rotation(s_viking_room_mesh_instance.transform.model, rotation);
+    mesh_instance_t* viking_room = scene_get_mesh_instance(s_viking_room_id);
+    set_translation(viking_room->transform.model, position_ws);
+    set_rotation(viking_room->transform.model, rotation);
     /////////////////////////////////////////////
 }
 
@@ -725,9 +753,10 @@ void renderer_deinit()
 {
     vkDeviceWaitIdle(s_context->device.device_handle);
 
-
-    mesh_instance_destroy(*s_context, s_world_axes_mesh_instance);
-    mesh_instance_destroy(*s_context, s_viking_room_mesh_instance);
+    for(mesh_instance_t& mesh_instance : s_scene.mesh_instances)
+    {
+        mesh_instance_destroy(*s_context, mesh_instance);
+    }
 
     renderer_globals_destroy(*s_context);
     resource_manager_deinit(*s_context);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "engine/core/config.h"
+#include "engine/core/guid.h"
 #include "engine/core/types.h"
 #include "engine/math/mat44.h"
 #include "engine/render/mesh.h"
@@ -334,9 +335,11 @@ struct mesh_instance_render_data_t
     bool is_assigned = false;
 };
 
+typedef guid_t mesh_instance_id_t;
 typedef u32 instance_draw_id_t;
 struct mesh_instance_t 
 {
+    mesh_instance_id_t mesh_instance_id;
     mesh_id_t mesh_id;
     instance_draw_id_t instance_id;
     material_id_t material_id;
