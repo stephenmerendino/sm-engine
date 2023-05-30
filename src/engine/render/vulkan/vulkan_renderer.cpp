@@ -468,6 +468,40 @@ void scene_add_mesh_instance(mesh_instance_t& mesh_instance)
 }
 
 static
+void scene_remove_mesh_instance(const mesh_instance_id_t& mesh_instance_id)
+{
+    i32 mesh_index = -1;
+    for(i32 i = 0; i < (i32)s_scene.mesh_instances.size(); i++)
+    {
+        if(s_scene.mesh_instances[i].mesh_instance_id == mesh_instance_id)
+        {
+            mesh_index = i;
+            break;
+        }
+    }
+
+    ASSERT(-1 != mesh_index);
+    s_scene.mesh_instances.erase(s_scene.mesh_instances.begin() + mesh_index);
+}
+
+static
+void scene_remove_mesh_instance(const name_id_t& name_id)
+{
+    i32 mesh_index = -1;
+    for(i32 i = 0; i < (i32)s_scene.mesh_instances.size(); i++)
+    {
+        if(s_scene.mesh_instances[i].name_id == name_id)
+        {
+            mesh_index = i;
+            break;
+        }
+    }
+
+    ASSERT(-1 != mesh_index);
+    s_scene.mesh_instances.erase(s_scene.mesh_instances.begin() + mesh_index);
+}
+
+static
 mesh_instance_id_t scene_create_and_add_mesh_instance(context_t& context, const char* name, mesh_id_t mesh_id, material_id_t mat_id)
 {
     mesh_instance_t mesh_instance = mesh_instance_create(context, name, mesh_id, mat_id);
@@ -534,6 +568,38 @@ void renderer_globals_destroy(context_t& context)
 }
 
 static
+void add_random_mesh_to_scene(context_t& context)
+{
+    static i32 counter = 0;
+
+    mesh_id_t viking_room_mesh_id = resource_manager_load_obj_mesh(context, "models/viking_room.obj");
+    mesh_id_t cube_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kCube);
+    material_id_t viking_room_mat_id = resource_manager_get_material_id("viking_room_mat");
+
+    std::string name = "random mesh ";
+    name += counter;
+
+    mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, name.data(), cube_mesh_id, viking_room_mat_id);
+    mesh_instance_t* mi = scene_get_mesh_instance(mesh_instance_id);
+
+    size_t num_meshes = s_scene.mesh_instances.size();
+    vec3 starting_point = make_vec3((f32)((num_meshes + 1) * 3), 0.0f, 0.0f);
+    set_translation(mi->transform.model, starting_point);
+
+    counter++;
+}
+
+static
+void remove_most_recent_mesh_from_scene()
+{
+    if(s_scene.mesh_instances.size() > 0)
+    {
+        mesh_instance_id_t last_mesh = s_scene.mesh_instances[s_scene.mesh_instances.size() - 1].mesh_instance_id;
+        scene_remove_mesh_instance(last_mesh);
+    }
+}
+
+static
 void renderer_load_assets(context_t& context)
 {
     {
@@ -569,14 +635,8 @@ void renderer_load_assets(context_t& context)
         resource_manager_track_material_TEMP("simple_vert_color", simple_vert_color_material);
     }
 
-    // viking room
-    {
-        // meshes
-        mesh_id_t viking_room_mesh_id = resource_manager_load_obj_mesh(context, "models/viking_room.obj");
-        mesh_id_t cube_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kCube);
-        material_id_t viking_room_mat_id = resource_manager_get_material_id("viking_room_mat");
-        scene_create_and_add_mesh_instance(context, "viking room", cube_mesh_id, viking_room_mat_id);
-    }
+    resource_manager_load_obj_mesh(context, "models/viking_room.obj");
+    add_random_mesh_to_scene(context);
 
     // world axes
     {
@@ -692,6 +752,16 @@ void renderer_update(f32 ds)
         s_globals->debug_render = !s_globals->debug_render; 
     }
 
+    if(input_was_key_pressed(KeyCode::KEY_UPARROW) || input_is_key_down(KeyCode::KEY_UPARROW))
+    {
+        add_random_mesh_to_scene(*s_context);
+    }
+
+    if(input_was_key_pressed(KeyCode::KEY_DOWNARROW) || input_is_key_down(KeyCode::KEY_DOWNARROW))
+    {
+        remove_most_recent_mesh_from_scene();
+    }
+
     // update frame render data on cpu side, it gets uploaded to gpu buffer during renderer_render_frame()
     frame_t& frame = s_globals->in_flight_frames[s_globals->cur_frame];
     frame.frame_render_data.time += ds;
@@ -699,35 +769,39 @@ void renderer_update(f32 ds)
 
     /////////////////////////////////////////////
     // TEMP
-    static f32 time = 0.0f;
-
-    if(!s_globals->debug_render)
-    {
-        time += ds;
-    }
-
-    f32 radius = 3.0f;
-    f32 x = radius * cosf(time);
-    f32 y = radius * sinf(time);
-    f32 z = cosf(x + y);
-    vec3 position_ws = make_vec3(x, y, z);
-
-    mat44 rotation = make_rotation_x_deg(cosf(time) * 180.0f);
-    rotate_y_deg(rotation, sinf(time) * 180.0f);
-
-    name_id_t viking_room_name_id = mesh_instance_get_name_id("viking room");
-    mesh_instance_t* viking_room = scene_get_mesh_instance(viking_room_name_id);
     if(s_globals->debug_render)
     {
-        material_id_t uv_debug_id = resource_manager_get_material_id("uv_debug_mat");
-        viking_room->material_id = uv_debug_id;    
+        ds = 0.0f;
     }
-    else
+
+    static f32 pos_degs_per_second = 60.0f;
+    static f32 rot_degs_per_second = 90.0f;
+
+    name_id_t world_axes_name_id = mesh_instance_get_name_id("world axes");
+    material_id_t uv_debug_mat_id = resource_manager_get_material_id("uv_debug_mat");
+    material_id_t viking_room_mat_id = resource_manager_get_material_id("viking_room_mat");
+
+    for(i32 i = 0; i < (i32)s_scene.mesh_instances.size(); i++)
     {
-        material_id_t viking_room_mat_id = resource_manager_get_material_id("viking_room_mat");
-        viking_room->material_id = viking_room_mat_id;    
-        set_translation(viking_room->transform.model, position_ws);
-        set_rotation(viking_room->transform.model, rotation);
+        mesh_instance_t& mesh_instance = s_scene.mesh_instances[i]; 
+        if(mesh_instance.name_id != world_axes_name_id)
+        {
+            mat44 rotation = make_rotation_z_deg(pos_degs_per_second * ds);
+            mesh_instance.transform.model *= rotation;
+
+            mat44 model_rotation = make_rotation_x_deg(rot_degs_per_second * ds);
+            rotate_y_deg(rotation, rot_degs_per_second * ds);
+            transform_in_model_space(mesh_instance.transform.model, model_rotation);
+
+            if(s_globals->debug_render)
+            {
+                mesh_instance.material_id = uv_debug_mat_id;
+            }
+            else
+            {
+               mesh_instance.material_id = viking_room_mat_id; 
+            }
+        }
     }
     /////////////////////////////////////////////
 }

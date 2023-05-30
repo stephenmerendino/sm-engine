@@ -521,6 +521,23 @@ vec3 transform_point(const mat44& m, const vec3& p)
 }
 
 inline
+void transform_in_model_space(mat44& m, const mat44& transform)
+{
+    vec3 translation = m.t.xyz; 
+    m *= make_translation(-translation);
+    m *= transform;
+    m *= make_translation(translation);
+}
+
+inline
+mat44 get_transformed_in_model_space(const mat44& m, const mat44& transform)
+{
+    mat44 copy = m;
+    transform_in_model_space(copy, transform);
+    return copy;
+}
+
+inline
 mat44 create_perspective_projection(f32 vertical_fov_deg, f32 near_plane, f32 far_plane, f32 aspect)
 {
 	f32 focal_len = 1.0f / tan_deg(vertical_fov_deg * 0.5f);
