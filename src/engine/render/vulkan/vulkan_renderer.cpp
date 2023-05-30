@@ -781,12 +781,16 @@ void renderer_update(f32 ds)
     material_id_t uv_debug_mat_id = resource_manager_get_material_id("uv_debug_mat");
     material_id_t viking_room_mat_id = resource_manager_get_material_id("viking_room_mat");
 
+    vec3 axis_of_rotation = make_vec3(1.0f, 1.0f, 1.0f);
+    normalize(axis_of_rotation);
+
     for(i32 i = 0; i < (i32)s_scene.mesh_instances.size(); i++)
     {
         mesh_instance_t& mesh_instance = s_scene.mesh_instances[i]; 
         if(mesh_instance.name_id != world_axes_name_id)
         {
-            mat44 rotation = make_rotation_z_deg(pos_degs_per_second * ds);
+            //mat44 rotation = make_rotation_z_deg(pos_degs_per_second * ds);
+            mat44 rotation = make_rotation_around_axis_deg(axis_of_rotation, pos_degs_per_second * ds);
             mesh_instance.transform.model *= rotation;
 
             mat44 model_rotation = make_rotation_x_deg(rot_degs_per_second * ds);

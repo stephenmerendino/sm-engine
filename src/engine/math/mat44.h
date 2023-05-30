@@ -84,6 +84,17 @@ mat44 make_mat44(f32 *data)
     return m;
 }
 
+inline
+mat44 make_mat44(const vec3& i, const vec3& j, const vec3& k)
+{
+    mat44 m;
+    m.i = make_vec4(i, 0.0f);
+    m.j = make_vec4(j, 0.0f);
+    m.k = make_vec4(k, 0.0f);
+    m.t = make_vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    return m;
+}
+
 static const mat44 MAT44_IDENTITY = make_mat44(1.0f, 0.0f, 0.0f, 0.0f,
                                                0.0f, 1.0f, 0.0f, 0.0f,
                                                0.0f, 0.0f, 1.0f, 0.0f,
@@ -475,6 +486,41 @@ mat44 make_rotation_z_rad(f32 z_rad)
 	mat44 m = MAT44_IDENTITY;
     rotate_z_rad(m, z_rad);
 	return m;
+}
+
+inline
+void rotate_around_axis_rad(mat44& m, const vec3& axis, f32 rad)
+{
+    vec3 i = get_normalized(axis); 
+    vec3 j = get_normalized(cross(VEC3_UP, axis));
+    vec3 k = cross(i, j);
+    mat44 axis_rotation_world_basis = make_mat44(i, j, k);
+    mat44 change_of_basis = get_transposed(axis_rotation_world_basis);
+    mat44 local_rotation = make_rotation_x_rad(rad);
+
+    m *= (change_of_basis * local_rotation * axis_rotation_world_basis);
+}
+
+inline
+void rotate_around_axis_deg(mat44& m, const vec3& axis, f32 deg)
+{
+    rotate_around_axis_rad(m, axis, deg_to_rad(deg));
+}
+
+inline
+mat44 make_rotation_around_axis_rad(const vec3& axis, f32 rad)
+{
+    mat44 m = MAT44_IDENTITY;
+    rotate_around_axis_rad(m, axis, rad);
+    return m;
+}
+
+inline
+mat44 make_rotation_around_axis_deg(const vec3& axis, f32 deg)
+{
+    mat44 m = MAT44_IDENTITY;
+    rotate_around_axis_deg(m, axis, deg);
+    return m;
 }
 
 inline
