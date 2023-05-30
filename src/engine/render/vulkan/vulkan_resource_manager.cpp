@@ -226,6 +226,12 @@ const material_t* resource_manager_get_material(material_id_t mat_id)
     return &s_managed_materials.materials[mat_index];
 }
 
+const material_t* resource_manager_get_material(const char* mat_name)
+{
+    material_id_t mat_id = resource_manager_get_material_id(mat_name);
+    return resource_manager_get_material(mat_id);
+}
+
 bool resource_manager_is_material_loaded(material_id_t mat_id)
 {
     return INVALID_MATERIAL_INDEX != resource_manager_get_material_index(mat_id);

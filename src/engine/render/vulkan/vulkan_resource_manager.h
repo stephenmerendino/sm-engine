@@ -25,4 +25,5 @@ void resource_manager_acquire_material(material_id_t mat_id);
 void resource_manager_material_release(context_t& context, material_id_t mat_id);
 material_id_t resource_manager_get_material_id(const char* mat_name);
 const material_t* resource_manager_get_material(material_id_t mat_id);
+const material_t* resource_manager_get_material(const char* mat_name);
 bool resource_manager_is_material_loaded(material_id_t mat_id);

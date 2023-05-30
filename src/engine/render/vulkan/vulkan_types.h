@@ -336,13 +336,15 @@ struct mesh_instance_render_data_t
 };
 
 typedef guid_t mesh_instance_id_t;
+typedef hash_id_t name_id_t;
 typedef u32 instance_draw_id_t;
 struct mesh_instance_t 
 {
     mesh_instance_id_t mesh_instance_id;
+    name_id_t name_id;
     mesh_id_t mesh_id;
-    instance_draw_id_t instance_id;
     material_id_t material_id;
+    instance_draw_id_t instance_id;
     transform_t transform;
     pipeline_t pipeline; // TODO: move this to resource manager
 };

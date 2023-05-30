@@ -32,9 +32,6 @@ struct scene_t
 };
 static scene_t s_scene;
 
-static mesh_instance_id_t s_viking_room_id;
-static mesh_instance_id_t s_world_axes_id;
-
 static
 material_t material_create(context_t& context, material_create_info_t& create_info)
 {
@@ -128,10 +125,17 @@ void mesh_instance_pipeline_create(context_t& context, mesh_instance_t& mesh_ins
 }
 
 static
-mesh_instance_t mesh_instance_create(context_t& context, mesh_id_t mesh_id, material_id_t mat_id)
+name_id_t mesh_instance_get_name_id(const char* name)
+{
+   return hash(name); 
+}
+
+static
+mesh_instance_t mesh_instance_create(context_t& context, const char* name, mesh_id_t mesh_id, material_id_t mat_id)
 {
     mesh_instance_t mesh_instance;
     mesh_instance.mesh_instance_id = guid_generate();
+    mesh_instance.name_id = mesh_instance_get_name_id(name);
     mesh_instance.mesh_id = mesh_id;
     mesh_instance.material_id = mat_id;
     resource_manager_acquire_material(mat_id);
@@ -141,9 +145,9 @@ mesh_instance_t mesh_instance_create(context_t& context, mesh_id_t mesh_id, mate
 }
 
 static
-mesh_instance_t mesh_instance_create(context_t& context, mesh_id_t mesh_id, const char* mat_name)
+mesh_instance_t mesh_instance_create(context_t& context, const char* name, mesh_id_t mesh_id, const char* mat_name)
 {
-   return mesh_instance_create(context, mesh_id, resource_manager_get_material_id(mat_name));
+   return mesh_instance_create(context, name, mesh_id, resource_manager_get_material_id(mat_name));
 }
 
 static
@@ -464,9 +468,9 @@ void scene_add_mesh_instance(mesh_instance_t& mesh_instance)
 }
 
 static
-mesh_instance_id_t scene_create_and_add_mesh_instance(context_t& context, mesh_id_t mesh_id, material_id_t mat_id)
+mesh_instance_id_t scene_create_and_add_mesh_instance(context_t& context, const char* name, mesh_id_t mesh_id, material_id_t mat_id)
 {
-    mesh_instance_t mesh_instance = mesh_instance_create(context, mesh_id, mat_id);
+    mesh_instance_t mesh_instance = mesh_instance_create(context, name, mesh_id, mat_id);
     scene_add_mesh_instance(mesh_instance);
     return mesh_instance.mesh_instance_id;
 }
@@ -477,6 +481,20 @@ mesh_instance_t* scene_get_mesh_instance(mesh_instance_id_t mesh_instance_id)
     for(i32 i = 0; i < (i32)s_scene.mesh_instances.size(); i++)
     {
         if(s_scene.mesh_instances[i].mesh_instance_id == mesh_instance_id)
+        {
+            return &s_scene.mesh_instances[i];
+        }
+    }
+
+    return nullptr;
+}
+
+static
+mesh_instance_t* scene_get_mesh_instance(name_id_t name_id)
+{
+    for(i32 i = 0; i < (i32)s_scene.mesh_instances.size(); i++)
+    {
+        if(s_scene.mesh_instances[i].name_id == name_id)
         {
             return &s_scene.mesh_instances[i];
         }
@@ -532,6 +550,18 @@ void renderer_load_assets(context_t& context)
 
     {
         material_create_info_t mat_create_info;
+        mat_create_info.vertex_shader_info = { "shaders/tri-vert.spv", "main" };
+        mat_create_info.fragment_shader_info = { "shaders/tri-frag.spv", "main" };
+
+        material_resource_t diffuse_texture = material_load_sampled_texture_resource(*s_context, "textures/uv-debug.jpg", 0, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
+        mat_create_info.resources.push_back(diffuse_texture);
+
+        material_t uv_debug_material = material_create(*s_context, mat_create_info);
+        resource_manager_track_material_TEMP("uv_debug_mat", uv_debug_material);
+    }
+
+    {
+        material_create_info_t mat_create_info;
         mat_create_info.vertex_shader_info = { "shaders/simple-color-vert.spv", "main" };
         mat_create_info.fragment_shader_info = { "shaders/simple-color-frag.spv", "main" };
 
@@ -545,14 +575,14 @@ void renderer_load_assets(context_t& context)
         mesh_id_t viking_room_mesh_id = resource_manager_load_obj_mesh(context, "models/viking_room.obj");
         mesh_id_t cube_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kCube);
         material_id_t viking_room_mat_id = resource_manager_get_material_id("viking_room_mat");
-        s_viking_room_id = scene_create_and_add_mesh_instance(context, cube_mesh_id, viking_room_mat_id);
+        scene_create_and_add_mesh_instance(context, "viking room", cube_mesh_id, viking_room_mat_id);
     }
 
     // world axes
     {
         mesh_id_t world_axes_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kAxes);
         material_id_t simple_vert_color_mat_id = resource_manager_get_material_id("simple_vert_color");
-        s_world_axes_id = scene_create_and_add_mesh_instance(*s_context, world_axes_mesh_id, simple_vert_color_mat_id);
+        scene_create_and_add_mesh_instance(*s_context, "world axes", world_axes_mesh_id, simple_vert_color_mat_id);
     }
 }
 
@@ -670,7 +700,11 @@ void renderer_update(f32 ds)
     /////////////////////////////////////////////
     // TEMP
     static f32 time = 0.0f;
-    time += ds;
+
+    if(!s_globals->debug_render)
+    {
+        time += ds;
+    }
 
     f32 radius = 3.0f;
     f32 x = radius * cosf(time);
@@ -681,9 +715,20 @@ void renderer_update(f32 ds)
     mat44 rotation = make_rotation_x_deg(cosf(time) * 180.0f);
     rotate_y_deg(rotation, sinf(time) * 180.0f);
 
-    mesh_instance_t* viking_room = scene_get_mesh_instance(s_viking_room_id);
-    set_translation(viking_room->transform.model, position_ws);
-    set_rotation(viking_room->transform.model, rotation);
+    name_id_t viking_room_name_id = mesh_instance_get_name_id("viking room");
+    mesh_instance_t* viking_room = scene_get_mesh_instance(viking_room_name_id);
+    if(s_globals->debug_render)
+    {
+        material_id_t uv_debug_id = resource_manager_get_material_id("uv_debug_mat");
+        viking_room->material_id = uv_debug_id;    
+    }
+    else
+    {
+        material_id_t viking_room_mat_id = resource_manager_get_material_id("viking_room_mat");
+        viking_room->material_id = viking_room_mat_id;    
+        set_translation(viking_room->transform.model, position_ws);
+        set_rotation(viking_room->transform.model, rotation);
+    }
     /////////////////////////////////////////////
 }
 
