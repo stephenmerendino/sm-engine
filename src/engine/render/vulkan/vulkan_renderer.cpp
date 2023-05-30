@@ -3,6 +3,7 @@
 #include "engine/core/debug.h"
 #include "engine/core/file.h"
 #include "engine/core/macros.h"
+#include "engine/core/random.h"
 #include "engine/input/input.h"
 #include "engine/math/mat44.h"
 #include "engine/render/Camera.h"
@@ -480,7 +481,10 @@ void scene_remove_mesh_instance(const mesh_instance_id_t& mesh_instance_id)
         }
     }
 
+    vkQueueWaitIdle(s_context->device.graphics_queue);
+
     ASSERT(-1 != mesh_index);
+    mesh_instance_destroy(*s_context, s_scene.mesh_instances[mesh_index]);
     s_scene.mesh_instances.erase(s_scene.mesh_instances.begin() + mesh_index);
 }
 
@@ -567,6 +571,8 @@ void renderer_globals_destroy(context_t& context)
     delete s_globals;
 }
 
+static std::vector<vec3> s_axis_of_rotation;
+
 static
 void add_random_mesh_to_scene(context_t& context)
 {
@@ -582,9 +588,14 @@ void add_random_mesh_to_scene(context_t& context)
     mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, name.data(), cube_mesh_id, viking_room_mat_id);
     mesh_instance_t* mi = scene_get_mesh_instance(mesh_instance_id);
 
-    size_t num_meshes = s_scene.mesh_instances.size();
-    vec3 starting_point = make_vec3((f32)((num_meshes + 1) * 3), 0.0f, 0.0f);
-    set_translation(mi->transform.model, starting_point);
+    f32 start_dist = random_number_between(1.5f, 10.0f);
+    vec3 start_dir = random_unit_vector();
+    vec3 start_pos = start_dir * start_dist;
+
+    set_translation(mi->transform.model, start_pos);
+
+    vec3 random_axis_of_rotation = random_unit_vector();
+    s_axis_of_rotation.push_back(random_axis_of_rotation);
 
     counter++;
 }
@@ -592,10 +603,12 @@ void add_random_mesh_to_scene(context_t& context)
 static
 void remove_most_recent_mesh_from_scene()
 {
-    if(s_scene.mesh_instances.size() > 0)
+    if(s_scene.mesh_instances.size() > 1)
     {
         mesh_instance_id_t last_mesh = s_scene.mesh_instances[s_scene.mesh_instances.size() - 1].mesh_instance_id;
         scene_remove_mesh_instance(last_mesh);
+
+        s_axis_of_rotation.erase(s_axis_of_rotation.begin() + s_axis_of_rotation.size() - 1);
     }
 }
 
@@ -635,15 +648,15 @@ void renderer_load_assets(context_t& context)
         resource_manager_track_material_TEMP("simple_vert_color", simple_vert_color_material);
     }
 
-    resource_manager_load_obj_mesh(context, "models/viking_room.obj");
-    add_random_mesh_to_scene(context);
-
     // world axes
     {
         mesh_id_t world_axes_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kAxes);
         material_id_t simple_vert_color_mat_id = resource_manager_get_material_id("simple_vert_color");
         scene_create_and_add_mesh_instance(*s_context, "world axes", world_axes_mesh_id, simple_vert_color_mat_id);
     }
+
+    resource_manager_load_obj_mesh(context, "models/viking_room.obj");
+    add_random_mesh_to_scene(context);
 }
 
 void renderer_init(window_t* app_window)
@@ -781,16 +794,14 @@ void renderer_update(f32 ds)
     material_id_t uv_debug_mat_id = resource_manager_get_material_id("uv_debug_mat");
     material_id_t viking_room_mat_id = resource_manager_get_material_id("viking_room_mat");
 
-    vec3 axis_of_rotation = make_vec3(1.0f, 1.0f, 1.0f);
-    normalize(axis_of_rotation);
-
     for(i32 i = 0; i < (i32)s_scene.mesh_instances.size(); i++)
     {
         mesh_instance_t& mesh_instance = s_scene.mesh_instances[i]; 
         if(mesh_instance.name_id != world_axes_name_id)
         {
             //mat44 rotation = make_rotation_z_deg(pos_degs_per_second * ds);
-            mat44 rotation = make_rotation_around_axis_deg(axis_of_rotation, pos_degs_per_second * ds);
+            mat44 rotation = make_rotation_around_axis_deg(s_axis_of_rotation[i - 1], pos_degs_per_second * ds);
+
             mesh_instance.transform.model *= rotation;
 
             mat44 model_rotation = make_rotation_x_deg(rot_degs_per_second * ds);
