@@ -139,7 +139,7 @@ mesh_instance_t mesh_instance_create(context_t& context, const char* name, mesh_
     mesh_instance.name_id = mesh_instance_get_name_id(name);
     mesh_instance.mesh_id = mesh_id;
     mesh_instance.material_id = mat_id;
-    resource_manager_acquire_material(mat_id);
+    resource_manager_material_acquire(mat_id);
     mesh_instance.transform.model = MAT44_IDENTITY;
     mesh_instance_pipeline_create(context, mesh_instance);
     return mesh_instance;
@@ -213,11 +213,11 @@ frame_t frame_create(context_t& context)
     }
 
     // instance render data descriptor pool
-    const i32 INITIAL_MAX_SETS = 100;
+    const i32 MAX_SETS = 1024;
     descriptor_pool_sizes_t pool_sizes;
-    descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, INITIAL_MAX_SETS);
-    descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, INITIAL_MAX_SETS);
-    frame.mesh_instance_render_data_descriptor_pool = descriptor_pool_create(context, pool_sizes, INITIAL_MAX_SETS);
+    descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_SETS);
+    descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_SETS);
+    frame.mesh_instance_render_data_descriptor_pool = descriptor_pool_create(context, pool_sizes, MAX_SETS);
 
     return frame;
 }
@@ -758,6 +758,20 @@ void frame_generate_command_buffers(context_t& context, frame_t& frame)
     command_buffer_end(command_buffer);
 }
 
+static
+void mesh_instance_set_material(context_t& context, mesh_instance_t* mesh_instance, material_id_t new_mat_id)
+{
+    ASSERT(nullptr != mesh_instance);
+    if (mesh_instance->material_id == new_mat_id)
+    {
+        return;
+    }
+
+    resource_manager_material_release(context, mesh_instance->material_id);
+    resource_manager_material_acquire(new_mat_id);
+    mesh_instance->material_id = new_mat_id;
+}
+
 void renderer_update(f32 ds)
 {
     if(input_was_key_pressed(KeyCode::KEY_F1))
@@ -765,12 +779,12 @@ void renderer_update(f32 ds)
         s_globals->debug_render = !s_globals->debug_render; 
     }
 
-    if(input_was_key_pressed(KeyCode::KEY_UPARROW) || input_is_key_down(KeyCode::KEY_UPARROW))
+    if(input_was_key_pressed(KeyCode::KEY_UPARROW))
     {
         add_random_mesh_to_scene(*s_context);
     }
 
-    if(input_was_key_pressed(KeyCode::KEY_DOWNARROW) || input_is_key_down(KeyCode::KEY_DOWNARROW))
+    if(input_was_key_pressed(KeyCode::KEY_DOWNARROW))
     {
         remove_most_recent_mesh_from_scene();
     }
@@ -810,11 +824,11 @@ void renderer_update(f32 ds)
 
             if(s_globals->debug_render)
             {
-                mesh_instance.material_id = uv_debug_mat_id;
+                mesh_instance_set_material(*s_context, &mesh_instance, uv_debug_mat_id);
             }
             else
             {
-               mesh_instance.material_id = viking_room_mat_id; 
+                mesh_instance_set_material(*s_context, &mesh_instance, viking_room_mat_id);
             }
         }
     }

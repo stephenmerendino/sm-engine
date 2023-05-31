@@ -21,7 +21,7 @@ const mesh_render_data_t* resource_manager_get_mesh_render_data(mesh_id_t mesh_i
 bool resource_manager_is_mesh_loaded(mesh_id_t mesh_id);
 
 material_id_t resource_manager_track_material_TEMP(const char* mat_name, material_t& mat);
-void resource_manager_acquire_material(material_id_t mat_id);
+void resource_manager_material_acquire(material_id_t mat_id);
 void resource_manager_material_release(context_t& context, material_id_t mat_id);
 material_id_t resource_manager_get_material_id(const char* mat_name);
 const material_t* resource_manager_get_material(material_id_t mat_id);

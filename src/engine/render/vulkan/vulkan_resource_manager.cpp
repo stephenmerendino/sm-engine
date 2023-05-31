@@ -237,7 +237,7 @@ bool resource_manager_is_material_loaded(material_id_t mat_id)
     return INVALID_MATERIAL_INDEX != resource_manager_get_material_index(mat_id);
 }
 
-void resource_manager_acquire_material(material_id_t mat_id)
+void resource_manager_material_acquire(material_id_t mat_id)
 {
     u32 mat_index = resource_manager_get_material_index(mat_id);
     ASSERT(INVALID_MATERIAL_INDEX != mat_index);
