@@ -60,9 +60,16 @@ void internal_window_msg_handler(UINT msg, WPARAM w_param, LPARAM l_param, void*
             break;
         }
 
+        case WM_MOVE:
+        {
+            window->is_moving = true;
+            break;
+        }
+
         case WM_CLOSE:
         {
             window->was_closed = true;
+            break;
         }
 
         default: break;
@@ -155,6 +162,7 @@ void window_update(window_t* window)
     ASSERT(nullptr != window);
 
 	window->was_resized = false;
+    window->is_moving = false;
 
 	// Pump messages
 	MSG msg;

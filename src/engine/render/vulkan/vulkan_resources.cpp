@@ -904,7 +904,7 @@ void fence_reset(context_t& context, fence_t& fence)
 
 void fence_wait(context_t& context, fence_t& fence, u64 timeout)
 {
-    vkWaitForFences(context.device.device_handle, 1, &fence.handle, VK_TRUE, UINT64_MAX); 
+    vkWaitForFences(context.device.device_handle, 1, &fence.handle, VK_TRUE, timeout); 
 }
 
 void fence_destroy(context_t& context, fence_t& fence)

@@ -502,6 +502,12 @@ VkSurfaceFormatKHR swapchain_choose_surface_format(std::vector<VkSurfaceFormatKH
 static
 VkPresentModeKHR swapchain_choose_present_mode(std::vector<VkPresentModeKHR> present_modes)
 {
+    //VK_PRESENT_MODE_IMMEDIATE_KHR = 0,
+    //VK_PRESENT_MODE_MAILBOX_KHR = 1,
+    //VK_PRESENT_MODE_FIFO_KHR = 2,
+    //VK_PRESENT_MODE_FIFO_RELAXED_KHR = 3,
+    //VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR = 1000111000,
+    //VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR = 1000111001,
     for (const VkPresentModeKHR& mode : present_modes)
     {
         if (mode == VK_PRESENT_MODE_MAILBOX_KHR)
@@ -544,9 +550,14 @@ swapchain_t swapchain_create(device_t& device, surface_t& surface, window_t& win
         image_count = min(image_count, swapchain_details.capabilities.maxImageCount);
     }
 
+    VkSurfaceFullScreenExclusiveInfoEXT full_screen_info = {};
+    full_screen_info.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
+    full_screen_info.pNext = nullptr;
+    full_screen_info.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT;
+
     VkSwapchainCreateInfoKHR create_info = {};
     create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    create_info.pNext = nullptr;
+    create_info.pNext = nullptr; // use full_screen_info here
     create_info.surface = surface.handle;
     create_info.minImageCount = image_count;
     create_info.imageFormat = surface_format.format;

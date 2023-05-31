@@ -25,6 +25,7 @@ struct window_t
     bool is_minimized;
     bool was_resized;
     bool was_closed;
+    bool is_moving;
     std::vector<window_message_cb_with_args_t> message_cbs;
 };
 

@@ -4,6 +4,7 @@
 #include "engine/core/file.h"
 #include "engine/core/macros.h"
 #include "engine/core/random.h"
+#include "engine/core/time.h"
 #include "engine/input/input.h"
 #include "engine/math/mat44.h"
 #include "engine/render/Camera.h"
@@ -178,7 +179,10 @@ frame_t frame_create(context_t& context)
     frame.swapchain_image_available_semaphore = semaphore_create(context);
     frame.render_finished_semaphore = semaphore_create(context);
     frame.frame_completed_fence = fence_create(context);
+    frame.swapchain_image_acquired_fence = fence_create(context);
+    frame.swapchain_copied_semaphore = semaphore_create(context);
     frame.command_buffers = command_buffers_allocate(context, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
+    frame.copy_to_backbuffer_command_buffer = command_buffers_allocate(context, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1)[0];
 
     // render targets / framebuffer
     frame.main_draw_color_target = texture_create_color_target(context, context.swapchain.format, 
@@ -684,12 +688,14 @@ void renderer_set_main_camera(camera_t* camera)
 static
 VkResult frame_acquire_next_image(context_t& context, frame_t& frame)
 {
+    fence_reset(context, frame.swapchain_image_acquired_fence);
+
 	// Acquire an image from the swap chain
 	VkResult res = vkAcquireNextImageKHR(context.device.device_handle, 
                                          context.swapchain.handle, 
                                          UINT64_MAX, 
                                          frame.swapchain_image_available_semaphore.handle, 
-                                         VK_NULL_HANDLE, 
+                                         frame.swapchain_image_acquired_fence.handle, 
                                          &frame.swapchain_image_index);
     return res; 
 }
@@ -697,7 +703,7 @@ VkResult frame_acquire_next_image(context_t& context, frame_t& frame)
 static
 VkResult frame_present(context_t& context, frame_t& frame)
 {
-	VkSemaphore wait_semaphores[] = { frame.render_finished_semaphore.handle };
+	VkSemaphore wait_semaphores[] = { frame.swapchain_copied_semaphore.handle };
 
 	VkPresentInfoKHR present_info = {};
 	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -748,13 +754,6 @@ void frame_generate_command_buffers(context_t& context, frame_t& frame)
                 command_draw_mesh_instance(command_buffer, mesh_instance, *mesh_render_data, draw_descriptor_sets);
             }
         command_buffer_end_render_pass(command_buffer);
-
-        // copy from render target to swap chain for presentation
-        command_transition_image_layout(command_buffer, context.swapchain.images[frame.swapchain_image_index], VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1);
-        command_copy_image(command_buffer, frame.main_draw_resolve_target.handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
-                                           context.swapchain.images[frame.swapchain_image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
-                                           context.swapchain.extent.width, context.swapchain.extent.height);
-        command_transition_image_layout(command_buffer, context.swapchain.images[frame.swapchain_image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 1);
     }
     command_buffer_end(command_buffer);
 }
@@ -790,7 +789,6 @@ void renderer_update(f32 ds)
         remove_most_recent_mesh_from_scene();
     }
 
-    // update frame render data on cpu side, it gets uploaded to gpu buffer during renderer_render_frame()
     frame_t& frame = s_globals->in_flight_frames[s_globals->cur_frame];
     frame.frame_render_data.time += ds;
     frame.frame_render_data.delta_time_seconds = ds;
@@ -817,11 +815,11 @@ void renderer_update(f32 ds)
             //mat44 rotation = make_rotation_z_deg(pos_degs_per_second * ds);
             mat44 rotation = make_rotation_around_axis_deg(s_axis_of_rotation[i - 1], pos_degs_per_second * ds);
 
-            //mesh_instance.transform.model *= rotation;
+            mesh_instance.transform.model *= rotation;
 
-            //mat44 model_rotation = make_rotation_x_deg(rot_degs_per_second * ds);
-            //rotate_y_deg(rotation, rot_degs_per_second * ds);
-            //transform_in_model_space(mesh_instance.transform.model, model_rotation);
+            mat44 model_rotation = make_rotation_x_deg(rot_degs_per_second * ds);
+            rotate_y_deg(rotation, rot_degs_per_second * ds);
+            transform_in_model_space(mesh_instance.transform.model, model_rotation);
 
             if(s_globals->debug_render)
             {
@@ -863,26 +861,65 @@ void renderer_render_frame()
 	}
 	s_context->swapchain.image_in_flight_fences[frame.swapchain_image_index] = frame.frame_completed_fence;
 
-	// Submit command buffer
-	VkSubmitInfo submit_info = {};
-	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	// Submit frame command buffers
+    {
+        VkSubmitInfo submit_info = {};
+        submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-	VkSemaphore wait_semaphores[] = { frame.swapchain_image_available_semaphore.handle };
-	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-	submit_info.waitSemaphoreCount = 1;
-	submit_info.pWaitSemaphores = wait_semaphores;
-	submit_info.pWaitDstStageMask = wait_stages;
+        //VkSemaphore wait_semaphores[] = { frame.swapchain_image_available_semaphore.handle };
+        //VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+        submit_info.waitSemaphoreCount = 0;
+        submit_info.pWaitSemaphores = nullptr;
+        submit_info.pWaitDstStageMask = nullptr;
 
-    frame_generate_command_buffers(*s_context, frame);
-	submit_info.commandBufferCount = frame.command_buffers.size();
-	submit_info.pCommandBuffers = frame.command_buffers.data();
+        frame_generate_command_buffers(*s_context, frame);
+        submit_info.commandBufferCount = frame.command_buffers.size();
+        submit_info.pCommandBuffers = frame.command_buffers.data();
 
-	VkSemaphore signal_semaphores[] = { frame.render_finished_semaphore.handle };
-	submit_info.signalSemaphoreCount = 1;
-	submit_info.pSignalSemaphores = signal_semaphores;
+        VkSemaphore signal_semaphores[] = { frame.render_finished_semaphore.handle };
+        submit_info.signalSemaphoreCount = 1;
+        submit_info.pSignalSemaphores = signal_semaphores;
+        
+        //fence_reset(*s_context, frame.frame_completed_fence);
+        VULKAN_ASSERT(vkQueueSubmit(s_context->device.graphics_queue, 1, &submit_info, VK_NULL_HANDLE));
+    }
 
-    fence_reset(*s_context, frame.frame_completed_fence);
-	VULKAN_ASSERT(vkQueueSubmit(s_context->device.graphics_queue, 1, &submit_info, frame.frame_completed_fence.handle));
+    // Copy to back buffer
+    {
+        VkSubmitInfo submit_info = {};
+        submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+        VkSemaphore wait_semaphores[] = { frame.render_finished_semaphore.handle, frame.swapchain_image_available_semaphore.handle };
+        VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT };
+        submit_info.waitSemaphoreCount = 2;
+        submit_info.pWaitSemaphores = wait_semaphores;
+        submit_info.pWaitDstStageMask = wait_stages;
+
+        VkCommandBuffer command_buffer = frame.copy_to_backbuffer_command_buffer;
+        vkResetCommandBuffer(command_buffer, 0);
+
+        command_buffer_begin(command_buffer);
+        command_transition_image_layout(command_buffer, s_context->swapchain.images[frame.swapchain_image_index], VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1);
+        command_copy_image(command_buffer, frame.main_draw_resolve_target.handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
+                                           s_context->swapchain.images[frame.swapchain_image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+                                           s_context->swapchain.extent.width, s_context->swapchain.extent.height);
+        command_transition_image_layout(command_buffer, s_context->swapchain.images[frame.swapchain_image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 1);
+        command_buffer_end(command_buffer);
+        
+        submit_info.commandBufferCount = 1;
+        submit_info.pCommandBuffers = &command_buffer;
+
+        VkSemaphore signal_semaphores[] = { frame.swapchain_copied_semaphore.handle };
+        submit_info.signalSemaphoreCount = 1;
+        submit_info.pSignalSemaphores = signal_semaphores;
+        
+        // wait for image acquired fence if needed before submitting this queue
+        fence_wait(*s_context, frame.swapchain_image_acquired_fence);
+
+        fence_reset(*s_context, frame.frame_completed_fence);
+        VULKAN_ASSERT(vkQueueSubmit(s_context->device.graphics_queue, 1, &submit_info, frame.frame_completed_fence.handle));
+        
+    }
 
 	// Present to screen
     VkResult present_res = frame_present(*s_context, frame);
@@ -893,7 +930,7 @@ void renderer_render_frame()
 	else
 	{
 		VULKAN_ASSERT(res);
-	}
+    }
 
     s_globals->cur_frame = (s_globals->cur_frame + 1) % MAX_NUM_FRAMES_IN_FLIGHT;
 }

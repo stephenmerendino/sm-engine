@@ -11,7 +11,7 @@ static const bool WINDOW_ALLOW_RESIZE = true;
 static const u32 MAX_NUM_FRAMES_IN_FLIGHT = 2;
 
 static const f32 FPS_CALC_TIME_INTERVAL_SECONDS = 0.1f;
-static const f32 TARGET_FPS = 120.0f;
+static const f32 TARGET_FPS = 200.0f;
 
 static const std::string MODEL_PATH = "Models/viking_room.obj";
 static const std::string TEXTURE_PATH = "Textures/viking_room.png";

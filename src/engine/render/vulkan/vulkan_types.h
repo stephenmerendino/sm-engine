@@ -361,6 +361,8 @@ struct frame_t
     semaphore_t swapchain_image_available_semaphore;
     semaphore_t render_finished_semaphore;
     fence_t frame_completed_fence;
+    fence_t swapchain_image_acquired_fence;
+    semaphore_t swapchain_copied_semaphore;
 
     frame_render_data_t frame_render_data;
     buffer_t frame_render_data_buffer;
@@ -370,6 +372,7 @@ struct frame_t
     std::vector<mesh_instance_render_data_t> mesh_instance_render_data;
 
     std::vector<VkCommandBuffer> command_buffers;
+    VkCommandBuffer copy_to_backbuffer_command_buffer;
 
     framebuffer_t main_draw_framebuffer;
     texture_t main_draw_color_target;
