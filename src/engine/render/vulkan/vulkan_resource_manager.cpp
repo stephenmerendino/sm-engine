@@ -95,11 +95,13 @@ void resource_manager_mesh_render_data_destroy(context_t& context, mesh_render_d
 
 void resource_manager_init(context_t& context)
 {
-    resource_manager_track_mesh(context, resource_manager_get_mesh_id(PrimitiveMeshType::kCube), mesh_load_cube());
     resource_manager_track_mesh(context, resource_manager_get_mesh_id(PrimitiveMeshType::kAxes), mesh_load_axes());
+    resource_manager_track_mesh(context, resource_manager_get_mesh_id(PrimitiveMeshType::kTetrahedron), mesh_load_tetrahedron());
+    resource_manager_track_mesh(context, resource_manager_get_mesh_id(PrimitiveMeshType::kCube), mesh_load_cube());
 
-    resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kCube));
     resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kAxes));
+    resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kTetrahedron));
+    resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kCube));
 }
 
 void resource_manager_deinit(context_t& context)
@@ -116,8 +118,9 @@ mesh_id_t resource_manager_get_mesh_id(PrimitiveMeshType primitive_type)
 
     switch(primitive_type)
     {
-        case kCube: mesh_id = resource_manager_get_mesh_id("primitive-cube"); break;
         case kAxes: mesh_id = resource_manager_get_mesh_id("primitive-axes"); break;
+        case kTetrahedron: mesh_id = resource_manager_get_mesh_id("primitive-tetrahedron"); break;
+        case kCube: mesh_id = resource_manager_get_mesh_id("primitive-cube"); break;
     }
 
     return mesh_id;

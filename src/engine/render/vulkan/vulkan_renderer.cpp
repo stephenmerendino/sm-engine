@@ -580,12 +580,13 @@ void add_random_mesh_to_scene(context_t& context)
 
     mesh_id_t viking_room_mesh_id = resource_manager_load_obj_mesh(context, "models/viking_room.obj");
     mesh_id_t cube_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kCube);
+    mesh_id_t tetrahedron_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kTetrahedron);
     material_id_t viking_room_mat_id = resource_manager_get_material_id("viking_room_mat");
 
     std::string name = "random mesh ";
     name += counter;
 
-    mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, name.data(), cube_mesh_id, viking_room_mat_id);
+    mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, name.data(), tetrahedron_mesh_id, viking_room_mat_id);
     mesh_instance_t* mi = scene_get_mesh_instance(mesh_instance_id);
 
     f32 start_dist = random_number_between(1.5f, 10.0f);
@@ -816,11 +817,11 @@ void renderer_update(f32 ds)
             //mat44 rotation = make_rotation_z_deg(pos_degs_per_second * ds);
             mat44 rotation = make_rotation_around_axis_deg(s_axis_of_rotation[i - 1], pos_degs_per_second * ds);
 
-            mesh_instance.transform.model *= rotation;
+            //mesh_instance.transform.model *= rotation;
 
-            mat44 model_rotation = make_rotation_x_deg(rot_degs_per_second * ds);
-            rotate_y_deg(rotation, rot_degs_per_second * ds);
-            transform_in_model_space(mesh_instance.transform.model, model_rotation);
+            //mat44 model_rotation = make_rotation_x_deg(rot_degs_per_second * ds);
+            //rotate_y_deg(rotation, rot_degs_per_second * ds);
+            //transform_in_model_space(mesh_instance.transform.model, model_rotation);
 
             if(s_globals->debug_render)
             {

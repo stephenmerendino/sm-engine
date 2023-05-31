@@ -6,11 +6,6 @@
 void resource_manager_init(context_t& context);
 void resource_manager_deinit(context_t& context);
 
-enum PrimitiveMeshType : u32
-{
-    kCube,
-    kAxes
-};
 static const u32 INVALID_MESH_ID = (u32)-1;
 
 mesh_id_t resource_manager_get_mesh_id(PrimitiveMeshType primitive_type);

@@ -12,6 +12,13 @@ enum class PrimitiveTopology : u8
     kLineList
 };
 
+enum PrimitiveMeshType : u32
+{
+    kAxes,
+    kTetrahedron,
+    kCube
+};
+
 struct mesh_t
 {
     PrimitiveTopology topology;
@@ -23,5 +30,9 @@ size_t mesh_calc_vertex_buffer_size(mesh_t* mesh);
 size_t mesh_calc_index_buffer_size(mesh_t* mesh);
 
 mesh_t* mesh_load_from_obj(const char* obj_filepath);
-mesh_t* mesh_load_cube();
+
 mesh_t* mesh_load_axes();
+
+mesh_t* mesh_load_tetrahedron();
+mesh_t* mesh_load_cube();
+mesh_t* mesh_load_sphere();

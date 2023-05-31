@@ -9,7 +9,11 @@ void camera_update(camera_t& camera, f32 ds)
 	vec3 right = camera_get_right(camera);
 	vec3 up = camera_get_up(camera);
 
-	const f32 move_speed = 3.0f; // meters per second
+	f32 move_speed = 3.0f; // meters per second
+    if(input_is_key_down(KeyCode::KEY_SHIFT))
+    {
+        move_speed *= 3.0f;    
+    }
 
     vec3 movement = VEC3_ZERO;
 
