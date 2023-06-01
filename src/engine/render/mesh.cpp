@@ -5,16 +5,31 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "engine/thirdparty/tinyobjloader/tiny_obj_loader.h"
 
+static
+u32 mesh_add_vertex(mesh_t& mesh, const vec3& pos, const vec4& color, const vec2& uv)
+{
+    mesh.vertices.push_back(make_vertex(pos, color, uv));
+    return mesh.vertices.size() - 1;
+}
+
+static
+void mesh_add_triangle(mesh_t& mesh, u32 v0, u32 v1, u32 v2)
+{
+    mesh.indices.push_back(v0);
+    mesh.indices.push_back(v1);
+    mesh.indices.push_back(v2);
+}
+
 size_t mesh_calc_vertex_buffer_size(mesh_t* mesh)
 {
     ASSERT(nullptr != mesh);
-	return sizeof(mesh->m_vertices[0]) * mesh->m_vertices.size();
+	return sizeof(mesh->vertices[0]) * mesh->vertices.size();
 }
 
 size_t mesh_calc_index_buffer_size(mesh_t* mesh)
 {
     ASSERT(nullptr != mesh);
-	return sizeof(mesh->m_indices[0]) * mesh->m_indices.size();
+	return sizeof(mesh->indices[0]) * mesh->indices.size();
 }
 
 mesh_t* mesh_load_from_obj(const char* obj_filepath)
@@ -27,8 +42,7 @@ mesh_t* mesh_load_from_obj(const char* obj_filepath)
 	bool loaded = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, obj_filepath);
 	ASSERT(loaded);
 
-	std::vector<vertex_pct_t> vertices;
-	std::vector<u32> indices;
+    mesh_t* mesh = new mesh_t;
 
 	for (const auto& shape : shapes)
 	{
@@ -45,14 +59,11 @@ mesh_t* mesh_load_from_obj(const char* obj_filepath)
 
 			vertex.m_color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
-			vertices.push_back(vertex);
-			indices.push_back((u32)indices.size());
+			mesh->vertices.push_back(vertex);
+			mesh->indices.push_back((u32)mesh->indices.size());
 		}
 	}
 
-    mesh_t* mesh = new mesh_t;
-    mesh->m_vertices = vertices;
-    mesh->m_indices = indices;
     mesh->topology = PrimitiveTopology::kTriangleList;
 
 	return mesh;
@@ -60,8 +71,7 @@ mesh_t* mesh_load_from_obj(const char* obj_filepath)
 
 mesh_t* mesh_load_axes()
 {
-	std::vector<vertex_pct_t> vertices;
-	std::vector<u32> indices;
+    mesh_t* mesh = new mesh_t;
 
 	// X
 	vertex_pct_t xOrigin{};
@@ -96,41 +106,23 @@ mesh_t* mesh_load_axes()
 	zAxis.m_uv = make_vec2(0.0f, 0.0f);
 	zAxis.m_color = make_vec4(0.0f, 0.0f, 1.0f, 1.0f);
 
-	vertices.push_back(xOrigin);
-	vertices.push_back(xAxis);
-	vertices.push_back(yOrigin);
-	vertices.push_back(yAxis);
-	vertices.push_back(zOrigin);
-	vertices.push_back(zAxis);	
+	mesh->vertices.push_back(xOrigin);
+	mesh->vertices.push_back(xAxis);
+	mesh->vertices.push_back(yOrigin);
+	mesh->vertices.push_back(yAxis);
+	mesh->vertices.push_back(zOrigin);
+	mesh->vertices.push_back(zAxis);	
 
-	indices.push_back(0);
-	indices.push_back(1);
-	indices.push_back(2);
-	indices.push_back(3);
-	indices.push_back(4);
-	indices.push_back(5);
+	mesh->indices.push_back(0);
+	mesh->indices.push_back(1);
+	mesh->indices.push_back(2);
+	mesh->indices.push_back(3);
+	mesh->indices.push_back(4);
+	mesh->indices.push_back(5);
 
-    mesh_t* mesh = new mesh_t;
-    mesh->m_vertices = vertices;
-    mesh->m_indices = indices;
     mesh->topology = PrimitiveTopology::kLineList;
 
     return mesh;
-}
-
-static
-u32 mesh_add_vertex(mesh_t& mesh, const vec3& pos, const vec4& color, const vec2& uv)
-{
-    mesh.m_vertices.push_back(make_vertex(pos, color, uv));
-    return mesh.m_vertices.size() - 1;
-}
-
-static
-void mesh_add_triangle(mesh_t& mesh, u32 v0, u32 v1, u32 v2)
-{
-    mesh.m_indices.push_back(v0);
-    mesh.m_indices.push_back(v1);
-    mesh.m_indices.push_back(v2);
 }
 
 mesh_t* mesh_load_tetrahedron()
@@ -138,9 +130,15 @@ mesh_t* mesh_load_tetrahedron()
     mesh_t* mesh = new mesh_t;
 
     vec3 v0_pos = make_vec3(0.0f, 0.0f, 1.0f);
-    vec3 v1_pos = make_vec3(cos_deg(0.0f), sin_deg(0.0f), 0.0f);
-    vec3 v2_pos = make_vec3(cos_deg(120.0f), sin_deg(120.0f), 0.0f);
-    vec3 v3_pos = make_vec3(cos_deg(240.0f), sin_deg(240.0f), 0.0f);
+
+    f32 pitch = 20.0f;
+    vec3 v1_pos = (make_vec4(1.0f, 0.0f, 0.0f, 0.0f) * make_rotation_y_deg(pitch)).xyz;
+    vec3 v2_pos = (make_vec4(1.0f, 0.0f, 0.0f, 0.0f) * make_rotation_y_deg(pitch) * make_rotation_z_deg(120.0f)).xyz;
+    vec3 v3_pos = (make_vec4(1.0f, 0.0f, 0.0f, 0.0f) * make_rotation_y_deg(pitch) * make_rotation_z_deg(240.0f)).xyz;
+
+    normalize(v1_pos);
+    normalize(v2_pos);
+    normalize(v3_pos);
 
     vec4 white_color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
@@ -175,8 +173,7 @@ mesh_t* mesh_load_cube()
 	const f32 kSize = 1.0f;
 	const vec4 white = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
-	std::vector<vertex_pct_t> vertices;
-	std::vector<u32> indices;
+    mesh_t* mesh = new mesh_t;
 
 	// x axis face
 	{
@@ -208,16 +205,16 @@ mesh_t* mesh_load_cube()
 		v4.m_uv = make_vec2(1.0f, 0.0f);
 		v4.m_color = white;
 
-		vertices.push_back(v1);
-		vertices.push_back(v2);
-		vertices.push_back(v3);
-		vertices.push_back(v4);
-		indices.push_back(0);
-		indices.push_back(1);
-		indices.push_back(3);
-		indices.push_back(3);
-		indices.push_back(1);
-		indices.push_back(2);
+		mesh->vertices.push_back(v1);
+		mesh->vertices.push_back(v2);
+		mesh->vertices.push_back(v3);
+		mesh->vertices.push_back(v4);
+		mesh->indices.push_back(0);
+		mesh->indices.push_back(1);
+		mesh->indices.push_back(3);
+		mesh->indices.push_back(3);
+		mesh->indices.push_back(1);
+		mesh->indices.push_back(2);
 	}
 	
 	// neg x axis face
@@ -250,16 +247,16 @@ mesh_t* mesh_load_cube()
 		v4.m_uv = make_vec2(1.0f, 0.0f);
 		v4.m_color = white;
 
-		vertices.push_back(v1);
-		vertices.push_back(v2);
-		vertices.push_back(v3);
-		vertices.push_back(v4);
-		indices.push_back(4);
-		indices.push_back(5);
-		indices.push_back(7);
-		indices.push_back(7);
-		indices.push_back(5);
-		indices.push_back(6);
+		mesh->vertices.push_back(v1);
+		mesh->vertices.push_back(v2);
+		mesh->vertices.push_back(v3);
+		mesh->vertices.push_back(v4);
+		mesh->indices.push_back(4);
+		mesh->indices.push_back(5);
+		mesh->indices.push_back(7);
+		mesh->indices.push_back(7);
+		mesh->indices.push_back(5);
+		mesh->indices.push_back(6);
 	}
 
 	// y axis face
@@ -292,16 +289,16 @@ mesh_t* mesh_load_cube()
 		v4.m_uv = make_vec2(1.0f, 0.0f);
 		v4.m_color = white;
 
-		vertices.push_back(v1);
-		vertices.push_back(v2);
-		vertices.push_back(v3);
-		vertices.push_back(v4);
-		indices.push_back(8);
-		indices.push_back(9);
-		indices.push_back(11);
-		indices.push_back(11);
-		indices.push_back(9);
-		indices.push_back(10);
+		mesh->vertices.push_back(v1);
+		mesh->vertices.push_back(v2);
+		mesh->vertices.push_back(v3);
+		mesh->vertices.push_back(v4);
+		mesh->indices.push_back(8);
+		mesh->indices.push_back(9);
+		mesh->indices.push_back(11);
+		mesh->indices.push_back(11);
+		mesh->indices.push_back(9);
+		mesh->indices.push_back(10);
 	}
 
 	// neg y axis face
@@ -334,16 +331,16 @@ mesh_t* mesh_load_cube()
 		v4.m_uv = make_vec2(1.0f, 0.0f);
 		v4.m_color = white;
 
-		vertices.push_back(v1);
-		vertices.push_back(v2);
-		vertices.push_back(v3);
-		vertices.push_back(v4);
-		indices.push_back(12);
-		indices.push_back(13);
-		indices.push_back(15);
-		indices.push_back(15);
-		indices.push_back(13);
-		indices.push_back(14);
+		mesh->vertices.push_back(v1);
+		mesh->vertices.push_back(v2);
+		mesh->vertices.push_back(v3);
+		mesh->vertices.push_back(v4);
+		mesh->indices.push_back(12);
+		mesh->indices.push_back(13);
+		mesh->indices.push_back(15);
+		mesh->indices.push_back(15);
+		mesh->indices.push_back(13);
+		mesh->indices.push_back(14);
 	}
 
 	// z axis face
@@ -376,16 +373,16 @@ mesh_t* mesh_load_cube()
 		v4.m_uv = make_vec2(1.0f, 0.0f);
 		v4.m_color = white;
 
-		vertices.push_back(v1);
-		vertices.push_back(v2);
-		vertices.push_back(v3);
-		vertices.push_back(v4);
-		indices.push_back(16);
-		indices.push_back(17);
-		indices.push_back(19);
-		indices.push_back(19);
-		indices.push_back(17);
-		indices.push_back(18);
+		mesh->vertices.push_back(v1);
+		mesh->vertices.push_back(v2);
+		mesh->vertices.push_back(v3);
+		mesh->vertices.push_back(v4);
+		mesh->indices.push_back(16);
+		mesh->indices.push_back(17);
+		mesh->indices.push_back(19);
+		mesh->indices.push_back(19);
+		mesh->indices.push_back(17);
+		mesh->indices.push_back(18);
 	}
 
 	// neg z axis face
@@ -418,48 +415,111 @@ mesh_t* mesh_load_cube()
 		v4.m_uv = make_vec2(1.0f, 0.0f);
 		v4.m_color = white;
 
-		vertices.push_back(v1);
-		vertices.push_back(v2);
-		vertices.push_back(v3);
-		vertices.push_back(v4);
-		indices.push_back(20);
-		indices.push_back(21);
-		indices.push_back(23);
-		indices.push_back(23);
-		indices.push_back(21);
-		indices.push_back(22);
+		mesh->vertices.push_back(v1);
+		mesh->vertices.push_back(v2);
+		mesh->vertices.push_back(v3);
+		mesh->vertices.push_back(v4);
+		mesh->indices.push_back(20);
+		mesh->indices.push_back(21);
+		mesh->indices.push_back(23);
+		mesh->indices.push_back(23);
+		mesh->indices.push_back(21);
+		mesh->indices.push_back(22);
 	}
 
-    mesh_t* mesh = new mesh_t;
-    mesh->m_vertices = vertices;
-    mesh->m_indices = indices;
     mesh->topology = PrimitiveTopology::kTriangleList;
 
     return mesh;
 }
 
-mesh_t* mesh_load_sphere()
+mesh_t* mesh_load_octahedron()
 {
-	std::vector<vertex_pct_t> vertices;
-	std::vector<u32> indices;
-
     mesh_t* mesh = new mesh_t;
-    mesh->m_vertices = vertices;
-    mesh->m_indices = indices;
-    mesh->topology = PrimitiveTopology::kTriangleList;
 
+    vec3 v0_pos = make_vec3(0.0f, 0.0f, 1.0f);
+    vec3 v1_pos = make_vec3(1.0f, 0.0f, 0.0f);
+    vec3 v2_pos = make_vec3(0.0f, 1.0f, 0.0f);
+    vec3 v3_pos = make_vec3(-1.0f, 0.0f, 0.0f);
+    vec3 v4_pos = make_vec3(0.0f, -1.0f, 0.0f);
+    vec3 v5_pos = make_vec3(0.0f, 0.0f, -1.0f);
+
+    vec4 white_color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
+
+    {
+        u32 i0 = mesh_add_vertex(*mesh, v0_pos, white_color, make_vec2(0.0f, 0.0f));
+        u32 i1 = mesh_add_vertex(*mesh, v1_pos, white_color, make_vec2(0.0f, 1.0f));
+        u32 i2 = mesh_add_vertex(*mesh, v2_pos, white_color, make_vec2(1.0f, 0.0f));
+        mesh_add_triangle(*mesh, i0, i1, i2); 
+    }
+
+    {
+        u32 i0 = mesh_add_vertex(*mesh, v0_pos, white_color, make_vec2(0.0f, 0.0f));
+        u32 i1 = mesh_add_vertex(*mesh, v2_pos, white_color, make_vec2(0.0f, 1.0f));
+        u32 i2 = mesh_add_vertex(*mesh, v3_pos, white_color, make_vec2(1.0f, 0.0f));
+        mesh_add_triangle(*mesh, i0, i1, i2); 
+    }
+
+    {
+        u32 i0 = mesh_add_vertex(*mesh, v0_pos, white_color, make_vec2(0.0f, 0.0f));
+        u32 i1 = mesh_add_vertex(*mesh, v3_pos, white_color, make_vec2(0.0f, 1.0f));
+        u32 i2 = mesh_add_vertex(*mesh, v4_pos, white_color, make_vec2(1.0f, 0.0f));
+        mesh_add_triangle(*mesh, i0, i1, i2); 
+    }
+    
+    {
+        u32 i0 = mesh_add_vertex(*mesh, v0_pos, white_color, make_vec2(0.0f, 0.0f));
+        u32 i1 = mesh_add_vertex(*mesh, v4_pos, white_color, make_vec2(0.0f, 1.0f));
+        u32 i2 = mesh_add_vertex(*mesh, v1_pos, white_color, make_vec2(1.0f, 0.0f));
+        mesh_add_triangle(*mesh, i0, i1, i2); 
+    }
+
+    {
+        u32 i0 = mesh_add_vertex(*mesh, v5_pos, white_color, make_vec2(0.0f, 0.0f));
+        u32 i1 = mesh_add_vertex(*mesh, v2_pos, white_color, make_vec2(1.0f, 0.0f));
+        u32 i2 = mesh_add_vertex(*mesh, v1_pos, white_color, make_vec2(0.0f, 1.0f));
+        mesh_add_triangle(*mesh, i0, i1, i2); 
+    }
+
+    {
+        u32 i0 = mesh_add_vertex(*mesh, v5_pos, white_color, make_vec2(0.0f, 0.0f));
+        u32 i1 = mesh_add_vertex(*mesh, v3_pos, white_color, make_vec2(1.0f, 0.0f));
+        u32 i2 = mesh_add_vertex(*mesh, v2_pos, white_color, make_vec2(0.0f, 1.0f));
+        mesh_add_triangle(*mesh, i0, i1, i2); 
+    }
+
+    {
+        u32 i0 = mesh_add_vertex(*mesh, v5_pos, white_color, make_vec2(0.0f, 0.0f));
+        u32 i1 = mesh_add_vertex(*mesh, v4_pos, white_color, make_vec2(1.0f, 0.0f));
+        u32 i2 = mesh_add_vertex(*mesh, v3_pos, white_color, make_vec2(0.0f, 1.0f));
+        mesh_add_triangle(*mesh, i0, i1, i2); 
+    }
+    
+    {
+        u32 i0 = mesh_add_vertex(*mesh, v5_pos, white_color, make_vec2(0.0f, 0.0f));
+        u32 i1 = mesh_add_vertex(*mesh, v1_pos, white_color, make_vec2(1.0f, 0.0f));
+        u32 i2 = mesh_add_vertex(*mesh, v4_pos, white_color, make_vec2(0.0f, 1.0f));
+        mesh_add_triangle(*mesh, i0, i1, i2); 
+    }
+
+    mesh->topology = PrimitiveTopology::kTriangleList;
+    return mesh;
+}
+
+mesh_t* mesh_load_uv_sphere()
+{
+    mesh_t* mesh = new mesh_t;
+
+
+
+    mesh->topology = PrimitiveTopology::kTriangleList;
     return mesh;
 }
 
 //mesh_t* mesh_load_xxxx()
 //{
-//	std::vector<vertex_pct_t> vertices;
-//	std::vector<u32> indices;
-//
 //    mesh_t* mesh = new mesh_t;
-//    mesh->m_vertices = vertices;
-//    mesh->m_indices = indices;
-//    mesh->topology = PrimitiveTopology::kTriangleList;
 //
+//
+//    mesh->topology = PrimitiveTopology::kTriangleList;
 //    return mesh;
 //}

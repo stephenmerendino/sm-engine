@@ -7,6 +7,7 @@
 #include "engine/core/time.h"
 #include "engine/input/input.h"
 #include "engine/math/mat44.h"
+#include "engine/math/vec3.h"
 #include "engine/render/Camera.h"
 #include "engine/render/mesh.h"
 #include "engine/render/vertex.h"
@@ -585,6 +586,8 @@ void add_random_mesh_to_scene(context_t& context)
     mesh_id_t viking_room_mesh_id = resource_manager_load_obj_mesh(context, "models/viking_room.obj");
     mesh_id_t cube_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kCube);
     mesh_id_t tetrahedron_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kTetrahedron);
+    mesh_id_t octahedron_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kOctahedron);
+
     material_id_t viking_room_mat_id = resource_manager_get_material_id("viking_room_mat");
 
     std::string name = "random mesh ";
@@ -597,6 +600,7 @@ void add_random_mesh_to_scene(context_t& context)
     vec3 start_dir = random_unit_vector();
     vec3 start_pos = start_dir * start_dist;
 
+    start_pos = VEC3_ZERO;
     set_translation(mi->transform.model, start_pos);
 
     vec3 random_axis_of_rotation = random_unit_vector();
@@ -813,13 +817,13 @@ void renderer_update(f32 ds)
         if(mesh_instance.name_id != world_axes_name_id)
         {
             //mat44 rotation = make_rotation_z_deg(pos_degs_per_second * ds);
-            mat44 rotation = make_rotation_around_axis_deg(s_axis_of_rotation[i - 1], pos_degs_per_second * ds);
+            //mat44 rotation = make_rotation_around_axis_deg(s_axis_of_rotation[i - 1], pos_degs_per_second * ds);
 
-            mesh_instance.transform.model *= rotation;
+            //mesh_instance.transform.model *= rotation;
 
-            mat44 model_rotation = make_rotation_x_deg(rot_degs_per_second * ds);
-            rotate_y_deg(rotation, rot_degs_per_second * ds);
-            transform_in_model_space(mesh_instance.transform.model, model_rotation);
+            //mat44 model_rotation = make_rotation_x_deg(rot_degs_per_second * ds);
+            //rotate_y_deg(rotation, rot_degs_per_second * ds);
+            //transform_in_model_space(mesh_instance.transform.model, model_rotation);
 
             if(s_globals->debug_render)
             {

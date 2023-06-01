@@ -16,14 +16,17 @@ enum PrimitiveMeshType : u32
 {
     kAxes,
     kTetrahedron,
-    kCube
+    kHexahedron,
+    kCube = kHexahedron,
+    kOctahedron,
+    kUvSphere
 };
 
 struct mesh_t
 {
     PrimitiveTopology topology;
-    std::vector<vertex_pct_t> m_vertices;
-    std::vector<u32> m_indices;
+    std::vector<vertex_pct_t> vertices;
+    std::vector<u32> indices;
 };
 
 size_t mesh_calc_vertex_buffer_size(mesh_t* mesh);
@@ -34,5 +37,9 @@ mesh_t* mesh_load_from_obj(const char* obj_filepath);
 mesh_t* mesh_load_axes();
 
 mesh_t* mesh_load_tetrahedron();
-mesh_t* mesh_load_cube();
-mesh_t* mesh_load_sphere();
+mesh_t* mesh_load_cube(); // hexahedron
+mesh_t* mesh_load_octahedron();
+//mesh_t* mesh_load_dodecahedron();
+//mesh_t* mesh_load_icosahedron();
+//mesh_t* mesh_load_ico_sphere();
+mesh_t* mesh_load_uv_sphere();

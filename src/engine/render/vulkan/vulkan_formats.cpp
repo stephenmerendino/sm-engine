@@ -107,11 +107,11 @@ std::vector<VkVertexInputAttributeDescription> get_vertex_input_attr_descs(const
 std::vector<VkVertexInputBindingDescription> mesh_get_vertex_input_binding_descs(mesh_t* mesh)
 {
     ASSERT(nullptr != mesh);
-	return get_vertex_input_binding_descs(mesh->m_vertices[0]);
+	return get_vertex_input_binding_descs(mesh->vertices[0]);
 }
 
 std::vector<VkVertexInputAttributeDescription> mesh_get_vertex_input_attr_descs(mesh_t* mesh)
 {
     ASSERT(nullptr != mesh);
-	return get_vertex_input_attr_descs(mesh->m_vertices[0]);
+	return get_vertex_input_attr_descs(mesh->vertices[0]);
 }
