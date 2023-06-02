@@ -108,6 +108,7 @@ void resource_manager_init(context_t& context)
     resource_manager_track_mesh(context, resource_manager_get_mesh_id(PrimitiveMeshType::kOctahedron), mesh_load_octahedron());
     resource_manager_track_mesh(context, resource_manager_get_mesh_id(PrimitiveMeshType::kUvSphere), mesh_load_uv_sphere());
     resource_manager_track_mesh(context, resource_manager_get_mesh_id(PrimitiveMeshType::kPlane), mesh_load_plane());
+    resource_manager_track_mesh(context, resource_manager_get_mesh_id(PrimitiveMeshType::kCone), mesh_load_cone());
 
     resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kAxes));
     resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kTetrahedron));
@@ -115,6 +116,7 @@ void resource_manager_init(context_t& context)
     resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kOctahedron));
     resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kUvSphere));
     resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kPlane));
+    resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kCone));
 }
 
 void resource_manager_deinit(context_t& context)

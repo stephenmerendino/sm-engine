@@ -1,6 +1,9 @@
+#include "engine/core/color.h"
+#include "engine/math/math_utils.h"
 #include "engine/render/mesh.h"
 #include "engine/render/vertex.h"
 #include "engine/render/vulkan/vulkan_renderer.h"
+#include "engine/core/assert.h"
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "engine/thirdparty/tinyobjloader/tiny_obj_loader.h"
@@ -18,6 +21,14 @@ void mesh_add_triangle(mesh_t& mesh, u32 v0, u32 v1, u32 v2)
     mesh.indices.push_back(v0);
     mesh.indices.push_back(v1);
     mesh.indices.push_back(v2);
+}
+
+static
+void mesh_add_triangle_from_last_3_verts(mesh_t& mesh)
+{
+    SM_ASSERT_MSG(mesh.vertices.size() >= 3, "Trying to build triangle in mesh with less than 3 vertexes.\n");
+    size_t size = mesh.vertices.size();
+    mesh_add_triangle(mesh, size - 2, size - 1, size);
 }
 
 size_t mesh_calc_vertex_buffer_size(mesh_t* mesh)
@@ -566,6 +577,68 @@ mesh_t* mesh_load_plane()
 
     mesh_add_triangle(*mesh, 0, 1, 2);
     mesh_add_triangle(*mesh, 0, 2, 3);
+
+    mesh->topology = PrimitiveTopology::kTriangleList;
+    return mesh;
+}
+
+mesh_t* mesh_load_cone()
+{
+    mesh_t* mesh = new mesh_t;
+
+    u32 resolution = 128;
+    f32 theta_deg = 360.0f / (f32)resolution; 
+
+    vec4 white = get_color(Color::kWhite);
+
+    for(u32 slice = 0; slice <= resolution; slice++)
+    {
+        vec3 top = make_vec3(0.0f, 0.0f, 1.0f);
+        vec3 p0 = make_vec3(cos_deg(theta_deg * slice), sin_deg(theta_deg * slice), 0.0f);
+        vec3 p1 = make_vec3(cos_deg(theta_deg * (slice + 1)), sin_deg(theta_deg * (slice + 1)), 0.0f);
+        vec3 bot = make_vec3(0.0f, 0.0f, 0.0f);
+
+        //f32 u0 = (f32)slice / (f32)resolution;
+        //f32 u1 = (f32)(slice + 1) / (f32)resolution;
+
+        f32 u0 = remap(p0.x, -1.0f, 1.0f, 0.0f, 1.0f);
+        f32 u1 = remap(p1.x, -1.0f, 1.0f, 0.0f, 1.0f);
+
+        f32 v0 = remap(p0.y, -1.0f, 1.0f, 0.0f, 1.0f);
+        f32 v1 = remap(p1.y, -1.0f, 1.0f, 0.0f, 1.0f);
+
+        // top triangle 1
+        {
+            mesh_add_vertex(*mesh, top, white, make_vec2(0.5, 0.5f));
+            mesh_add_vertex(*mesh, p0, white, make_vec2(u0, v0));
+            mesh_add_vertex(*mesh, p1, white, make_vec2(u1, v1));
+            mesh_add_triangle_from_last_3_verts(*mesh);
+        }
+
+        // top triangle 2
+        {
+            mesh_add_vertex(*mesh, top, white, make_vec2(0.5f, 0.5));
+            mesh_add_vertex(*mesh, p0, white, make_vec2(u0, v0));
+            mesh_add_vertex(*mesh, p1, white, make_vec2(u1, v1));
+            mesh_add_triangle_from_last_3_verts(*mesh);
+        }
+
+        // bottom triangle 1
+        {
+            mesh_add_vertex(*mesh, bot, white, make_vec2(0.5f, 0.5f));
+            mesh_add_vertex(*mesh, p1, white, make_vec2(u1, v1));
+            mesh_add_vertex(*mesh, p0, white, make_vec2(u0, v0));
+            mesh_add_triangle_from_last_3_verts(*mesh);
+        }
+
+        // bottom triangle 2
+        {
+            mesh_add_vertex(*mesh, bot, white, make_vec2(0.5f, 0.5f));
+            mesh_add_vertex(*mesh, p1, white, make_vec2(u1, v1));
+            mesh_add_vertex(*mesh, p0, white, make_vec2(u0, v0));
+            mesh_add_triangle_from_last_3_verts(*mesh);
+        }
+    }
 
     mesh->topology = PrimitiveTopology::kTriangleList;
     return mesh;

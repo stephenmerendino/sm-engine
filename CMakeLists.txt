@@ -5,6 +5,7 @@ project(sm-engine)
 add_library(sm-engine STATIC src/engine/core/assert.cpp
                              src/engine/core/assert.h
                              src/engine/core/bit_flags.h
+                             src/engine/core/color.h
                              src/engine/core/config.h
                              src/engine/core/debug.cpp
                              src/engine/core/debug.h
