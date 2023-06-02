@@ -109,6 +109,8 @@ void resource_manager_init(context_t& context)
     resource_manager_track_mesh(context, resource_manager_get_mesh_id(PrimitiveMeshType::kUvSphere), mesh_load_uv_sphere());
     resource_manager_track_mesh(context, resource_manager_get_mesh_id(PrimitiveMeshType::kPlane), mesh_load_plane());
     resource_manager_track_mesh(context, resource_manager_get_mesh_id(PrimitiveMeshType::kCone), mesh_load_cone());
+    resource_manager_track_mesh(context, resource_manager_get_mesh_id(PrimitiveMeshType::kCylinder), mesh_load_cylinder());
+    resource_manager_track_mesh(context, resource_manager_get_mesh_id(PrimitiveMeshType::kTorus), mesh_load_torus());
 
     resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kAxes));
     resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kTetrahedron));
@@ -117,6 +119,8 @@ void resource_manager_init(context_t& context)
     resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kUvSphere));
     resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kPlane));
     resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kCone));
+    resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kCylinder));
+    resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kTorus));
 }
 
 void resource_manager_deinit(context_t& context)
@@ -139,8 +143,12 @@ mesh_id_t resource_manager_get_mesh_id(PrimitiveMeshType primitive_type)
         case kOctahedron: mesh_id = resource_manager_get_mesh_id("primitive-octahedron"); break;
         case kUvSphere: mesh_id = resource_manager_get_mesh_id("primitive-uv-sphere"); break;
         case kPlane: mesh_id = resource_manager_get_mesh_id("primitive-plane"); break;
+        case kCone: mesh_id = resource_manager_get_mesh_id("primitive-cone"); break;
+        case kCylinder: mesh_id = resource_manager_get_mesh_id("primitive-cylinder"); break;
+        case kTorus: mesh_id = resource_manager_get_mesh_id("primitive-torus"); break;
     }
 
+    SM_ASSERT_MSG(mesh_id != INVALID_MESH_ID, "A primitive hasn't been set up with resource manager yet.\n");
     return mesh_id;
 }
 

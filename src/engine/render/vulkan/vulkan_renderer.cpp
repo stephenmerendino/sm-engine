@@ -673,12 +673,20 @@ void renderer_load_assets(context_t& context)
         mesh_id_t uv_sphere_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kUvSphere);
         mesh_id_t plane_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kPlane);
         mesh_id_t cone_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kCone);
+        mesh_id_t cylinder_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kCylinder);
+        mesh_id_t torus_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kTorus);
 
         material_id_t viking_room_mat_id = resource_manager_get_material_id("viking_room_mat");
         material_id_t debug_mat_id = resource_manager_get_material_id("uv_debug_mat");
 
         {
-            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh4", plane_mesh_id, debug_mat_id);
+            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh", viking_room_mesh_id, viking_room_mat_id);
+            mesh_instance_t* mi = scene_get_mesh_instance(mesh_instance_id);
+            mi->transform.model.t.xyz = make_vec3(-3.0f, 0.0f, 0.0f);
+        }
+
+        {
+            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh", torus_mesh_id, viking_room_mat_id);
             mesh_instance_t* mi = scene_get_mesh_instance(mesh_instance_id);
             mi->transform.model.t.xyz = make_vec3(0.0f, 0.0f, 0.0f);
         }
@@ -690,33 +698,39 @@ void renderer_load_assets(context_t& context)
         }
 
         {
-            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh1", cube_mesh_id, debug_mat_id);
+            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh", cube_mesh_id, debug_mat_id);
             mesh_instance_t* mi = scene_get_mesh_instance(mesh_instance_id);
             mi->transform.model.t.xyz = make_vec3(6.0f, 0.0f, 0.0f);
         }
 
         {
-            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh2", octahedron_mesh_id, debug_mat_id);
+            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh", octahedron_mesh_id, debug_mat_id);
             mesh_instance_t* mi = scene_get_mesh_instance(mesh_instance_id);
             mi->transform.model.t.xyz = make_vec3(9.0f, 0.0f, 0.0f);
         }
 
         {
-            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh3", uv_sphere_mesh_id, debug_mat_id);
+            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh", plane_mesh_id, debug_mat_id);
             mesh_instance_t* mi = scene_get_mesh_instance(mesh_instance_id);
-            mi->transform.model.t.xyz = make_vec3(12.0f, 0.0f, 0.0f);
+            mi->transform.model.t.xyz = make_vec3(0.0f, 3.0f, 0.0f);
         }
 
         {
-            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh3", cone_mesh_id, debug_mat_id);
+            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh", cylinder_mesh_id, debug_mat_id);
             mesh_instance_t* mi = scene_get_mesh_instance(mesh_instance_id);
-            mi->transform.model.t.xyz = make_vec3(15.0f, 0.0f, 0.0f);
+            mi->transform.model.t.xyz = make_vec3(3.0f, 3.0f, 0.0f);
         }
 
         {
-            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh5", viking_room_mesh_id, viking_room_mat_id);
+            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh", uv_sphere_mesh_id, debug_mat_id);
             mesh_instance_t* mi = scene_get_mesh_instance(mesh_instance_id);
-            mi->transform.model.t.xyz = make_vec3(-3.0f, 0.0f, 0.0f);
+            mi->transform.model.t.xyz = make_vec3(6.0f, 3.0f, 0.0f);
+        }
+
+        {
+            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh", cone_mesh_id, debug_mat_id);
+            mesh_instance_t* mi = scene_get_mesh_instance(mesh_instance_id);
+            mi->transform.model.t.xyz = make_vec3(9.0f, 3.0f, 0.0f);
         }
     }
 }

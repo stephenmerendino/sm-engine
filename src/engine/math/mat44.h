@@ -95,6 +95,17 @@ mat44 make_mat44(const vec3& i, const vec3& j, const vec3& k)
     return m;
 }
 
+inline
+mat44 make_mat44(const vec3& i, const vec3& j, const vec3& k, const vec3& t)
+{
+    mat44 m;
+    m.i = make_vec4(i, 0.0f);
+    m.j = make_vec4(j, 0.0f);
+    m.k = make_vec4(k, 0.0f);
+    m.t = make_vec4(t, 1.0f);
+    return m;
+}
+
 static const mat44 MAT44_IDENTITY = make_mat44(1.0f, 0.0f, 0.0f, 0.0f,
                                                0.0f, 1.0f, 0.0f, 0.0f,
                                                0.0f, 0.0f, 1.0f, 0.0f,

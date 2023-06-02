@@ -28,7 +28,7 @@ void mesh_add_triangle_from_last_3_verts(mesh_t& mesh)
 {
     SM_ASSERT_MSG(mesh.vertices.size() >= 3, "Trying to build triangle in mesh with less than 3 vertexes.\n");
     size_t size = mesh.vertices.size();
-    mesh_add_triangle(mesh, size - 2, size - 1, size);
+    mesh_add_triangle(mesh, size - 3, size - 2, size - 1);
 }
 
 size_t mesh_calc_vertex_buffer_size(mesh_t* mesh)
@@ -586,7 +586,7 @@ mesh_t* mesh_load_cone()
 {
     mesh_t* mesh = new mesh_t;
 
-    u32 resolution = 128;
+    u32 resolution = 64;
     f32 theta_deg = 360.0f / (f32)resolution; 
 
     vec4 white = get_color(Color::kWhite);
@@ -641,6 +641,119 @@ mesh_t* mesh_load_cone()
     }
 
     mesh->topology = PrimitiveTopology::kTriangleList;
+    return mesh;
+}
+
+mesh_t* mesh_load_cylinder()
+{
+    mesh_t* mesh = new mesh_t;
+
+    u32 resolution = 64;
+    f32 theta_deg = 360.0f / (f32)resolution; 
+
+    vec4 white = get_color(Color::kWhite);
+
+    for(u32 slice = 0; slice <= resolution; slice++)
+    {
+        vec3 top = make_vec3(0.0f, 0.0f, 1.0f);
+        vec2 p0_xy = make_vec2(cos_deg(theta_deg * slice), sin_deg(theta_deg * slice));
+        vec2 p1_xy = make_vec2(cos_deg(theta_deg * (slice + 1)), sin_deg(theta_deg * (slice + 1)));
+        vec3 bot = make_vec3(0.0f, 0.0f, -1.0f);
+
+        // top triangle
+        {
+            f32 u0 = remap(p0_xy.x, -1.0f, 1.0f, 0.0f, 1.0f);
+            f32 u1 = remap(p1_xy.x, -1.0f, 1.0f, 0.0f, 1.0f);
+            f32 v0 = remap(p0_xy.y, -1.0f, 1.0f, 0.0f, 1.0f);
+            f32 v1 = remap(p1_xy.y, -1.0f, 1.0f, 0.0f, 1.0f);
+
+            mesh_add_vertex(*mesh, top, white, make_vec2(0.5, 0.5f));
+            mesh_add_vertex(*mesh, make_vec3(p0_xy, 1.0f), white, make_vec2(u0, v0));
+            mesh_add_vertex(*mesh, make_vec3(p1_xy, 1.0f), white, make_vec2(u1, v1));
+            mesh_add_triangle_from_last_3_verts(*mesh);
+        }
+
+        // side triangle 1
+        {
+            f32 u0 = (f32)slice / (f32)resolution;
+            f32 u1 = (f32)(slice + 1) / (f32)resolution;
+
+            mesh_add_vertex(*mesh, make_vec3(p0_xy, -1.0f), white, make_vec2(u0, 1.0f));
+            mesh_add_vertex(*mesh, make_vec3(p1_xy, -1.0f), white, make_vec2(u1, 1.0f));
+            mesh_add_vertex(*mesh, make_vec3(p1_xy, 1.0f), white, make_vec2(u1, 0.0f));
+            mesh_add_triangle_from_last_3_verts(*mesh);
+        }
+
+        // side triangle 2
+        {
+            f32 u0 = (f32)slice / (f32)resolution;
+            f32 u1 = (f32)(slice + 1) / (f32)resolution;
+
+            mesh_add_vertex(*mesh, make_vec3(p0_xy, -1.0f), white, make_vec2(u0, 1.0f));
+            mesh_add_vertex(*mesh, make_vec3(p1_xy, 1.0f), white, make_vec2(u1, 0.0f));
+            mesh_add_vertex(*mesh, make_vec3(p0_xy, 1.0f), white, make_vec2(u0, 0.0f));
+            mesh_add_triangle_from_last_3_verts(*mesh);
+        }
+
+        // bottom triangle
+        {
+            f32 u0 = remap(p0_xy.x, -1.0f, 1.0f, 0.0f, 1.0f);
+            f32 u1 = remap(p1_xy.x, -1.0f, 1.0f, 0.0f, 1.0f);
+            f32 v0 = remap(p0_xy.y, -1.0f, 1.0f, 0.0f, 1.0f);
+            f32 v1 = remap(p1_xy.y, -1.0f, 1.0f, 0.0f, 1.0f);
+
+            mesh_add_vertex(*mesh, bot, white, make_vec2(0.5f, 0.5f));
+            mesh_add_vertex(*mesh, make_vec3(p1_xy, -1.0f), white, make_vec2(u1, v1));
+            mesh_add_vertex(*mesh, make_vec3(p0_xy, -1.0f), white, make_vec2(u0, v0));
+            mesh_add_triangle_from_last_3_verts(*mesh);
+        }
+    }
+
+    mesh->topology = PrimitiveTopology::kTriangleList;
+    return mesh;
+}
+
+static
+vec2 calc_2d_polar_to_xy_rad(f32 radians, f32 radius = 1.0f)
+{
+    return radius * make_vec2(cosf(radians), sinf(radians)); 
+}
+
+static
+vec2 calc_2d_polar_to_xy_deg(f32 deg, f32 radius = 1.0f)
+{
+    return radius * make_vec2(cos_deg(deg), sin_deg(deg)); 
+}
+
+mesh_t* mesh_load_torus()
+{
+    mesh_t* mesh = new mesh_t;
+
+    u32 resolution = 128;
+    f32 delta_deg = 360.0f / (f32)resolution;
+
+    for(u32 torus_slice = 0; torus_slice <= resolution; torus_slice++)
+    {
+        f32 percent_complete = (f32)torus_slice / (f32)resolution; 
+        f32 cur_deg = percent_complete * 360.0f;
+        vec3 ring_anchor_pos = make_vec3(cos_deg(cur_deg), sin_deg(cur_deg), 0.0f);
+
+        vec3 i = get_normalized(ring_anchor_pos);
+        vec3 k = get_normalized(cross(VEC3_UP, i));
+        vec3 j = cross(i, k);
+        mat44 ring_world_transform = make_mat44(i, j, k, ring_anchor_pos);
+
+        for(u32 torus_ring = 0; torus_ring <= resolution; torus_ring++)
+        {
+            f32 deg = ((f32)torus_ring / (f32) resolution) * 360.0f;
+            vec2 ring_pos_ls = calc_2d_polar_to_xy_deg(deg, 0.3f);
+            vec3 ring_pos_ws = transform_point(ring_world_transform, make_vec3(ring_pos_ls, 0.0f));
+            mesh_add_vertex(*mesh, ring_pos_ws, get_color(Color::kWhite), make_vec2(0.0f, 0.0f));
+        }
+
+    }
+
+    mesh->topology = PrimitiveTopology::kPointList;
     return mesh;
 }
 

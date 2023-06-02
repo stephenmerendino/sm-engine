@@ -22,7 +22,9 @@ enum PrimitiveMeshType : u32
     kOctahedron,
     kUvSphere,
     kPlane,
-    kCone
+    kCone,
+    kCylinder,
+    kTorus
 };
 
 struct mesh_t
@@ -48,3 +50,5 @@ mesh_t* mesh_load_octahedron();
 mesh_t* mesh_load_uv_sphere();
 mesh_t* mesh_load_plane();
 mesh_t* mesh_load_cone();
+mesh_t* mesh_load_cylinder();
+mesh_t* mesh_load_torus();
