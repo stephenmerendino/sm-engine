@@ -322,6 +322,7 @@ struct mesh_render_data_t
 {
     mesh_id_t mesh_id;
     u32 index_count;
+    u32 vertex_count;
     VkPrimitiveTopology topology;
     buffer_t vertex_buffer;
     buffer_t index_buffer;

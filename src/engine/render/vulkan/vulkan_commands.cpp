@@ -1,6 +1,7 @@
 #include "engine/render/vulkan/vulkan_commands.h"
 #include "engine/render/mesh.h"
 #include "engine/render/vulkan/vulkan_types.h"
+#include "engine/thirdparty/vulkan/vulkan_core.h"
 
 std::vector<VkCommandBuffer> command_buffers_allocate(context_t& context, VkCommandBufferLevel level, u32 num_buffers)
 {
@@ -282,12 +283,19 @@ void command_draw_mesh_instance(VkCommandBuffer command_buffer, const mesh_insta
 
     VkBuffer vertex_buffers[] = { mesh_render_data.vertex_buffer.handle };
     VkDeviceSize offsets[] = { 0 };
-    vkCmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers, offsets);
 
-    vkCmdBindIndexBuffer(command_buffer, mesh_render_data.index_buffer.handle, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers, offsets);
     vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_instance.pipeline.layout_handle, 0, (u32)descriptor_sets.size(), descriptor_sets.data(), 0, nullptr);
 
-    vkCmdDrawIndexed(command_buffer, mesh_render_data.index_count, 1, 0, 0, 0);
+    if(mesh_render_data.topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+    {
+        vkCmdBindIndexBuffer(command_buffer, mesh_render_data.index_buffer.handle, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdDrawIndexed(command_buffer, mesh_render_data.index_count, 1, 0, 0, 0);
+    }
+    else if(mesh_render_data.topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST)
+    {
+        vkCmdDraw(command_buffer, mesh_render_data.vertex_count, 1, 0, 0);
+    }
 }
 
 void command_copy_image(VkCommandBuffer command_buffer, VkImage src_image, VkImageLayout src_layout, VkImage dst_image, VkImageLayout dst_layout, u32 width, u32 height, u32 depth)

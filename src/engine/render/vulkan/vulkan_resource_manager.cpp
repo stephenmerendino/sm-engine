@@ -5,6 +5,7 @@
 #include "engine/render/vulkan/vulkan_formats.h"
 #include "engine/render/vulkan/vulkan_resources.h"
 #include "engine/render/vulkan/vulkan_types.h"
+#include "engine/thirdparty/vulkan/vulkan_core.h"
 
 struct managed_meshes_t
 {
@@ -46,6 +47,7 @@ VkPrimitiveTopology primitive_topology_to_vk_topology(PrimitiveTopology topology
     {
         case PrimitiveTopology::kTriangleList:  return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         case PrimitiveTopology::kLineList:      return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+        case PrimitiveTopology::kPointList:     return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
         default: SM_ERROR_MSG("Trying to use an unsupported topology type"); break;
     }
 
@@ -58,6 +60,7 @@ void resource_manager_track_mesh(context_t& context, mesh_id_t mesh_id, mesh_t* 
     // setup render data
     mesh_render_data_t* mesh_render_data = new mesh_render_data_t;
     mesh_render_data->index_count = (u32)mesh->indices.size();
+    mesh_render_data->vertex_count = (u32)mesh->vertices.size();
     mesh_render_data->topology = primitive_topology_to_vk_topology(mesh->topology);
 
     mesh_render_data->vertex_buffer = buffer_create(context, BufferType::kVertexBuffer, mesh_calc_vertex_buffer_size(mesh));

@@ -138,7 +138,7 @@ mesh_instance_t mesh_instance_create(context_t& context, const char* name, mesh_
 {
     mesh_instance_t mesh_instance;
     mesh_instance.mesh_instance_id = guid_generate();
-    mesh_instance.name_id = mesh_instance_get_name_id(name);
+    mesh_instance.name_id = mesh_instance_get_name_id(name); // TODO(smerendino): We should probalby just have a debug "display name", it would be slow to enfore name uniqueness
     mesh_instance.mesh_id = mesh_id;
     mesh_instance.material_id = mat_id;
     resource_manager_material_acquire(mat_id);
@@ -664,8 +664,40 @@ void renderer_load_assets(context_t& context)
         scene_create_and_add_mesh_instance(*s_context, "world axes", world_axes_mesh_id, simple_vert_color_mat_id);
     }
 
-    resource_manager_load_obj_mesh(context, "models/viking_room.obj");
-    add_random_mesh_to_scene(context);
+    // manually add different meshes I want to look at, temp code
+    {
+        mesh_id_t viking_room_mesh_id = resource_manager_load_obj_mesh(context, "models/viking_room.obj");
+        mesh_id_t cube_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kCube);
+        mesh_id_t tetrahedron_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kTetrahedron);
+        mesh_id_t octahedron_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kOctahedron);
+
+        material_id_t viking_room_mat_id = resource_manager_get_material_id("viking_room_mat");
+        material_id_t debug_mat_id = resource_manager_get_material_id("uv_debug_mat");
+
+        {
+            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh", tetrahedron_mesh_id, debug_mat_id);
+            mesh_instance_t* mi = scene_get_mesh_instance(mesh_instance_id);
+            mi->transform.model.t.xyz = make_vec3(3.0f, 0.0f, 0.0f);
+        }
+
+        {
+            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh1", cube_mesh_id, debug_mat_id);
+            mesh_instance_t* mi = scene_get_mesh_instance(mesh_instance_id);
+            mi->transform.model.t.xyz = make_vec3(6.0f, 0.0f, 0.0f);
+        }
+
+        {
+            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh2", octahedron_mesh_id, debug_mat_id);
+            mesh_instance_t* mi = scene_get_mesh_instance(mesh_instance_id);
+            mi->transform.model.t.xyz = make_vec3(9.0f, 0.0f, 0.0f);
+        }
+
+        {
+            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh3", viking_room_mesh_id, viking_room_mat_id);
+            mesh_instance_t* mi = scene_get_mesh_instance(mesh_instance_id);
+            mi->transform.model.t.xyz = make_vec3(0.0f, 0.0f, 0.0f);
+        }
+    }
 }
 
 void renderer_init(window_t* app_window)
@@ -785,12 +817,12 @@ void renderer_update(f32 ds)
 
     if(input_was_key_pressed(KeyCode::KEY_UPARROW))
     {
-        add_random_mesh_to_scene(*s_context);
+        //add_random_mesh_to_scene(*s_context);
     }
 
     if(input_was_key_pressed(KeyCode::KEY_DOWNARROW))
     {
-        remove_most_recent_mesh_from_scene();
+        //remove_most_recent_mesh_from_scene();
     }
 
     frame_t& frame = s_globals->in_flight_frames[s_globals->cur_frame];
@@ -825,14 +857,14 @@ void renderer_update(f32 ds)
             //rotate_y_deg(rotation, rot_degs_per_second * ds);
             //transform_in_model_space(mesh_instance.transform.model, model_rotation);
 
-            if(s_globals->debug_render)
-            {
-                mesh_instance_set_material(*s_context, &mesh_instance, uv_debug_mat_id);
-            }
-            else
-            {
-                mesh_instance_set_material(*s_context, &mesh_instance, viking_room_mat_id);
-            }
+            //if(s_globals->debug_render)
+            //{
+            //    mesh_instance_set_material(*s_context, &mesh_instance, uv_debug_mat_id);
+            //}
+            //else
+            //{
+            //    mesh_instance_set_material(*s_context, &mesh_instance, viking_room_mat_id);
+            //}
         }
     }
     /////////////////////////////////////////////

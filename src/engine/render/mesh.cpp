@@ -509,8 +509,21 @@ mesh_t* mesh_load_uv_sphere()
 {
     mesh_t* mesh = new mesh_t;
 
+    u32 resolution = 64;  
 
+    vec3 pos = make_vec3(1.0f, 0.0f, 0.0f);
+    f32 u_delta_deg = 360.0f / (f32)resolution; 
+    f32 v_delta_deg = 180.0f / (f32)resolution; 
 
+    for(u32 v_slice = 0; v_slice < resolution; v_slice++)
+    {
+        for(u32 u_slice = 0; u_slice < resolution; u_slice++)
+        {
+            
+        }
+    }
+
+    // TODO(smerendino): render the mesh as points at first just to see what we got
     mesh->topology = PrimitiveTopology::kTriangleList;
     return mesh;
 }

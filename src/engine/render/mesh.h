@@ -9,7 +9,8 @@
 enum class PrimitiveTopology : u8
 {
     kTriangleList,
-    kLineList
+    kLineList,
+    kPointList
 };
 
 enum PrimitiveMeshType : u32
