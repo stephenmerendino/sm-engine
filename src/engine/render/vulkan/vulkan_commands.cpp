@@ -287,14 +287,14 @@ void command_draw_mesh_instance(VkCommandBuffer command_buffer, const mesh_insta
     vkCmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers, offsets);
     vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_instance.pipeline.layout_handle, 0, (u32)descriptor_sets.size(), descriptor_sets.data(), 0, nullptr);
 
-    if(mesh_render_data.topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+    if(mesh_render_data.topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST)
+    {
+        vkCmdDraw(command_buffer, mesh_render_data.vertex_count, 1, 0, 0);
+    }
+    else
     {
         vkCmdBindIndexBuffer(command_buffer, mesh_render_data.index_buffer.handle, 0, VK_INDEX_TYPE_UINT32);
         vkCmdDrawIndexed(command_buffer, mesh_render_data.index_count, 1, 0, 0, 0);
-    }
-    else if(mesh_render_data.topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST)
-    {
-        vkCmdDraw(command_buffer, mesh_render_data.vertex_count, 1, 0, 0);
     }
 }
 

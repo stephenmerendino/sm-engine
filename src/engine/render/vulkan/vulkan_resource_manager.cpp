@@ -64,9 +64,13 @@ void resource_manager_track_mesh(context_t& context, mesh_id_t mesh_id, mesh_t* 
     mesh_render_data->topology = primitive_topology_to_vk_topology(mesh->topology);
 
     mesh_render_data->vertex_buffer = buffer_create(context, BufferType::kVertexBuffer, mesh_calc_vertex_buffer_size(mesh));
-    mesh_render_data->index_buffer = buffer_create(context, BufferType::kIndexBuffer, mesh_calc_index_buffer_size(mesh));
     buffer_update(context, mesh_render_data->vertex_buffer, context.graphics_command_pool, mesh->vertices.data());
-    buffer_update(context, mesh_render_data->index_buffer, context.graphics_command_pool, mesh->indices.data());
+
+    if (mesh_render_data->index_count > 0)
+    {
+		mesh_render_data->index_buffer = buffer_create(context, BufferType::kIndexBuffer, mesh_calc_index_buffer_size(mesh));
+		buffer_update(context, mesh_render_data->index_buffer, context.graphics_command_pool, mesh->indices.data());
+    }
 
     mesh_render_data->pipeline_vertex_input.input_binding_descs = mesh_get_vertex_input_binding_descs(mesh);
     mesh_render_data->pipeline_vertex_input.input_attr_descs = mesh_get_vertex_input_attr_descs(mesh);
@@ -102,13 +106,13 @@ void resource_manager_init(context_t& context)
     resource_manager_track_mesh(context, resource_manager_get_mesh_id(PrimitiveMeshType::kTetrahedron), mesh_load_tetrahedron());
     resource_manager_track_mesh(context, resource_manager_get_mesh_id(PrimitiveMeshType::kHexahedron), mesh_load_cube());
     resource_manager_track_mesh(context, resource_manager_get_mesh_id(PrimitiveMeshType::kOctahedron), mesh_load_octahedron());
-    //resource_manager_track_mesh(context, resource_manager_get_mesh_id(PrimitiveMeshType::kUvSphere), mesh_load_uv_sphere());
+    resource_manager_track_mesh(context, resource_manager_get_mesh_id(PrimitiveMeshType::kUvSphere), mesh_load_uv_sphere());
 
     resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kAxes));
     resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kTetrahedron));
     resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kHexahedron));
     resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kOctahedron));
-    //resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kUvSphere));
+    resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kUvSphere));
 }
 
 void resource_manager_deinit(context_t& context)

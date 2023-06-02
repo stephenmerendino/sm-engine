@@ -670,6 +670,7 @@ void renderer_load_assets(context_t& context)
         mesh_id_t cube_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kCube);
         mesh_id_t tetrahedron_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kTetrahedron);
         mesh_id_t octahedron_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kOctahedron);
+        mesh_id_t uv_sphere_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kUvSphere);
 
         material_id_t viking_room_mat_id = resource_manager_get_material_id("viking_room_mat");
         material_id_t debug_mat_id = resource_manager_get_material_id("uv_debug_mat");
@@ -693,9 +694,15 @@ void renderer_load_assets(context_t& context)
         }
 
         {
-            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh3", viking_room_mesh_id, viking_room_mat_id);
+            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh3", uv_sphere_mesh_id, debug_mat_id);
             mesh_instance_t* mi = scene_get_mesh_instance(mesh_instance_id);
             mi->transform.model.t.xyz = make_vec3(0.0f, 0.0f, 0.0f);
+        }
+
+        {
+            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh4", viking_room_mesh_id, viking_room_mat_id);
+            mesh_instance_t* mi = scene_get_mesh_instance(mesh_instance_id);
+            mi->transform.model.t.xyz = make_vec3(-3.0f, 0.0f, 0.0f);
         }
     }
 }

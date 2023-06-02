@@ -131,7 +131,7 @@ mesh_t* mesh_load_tetrahedron()
 
     vec3 v0_pos = make_vec3(0.0f, 0.0f, 1.0f);
 
-    f32 pitch = 20.0f;
+    f32 pitch = 35.0f;
     vec3 v1_pos = (make_vec4(1.0f, 0.0f, 0.0f, 0.0f) * make_rotation_y_deg(pitch)).xyz;
     vec3 v2_pos = (make_vec4(1.0f, 0.0f, 0.0f, 0.0f) * make_rotation_y_deg(pitch) * make_rotation_z_deg(120.0f)).xyz;
     vec3 v3_pos = (make_vec4(1.0f, 0.0f, 0.0f, 0.0f) * make_rotation_y_deg(pitch) * make_rotation_z_deg(240.0f)).xyz;
@@ -509,22 +509,67 @@ mesh_t* mesh_load_uv_sphere()
 {
     mesh_t* mesh = new mesh_t;
 
-    u32 resolution = 64;  
+    u32 resolution = 8;  
 
-    vec3 pos = make_vec3(1.0f, 0.0f, 0.0f);
+    vec4 white_color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
+
     f32 u_delta_deg = 360.0f / (f32)resolution; 
     f32 v_delta_deg = 180.0f / (f32)resolution; 
 
-    for(u32 v_slice = 0; v_slice < resolution; v_slice++)
+    for(u32 v_slice = 0; v_slice <= resolution; v_slice++)
     {
         for(u32 u_slice = 0; u_slice < resolution; u_slice++)
         {
+            f32 u = (f32)u_slice / (f32)resolution;
+            f32 v = (f32)v_slice / (f32)resolution;
+            vec2 uv = make_vec2(u, v);
             
+            f32 y_deg = -90.0f + ((f32)v_slice * v_delta_deg);
+            f32 z_deg = (f32)u_slice * u_delta_deg;
+
+            vec4 pos = make_vec4(1.0f, 0.0f, 0.0f, 0.0f) * make_rotation_y_deg(y_deg) * make_rotation_z_deg(z_deg);
+
+            // top of the sphere
+            if(v_slice == 0)
+            {
+                mesh_add_vertex(*mesh, pos.xyz, white_color, uv);
+                break;
+            }
+
+            // bottom of the sphere
+            if(v_slice == (resolution))
+            {
+                u32 i0 = mesh_add_vertex(*mesh, pos.xyz, white_color, uv);
+                break;
+            }
+
+            u32 vert_index = mesh_add_vertex(*mesh, pos.xyz, white_color, uv);
+
+            // normal triangle add
+            if(u_slice > 0)
+            {
+                u32 prev_vert_index = vert_index - 1;                
+                u32 vert_index_last_slice = vert_index - resolution;
+                u32 prev_vert_index_last_slice = prev_vert_index - resolution;
+
+                mesh_add_triangle(*mesh, vert_index, prev_vert_index, prev_vert_index_last_slice);
+                mesh_add_triangle(*mesh, vert_index, prev_vert_index_last_slice, prev_vert_index);
+            }
+
+            // last vert for this slice, we need to add the triangle connecting back to the beginning of the slice
+            if(u_slice == resolution - 1)
+            {
+                u32 vert_index_slice_start = vert_index - resolution - 1;                
+                u32 vert_index_slice_start_last_slice = vert_index_slice_start - resolution;
+                u32 vert_index_last_slice = vert_index - resolution;
+
+                mesh_add_triangle(*mesh, vert_index_slice_start, vert_index_slice_start_last_slice, vert_index);
+                mesh_add_triangle(*mesh, vert_index, vert_index_slice_start_last_slice, vert_index_last_slice);
+            }
         }
     }
 
-    // TODO(smerendino): render the mesh as points at first just to see what we got
-    mesh->topology = PrimitiveTopology::kTriangleList;
+    mesh->topology = PrimitiveTopology::kLineList;
     return mesh;
 }
 
