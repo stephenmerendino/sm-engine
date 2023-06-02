@@ -46,7 +46,7 @@ VkPrimitiveTopology primitive_topology_to_vk_topology(PrimitiveTopology topology
     {
         case PrimitiveTopology::kTriangleList:  return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         case PrimitiveTopology::kLineList:      return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-        default: ASSERT(1 == 2); // error out if we haven't put the correct cases here, TODO: use an ERROR("") macro
+        default: SM_ASSERT(1 == 2); // error out if we haven't put the correct cases here, TODO: use an ERROR("") macro
     }
 
     return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -158,7 +158,7 @@ mesh_id_t resource_manager_load_obj_mesh(context_t& context, const char* obj_fil
 void resource_manager_mesh_release(context_t& context, mesh_id_t mesh_id)
 {
     u32 mesh_index = resource_manager_get_mesh_index(mesh_id);
-    ASSERT(INVALID_MESH_INDEX != mesh_index);
+    SM_ASSERT(INVALID_MESH_INDEX != mesh_index);
     s_managed_meshes.ref_counts[mesh_index]--;
 
     if(0 == s_managed_meshes.ref_counts[mesh_index])
@@ -173,7 +173,7 @@ void resource_manager_mesh_release(context_t& context, mesh_id_t mesh_id)
 const mesh_render_data_t* resource_manager_get_mesh_render_data(mesh_id_t mesh_id)
 {
     u32 mesh_index = resource_manager_get_mesh_index(mesh_id);
-    ASSERT(INVALID_MESH_INDEX != mesh_index);
+    SM_ASSERT(INVALID_MESH_INDEX != mesh_index);
     return s_managed_meshes.render_datas[mesh_index];
 }
 
@@ -215,7 +215,7 @@ material_id_t resource_manager_get_material_id(const char* mat_name)
 void resource_manager_material_release(context_t& context, material_id_t mat_id)
 {
     u32 mat_index = resource_manager_get_material_index(mat_id);
-    ASSERT(INVALID_MATERIAL_INDEX != mat_index);
+    SM_ASSERT(INVALID_MATERIAL_INDEX != mat_index);
     s_managed_materials.ref_counts[mat_index]--;
 
     if(0 == s_managed_materials.ref_counts[mat_index])
@@ -231,7 +231,7 @@ void resource_manager_material_release(context_t& context, material_id_t mat_id)
 const material_t* resource_manager_get_material(material_id_t mat_id)
 {
     u32 mat_index = resource_manager_get_material_index(mat_id);
-    ASSERT(INVALID_MATERIAL_INDEX != mat_index);
+    SM_ASSERT(INVALID_MATERIAL_INDEX != mat_index);
     return &s_managed_materials.materials[mat_index];
 }
 
@@ -249,7 +249,7 @@ bool resource_manager_is_material_loaded(material_id_t mat_id)
 void resource_manager_material_acquire(material_id_t mat_id)
 {
     u32 mat_index = resource_manager_get_material_index(mat_id);
-    ASSERT(INVALID_MATERIAL_INDEX != mat_index);
+    SM_ASSERT(INVALID_MATERIAL_INDEX != mat_index);
     s_managed_materials.ref_counts[mat_index]++;
 }
 

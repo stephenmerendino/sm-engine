@@ -13,7 +13,7 @@ std::vector<VkCommandBuffer> command_buffers_allocate(context_t& context, VkComm
     alloc_info.level = level;
     alloc_info.commandBufferCount = (u32)num_buffers;
 
-    VULKAN_ASSERT(vkAllocateCommandBuffers(context.device.device_handle, &alloc_info, buffers.data()));
+    SM_VULKAN_ASSERT(vkAllocateCommandBuffers(context.device.device_handle, &alloc_info, buffers.data()));
     return buffers;
 }
 
@@ -28,12 +28,12 @@ void command_buffer_begin(VkCommandBuffer command_buffer)
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     begin_info.pInheritanceInfo = nullptr;
     begin_info.flags = 0;
-    VULKAN_ASSERT(vkBeginCommandBuffer(command_buffer, &begin_info));
+    SM_VULKAN_ASSERT(vkBeginCommandBuffer(command_buffer, &begin_info));
 }
 
 void command_buffer_end(VkCommandBuffer command_buffer)
 {
-    VULKAN_ASSERT(vkEndCommandBuffer(command_buffer));
+    SM_VULKAN_ASSERT(vkEndCommandBuffer(command_buffer));
 }
 
 VkCommandBuffer command_begin_single_time(context_t& context)
@@ -89,7 +89,7 @@ void command_generate_mip_maps(context_t& context, VkImage image, VkFormat forma
     // Check if image format supports linear filtered blitting
     VkFormatProperties format_props;
     vkGetPhysicalDeviceFormatProperties(context.device.phys_device_handle, format, &format_props);
-    ASSERT(format_props.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT);
+    SM_ASSERT(format_props.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT);
 
     VkCommandBuffer command_buffer = command_begin_single_time(context);
 
@@ -225,7 +225,7 @@ void command_transition_image_layout(VkCommandBuffer command_buffer, VkImage ima
         dst_stage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     }
 
-    ASSERT(is_valid_transition);
+    SM_ASSERT(is_valid_transition);
 
     vkCmdPipelineBarrier(command_buffer, 
             src_stage, dst_stage, 

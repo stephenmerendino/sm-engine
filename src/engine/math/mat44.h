@@ -78,7 +78,7 @@ mat44 make_mat44(f32 ix, f32 iy, f32 iz, f32 iw,
 inline 
 mat44 make_mat44(f32 *data)
 {
-	ASSERT(nullptr != data);
+	SM_ASSERT(nullptr != data);
     mat44 m;
 	memcpy(m.data, data, sizeof(mat44));
     return m;
@@ -103,14 +103,14 @@ static const mat44 MAT44_IDENTITY = make_mat44(1.0f, 0.0f, 0.0f, 0.0f,
 inline
 f32* mat44::operator[](u32 row)
 {
-    ASSERT(row >= 0 && row <= 3);
+    SM_ASSERT(row >= 0 && row <= 3);
     return &data[row * 4];
 }
 
 inline
 const f32* mat44::operator[](u32 row) const
 {
-    ASSERT(row >= 0 && row <= 3);
+    SM_ASSERT(row >= 0 && row <= 3);
     return &data[row * 4];
 }
 

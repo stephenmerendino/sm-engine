@@ -23,7 +23,7 @@ VkImageView image_view_create(device_t& device, VkImage image, VkFormat format, 
     create_info.subresourceRange.layerCount = 1;
 
     VkImageView image_view;
-    VULKAN_ASSERT(vkCreateImageView(device.device_handle, &create_info, nullptr, &image_view));
+    SM_VULKAN_ASSERT(vkCreateImageView(device.device_handle, &create_info, nullptr, &image_view));
     return image_view;
 }
 
@@ -51,7 +51,7 @@ void image_create(context_t& context, u32 width, u32 height, u32 num_mips, VkSam
     image_create_info.samples = num_samples;
     image_create_info.flags = 0;
 
-    VULKAN_ASSERT(vkCreateImage(context.device.device_handle, &image_create_info, nullptr, &out_image));
+    SM_VULKAN_ASSERT(vkCreateImage(context.device.device_handle, &image_create_info, nullptr, &out_image));
 
     // Setup backing memory of image
     VkMemoryRequirements mem_requirements;
@@ -62,7 +62,7 @@ void image_create(context_t& context, u32 width, u32 height, u32 num_mips, VkSam
     alloc_info.allocationSize = mem_requirements.size;
     alloc_info.memoryTypeIndex = memory_find_type(context, mem_requirements.memoryTypeBits, mem_props);
 
-    VULKAN_ASSERT(vkAllocateMemory(context.device.device_handle, &alloc_info, nullptr, &out_memory));
+    SM_VULKAN_ASSERT(vkAllocateMemory(context.device.device_handle, &alloc_info, nullptr, &out_memory));
 
     vkBindImageMemory(context.device.device_handle, out_image, out_memory, 0);
 }
@@ -178,7 +178,7 @@ void buffer_create(context_t& context, VkDeviceSize size, VkBufferUsageFlags usa
     create_info.usage = usage_flags;
     create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    VULKAN_ASSERT(vkCreateBuffer(context.device.device_handle, &create_info, nullptr, &out_buffer));
+    SM_VULKAN_ASSERT(vkCreateBuffer(context.device.device_handle, &create_info, nullptr, &out_buffer));
 
     VkMemoryRequirements mem_requirements;
     vkGetBufferMemoryRequirements(context.device.device_handle, out_buffer, &mem_requirements);
@@ -188,7 +188,7 @@ void buffer_create(context_t& context, VkDeviceSize size, VkBufferUsageFlags usa
     alloc_info.allocationSize = mem_requirements.size;
     alloc_info.memoryTypeIndex = memory_find_type(context, mem_requirements.memoryTypeBits, memory_property_flags);
 
-    VULKAN_ASSERT(vkAllocateMemory(context.device.device_handle, &alloc_info, nullptr, &out_memory));
+    SM_VULKAN_ASSERT(vkAllocateMemory(context.device.device_handle, &alloc_info, nullptr, &out_memory));
 
     vkBindBufferMemory(context.device.device_handle, out_buffer, out_memory, 0);
 }
@@ -257,7 +257,7 @@ sampler_t sampler_create(context_t& context, u32 max_mip_level)
     create_info.minLod = 0.0f;
     create_info.maxLod = (f32)max_mip_level;
 
-    VULKAN_ASSERT(vkCreateSampler(context.device.device_handle, &create_info, nullptr, &sampler.handle));
+    SM_VULKAN_ASSERT(vkCreateSampler(context.device.device_handle, &create_info, nullptr, &sampler.handle));
     return sampler;
 }
 
@@ -274,7 +274,7 @@ descriptor_set_layout_t descriptor_set_layout_create(context_t& context, descrip
     layout_create_info.pBindings = bindings.bindings.data();
 
     descriptor_set_layout_t descriptor_set_layout;
-    VULKAN_ASSERT(vkCreateDescriptorSetLayout(context.device.device_handle, &layout_create_info, nullptr, &descriptor_set_layout.handle));
+    SM_VULKAN_ASSERT(vkCreateDescriptorSetLayout(context.device.device_handle, &layout_create_info, nullptr, &descriptor_set_layout.handle));
     return descriptor_set_layout;
 }
 
@@ -303,7 +303,7 @@ descriptor_pool_t descriptor_pool_create(context_t& context, descriptor_pool_siz
     create_info.maxSets = max_sets;
 
     descriptor_pool_t descriptor_pool;
-    VULKAN_ASSERT(vkCreateDescriptorPool(context.device.device_handle, &create_info, nullptr, &descriptor_pool.descriptor_pool));
+    SM_VULKAN_ASSERT(vkCreateDescriptorPool(context.device.device_handle, &create_info, nullptr, &descriptor_pool.descriptor_pool));
     descriptor_pool.max_num_sets = max_sets;
     return descriptor_pool;
 }
@@ -341,7 +341,7 @@ std::vector<descriptor_set_t> descriptor_sets_allocate(context_t& context, descr
     alloc_info.pSetLayouts = vk_layouts.data();
 
     std::vector<VkDescriptorSet> vk_descriptor_sets(layouts.size());
-    VULKAN_ASSERT(vkAllocateDescriptorSets(context.device.device_handle, &alloc_info, vk_descriptor_sets.data()));
+    SM_VULKAN_ASSERT(vkAllocateDescriptorSets(context.device.device_handle, &alloc_info, vk_descriptor_sets.data()));
 
     std::vector<descriptor_set_t> descriptor_sets(layouts.size());
     for(i32 i = 0; i < vk_layouts.size(); i++)
@@ -457,7 +457,7 @@ void descriptor_sets_write(context_t& context, descriptor_sets_writes_t& descrip
             case VK_DESCRIPTOR_TYPE_SAMPLE_WEIGHT_IMAGE_QCOM:
             case VK_DESCRIPTOR_TYPE_BLOCK_MATCH_IMAGE_QCOM:
             case VK_DESCRIPTOR_TYPE_MAX_ENUM:
-                ASSERT("Trying to set up a descriptor set write that isn't supported yet\n");
+                SM_ASSERT("Trying to set up a descriptor set write that isn't supported yet\n");
                 break;
         }
     }
@@ -491,7 +491,7 @@ VkShaderModule shader_module_create(context_t& context, const char* shader_filep
 	create_info.pCode = (const u32*)raw_shader_code.data();
 
 	VkShaderModule shader_module = VK_NULL_HANDLE;
-	VULKAN_ASSERT(vkCreateShaderModule(context.device.device_handle, &create_info, nullptr, &shader_module));
+	SM_VULKAN_ASSERT(vkCreateShaderModule(context.device.device_handle, &create_info, nullptr, &shader_module));
 
 	return shader_module;
 }
@@ -531,7 +531,7 @@ render_pass_t render_pass_create(context_t& context, render_pass_attachments_t& 
     create_info.dependencyCount = (u32)subpass_dependencies.dependencies.size();
     create_info.pDependencies = subpass_dependencies.dependencies.data();
 
-    VULKAN_ASSERT(vkCreateRenderPass(context.device.device_handle, &create_info, nullptr, &render_pass.handle));
+    SM_VULKAN_ASSERT(vkCreateRenderPass(context.device.device_handle, &create_info, nullptr, &render_pass.handle));
 
     render_pass.attachments = attachments;
     render_pass.subpasses = subpasses;
@@ -597,7 +597,7 @@ void subpasses_add_attachment_ref(subpasses_t& subpasses, u32 subpass_index, Sub
             subpass.color_attach_refs.push_back(attach_ref);
             break;
         case SubpassAttachmentRefType::DEPTH: 
-            ASSERT(false == subpass.has_depth_attach);
+            SM_ASSERT(false == subpass.has_depth_attach);
             subpass.depth_attach_ref = attach_ref;
             subpass.has_depth_attach = true;
             break;
@@ -794,7 +794,7 @@ pipeline_layout_t pipeline_create_layout(context_t& context, mesh_instance_t& me
     layout_info.pPushConstantRanges = nullptr;
 
     pipeline_layout_t pipeline_layout;
-    VULKAN_ASSERT(vkCreatePipelineLayout(context.device.device_handle, &layout_info, nullptr, &pipeline_layout.pipeline_layout));
+    SM_VULKAN_ASSERT(vkCreatePipelineLayout(context.device.device_handle, &layout_info, nullptr, &pipeline_layout.pipeline_layout));
     return pipeline_layout;
 }
 
@@ -830,7 +830,7 @@ pipeline_t pipeline_create(context_t& context, pipeline_shader_stages_t& shader_
 
     pipeline_t pipeline;
     pipeline.layout_handle = pipeline_layout.pipeline_layout;
-    VULKAN_ASSERT(vkCreateGraphicsPipelines(context.device.device_handle, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline.pipeline_handle));
+    SM_VULKAN_ASSERT(vkCreateGraphicsPipelines(context.device.device_handle, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline.pipeline_handle));
     return pipeline;
 }
 
@@ -862,7 +862,7 @@ framebuffer_t framebuffer_create(context_t& context, render_pass_t& render_pass,
     create_info.layers = layers;
 
     framebuffer_t framebuffer;
-    VULKAN_ASSERT(vkCreateFramebuffer(context.device.device_handle, &create_info, nullptr, &framebuffer.handle));
+    SM_VULKAN_ASSERT(vkCreateFramebuffer(context.device.device_handle, &create_info, nullptr, &framebuffer.handle));
     return framebuffer;
 }
 
@@ -877,7 +877,7 @@ semaphore_t semaphore_create(context_t& context)
     semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
     semaphore_t semaphore;
-    VULKAN_ASSERT(vkCreateSemaphore(context.device.device_handle, &semaphore_create_info, nullptr, &semaphore.handle));
+    SM_VULKAN_ASSERT(vkCreateSemaphore(context.device.device_handle, &semaphore_create_info, nullptr, &semaphore.handle));
     return semaphore;
 }
 
@@ -893,7 +893,7 @@ fence_t fence_create(context_t& context)
     fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
     fence_t fence;
-    VULKAN_ASSERT(vkCreateFence(context.device.device_handle, &fence_create_info, nullptr, &fence.handle));
+    SM_VULKAN_ASSERT(vkCreateFence(context.device.device_handle, &fence_create_info, nullptr, &fence.handle));
     return fence;
 }
 

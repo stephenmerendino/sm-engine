@@ -12,13 +12,13 @@ void load_vulkan_global_funcs()
 {
 	#define VK_EXPORTED_FUNCTION(func) \
 		HMODULE vulkanLib = LoadLibrary("vulkan-1.dll"); \
-		ASSERT(nullptr != vulkanLib); \
+		SM_ASSERT(nullptr != vulkanLib); \
 		func = (PFN_##func)GetProcAddress(vulkanLib, #func); \
-		ASSERT(nullptr != func);
+		SM_ASSERT(nullptr != func);
 
 	#define VK_GLOBAL_FUNCTION(func) \
 		func = (PFN_##func)vkGetInstanceProcAddr(nullptr, #func); \
-		ASSERT(nullptr != func);
+		SM_ASSERT(nullptr != func);
 
 	#include "vulkan_functions_manifest.inl"
 }
@@ -27,7 +27,7 @@ void load_vulkan_instance_funcs(VkInstance instance)
 {
 	#define VK_INSTANCE_FUNCTION(func) \
 		func = (PFN_##func)vkGetInstanceProcAddr(instance, #func); \
-		ASSERT(nullptr != func);
+		SM_ASSERT(nullptr != func);
 
 	#include "vulkan_functions_manifest.inl"
 }
@@ -36,7 +36,7 @@ void load_vulkan_device_funcs(VkDevice device)
 {
 	#define VK_DEVICE_FUNCTION(func) \
 		func = (PFN_##func)vkGetDeviceProcAddr(device, #func); \
-		ASSERT(nullptr != func);
+		SM_ASSERT(nullptr != func);
 
 	#include "vulkan_functions_manifest.inl"
 }

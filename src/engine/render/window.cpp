@@ -141,12 +141,12 @@ window_t* window_create(const char* name, u32 width, u32 height, bool resizable)
                                     NULL, NULL, 
                                     GetModuleHandle(NULL), 
                                     window);
-	ASSERT(NULL != window->handle);
+	SM_ASSERT(NULL != window->handle);
 
     // verify that the created size is actually correct
     window_update_size(window);
     window_update_position(window);
-    ASSERT(window->width == width && window->height == height);
+    SM_ASSERT(window->width == width && window->height == height);
 
     // window adds a self subscription to catch windows messages for itself
     window_add_msg_callback(window, internal_window_msg_handler, window);
@@ -159,7 +159,7 @@ window_t* window_create(const char* name, u32 width, u32 height, bool resizable)
 
 void window_update(window_t* window)
 {
-    ASSERT(nullptr != window);
+    SM_ASSERT(nullptr != window);
 
 	window->was_resized = false;
     window->is_moving = false;
@@ -179,21 +179,21 @@ void window_update(window_t* window)
 
 void window_set_title(window_t* window, const char* new_title)
 {
-    ASSERT(nullptr != window);
+    SM_ASSERT(nullptr != window);
 	LPCSTR new_title_win32 = (LPCSTR)(new_title);
 	::SetWindowText(window->handle, new_title_win32);
 }
 
 void window_add_msg_callback(window_t* window, window_message_cb_t cb, void* args)
 {
-    ASSERT(nullptr != window);
+    SM_ASSERT(nullptr != window);
 	window_message_cb_with_args_t cb_with_args = { cb, args };
 	window->message_cbs.push_back(cb_with_args);
 }
 
 ivec2 window_get_center_position(window_t* window)
 {
-    ASSERT(nullptr != window);
+    SM_ASSERT(nullptr != window);
 	u32 half_width = window->width / 2;
 	u32 half_height = window->height / 2;
     return make_ivec2(window->x + half_width, window->y + half_height); 
@@ -201,7 +201,7 @@ ivec2 window_get_center_position(window_t* window)
 
 void window_destroy(window_t* window)
 {
-    ASSERT(nullptr != window);
+    SM_ASSERT(nullptr != window);
 	::DestroyWindow(window->handle);
 	::UnregisterClass(WINDOW_CLASS_NAME, ::GetModuleHandle(NULL));
     delete window;

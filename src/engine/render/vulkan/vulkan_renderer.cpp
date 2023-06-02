@@ -91,7 +91,7 @@ material_resource_t material_load_sampled_texture_resource(context_t& context, c
 static
 void mesh_instance_pipeline_create(context_t& context, mesh_instance_t& mesh_instance)
 {
-    ASSERT(VK_NULL_HANDLE == mesh_instance.pipeline.pipeline_handle);
+    SM_ASSERT(VK_NULL_HANDLE == mesh_instance.pipeline.pipeline_handle);
     
     const material_t* mat = resource_manager_get_material(mesh_instance.material_id);
     pipeline_shader_stages_t shader_stages = mat->shaders;
@@ -265,7 +265,7 @@ instance_draw_id_t frame_get_or_allocate_instance_draw_data(context_t& context, 
             frame.mesh_instance_render_data[i].is_assigned = true;
             std::vector<descriptor_set_layout_t> layout(1, s_globals->mesh_instance_render_data_ds_layout);
             std::vector<descriptor_set_t> descriptor_set = descriptor_sets_allocate(context, frame.mesh_instance_render_data_descriptor_pool, layout);
-            ASSERT(1 == descriptor_set.size());
+            SM_ASSERT(1 == descriptor_set.size());
             frame.mesh_instance_render_data[i].descriptor_set = descriptor_set[0];
             return (instance_draw_id_t)i;
         }
@@ -276,7 +276,7 @@ instance_draw_id_t frame_get_or_allocate_instance_draw_data(context_t& context, 
 
     std::vector<descriptor_set_layout_t> layout(1, s_globals->mesh_instance_render_data_ds_layout);
     std::vector<descriptor_set_t> descriptor_set = descriptor_sets_allocate(context, frame.mesh_instance_render_data_descriptor_pool, layout);
-    ASSERT(1 == descriptor_set.size());
+    SM_ASSERT(1 == descriptor_set.size());
     new_instance_data.descriptor_set = descriptor_set[0];
 
     new_instance_data.is_assigned = true;
@@ -488,7 +488,7 @@ void scene_remove_mesh_instance(const mesh_instance_id_t& mesh_instance_id)
 
     vkQueueWaitIdle(s_context->device.graphics_queue);
 
-    ASSERT(-1 != mesh_index);
+    SM_ASSERT(-1 != mesh_index);
     mesh_instance_destroy(*s_context, s_scene.mesh_instances[mesh_index]);
     s_scene.mesh_instances.erase(s_scene.mesh_instances.begin() + mesh_index);
 }
@@ -506,7 +506,7 @@ void scene_remove_mesh_instance(const name_id_t& name_id)
         }
     }
 
-    ASSERT(-1 != mesh_index);
+    SM_ASSERT(-1 != mesh_index);
     s_scene.mesh_instances.erase(s_scene.mesh_instances.begin() + mesh_index);
 }
 
@@ -550,7 +550,7 @@ static
 void scene_set_mesh_instance_transform(mesh_instance_id_t mesh_instance_id, const transform_t& transform)
 {
     mesh_instance_t* mesh_instance = scene_get_mesh_instance(mesh_instance_id);
-    ASSERT(nullptr != mesh_instance);
+    SM_ASSERT(nullptr != mesh_instance);
     mesh_instance->transform = transform;
 }
 
@@ -670,7 +670,7 @@ void renderer_load_assets(context_t& context)
 
 void renderer_init(window_t* app_window)
 {
-    ASSERT(nullptr != app_window);
+    SM_ASSERT(nullptr != app_window);
 
     s_context = context_create(app_window);
     resource_manager_init(*s_context);
@@ -685,7 +685,7 @@ renderer_globals_t* renderer_get_globals()
 
 void renderer_set_main_camera(camera_t* camera)
 {
-    ASSERT(nullptr != camera); 
+    SM_ASSERT(nullptr != camera); 
     s_globals->main_camera = camera;
 }
 
@@ -765,7 +765,7 @@ void frame_generate_command_buffers(context_t& context, frame_t& frame)
 static
 void mesh_instance_set_material(context_t& context, mesh_instance_t* mesh_instance, material_id_t new_mat_id)
 {
-    ASSERT(nullptr != mesh_instance);
+    SM_ASSERT(nullptr != mesh_instance);
     if (mesh_instance->material_id == new_mat_id)
     {
         return;
@@ -852,7 +852,7 @@ void renderer_render_frame()
         swapchain_recreate(*s_context);
 	    return;
 	}
-	ASSERT(res == VK_SUCCESS || res == VK_SUBOPTIMAL_KHR);
+	SM_ASSERT(res == VK_SUCCESS || res == VK_SUBOPTIMAL_KHR);
 
     // update descriptors for the frame and for each mesh instance render data
     frame_update_render_data(*s_context, frame);
@@ -885,7 +885,7 @@ void renderer_render_frame()
         submit_info.pSignalSemaphores = signal_semaphores;
         
         //fence_reset(*s_context, frame.frame_completed_fence);
-        VULKAN_ASSERT(vkQueueSubmit(s_context->device.graphics_queue, 1, &submit_info, VK_NULL_HANDLE));
+        SM_VULKAN_ASSERT(vkQueueSubmit(s_context->device.graphics_queue, 1, &submit_info, VK_NULL_HANDLE));
     }
 
     // Copy to back buffer
@@ -921,7 +921,7 @@ void renderer_render_frame()
         fence_wait(*s_context, frame.swapchain_image_acquired_fence);
 
         fence_reset(*s_context, frame.frame_completed_fence);
-        VULKAN_ASSERT(vkQueueSubmit(s_context->device.graphics_queue, 1, &submit_info, frame.frame_completed_fence.handle));
+        SM_VULKAN_ASSERT(vkQueueSubmit(s_context->device.graphics_queue, 1, &submit_info, frame.frame_completed_fence.handle));
         
     }
 
@@ -933,7 +933,7 @@ void renderer_render_frame()
 	}
 	else
 	{
-		VULKAN_ASSERT(res);
+		SM_VULKAN_ASSERT(res);
     }
 
     s_globals->cur_frame = (s_globals->cur_frame + 1) % MAX_NUM_FRAMES_IN_FLIGHT;

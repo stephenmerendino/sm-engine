@@ -22,13 +22,13 @@ void mesh_add_triangle(mesh_t& mesh, u32 v0, u32 v1, u32 v2)
 
 size_t mesh_calc_vertex_buffer_size(mesh_t* mesh)
 {
-    ASSERT(nullptr != mesh);
+    SM_ASSERT(nullptr != mesh);
 	return sizeof(mesh->vertices[0]) * mesh->vertices.size();
 }
 
 size_t mesh_calc_index_buffer_size(mesh_t* mesh)
 {
-    ASSERT(nullptr != mesh);
+    SM_ASSERT(nullptr != mesh);
 	return sizeof(mesh->indices[0]) * mesh->indices.size();
 }
 
@@ -40,7 +40,7 @@ mesh_t* mesh_load_from_obj(const char* obj_filepath)
 	std::string warn, err;
 
 	bool loaded = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, obj_filepath);
-	ASSERT(loaded);
+	SM_ASSERT(loaded);
 
     mesh_t* mesh = new mesh_t;
 

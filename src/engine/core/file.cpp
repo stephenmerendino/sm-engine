@@ -28,7 +28,7 @@ std::vector<byte_t> read_binary_file(const char* filename)
 
 	// read into buffer
 	size_t bytes_read = fread(file_bytes.data(), sizeof(byte_t), file_len, p_file);
-	ASSERT(bytes_read == (size_t)file_len);
+	SM_ASSERT(bytes_read == (size_t)file_len);
 
 	// close file
 	fclose(p_file);

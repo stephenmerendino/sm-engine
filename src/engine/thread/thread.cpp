@@ -23,7 +23,7 @@ void thread_run(thread_t& t)
                                 0, // Creation flags
                                 (LPDWORD)&t.m_id); // Out id
 
-	ASSERT(NULL != t.m_handle);
+	SM_ASSERT(NULL != t.m_handle);
     t.m_is_running = true;
 }
 

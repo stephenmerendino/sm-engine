@@ -34,7 +34,7 @@ VkFormat format_find_depth(device_t& device)
 												  VK_IMAGE_TILING_OPTIMAL, 
 												  VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
-	ASSERT(depth_format != VK_FORMAT_UNDEFINED);
+	SM_ASSERT(depth_format != VK_FORMAT_UNDEFINED);
 	return depth_format;
 } 
 
@@ -53,7 +53,7 @@ u32 memory_find_type(context_t& context, u32 type_filter, VkMemoryPropertyFlags 
         }
     }
 
-    ASSERT(found_mem_type != UINT_MAX);
+    SM_ASSERT(found_mem_type != UINT_MAX);
     return found_mem_type;
 }
 
@@ -106,12 +106,12 @@ std::vector<VkVertexInputAttributeDescription> get_vertex_input_attr_descs(const
 
 std::vector<VkVertexInputBindingDescription> mesh_get_vertex_input_binding_descs(mesh_t* mesh)
 {
-    ASSERT(nullptr != mesh);
+    SM_ASSERT(nullptr != mesh);
 	return get_vertex_input_binding_descs(mesh->vertices[0]);
 }
 
 std::vector<VkVertexInputAttributeDescription> mesh_get_vertex_input_attr_descs(mesh_t* mesh)
 {
-    ASSERT(nullptr != mesh);
+    SM_ASSERT(nullptr != mesh);
 	return get_vertex_input_attr_descs(mesh->vertices[0]);
 }

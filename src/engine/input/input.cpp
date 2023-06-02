@@ -233,7 +233,7 @@ void show_cursor()
 
 void input_init(window_t* window)
 {
-    ASSERT(nullptr != window);
+    SM_ASSERT(nullptr != window);
     window_add_msg_callback(window, input_system_msg_handler);
     s_window = window;
 }

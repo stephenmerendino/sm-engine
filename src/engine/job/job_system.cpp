@@ -19,7 +19,7 @@ static thread_t*                s_worker_threads = nullptr;
 static
 void job_setup(job_t* job, job_func_t func, void* args)
 {
-    ASSERT(nullptr != job);
+    SM_ASSERT(nullptr != job);
     job->m_func = func;
     job->m_args = args;
     job->m_job_waiting_on_me = nullptr;
@@ -32,28 +32,28 @@ void job_setup(job_t* job, job_func_t func, void* args)
 static
 void job_acquire(job_t* job)
 {
-    ASSERT(nullptr != job);
+    SM_ASSERT(nullptr != job);
     atomic_incr(&job->m_ref_count);
 }
 
 static
 void job_release(job_t* job)
 {
-    ASSERT(nullptr != job);
+    SM_ASSERT(nullptr != job);
     atomic_decr(&job->m_ref_count);
 }
 
 static
 bool job_is_released(job_t* job)
 {
-    ASSERT(nullptr != job);
+    SM_ASSERT(nullptr != job);
 	return job->m_ref_count == 0;
 }
 
 static
 void job_set_status(job_t* job, JobStatus status)
 {
-    ASSERT(nullptr != job);
+    SM_ASSERT(nullptr != job);
     SCOPED_CRITICAL_SECTION(&job->m_job_status_rw_cs);
     job->m_status = status;
 }
@@ -61,7 +61,7 @@ void job_set_status(job_t* job, JobStatus status)
 static
 void job_notify_waiting_on_finished(job_t* job)
 {
-    ASSERT(nullptr != job);
+    SM_ASSERT(nullptr != job);
     job->m_waiting_on_count--;
     job_system_submit_job(job);
 }
@@ -69,7 +69,7 @@ void job_notify_waiting_on_finished(job_t* job)
 static
 void job_execute(job_t* job)
 {
-    ASSERT(nullptr != job);
+    SM_ASSERT(nullptr != job);
     job_set_status(job, JobStatus::RUNNING);
 	job->m_func(job->m_args);
 }
@@ -77,7 +77,7 @@ void job_execute(job_t* job)
 static
 void job_finish(job_t* job)
 {
-    ASSERT(nullptr != job);
+    SM_ASSERT(nullptr != job);
     job_set_status(job, JobStatus::FINISHED);
     if(job->m_job_waiting_on_me)
     {
@@ -88,7 +88,7 @@ void job_finish(job_t* job)
 static
 bool job_is_waiting_on_others(job_t* job)
 {
-    ASSERT(nullptr != job);
+    SM_ASSERT(nullptr != job);
     return job_get_status(job) == JobStatus::WAITING;    
 }
 
@@ -180,7 +180,7 @@ job_t* job_system_create_job(job_func_t func, void* args)
 
 void job_system_submit_job(job_t* job)
 {
-	ASSERT(job);
+	SM_ASSERT(job);
 
     job_acquire(job);
 
@@ -200,7 +200,7 @@ void job_system_submit_job(job_t* job)
 
 void job_system_release_job(job_t* job)
 {
-	ASSERT(job);
+	SM_ASSERT(job);
 
     job_release(job);
 	if (job_is_released(job))

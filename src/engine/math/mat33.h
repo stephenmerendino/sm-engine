@@ -58,7 +58,7 @@ mat33 make_mat33(f32 ix, f32 iy, f32 iz,
 inline 
 mat33 make_mat33(f32* data)
 {
-	ASSERT(nullptr != data);
+	SM_ASSERT(nullptr != data);
     mat33 m;
 	memcpy(m.data, data, sizeof(mat33));
     return m;
@@ -71,14 +71,14 @@ static const mat33 MAT33_IDENTITY = make_mat33(1.0f, 0.0f, 0.0f,
 inline
 f32* mat33::operator[](u32 row)
 {
-    ASSERT(row >= 0 && row <= 2); 
+    SM_ASSERT(row >= 0 && row <= 2); 
     return &data[row * 3]; 
 }
 
 inline
 const f32* mat33::operator[](u32 row) const
 {
-    ASSERT(row >= 0 && row <= 2); 
+    SM_ASSERT(row >= 0 && row <= 2); 
     return &data[row * 3]; 
 }
 

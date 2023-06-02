@@ -7,7 +7,7 @@ static i64 s_freq_per_sec;
 static i64 get_current_tick()
 {
 	LARGE_INTEGER tick;
-	ASSERT(QueryPerformanceCounter(&tick));
+	SM_ASSERT(QueryPerformanceCounter(&tick));
 	return tick.QuadPart;
 }
 
@@ -18,7 +18,7 @@ void time_init()
 	{
 		LARGE_INTEGER freq;
 		BOOL res = QueryPerformanceFrequency(&freq);
-		ASSERT(res);
+		SM_ASSERT(res);
 		s_freq_per_sec = freq.QuadPart;
 		did_init = true;
 	}

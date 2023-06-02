@@ -11,6 +11,6 @@ guid_t guid_generate()
 {
     GUID guid;
     HRESULT res = ::CoCreateGuid(&guid);
-    ASSERT(SUCCEEDED(res));
+    SM_ASSERT(SUCCEEDED(res));
     return guid;
 }

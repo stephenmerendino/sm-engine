@@ -118,7 +118,7 @@ void normalize(vec2& v)
 {
 	// prevent division by zero by checking for zero length and asserting
 	f32 length_sq = calc_length_sq(v);
-	ASSERT(!is_zero(length_sq));
+	SM_ASSERT(!is_zero(length_sq));
 
 	// do normalization now that we know length is not zero
 	f32 length = sqrtf(length_sq);

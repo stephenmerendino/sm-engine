@@ -176,7 +176,7 @@ instance_t instance_create()
     // validation layers
     if (ENABLE_VALIDATION_LAYERS)
     {
-        ASSERT(check_validation_layer_support());
+        SM_ASSERT(check_validation_layer_support());
         create_info.ppEnabledLayerNames = VALIDATION_LAYERS.data();
         create_info.enabledLayerCount = (u32)VALIDATION_LAYERS.size();
 
@@ -195,7 +195,7 @@ instance_t instance_create()
     }
 
     instance_t vulkan_instance = {};
-    VULKAN_ASSERT(vkCreateInstance(&create_info, nullptr, &vulkan_instance.handle));
+    SM_VULKAN_ASSERT(vkCreateInstance(&create_info, nullptr, &vulkan_instance.handle));
 
     load_vulkan_instance_funcs(vulkan_instance.handle);
 
@@ -203,7 +203,7 @@ instance_t instance_create()
     if (ENABLE_VALIDATION_LAYERS)
     {
         VkDebugUtilsMessengerCreateInfoEXT debug_messenger_create_info = setup_debug_messenger_create_info(vulkan_debug_cb);
-        VULKAN_ASSERT(vkCreateDebugUtilsMessengerEXT(vulkan_instance.handle, &debug_messenger_create_info, nullptr, &vulkan_instance.debug_messenger_handle));
+        SM_VULKAN_ASSERT(vkCreateDebugUtilsMessengerEXT(vulkan_instance.handle, &debug_messenger_create_info, nullptr, &vulkan_instance.debug_messenger_handle));
     }
 
     return vulkan_instance;
@@ -219,7 +219,7 @@ surface_t surface_create(instance_t& instance, window_t& window)
     create_info.hinstance = GetModuleHandle(nullptr);
 
     surface_t surface;
-    VULKAN_ASSERT(vkCreateWin32SurfaceKHR(instance.handle, &create_info, nullptr, &surface.handle));
+    SM_VULKAN_ASSERT(vkCreateWin32SurfaceKHR(instance.handle, &create_info, nullptr, &surface.handle));
     return surface;
 }
 
@@ -388,7 +388,7 @@ device_t device_create(instance_t& instance, surface_t& surface)
     {
         u32 device_count = 0;
         vkEnumeratePhysicalDevices(instance.handle, &device_count, nullptr);
-        ASSERT(device_count != 0);
+        SM_ASSERT(device_count != 0);
 
         std::vector<VkPhysicalDevice> devices(device_count);
         vkEnumeratePhysicalDevices(instance.handle, &device_count, devices.data());
@@ -421,7 +421,7 @@ device_t device_create(instance_t& instance, surface_t& surface)
             }
         }
 
-        ASSERT(VK_NULL_HANDLE != selected_physical_device);
+        SM_ASSERT(VK_NULL_HANDLE != selected_physical_device);
     }
 
     // logical device
@@ -461,7 +461,7 @@ device_t device_create(instance_t& instance, surface_t& surface)
             create_info.enabledLayerCount = (u32)VALIDATION_LAYERS.size();
         }
 
-        VULKAN_ASSERT(vkCreateDevice(selected_physical_device, &create_info, nullptr, &logical_device));
+        SM_VULKAN_ASSERT(vkCreateDevice(selected_physical_device, &create_info, nullptr, &logical_device));
 
         load_vulkan_device_funcs(logical_device);
     }
@@ -589,7 +589,7 @@ swapchain_t swapchain_create(device_t& device, surface_t& surface, window_t& win
     create_info.oldSwapchain = VK_NULL_HANDLE;
 
     swapchain_t swapchain = {};
-    VULKAN_ASSERT(vkCreateSwapchainKHR(device.device_handle, &create_info, nullptr, &swapchain.handle));
+    SM_VULKAN_ASSERT(vkCreateSwapchainKHR(device.device_handle, &create_info, nullptr, &swapchain.handle));
 
     vkGetSwapchainImagesKHR(device.device_handle, swapchain.handle, &swapchain.num_images, nullptr);
 
@@ -630,7 +630,7 @@ command_pool_t command_pool_create(device_t& device, VkQueueFlags queue_families
     }
 
     command_pool_t command_pool;
-    VULKAN_ASSERT(vkCreateCommandPool(device.device_handle, &create_info, nullptr, &command_pool.handle));
+    SM_VULKAN_ASSERT(vkCreateCommandPool(device.device_handle, &create_info, nullptr, &command_pool.handle));
     return command_pool;
 }
 
@@ -670,7 +670,7 @@ void instance_destroy(instance_t& instance)
 
 context_t* context_create(window_t* window)
 {
-    ASSERT(nullptr != window);
+    SM_ASSERT(nullptr != window);
     context_t* context = new context_t; 
     context->window = window;
     context->instance = instance_create(); 
@@ -684,7 +684,7 @@ context_t* context_create(window_t* window)
 
 void context_destroy(context_t* context)
 {
-    ASSERT(nullptr != context);
+    SM_ASSERT(nullptr != context);
     command_pool_destroy(context->device, context->graphics_command_pool);
     swapchain_destroy(context->device, context->swapchain);
     device_destroy(context->device);
