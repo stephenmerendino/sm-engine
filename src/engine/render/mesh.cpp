@@ -554,6 +554,23 @@ mesh_t* mesh_load_uv_sphere()
     return mesh;
 }
 
+mesh_t* mesh_load_plane()
+{
+    mesh_t* mesh = new mesh_t;
+
+    vec4 white = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    mesh_add_vertex(*mesh, make_vec3(1.0f, 1.0f, 0.0f), white, make_vec2(0.0f, 0.0f));
+    mesh_add_vertex(*mesh, make_vec3(-1.0f, 1.0f, 0.0f), white, make_vec2(0.0f, 1.0f));
+    mesh_add_vertex(*mesh, make_vec3(-1.0f, -1.0f, 0.0f), white, make_vec2(1.0f, 1.0f));
+    mesh_add_vertex(*mesh, make_vec3(1.0f, -1.0f, 0.0f), white, make_vec2(1.0f, 0.0f));
+
+    mesh_add_triangle(*mesh, 0, 1, 2);
+    mesh_add_triangle(*mesh, 0, 2, 3);
+
+    mesh->topology = PrimitiveTopology::kTriangleList;
+    return mesh;
+}
+
 //mesh_t* mesh_load_xxxx()
 //{
 //    mesh_t* mesh = new mesh_t;

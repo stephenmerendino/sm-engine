@@ -107,12 +107,14 @@ void resource_manager_init(context_t& context)
     resource_manager_track_mesh(context, resource_manager_get_mesh_id(PrimitiveMeshType::kHexahedron), mesh_load_cube());
     resource_manager_track_mesh(context, resource_manager_get_mesh_id(PrimitiveMeshType::kOctahedron), mesh_load_octahedron());
     resource_manager_track_mesh(context, resource_manager_get_mesh_id(PrimitiveMeshType::kUvSphere), mesh_load_uv_sphere());
+    resource_manager_track_mesh(context, resource_manager_get_mesh_id(PrimitiveMeshType::kPlane), mesh_load_plane());
 
     resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kAxes));
     resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kTetrahedron));
     resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kHexahedron));
     resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kOctahedron));
     resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kUvSphere));
+    resource_manager_track_mesh_forever(resource_manager_get_mesh_id(PrimitiveMeshType::kPlane));
 }
 
 void resource_manager_deinit(context_t& context)
@@ -134,6 +136,7 @@ mesh_id_t resource_manager_get_mesh_id(PrimitiveMeshType primitive_type)
         case kHexahedron: mesh_id = resource_manager_get_mesh_id("primitive-hexahedron"); break;
         case kOctahedron: mesh_id = resource_manager_get_mesh_id("primitive-octahedron"); break;
         case kUvSphere: mesh_id = resource_manager_get_mesh_id("primitive-uv-sphere"); break;
+        case kPlane: mesh_id = resource_manager_get_mesh_id("primitive-plane"); break;
     }
 
     return mesh_id;
