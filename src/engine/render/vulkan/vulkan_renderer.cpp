@@ -696,7 +696,7 @@ void renderer_load_assets(context_t& context)
         {
             mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh3", uv_sphere_mesh_id, debug_mat_id);
             mesh_instance_t* mi = scene_get_mesh_instance(mesh_instance_id);
-            mi->transform.model.t.xyz = make_vec3(0.0f, 0.0f, 0.0f);
+            mi->transform.model.t.xyz = make_vec3(12.0f, 0.0f, 0.0f);
         }
 
         {
