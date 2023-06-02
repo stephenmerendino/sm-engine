@@ -104,7 +104,7 @@ void camera_look_at(camera_t& camera, const vec3& look_at_pos_ws, const vec3& up
 	f32 cos_yaw_rads = dot(view_dir_xy, VEC3_FORWARD);
 	f32 cos_pitch_rads = dot(view_dir, up_ref);
 
-	//#TODO Is there a more elegant way to get the correctly signed angle
+	//#TODO(smerendino): Is there a more elegant way to get the correctly signed angle
 	f32 angle_sign = dot(view_dir_xy, VEC3_LEFT) > 0.0f ? 1.0f : -1.0f;
 	f32 yaw_rads = acosf(cos_yaw_rads) * angle_sign;
 	f32 pitch_rads = acosf(cos_pitch_rads);

@@ -46,7 +46,7 @@ VkPrimitiveTopology primitive_topology_to_vk_topology(PrimitiveTopology topology
     {
         case PrimitiveTopology::kTriangleList:  return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         case PrimitiveTopology::kLineList:      return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-        default: SM_ASSERT(1 == 2); // error out if we haven't put the correct cases here, TODO: use an ERROR("") macro
+        default: SM_ERROR_MSG("Trying to use an unsupported topology type"); break;
     }
 
     return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;

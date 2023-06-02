@@ -168,7 +168,7 @@ void job_system_shutdown()
     SCOPED_CRITICAL_SECTION(&s_shutdown_job_system_cs);
     s_should_shutdown_job_system = true;
 
-    // TODO We need to cleanup s_shutdown_job_system_cs and s_num_jobs_processed_cs
+    // TODO(smerendino): We need to cleanup s_shutdown_job_system_cs and s_num_jobs_processed_cs
 }
 
 job_t* job_system_create_job(job_func_t func, void* args)

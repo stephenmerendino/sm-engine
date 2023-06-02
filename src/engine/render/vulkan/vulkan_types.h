@@ -281,7 +281,7 @@ struct descriptor_info_t
 
 struct descriptor_resource_t
 {
-    texture_t texture; // TODO: make this a texture_id_t texture_id;
+    texture_t texture; // TODO(smerendino): make this a texture_id_t texture_id;
 };
 
 struct descriptor_set_layout_bindings_t
@@ -346,7 +346,7 @@ struct mesh_instance_t
     material_id_t material_id;
     instance_draw_id_t instance_id;
     transform_t transform;
-    pipeline_t pipeline; // TODO: move this to resource manager
+    pipeline_t pipeline; // TODO(smerendino): move this to resource manager
 };
 
 struct frame_render_data_t

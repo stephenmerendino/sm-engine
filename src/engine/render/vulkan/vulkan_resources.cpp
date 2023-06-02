@@ -739,7 +739,7 @@ pipeline_depth_stencil_state_t pipeline_create_depth_stencil_state(bool depth_te
     depth_stencil_state.depth_stencil_state.depthBoundsTestEnable = depth_bounds_test_enable;
     depth_stencil_state.depth_stencil_state.minDepthBounds = min_depth_bounds;
     depth_stencil_state.depth_stencil_state.maxDepthBounds = max_depth_bounds;
-    //TODO: Allow stencil to be passed in and set
+    //TODO(smerendino): Allow stencil to be passed in and set
     depth_stencil_state.depth_stencil_state.stencilTestEnable = VK_FALSE;
     depth_stencil_state.depth_stencil_state.front = {};
     depth_stencil_state.depth_stencil_state.back = {};
@@ -821,7 +821,7 @@ pipeline_t pipeline_create(context_t& context, pipeline_shader_stages_t& shader_
     pipeline_info.pMultisampleState = &multisample_state.multisample_state;
     pipeline_info.pDepthStencilState = &depth_stencil_state.depth_stencil_state;
     pipeline_info.pColorBlendState = &color_blend_state.color_blend_state;
-    pipeline_info.pDynamicState = nullptr; //#TODO Enable this pipeline state
+    pipeline_info.pDynamicState = nullptr; //#TODO(smerendino): Enable this pipeline state
     pipeline_info.layout = pipeline_layout.pipeline_layout;
     pipeline_info.renderPass = render_pass.handle;
     pipeline_info.subpass = 0;

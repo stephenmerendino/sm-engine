@@ -38,7 +38,7 @@ bool report_error(const char* filename, int line_number);
 		TRIGGER_DEBUG(); \
 	}                                                   
 
-#define SM_VULKAN_ASSERT(vk_result) SM_ASSERT(VK_SUCCESS == vk_result)
+#define SM_VULKAN_ASSERT(vk_result) SM_ASSERT_MSG(VK_SUCCESS == vk_result, "Vulkan Assertion Failed")
 
 #else
 

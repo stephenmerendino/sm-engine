@@ -66,7 +66,7 @@ material_t material_create(context_t& context, material_create_info_t& create_in
                                                                              resource.descriptor_resource.texture, 
                                                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
                                                                              resource.descriptor_info.binding_index, 
-                                                                             0, //TODO: need to support arrays in descriptors
+                                                                             0, //TODO(smerendino): need to support arrays in descriptors
                                                                              resource.descriptor_info.count);
         }
     }
@@ -257,7 +257,7 @@ void frame_update_render_data(context_t& context, frame_t& frame)
 static
 instance_draw_id_t frame_get_or_allocate_instance_draw_data(context_t& context, frame_t& frame)
 {
-    // TODO: we are duplicating the ds layout code here, clean up
+    // TODO(smerendino): we are duplicating the ds layout code here, clean up
     for(i32 i = 0; i < (i32)frame.mesh_instance_render_data.size(); i++)
     {
         if(!frame.mesh_instance_render_data[i].is_assigned)

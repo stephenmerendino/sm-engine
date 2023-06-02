@@ -594,4 +594,4 @@ mat44 create_perspective_projection(f32 vertical_fov_deg, f32 near_plane, f32 fa
 				      0.0f,					0.0f,			-near_plane * far_plane / (far_plane - near_plane),	0.0f);
 }
 
-// TODO orthographic projection
+// TODO(smerendino): orthographic projection
