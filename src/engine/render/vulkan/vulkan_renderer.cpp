@@ -584,9 +584,9 @@ void add_random_mesh_to_scene(context_t& context)
     static i32 counter = 0;
 
     mesh_id_t viking_room_mesh_id = resource_manager_load_obj_mesh(context, "models/viking_room.obj");
-    mesh_id_t cube_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kCube);
-    mesh_id_t tetrahedron_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kTetrahedron);
-    mesh_id_t octahedron_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kOctahedron);
+    mesh_id_t cube_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kUnitCube);
+    mesh_id_t tetrahedron_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kUnitTetrahedron);
+    mesh_id_t octahedron_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kUnitOctahedron);
 
     material_id_t viking_room_mat_id = resource_manager_get_material_id("viking_room_mat");
 
@@ -621,6 +621,8 @@ void remove_most_recent_mesh_from_scene()
     }
 }
 
+static mesh_t s_test_mesh;
+
 static
 void renderer_load_assets(context_t& context)
 {
@@ -634,6 +636,18 @@ void renderer_load_assets(context_t& context)
 
         material_t viking_room_material = material_create(*s_context, mat_create_info);
         resource_manager_track_material_TEMP("viking_room_mat", viking_room_material);
+    }
+
+    {
+        material_create_info_t mat_create_info;
+        mat_create_info.vertex_shader_info = { "shaders/tri-vert.spv", "main" };
+        mat_create_info.fragment_shader_info = { "shaders/tri-frag.spv", "main" };
+
+        material_resource_t diffuse_texture = material_load_sampled_texture_resource(*s_context, "textures/gigachad.jpg", 0, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
+        mat_create_info.resources.push_back(diffuse_texture);
+
+        material_t viking_room_material = material_create(*s_context, mat_create_info);
+        resource_manager_track_material_TEMP("gigachad_mat", viking_room_material);
     }
 
     {
@@ -659,25 +673,26 @@ void renderer_load_assets(context_t& context)
 
     // world axes
     {
-        mesh_id_t world_axes_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kAxes);
+        mesh_id_t world_axes_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kUnitAxes);
         material_id_t simple_vert_color_mat_id = resource_manager_get_material_id("simple_vert_color");
         scene_create_and_add_mesh_instance(*s_context, "world axes", world_axes_mesh_id, simple_vert_color_mat_id);
     }
 
-    // manually add different meshes I want to look at, temp code
+    // manually add different meshes I want to lookUnit at, temp code
     {
         mesh_id_t viking_room_mesh_id = resource_manager_load_obj_mesh(context, "models/viking_room.obj");
-        mesh_id_t cube_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kCube);
-        mesh_id_t tetrahedron_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kTetrahedron);
-        mesh_id_t octahedron_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kOctahedron);
-        mesh_id_t uv_sphere_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kUvSphere);
-        mesh_id_t plane_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kPlane);
-        mesh_id_t cone_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kCone);
-        mesh_id_t cylinder_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kCylinder);
-        mesh_id_t torus_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kTorus);
+        mesh_id_t cube_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kUnitCube);
+        mesh_id_t tetrahedron_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kUnitTetrahedron);
+        mesh_id_t octahedron_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kUnitOctahedron);
+        mesh_id_t uv_sphere_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kUnitUvSphere);
+        mesh_id_t plane_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kUnitPlane);
+        mesh_id_t cone_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kUnitCone);
+        mesh_id_t cylinder_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kUnitCylinder);
+        mesh_id_t torus_mesh_id = resource_manager_get_mesh_id(PrimitiveMeshType::kUnitTorus);
 
         material_id_t viking_room_mat_id = resource_manager_get_material_id("viking_room_mat");
         material_id_t debug_mat_id = resource_manager_get_material_id("uv_debug_mat");
+        material_id_t gigachad_mat_id = resource_manager_get_material_id("gigachad_mat");
 
         {
             mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh", viking_room_mesh_id, viking_room_mat_id);
@@ -686,7 +701,9 @@ void renderer_load_assets(context_t& context)
         }
 
         {
-            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh", torus_mesh_id, debug_mat_id);
+            mesh_build_quad_3d(s_test_mesh, make_vec3(0.0f, 0.0f, -3.0f), make_vec3(0.0f, 1.0f, 0.0f), make_vec3(-1.0f, 0.0f, 0.0f), 50.0f, 50.0f);
+            mesh_id_t test_id = resource_manager_track_mesh(context, "static/test_mesh", &s_test_mesh);
+            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh", test_id, gigachad_mat_id);
             mesh_instance_t* mi = scene_get_mesh_instance(mesh_instance_id);
             mi->transform.model.t.xyz = make_vec3(0.0f, 0.0f, 0.0f);
         }
@@ -731,6 +748,12 @@ void renderer_load_assets(context_t& context)
             mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh", cone_mesh_id, debug_mat_id);
             mesh_instance_t* mi = scene_get_mesh_instance(mesh_instance_id);
             mi->transform.model.t.xyz = make_vec3(9.0f, 3.0f, 0.0f);
+        }
+
+        {
+            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh", torus_mesh_id, debug_mat_id);
+            mesh_instance_t* mi = scene_get_mesh_instance(mesh_instance_id);
+            mi->transform.model.t.xyz = make_vec3(0.0f, 6.0f, 0.0f);
         }
     }
 }

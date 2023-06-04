@@ -159,4 +159,16 @@ f32 distance_sq(const vec2& a, const vec2& b)
     return calc_length_sq(a - b); 
 }
 
+inline
+vec2 calc_2d_polar_to_xy_rad(f32 radians, f32 radius = 1.0f)
+{
+    return radius * make_vec2(cosf(radians), sinf(radians)); 
+}
+
+inline
+vec2 calc_2d_polar_to_xy_deg(f32 deg, f32 radius = 1.0f)
+{
+    return radius * make_vec2(cos_deg(deg), sin_deg(deg)); 
+}
+
 static const vec2 VEC2_ZERO = make_vec2(0, 0);

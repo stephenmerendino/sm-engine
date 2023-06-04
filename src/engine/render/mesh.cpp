@@ -1,5 +1,6 @@
 #include "engine/core/color.h"
 #include "engine/math/math_utils.h"
+#include "engine/math/vec3.h"
 #include "engine/render/mesh.h"
 #include "engine/render/vertex.h"
 #include "engine/render/vulkan/vulkan_renderer.h"
@@ -80,7 +81,26 @@ mesh_t* mesh_load_from_obj(const char* obj_filepath)
 	return mesh;
 }
 
-mesh_t* mesh_load_axes()
+void mesh_build_quad_3d(mesh_t& mesh, const vec3& pos, const vec3& right, const vec3& up, f32 width, f32 height)
+{
+    vec3 right_norm = get_normalized(right);
+    vec3 up_norm = get_normalized(up);
+
+    vec3 top_left = pos + (-right_norm * width) + (up_norm * height); 
+    vec3 top_right = pos + (right_norm * width) + (up_norm * height); 
+    vec3 bottom_right = pos + (right_norm * width) + (-up_norm * height); 
+    vec3 bottom_left = pos + (-right_norm * width) + (-up_norm * height); 
+
+    u32 tl_i = mesh_add_vertex(mesh, top_left, get_color(Color::kWhite), make_vec2(0.0f, 0.0f));
+    u32 tr_i = mesh_add_vertex(mesh, top_right, get_color(Color::kWhite), make_vec2(1.0f, 0.0f));
+    u32 br_i = mesh_add_vertex(mesh, bottom_right, get_color(Color::kWhite), make_vec2(1.0f, 1.0f));
+    u32 bl_i = mesh_add_vertex(mesh, bottom_left, get_color(Color::kWhite), make_vec2(0.0f, 1.0f));
+
+    mesh_add_triangle(mesh, tl_i, bl_i, br_i);
+    mesh_add_triangle(mesh, tl_i, br_i, tr_i);
+}
+
+mesh_t* mesh_load_unit_axes()
 {
     mesh_t* mesh = new mesh_t;
 
@@ -136,7 +156,7 @@ mesh_t* mesh_load_axes()
     return mesh;
 }
 
-mesh_t* mesh_load_tetrahedron()
+mesh_t* mesh_load_unit_tetrahedron()
 {
     mesh_t* mesh = new mesh_t;
 
@@ -179,7 +199,7 @@ mesh_t* mesh_load_tetrahedron()
     return mesh;
 }
 
-mesh_t* mesh_load_cube()
+mesh_t* mesh_load_unit_cube()
 {
 	const f32 kSize = 1.0f;
 	const vec4 white = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -443,7 +463,7 @@ mesh_t* mesh_load_cube()
     return mesh;
 }
 
-mesh_t* mesh_load_octahedron()
+mesh_t* mesh_load_unit_octahedron()
 {
     mesh_t* mesh = new mesh_t;
 
@@ -516,7 +536,7 @@ mesh_t* mesh_load_octahedron()
     return mesh;
 }
 
-mesh_t* mesh_load_uv_sphere()
+mesh_t* mesh_load_unit_uv_sphere()
 {
     mesh_t* mesh = new mesh_t;
 
@@ -565,7 +585,7 @@ mesh_t* mesh_load_uv_sphere()
     return mesh;
 }
 
-mesh_t* mesh_load_plane()
+mesh_t* mesh_load_unit_plane()
 {
     mesh_t* mesh = new mesh_t;
 
@@ -582,7 +602,7 @@ mesh_t* mesh_load_plane()
     return mesh;
 }
 
-mesh_t* mesh_load_cone()
+mesh_t* mesh_load_unit_cone()
 {
     mesh_t* mesh = new mesh_t;
 
@@ -644,7 +664,7 @@ mesh_t* mesh_load_cone()
     return mesh;
 }
 
-mesh_t* mesh_load_cylinder()
+mesh_t* mesh_load_unit_cylinder()
 {
     mesh_t* mesh = new mesh_t;
 
@@ -720,19 +740,7 @@ mesh_t* mesh_load_cylinder()
     return mesh;
 }
 
-static
-vec2 calc_2d_polar_to_xy_rad(f32 radians, f32 radius = 1.0f)
-{
-    return radius * make_vec2(cosf(radians), sinf(radians)); 
-}
-
-static
-vec2 calc_2d_polar_to_xy_deg(f32 deg, f32 radius = 1.0f)
-{
-    return radius * make_vec2(cos_deg(deg), sin_deg(deg)); 
-}
-
-mesh_t* mesh_load_torus()
+mesh_t* mesh_load_unit_torus()
 {
     mesh_t* mesh = new mesh_t;
 

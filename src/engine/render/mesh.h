@@ -15,16 +15,16 @@ enum class PrimitiveTopology : u8
 
 enum PrimitiveMeshType : u32
 {
-    kAxes,
-    kTetrahedron,
-    kHexahedron,
-    kCube = kHexahedron,
-    kOctahedron,
-    kUvSphere,
-    kPlane,
-    kCone,
-    kCylinder,
-    kTorus
+    kUnitAxes,
+    kUnitTetrahedron,
+    kUnitHexahedron,
+    kUnitCube = kUnitHexahedron,
+    kUnitOctahedron,
+    kUnitUvSphere,
+    kUnitPlane,
+    kUnitCone,
+    kUnitCylinder,
+    kUnitTorus
 };
 
 struct mesh_t
@@ -39,16 +39,23 @@ size_t mesh_calc_index_buffer_size(mesh_t* mesh);
 
 mesh_t* mesh_load_from_obj(const char* obj_filepath);
 
-mesh_t* mesh_load_axes();
+void mesh_build_quad_3d(mesh_t& mesh, const vec3& pos, const vec3& right, const vec3& up, f32 width, f32 height);
+//void mesh_build_axes(mesh_t& mesh);
+//void mesh_build_tetrahedron(mesh_t& mesh);
+//void mesh_build_cube(mesh_t& mesh);
+//void mesh_build_octahedron(mesh_t& mesh);
+//void mesh_build_uv_sphere(mesh_t& mesh);
+//void mesh_build_plane(mesh_t& mesh);
+//void mesh_build_cone(mesh_t& mesh);
+//void mesh_build_cylinder(mesh_t& mesh);
+//void mesh_build_torus(mesh_t& mesh);
 
-mesh_t* mesh_load_tetrahedron();
-mesh_t* mesh_load_cube(); // hexahedron
-mesh_t* mesh_load_octahedron();
-//mesh_t* mesh_load_dodecahedron();
-//mesh_t* mesh_load_icosahedron();
-//mesh_t* mesh_load_ico_sphere();
-mesh_t* mesh_load_uv_sphere();
-mesh_t* mesh_load_plane();
-mesh_t* mesh_load_cone();
-mesh_t* mesh_load_cylinder();
-mesh_t* mesh_load_torus();
+mesh_t* mesh_load_unit_axes();
+mesh_t* mesh_load_unit_tetrahedron();
+mesh_t* mesh_load_unit_cube();
+mesh_t* mesh_load_unit_octahedron();
+mesh_t* mesh_load_unit_uv_sphere();
+mesh_t* mesh_load_unit_plane();
+mesh_t* mesh_load_unit_cone();
+mesh_t* mesh_load_unit_cylinder();
+mesh_t* mesh_load_unit_torus();
