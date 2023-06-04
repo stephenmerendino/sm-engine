@@ -100,7 +100,7 @@ void mesh_instance_pipeline_create(context_t& context, mesh_instance_t& mesh_ins
     pipeline_vertex_input_t vertex_input = mesh_render_data->pipeline_vertex_input;
     VkPrimitiveTopology mesh_topology = mesh_render_data->topology;
     pipeline_input_assembly_t input_assembly = pipeline_create_input_assembly(mesh_topology);
-    pipeline_raster_state_t raster_state = pipeline_create_raster_state();
+    pipeline_raster_state_t raster_state = pipeline_create_raster_state(VK_POLYGON_MODE_FILL);
     pipeline_viewport_state_t viewport_state;
     pipeline_create_viewport_state(viewport_state, 0.0f, 0.0f, 
                                                    context.swapchain.extent.width, context.swapchain.extent.height, 
@@ -701,7 +701,7 @@ void renderer_load_assets(context_t& context)
         }
 
         {
-            mesh_build_quad_3d(s_test_mesh, make_vec3(0.0f, 0.0f, -3.0f), make_vec3(0.0f, 1.0f, 0.0f), make_vec3(-1.0f, 0.0f, 0.0f), 50.0f, 50.0f);
+            mesh_build_quad_3d(s_test_mesh, make_vec3(0.0f, 0.0f, -3.0f), make_vec3(0.0f, 1.0f, 0.0f), make_vec3(-1.0f, 0.0f, 0.0f), 50.0f, 50.0f, 1);
             mesh_id_t test_id = resource_manager_track_mesh(context, "static/test_mesh", s_test_mesh);
             mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh", test_id, gigachad_mat_id);
             mesh_instance_t* mi = scene_get_mesh_instance(mesh_instance_id);

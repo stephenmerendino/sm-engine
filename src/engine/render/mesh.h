@@ -38,18 +38,14 @@ size_t mesh_calc_vertex_buffer_size(mesh_t* mesh);
 size_t mesh_calc_index_buffer_size(mesh_t* mesh);
 
 mesh_t* mesh_load_from_obj(const char* obj_filepath);
+// mesh_t* mesh_load_from_usd();
+// mesh_t* mesh_load_from_fbx();
+// mesh_t* mesh_load_from_gltf();
 
-void mesh_build_quad_3d(mesh_t& mesh, const vec3& pos, const vec3& right, const vec3& up, f32 width, f32 height);
+void mesh_build_quad_3d(mesh_t& mesh, const vec3& center_pos, const vec3& right, const vec3& up, f32 half_width, f32 half_height, u32 resolution = 1);
 void mesh_build_axes_lines_3d(mesh_t& mesh, const vec3& origin, const vec3& i, const vec3& j, const vec3& k);
-void mesh_build_uv_sphere(mesh_t& mesh, vec3& origin, f32 radius, u32 resolution);
-//void mesh_build_tetrahedron(mesh_t& mesh);
-//void mesh_build_cube(mesh_t& mesh);
-//void mesh_build_octahedron(mesh_t& mesh);
-//void mesh_build_uv_sphere(mesh_t& mesh);
-//void mesh_build_plane(mesh_t& mesh);
-//void mesh_build_cone(mesh_t& mesh);
-//void mesh_build_cylinder(mesh_t& mesh);
-//void mesh_build_torus(mesh_t& mesh);
+void mesh_build_uv_sphere(mesh_t& mesh, vec3& origin, f32 radius, u32 resolution = 32);
+void mesh_build_cube(mesh_t& mesh, const vec3& center, f32 radius, u32 resolution = 1);
 
 mesh_t* mesh_load_unit_axes();
 mesh_t* mesh_load_unit_tetrahedron();

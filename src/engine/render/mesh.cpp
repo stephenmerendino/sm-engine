@@ -81,27 +81,40 @@ mesh_t* mesh_load_from_obj(const char* obj_filepath)
 	return mesh;
 }
 
-void mesh_build_quad_3d(mesh_t& mesh, const vec3& pos, const vec3& right, const vec3& up, f32 width, f32 height)
+void mesh_build_quad_3d(mesh_t& mesh, const vec3& center_pos, const vec3& right, const vec3& up, f32 half_width, f32 half_height, u32 resolution)
 {
     vec3 right_norm = get_normalized(right);
     vec3 up_norm = get_normalized(up);
 
-    vec3 top_left = pos + (-right_norm * width) + (up_norm * height); 
-    vec3 top_right = pos + (right_norm * width) + (up_norm * height); 
-    vec3 bottom_right = pos + (right_norm * width) + (-up_norm * height); 
-    vec3 bottom_left = pos + (-right_norm * width) + (-up_norm * height); 
+    f32 width_step = (half_width * 2.0f) / (f32)resolution;
+    f32 height_step = (half_height * 2.0f) / (f32)resolution;
 
-    u32 tl_i = mesh_add_vertex(mesh, top_left, color_get(Color::kWhite), make_vec2(0.0f, 0.0f));
-    u32 tr_i = mesh_add_vertex(mesh, top_right, color_get(Color::kWhite), make_vec2(1.0f, 0.0f));
-    u32 br_i = mesh_add_vertex(mesh, bottom_right, color_get(Color::kWhite), make_vec2(1.0f, 1.0f));
-    u32 bl_i = mesh_add_vertex(mesh, bottom_left, color_get(Color::kWhite), make_vec2(0.0f, 1.0f));
+    vec3 top_left = center_pos + (-right_norm * half_width) + (up_norm * half_height);
 
-    mesh_add_triangle(mesh, tl_i, bl_i, br_i);
-    mesh_add_triangle(mesh, tl_i, br_i, tr_i);
+    for(i32 y = 0; y <= resolution; y++)
+    {
+        for(i32 x = 0; x <= resolution; x++)
+        {
+            f32 u = (f32)x / (f32)(resolution);
+            f32 v = (f32)y / (f32)(resolution);
+            vec3 vert_pos = top_left + (right * width_step * x) + (-up * height_step * y);
+            u32 vert_index = mesh_add_vertex(mesh, vert_pos, color_get(Color::kWhite), make_vec2(u, v));
+
+            if(y > 0 && x > 0)
+            {
+                u32 prev_vert_index = vert_index - 1;    
+                u32 vert_index_last_row = (vert_index - resolution) - 1;
+                u32 prev_vert_index_last_row = vert_index_last_row - 1;
+                mesh_add_triangle(mesh, vert_index, prev_vert_index_last_row, prev_vert_index);
+                mesh_add_triangle(mesh, vert_index, vert_index_last_row, prev_vert_index_last_row);
+            }
+        }
+    }
 }
 
 void mesh_build_axes_lines_3d(mesh_t& mesh, const vec3& origin, const vec3& i, const vec3& j, const vec3& k)
 {
+    SM_ASSERT(mesh.topology == PrimitiveTopology::kLineList);
     vec2 uv = make_vec2(0.0f, 0.0f);
     vec4 red = color_get(Color::kRed);
     vec4 green = color_get(Color::kGreen);
@@ -155,14 +168,23 @@ void mesh_build_uv_sphere(mesh_t& mesh, const vec3& origin, f32 radius, u32 reso
             }
         }
     }
-    
+}
+
+void mesh_build_cube(mesh_t& mesh, const vec3& center, f32 radius, u32 resolution)
+{
+    mesh_build_quad_3d(mesh, center + VEC3_FORWARD * radius, VEC3_LEFT, VEC3_UP, radius, radius, resolution);
+    mesh_build_quad_3d(mesh, center + VEC3_LEFT * radius, VEC3_BACKWARD, VEC3_UP, radius, radius, resolution);
+    mesh_build_quad_3d(mesh, center + VEC3_BACKWARD * radius, VEC3_RIGHT, VEC3_UP, radius, radius, resolution);
+    mesh_build_quad_3d(mesh, center + VEC3_RIGHT * radius, VEC3_FORWARD, VEC3_UP, radius, radius, resolution);
+    mesh_build_quad_3d(mesh, center + VEC3_UP * radius, VEC3_RIGHT, VEC3_FORWARD, radius, radius, resolution);
+    mesh_build_quad_3d(mesh, center + VEC3_DOWN * radius, VEC3_LEFT, VEC3_FORWARD, radius, radius, resolution);
 }
 
 mesh_t* mesh_load_unit_axes()
 {
     mesh_t* mesh = new mesh_t;
-    mesh_build_axes_lines_3d(*mesh, VEC3_ZERO, VEC3_FORWARD, VEC3_LEFT, VEC3_UP);
     mesh->topology = PrimitiveTopology::kLineList;
+    mesh_build_axes_lines_3d(*mesh, VEC3_ZERO, VEC3_FORWARD, VEC3_LEFT, VEC3_UP);
     return mesh;
 }
 
@@ -211,265 +233,9 @@ mesh_t* mesh_load_unit_tetrahedron()
 
 mesh_t* mesh_load_unit_cube()
 {
-	const f32 kSize = 1.0f;
-	const vec4 white = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
-
     mesh_t* mesh = new mesh_t;
-
-	// x axis face
-	{
-		// Top left
-		vertex_pct_t v1{};
-
-		v1.m_pos = make_vec3(1.0f, -1.0f, 1.0f) * kSize;
-		v1.m_uv = make_vec2(0.0f, 0.0f);
-		v1.m_color = white;
-
-		// Bottom left
-		vertex_pct_t v2{};
-
-		v2.m_pos = make_vec3(1.0f, -1.0f, -1.0f) * kSize;
-		v2.m_uv = make_vec2(0.0f, 1.0f);
-		v2.m_color = white;
-
-		// Bottom right
-		vertex_pct_t v3{};
-
-		v3.m_pos = make_vec3(1.0f, 1.0f, -1.0f) * kSize;
-		v3.m_uv = make_vec2(1.0f, 1.0f);
-		v3.m_color = white;
-
-		// Top right
-		vertex_pct_t v4{};
-
-		v4.m_pos = make_vec3(1.0f, 1.0f, 1.0f) * kSize;
-		v4.m_uv = make_vec2(1.0f, 0.0f);
-		v4.m_color = white;
-
-		mesh->vertices.push_back(v1);
-		mesh->vertices.push_back(v2);
-		mesh->vertices.push_back(v3);
-		mesh->vertices.push_back(v4);
-		mesh->indices.push_back(0);
-		mesh->indices.push_back(1);
-		mesh->indices.push_back(3);
-		mesh->indices.push_back(3);
-		mesh->indices.push_back(1);
-		mesh->indices.push_back(2);
-	}
-	
-	// neg x axis face
-	{
-		// Top left
-		vertex_pct_t v1{};
-
-		v1.m_pos = make_vec3(-1.0f, 1.0f, 1.0f) * kSize;
-		v1.m_uv = make_vec2(0.0f, 0.0f);
-		v1.m_color = white;
-
-		// Bottom left
-		vertex_pct_t v2{};
-
-		v2.m_pos = make_vec3(-1.0f, 1.0f, -1.0f) * kSize;
-		v2.m_uv = make_vec2(0.0f, 1.0f);
-		v2.m_color = white;
-
-		// Bottom right
-		vertex_pct_t v3{};
-
-		v3.m_pos = make_vec3(-1.0f, -1.0f, -1.0f) * kSize;
-		v3.m_uv = make_vec2(1.0f, 1.0f);
-		v3.m_color = white;
-
-		// Top right
-		vertex_pct_t v4{};
-
-		v4.m_pos = make_vec3(-1.0f, -1.0f, 1.0f) * kSize;
-		v4.m_uv = make_vec2(1.0f, 0.0f);
-		v4.m_color = white;
-
-		mesh->vertices.push_back(v1);
-		mesh->vertices.push_back(v2);
-		mesh->vertices.push_back(v3);
-		mesh->vertices.push_back(v4);
-		mesh->indices.push_back(4);
-		mesh->indices.push_back(5);
-		mesh->indices.push_back(7);
-		mesh->indices.push_back(7);
-		mesh->indices.push_back(5);
-		mesh->indices.push_back(6);
-	}
-
-	// y axis face
-	{
-		// Top left
-		vertex_pct_t v1{};
-
-		v1.m_pos = make_vec3(1.0f, 1.0f, 1.0f) * kSize;
-		v1.m_uv = make_vec2(0.0f, 0.0f);
-		v1.m_color = white;
-
-		// Bottom left
-		vertex_pct_t v2{};
-
-		v2.m_pos = make_vec3(1.0f, 1.0f, -1.0f) * kSize;
-		v2.m_uv = make_vec2(0.0f, 1.0f);
-		v2.m_color = white;
-
-		// Bottom right
-		vertex_pct_t v3{};
-
-		v3.m_pos = make_vec3(-1.0f, 1.0f, -1.0f) * kSize;
-		v3.m_uv = make_vec2(1.0f, 1.0f);
-		v3.m_color = white;
-
-		// Top right
-		vertex_pct_t v4{};
-
-		v4.m_pos = make_vec3(-1.0f, 1.0f, 1.0f) * kSize;
-		v4.m_uv = make_vec2(1.0f, 0.0f);
-		v4.m_color = white;
-
-		mesh->vertices.push_back(v1);
-		mesh->vertices.push_back(v2);
-		mesh->vertices.push_back(v3);
-		mesh->vertices.push_back(v4);
-		mesh->indices.push_back(8);
-		mesh->indices.push_back(9);
-		mesh->indices.push_back(11);
-		mesh->indices.push_back(11);
-		mesh->indices.push_back(9);
-		mesh->indices.push_back(10);
-	}
-
-	// neg y axis face
-	{
-		// Top left
-		vertex_pct_t v1{};
-
-		v1.m_pos = make_vec3(-1.0f, -1.0f, 1.0f) * kSize;
-		v1.m_uv = make_vec2(0.0f, 0.0f);
-		v1.m_color = white;
-
-		// Bottom left
-		vertex_pct_t v2{};
-
-		v2.m_pos = make_vec3(-1.0f, -1.0f, -1.0f) * kSize;
-		v2.m_uv = make_vec2(0.0f, 1.0f);
-		v2.m_color = white;
-
-		// Bottom right
-		vertex_pct_t v3{};
-
-		v3.m_pos = make_vec3(1.0f, -1.0f, -1.0f) * kSize;
-		v3.m_uv = make_vec2(1.0f, 1.0f);
-		v3.m_color = white;
-
-		// Top right
-		vertex_pct_t v4{};
-
-		v4.m_pos = make_vec3(1.0f, -1.0f, 1.0f) * kSize;
-		v4.m_uv = make_vec2(1.0f, 0.0f);
-		v4.m_color = white;
-
-		mesh->vertices.push_back(v1);
-		mesh->vertices.push_back(v2);
-		mesh->vertices.push_back(v3);
-		mesh->vertices.push_back(v4);
-		mesh->indices.push_back(12);
-		mesh->indices.push_back(13);
-		mesh->indices.push_back(15);
-		mesh->indices.push_back(15);
-		mesh->indices.push_back(13);
-		mesh->indices.push_back(14);
-	}
-
-	// z axis face
-	{
-		// Top left
-		vertex_pct_t v1{};
-
-		v1.m_pos = make_vec3(1.0f, -1.0f, 1.0f) * kSize;
-		v1.m_uv = make_vec2(0.0f, 0.0f);
-		v1.m_color = white;
-
-		// Bottom left
-		vertex_pct_t v2{};
-
-		v2.m_pos = make_vec3(1.0f, 1.0f, 1.0f) * kSize;
-		v2.m_uv = make_vec2(0.0f, 1.0f);
-		v2.m_color = white;
-
-		// Bottom right
-		vertex_pct_t v3{};
-
-		v3.m_pos = make_vec3(-1.0f, 1.0f, 1.0f) * kSize;
-		v3.m_uv = make_vec2(1.0f, 1.0f);
-		v3.m_color = white;
-
-		// Top right
-		vertex_pct_t v4{};
-
-		v4.m_pos = make_vec3(-1.0f, -1.0f, 1.0f) * kSize;
-		v4.m_uv = make_vec2(1.0f, 0.0f);
-		v4.m_color = white;
-
-		mesh->vertices.push_back(v1);
-		mesh->vertices.push_back(v2);
-		mesh->vertices.push_back(v3);
-		mesh->vertices.push_back(v4);
-		mesh->indices.push_back(16);
-		mesh->indices.push_back(17);
-		mesh->indices.push_back(19);
-		mesh->indices.push_back(19);
-		mesh->indices.push_back(17);
-		mesh->indices.push_back(18);
-	}
-
-	// neg z axis face
-	{
-		// Top left
-		vertex_pct_t v1{};
-
-		v1.m_pos = make_vec3(1.0f, 1.0f, -1.0f) * kSize;
-		v1.m_uv = make_vec2(0.0f, 0.0f);
-		v1.m_color = white;
-
-		// Bottom left
-		vertex_pct_t v2{};
-
-		v2.m_pos = make_vec3(1.0f, -1.0f, -1.0f) * kSize;
-		v2.m_uv = make_vec2(0.0f, 1.0f);
-		v2.m_color = white;
-
-		// Bottom right
-		vertex_pct_t v3{};
-
-		v3.m_pos = make_vec3(-1.0f, -1.0f, -1.0f) * kSize;
-		v3.m_uv = make_vec2(1.0f, 1.0f);
-		v3.m_color = white;
-
-		// Top right
-		vertex_pct_t v4{};
-
-		v4.m_pos = make_vec3(-1.0f, 1.0f, -1.0f) * kSize;
-		v4.m_uv = make_vec2(1.0f, 0.0f);
-		v4.m_color = white;
-
-		mesh->vertices.push_back(v1);
-		mesh->vertices.push_back(v2);
-		mesh->vertices.push_back(v3);
-		mesh->vertices.push_back(v4);
-		mesh->indices.push_back(20);
-		mesh->indices.push_back(21);
-		mesh->indices.push_back(23);
-		mesh->indices.push_back(23);
-		mesh->indices.push_back(21);
-		mesh->indices.push_back(22);
-	}
-
     mesh->topology = PrimitiveTopology::kTriangleList;
-
+    mesh_build_cube(*mesh, VEC3_ZERO, 1.0f);
     return mesh;
 }
 
@@ -557,7 +323,7 @@ mesh_t* mesh_load_unit_uv_sphere()
 mesh_t* mesh_load_unit_plane()
 {
     mesh_t* mesh = new mesh_t;
-    mesh_build_quad_3d(*mesh, VEC3_ZERO, VEC3_RIGHT, VEC3_FORWARD, 1.0f, 1.0f);
+    mesh_build_quad_3d(*mesh, VEC3_ZERO, VEC3_RIGHT, VEC3_FORWARD, 1.0f, 1.0f, 1);
     mesh->topology = PrimitiveTopology::kTriangleList;
     return mesh;
 }
@@ -577,9 +343,6 @@ mesh_t* mesh_load_unit_cone()
         vec3 p0 = make_vec3(cos_deg(theta_deg * slice), sin_deg(theta_deg * slice), 0.0f);
         vec3 p1 = make_vec3(cos_deg(theta_deg * (slice + 1)), sin_deg(theta_deg * (slice + 1)), 0.0f);
         vec3 bot = make_vec3(0.0f, 0.0f, 0.0f);
-
-        //f32 u0 = (f32)slice / (f32)resolution;
-        //f32 u1 = (f32)(slice + 1) / (f32)resolution;
 
         f32 u0 = remap(p0.x, -1.0f, 1.0f, 0.0f, 1.0f);
         f32 u1 = remap(p1.x, -1.0f, 1.0f, 0.0f, 1.0f);
