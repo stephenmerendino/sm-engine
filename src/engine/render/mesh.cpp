@@ -650,6 +650,7 @@ mesh_t* mesh_load_cylinder()
 
     u32 resolution = 64;
     f32 theta_deg = 360.0f / (f32)resolution; 
+    f32 side_u_scale = 3.0f;
 
     vec4 white = get_color(Color::kWhite);
 
@@ -677,6 +678,9 @@ mesh_t* mesh_load_cylinder()
         {
             f32 u0 = (f32)slice / (f32)resolution;
             f32 u1 = (f32)(slice + 1) / (f32)resolution;
+            
+            u0 *= side_u_scale;
+            u1 *= side_u_scale;
 
             mesh_add_vertex(*mesh, make_vec3(p0_xy, -1.0f), white, make_vec2(u0, 1.0f));
             mesh_add_vertex(*mesh, make_vec3(p1_xy, -1.0f), white, make_vec2(u1, 1.0f));
@@ -688,6 +692,9 @@ mesh_t* mesh_load_cylinder()
         {
             f32 u0 = (f32)slice / (f32)resolution;
             f32 u1 = (f32)(slice + 1) / (f32)resolution;
+
+            u0 *= side_u_scale;
+            u1 *= side_u_scale;
 
             mesh_add_vertex(*mesh, make_vec3(p0_xy, -1.0f), white, make_vec2(u0, 1.0f));
             mesh_add_vertex(*mesh, make_vec3(p1_xy, 1.0f), white, make_vec2(u1, 0.0f));
@@ -730,12 +737,13 @@ mesh_t* mesh_load_torus()
     mesh_t* mesh = new mesh_t;
 
     u32 resolution = 128;
-    f32 delta_deg = 360.0f / (f32)resolution;
+    f32 u_scale = 3.0f;
+    f32 v_scale = 8.0f;
 
     for(u32 torus_slice = 0; torus_slice <= resolution; torus_slice++)
     {
-        f32 percent_complete = (f32)torus_slice / (f32)resolution; 
-        f32 cur_deg = percent_complete * 360.0f;
+        f32 percent_around_torus = (f32)torus_slice / (f32)resolution; 
+        f32 cur_deg = percent_around_torus * 360.0f;
         vec3 ring_anchor_pos = make_vec3(cos_deg(cur_deg), sin_deg(cur_deg), 0.0f);
 
         vec3 i = get_normalized(ring_anchor_pos);
@@ -743,17 +751,27 @@ mesh_t* mesh_load_torus()
         vec3 j = cross(i, k);
         mat44 ring_world_transform = make_mat44(i, j, k, ring_anchor_pos);
 
-        for(u32 torus_ring = 0; torus_ring <= resolution; torus_ring++)
+        for(u32 torus_ring_pos = 0; torus_ring_pos <= resolution; torus_ring_pos++)
         {
-            f32 deg = ((f32)torus_ring / (f32) resolution) * 360.0f;
+            f32 percent_around_ring = (f32)torus_ring_pos / (f32) resolution;
+            f32 deg = percent_around_ring * 360.0f;
             vec2 ring_pos_ls = calc_2d_polar_to_xy_deg(deg, 0.3f);
             vec3 ring_pos_ws = transform_point(ring_world_transform, make_vec3(ring_pos_ls, 0.0f));
-            mesh_add_vertex(*mesh, ring_pos_ws, get_color(Color::kWhite), make_vec2(0.0f, 0.0f));
-        }
+            u32 vert_index = mesh_add_vertex(*mesh, ring_pos_ws, get_color(Color::kWhite), make_vec2(percent_around_ring * u_scale, percent_around_torus * v_scale));
 
+            if(torus_slice > 0 && torus_ring_pos > 0)
+            {
+                u32 prev_vert_index = vert_index - 1; 
+                u32 vert_index_last_ring = (vert_index - resolution) - 1;
+                u32 prev_vert_index_last_ring = vert_index_last_ring - 1;
+
+                mesh_add_triangle(*mesh, vert_index, prev_vert_index_last_ring, prev_vert_index);
+                mesh_add_triangle(*mesh, vert_index, vert_index_last_ring, prev_vert_index_last_ring);
+            }
+        }
     }
 
-    mesh->topology = PrimitiveTopology::kPointList;
+    mesh->topology = PrimitiveTopology::kTriangleList;
     return mesh;
 }
 
