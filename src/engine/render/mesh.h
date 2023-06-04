@@ -40,7 +40,8 @@ size_t mesh_calc_index_buffer_size(mesh_t* mesh);
 mesh_t* mesh_load_from_obj(const char* obj_filepath);
 
 void mesh_build_quad_3d(mesh_t& mesh, const vec3& pos, const vec3& right, const vec3& up, f32 width, f32 height);
-//void mesh_build_axes(mesh_t& mesh);
+void mesh_build_axes_lines_3d(mesh_t& mesh, const vec3& origin, const vec3& i, const vec3& j, const vec3& k);
+void mesh_build_uv_sphere(mesh_t& mesh, vec3& origin, f32 radius, u32 resolution);
 //void mesh_build_tetrahedron(mesh_t& mesh);
 //void mesh_build_cube(mesh_t& mesh);
 //void mesh_build_octahedron(mesh_t& mesh);

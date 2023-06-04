@@ -85,14 +85,6 @@ void resource_manager_track_mesh(context_t& context, mesh_id_t mesh_id, mesh_t* 
     s_managed_meshes.render_datas.push_back(mesh_render_data);
 }
 
-mesh_id_t resource_manager_track_mesh(context_t& context, const char* filepath, mesh_t* mesh)
-
-{
-    mesh_id_t mesh_id = resource_manager_get_mesh_id(filepath); 
-    resource_manager_track_mesh(context, mesh_id, mesh);
-    return mesh_id;
-}
-
 static
 void resource_manager_track_mesh_forever(mesh_id_t mesh_id)
 {
@@ -137,6 +129,13 @@ void resource_manager_deinit(context_t& context)
     {
         resource_manager_mesh_render_data_destroy(context, s_managed_meshes.render_datas[i]);
     }
+}
+
+mesh_id_t resource_manager_track_mesh(context_t& context, const char* filepath, mesh_t& mesh)
+{
+    mesh_id_t mesh_id = resource_manager_get_mesh_id(filepath); 
+    resource_manager_track_mesh(context, mesh_id, &mesh);
+    return mesh_id;
 }
 
 mesh_id_t resource_manager_get_mesh_id(PrimitiveMeshType primitive_type)

@@ -91,68 +91,78 @@ void mesh_build_quad_3d(mesh_t& mesh, const vec3& pos, const vec3& right, const 
     vec3 bottom_right = pos + (right_norm * width) + (-up_norm * height); 
     vec3 bottom_left = pos + (-right_norm * width) + (-up_norm * height); 
 
-    u32 tl_i = mesh_add_vertex(mesh, top_left, get_color(Color::kWhite), make_vec2(0.0f, 0.0f));
-    u32 tr_i = mesh_add_vertex(mesh, top_right, get_color(Color::kWhite), make_vec2(1.0f, 0.0f));
-    u32 br_i = mesh_add_vertex(mesh, bottom_right, get_color(Color::kWhite), make_vec2(1.0f, 1.0f));
-    u32 bl_i = mesh_add_vertex(mesh, bottom_left, get_color(Color::kWhite), make_vec2(0.0f, 1.0f));
+    u32 tl_i = mesh_add_vertex(mesh, top_left, color_get(Color::kWhite), make_vec2(0.0f, 0.0f));
+    u32 tr_i = mesh_add_vertex(mesh, top_right, color_get(Color::kWhite), make_vec2(1.0f, 0.0f));
+    u32 br_i = mesh_add_vertex(mesh, bottom_right, color_get(Color::kWhite), make_vec2(1.0f, 1.0f));
+    u32 bl_i = mesh_add_vertex(mesh, bottom_left, color_get(Color::kWhite), make_vec2(0.0f, 1.0f));
 
     mesh_add_triangle(mesh, tl_i, bl_i, br_i);
     mesh_add_triangle(mesh, tl_i, br_i, tr_i);
 }
 
+void mesh_build_axes_lines_3d(mesh_t& mesh, const vec3& origin, const vec3& i, const vec3& j, const vec3& k)
+{
+    vec2 uv = make_vec2(0.0f, 0.0f);
+    vec4 red = color_get(Color::kRed);
+    vec4 green = color_get(Color::kGreen);
+    vec4 blue = color_get(Color::kBlue);
+
+    mesh.indices.push_back(mesh_add_vertex(mesh, origin, red, uv));
+    mesh.indices.push_back(mesh_add_vertex(mesh, i, red, uv));
+    mesh.indices.push_back(mesh_add_vertex(mesh, origin, green, uv));
+    mesh.indices.push_back(mesh_add_vertex(mesh, j, green, uv));
+    mesh.indices.push_back(mesh_add_vertex(mesh, origin, blue, uv));
+    mesh.indices.push_back(mesh_add_vertex(mesh, k, blue, uv));
+}
+
+void mesh_build_uv_sphere(mesh_t& mesh, const vec3& origin, f32 radius, u32 resolution)
+{
+    vec4 white_color = color_get(Color::kWhite);
+
+    f32 u_delta_deg = 360.0f / (f32)resolution; 
+    f32 v_delta_deg = 180.0f / (f32)resolution; 
+
+    for(u32 v_slice = 0; v_slice <= resolution; v_slice++)
+    {
+        for(u32 u_slice = 0; u_slice <= resolution; u_slice++)
+        {
+            f32 u = (f32)u_slice / (f32)resolution;
+            f32 v = (f32)v_slice / (f32)resolution;
+            vec2 uv = make_vec2(u, v);
+            
+            f32 y_deg = -90.0f + ((f32)v_slice * v_delta_deg);
+            f32 z_deg = (f32)u_slice * u_delta_deg;
+
+            vec4 pos = make_vec4(radius, 0.0f, 0.0f, 0.0f) * make_rotation_y_deg(y_deg) * make_rotation_z_deg(z_deg);
+            vec3 final_pos = origin + pos.xyz;
+
+            u32 vert_index = mesh_add_vertex(mesh, final_pos, white_color, uv);
+
+            if(v_slice == 0)
+            {
+                continue;
+            }
+
+            // normal triangle add
+            if(u_slice > 0)
+            {
+                u32 prev_vert_index = vert_index - 1;                
+                u32 vert_index_last_slice = (vert_index - resolution) - 1;
+				u32 prev_vert_index_last_slice = vert_index_last_slice  - 1;
+
+                mesh_add_triangle(mesh, vert_index, vert_index_last_slice, prev_vert_index_last_slice);
+                mesh_add_triangle(mesh, vert_index, prev_vert_index_last_slice, prev_vert_index);
+            }
+        }
+    }
+    
+}
+
 mesh_t* mesh_load_unit_axes()
 {
     mesh_t* mesh = new mesh_t;
-
-	// X
-	vertex_pct_t xOrigin{};
-	xOrigin.m_pos = make_vec3(0.0f, 0.0f, 0.0f);
-	xOrigin.m_uv = make_vec2(0.0f, 0.0f);
-	xOrigin.m_color = make_vec4(1.0f, 0.0f, 0.0f, 1.0f);
-
-	vertex_pct_t xAxis{};
-	xAxis.m_pos = make_vec3(1.0f, 0.0f, 0.0f);
-	xAxis.m_uv = make_vec2(0.0f, 0.0f);
-	xAxis.m_color = make_vec4(1.0f, 0.0f, 0.0f, 1.0f);
-
-	// Y
-	vertex_pct_t yOrigin{};
-	yOrigin.m_pos = make_vec3(0.0f, 0.0f, 0.0f);
-	yOrigin.m_uv = make_vec2(0.0f, 0.0f);
-	yOrigin.m_color = make_vec4(0.0f, 1.0f, 0.0f, 1.0f);
-
-	vertex_pct_t yAxis{};
-	yAxis.m_pos = make_vec3(0.0f, 1.0f, 0.0f);
-	yAxis.m_uv = make_vec2(0.0f, 0.0f);
-	yAxis.m_color = make_vec4(0.0f, 1.0f, 0.0f, 1.0f);
-
-	// Z
-	vertex_pct_t zOrigin{};
-	zOrigin.m_pos = make_vec3(0.0f, 0.0f, 0.0f);
-	zOrigin.m_uv = make_vec2(0.0f, 0.0f);
-	zOrigin.m_color = make_vec4(0.0f, 0.0f, 1.0f, 1.0f);
-
-	vertex_pct_t zAxis{};
-	zAxis.m_pos = make_vec3(0.0f, 0.0f, 1.0f);
-	zAxis.m_uv = make_vec2(0.0f, 0.0f);
-	zAxis.m_color = make_vec4(0.0f, 0.0f, 1.0f, 1.0f);
-
-	mesh->vertices.push_back(xOrigin);
-	mesh->vertices.push_back(xAxis);
-	mesh->vertices.push_back(yOrigin);
-	mesh->vertices.push_back(yAxis);
-	mesh->vertices.push_back(zOrigin);
-	mesh->vertices.push_back(zAxis);	
-
-	mesh->indices.push_back(0);
-	mesh->indices.push_back(1);
-	mesh->indices.push_back(2);
-	mesh->indices.push_back(3);
-	mesh->indices.push_back(4);
-	mesh->indices.push_back(5);
-
+    mesh_build_axes_lines_3d(*mesh, VEC3_ZERO, VEC3_FORWARD, VEC3_LEFT, VEC3_UP);
     mesh->topology = PrimitiveTopology::kLineList;
-
     return mesh;
 }
 
@@ -539,48 +549,7 @@ mesh_t* mesh_load_unit_octahedron()
 mesh_t* mesh_load_unit_uv_sphere()
 {
     mesh_t* mesh = new mesh_t;
-
-    u32 resolution = 64;  
-
-    vec4 white_color = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
-
-    f32 u_delta_deg = 360.0f / (f32)resolution; 
-    f32 v_delta_deg = 180.0f / (f32)resolution; 
-
-    for(u32 v_slice = 0; v_slice <= resolution; v_slice++)
-    {
-        for(u32 u_slice = 0; u_slice <= resolution; u_slice++)
-        {
-            f32 u = (f32)u_slice / (f32)resolution;
-            f32 v = (f32)v_slice / (f32)resolution;
-            vec2 uv = make_vec2(u, v);
-            
-            f32 y_deg = -90.0f + ((f32)v_slice * v_delta_deg);
-            f32 z_deg = (f32)u_slice * u_delta_deg;
-
-            vec4 pos = make_vec4(1.0f, 0.0f, 0.0f, 0.0f) * make_rotation_y_deg(y_deg) * make_rotation_z_deg(z_deg);
-
-            u32 vert_index = mesh_add_vertex(*mesh, pos.xyz, white_color, uv);
-
-            // top of the sphere
-            if(v_slice == 0)
-            {
-                continue;
-            }
-
-            // normal triangle add
-            if(u_slice > 0)
-            {
-                u32 prev_vert_index = vert_index - 1;                
-                u32 vert_index_last_slice = (vert_index - resolution) - 1;
-				u32 prev_vert_index_last_slice = vert_index_last_slice  - 1;
-
-                mesh_add_triangle(*mesh, vert_index, vert_index_last_slice, prev_vert_index_last_slice);
-                mesh_add_triangle(*mesh, vert_index, prev_vert_index_last_slice, prev_vert_index);
-            }
-        }
-    }
-
+    mesh_build_uv_sphere(*mesh, VEC3_ZERO, 1.0f, 64);
     mesh->topology = PrimitiveTopology::kTriangleList;
     return mesh;
 }
@@ -588,16 +557,7 @@ mesh_t* mesh_load_unit_uv_sphere()
 mesh_t* mesh_load_unit_plane()
 {
     mesh_t* mesh = new mesh_t;
-
-    vec4 white = make_vec4(1.0f, 1.0f, 1.0f, 1.0f);
-    mesh_add_vertex(*mesh, make_vec3(1.0f, 1.0f, 0.0f), white, make_vec2(0.0f, 0.0f));
-    mesh_add_vertex(*mesh, make_vec3(-1.0f, 1.0f, 0.0f), white, make_vec2(0.0f, 1.0f));
-    mesh_add_vertex(*mesh, make_vec3(-1.0f, -1.0f, 0.0f), white, make_vec2(1.0f, 1.0f));
-    mesh_add_vertex(*mesh, make_vec3(1.0f, -1.0f, 0.0f), white, make_vec2(1.0f, 0.0f));
-
-    mesh_add_triangle(*mesh, 0, 1, 2);
-    mesh_add_triangle(*mesh, 0, 2, 3);
-
+    mesh_build_quad_3d(*mesh, VEC3_ZERO, VEC3_RIGHT, VEC3_FORWARD, 1.0f, 1.0f);
     mesh->topology = PrimitiveTopology::kTriangleList;
     return mesh;
 }
@@ -609,7 +569,7 @@ mesh_t* mesh_load_unit_cone()
     u32 resolution = 64;
     f32 theta_deg = 360.0f / (f32)resolution; 
 
-    vec4 white = get_color(Color::kWhite);
+    vec4 white = color_get(Color::kWhite);
 
     for(u32 slice = 0; slice <= resolution; slice++)
     {
@@ -672,7 +632,7 @@ mesh_t* mesh_load_unit_cylinder()
     f32 theta_deg = 360.0f / (f32)resolution; 
     f32 side_u_scale = 3.0f;
 
-    vec4 white = get_color(Color::kWhite);
+    vec4 white = color_get(Color::kWhite);
 
     for(u32 slice = 0; slice <= resolution; slice++)
     {
@@ -765,7 +725,7 @@ mesh_t* mesh_load_unit_torus()
             f32 deg = percent_around_ring * 360.0f;
             vec2 ring_pos_ls = calc_2d_polar_to_xy_deg(deg, 0.3f);
             vec3 ring_pos_ws = transform_point(ring_world_transform, make_vec3(ring_pos_ls, 0.0f));
-            u32 vert_index = mesh_add_vertex(*mesh, ring_pos_ws, get_color(Color::kWhite), make_vec2(percent_around_ring * u_scale, percent_around_torus * v_scale));
+            u32 vert_index = mesh_add_vertex(*mesh, ring_pos_ws, color_get(Color::kWhite), make_vec2(percent_around_ring * u_scale, percent_around_torus * v_scale));
 
             if(torus_slice > 0 && torus_ring_pos > 0)
             {

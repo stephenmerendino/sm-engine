@@ -702,7 +702,7 @@ void renderer_load_assets(context_t& context)
 
         {
             mesh_build_quad_3d(s_test_mesh, make_vec3(0.0f, 0.0f, -3.0f), make_vec3(0.0f, 1.0f, 0.0f), make_vec3(-1.0f, 0.0f, 0.0f), 50.0f, 50.0f);
-            mesh_id_t test_id = resource_manager_track_mesh(context, "static/test_mesh", &s_test_mesh);
+            mesh_id_t test_id = resource_manager_track_mesh(context, "static/test_mesh", s_test_mesh);
             mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh", test_id, gigachad_mat_id);
             mesh_instance_t* mi = scene_get_mesh_instance(mesh_instance_id);
             mi->transform.model.t.xyz = make_vec3(0.0f, 0.0f, 0.0f);
