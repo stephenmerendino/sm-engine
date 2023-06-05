@@ -2,6 +2,7 @@
 
 #include "engine/core/hash.h"
 #include "engine/core/types.h"
+#include "engine/math/mat44.h"
 #include "engine/render/vertex.h"
 
 #include <vector>
@@ -43,9 +44,11 @@ mesh_t* mesh_load_from_obj(const char* obj_filepath);
 // mesh_t* mesh_load_from_gltf();
 
 void mesh_build_quad_3d(mesh_t& mesh, const vec3& center_pos, const vec3& right, const vec3& up, f32 half_width, f32 half_height, u32 resolution = 1);
+void mesh_build_quad_3d(mesh_t& mesh, const vec3& top_left, const vec3& top_right, const vec3& bottom_right, const vec3& bottom_left);
 void mesh_build_axes_lines_3d(mesh_t& mesh, const vec3& origin, const vec3& i, const vec3& j, const vec3& k);
 void mesh_build_uv_sphere(mesh_t& mesh, vec3& origin, f32 radius, u32 resolution = 32);
 void mesh_build_cube(mesh_t& mesh, const vec3& center, f32 radius, u32 resolution = 1);
+void mesh_build_frustum(mesh_t& mesh, const mat44& view_projection);
 
 mesh_t* mesh_load_unit_axes();
 mesh_t* mesh_load_unit_tetrahedron();

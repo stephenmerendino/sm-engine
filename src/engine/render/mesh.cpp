@@ -112,6 +112,17 @@ void mesh_build_quad_3d(mesh_t& mesh, const vec3& center_pos, const vec3& right,
     }
 }
 
+void mesh_build_quad_3d(mesh_t& mesh, const vec3& top_left, const vec3& top_right, const vec3& bottom_right, const vec3& bottom_left)
+{
+    u32 top_left_index = mesh_add_vertex(mesh, top_left, color_get(Color::kWhite), make_vec2(0.0f, 0.0f));
+    u32 top_right_index = mesh_add_vertex(mesh, top_right, color_get(Color::kWhite), make_vec2(1.0f, 0.0f));
+    u32 bottom_right_index = mesh_add_vertex(mesh, bottom_right, color_get(Color::kWhite), make_vec2(1.0f, 1.0f));
+    u32 bottom_left_index = mesh_add_vertex(mesh, bottom_left, color_get(Color::kWhite), make_vec2(0.0f, 1.0f));
+
+    mesh_add_triangle(mesh, top_left_index, bottom_right_index, top_right_index);
+    mesh_add_triangle(mesh, top_left_index, bottom_left_index, bottom_right_index);
+}
+
 void mesh_build_axes_lines_3d(mesh_t& mesh, const vec3& origin, const vec3& i, const vec3& j, const vec3& k)
 {
     SM_ASSERT(mesh.topology == PrimitiveTopology::kLineList);
@@ -178,6 +189,12 @@ void mesh_build_cube(mesh_t& mesh, const vec3& center, f32 radius, u32 resolutio
     mesh_build_quad_3d(mesh, center + VEC3_RIGHT * radius, VEC3_FORWARD, VEC3_UP, radius, radius, resolution);
     mesh_build_quad_3d(mesh, center + VEC3_UP * radius, VEC3_RIGHT, VEC3_FORWARD, radius, radius, resolution);
     mesh_build_quad_3d(mesh, center + VEC3_DOWN * radius, VEC3_LEFT, VEC3_FORWARD, radius, radius, resolution);
+}
+
+void mesh_build_frustum(mesh_t& mesh, const mat44& view_projection)
+{
+
+    // we can transform from canonical coordinates back to world space with inverse view-projection 
 }
 
 mesh_t* mesh_load_unit_axes()
