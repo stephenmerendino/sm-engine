@@ -131,9 +131,9 @@ void resource_manager_deinit(context_t& context)
     }
 }
 
-mesh_id_t resource_manager_track_mesh(context_t& context, const char* filepath, mesh_t& mesh)
+mesh_id_t resource_manager_track_mesh(context_t& context, const char* filepath_or_unique_name, mesh_t& mesh)
 {
-    mesh_id_t mesh_id = resource_manager_get_mesh_id(filepath); 
+    mesh_id_t mesh_id = resource_manager_get_mesh_id(filepath_or_unique_name); 
     resource_manager_track_mesh(context, mesh_id, &mesh);
     return mesh_id;
 }

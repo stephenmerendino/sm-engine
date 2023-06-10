@@ -8,7 +8,7 @@ void resource_manager_deinit(context_t& context);
 
 static const u32 INVALID_MESH_ID = (u32)-1;
 
-mesh_id_t resource_manager_track_mesh(context_t& context, const char* filepath, mesh_t& mesh);
+mesh_id_t resource_manager_track_mesh(context_t& context, const char* filepath_or_unique_name, mesh_t& mesh);
 mesh_id_t resource_manager_get_mesh_id(PrimitiveMeshType primitive_type);
 mesh_id_t resource_manager_get_mesh_id(const char* filepath);
 mesh_id_t resource_manager_load_obj_mesh(context_t& context, const char* obj_filepath);

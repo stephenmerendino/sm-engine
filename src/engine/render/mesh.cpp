@@ -193,8 +193,43 @@ void mesh_build_cube(mesh_t& mesh, const vec3& center, f32 radius, u32 resolutio
 
 void mesh_build_frustum(mesh_t& mesh, const mat44& view_projection)
 {
+    mat44 inverse_vp = get_inversed(view_projection);
+    
+    vec4 near_top_left      = make_vec4(-1.0f, -1.0f, 0.0f, 1.0f) * inverse_vp;
+    vec4 near_top_right     = make_vec4(1.0f, -1.0f, 0.0f, 1.0f) * inverse_vp;
+    vec4 near_bottom_right  = make_vec4(1.0f, 1.0f, 0.0f, 1.0f) * inverse_vp;
+    vec4 near_bottom_left   = make_vec4(-1.0f, 1.0f, 0.0f, 1.0f) * inverse_vp;
+    vec4 far_top_left       = make_vec4(-1.0f, -1.0f, 1.0f, 1.0f) * inverse_vp;
+    vec4 far_top_right      = make_vec4(1.0f, -1.0f, 1.0f, 1.0f) * inverse_vp;
+    vec4 far_bottom_right   = make_vec4(1.0f, 1.0f, 1.0f, 1.0f) * inverse_vp;
+    vec4 far_bottom_left    = make_vec4(-1.0f, 1.0f, 1.0f, 1.0f) * inverse_vp;
 
-    // we can transform from canonical coordinates back to world space with inverse view-projection 
+    near_top_left /= near_top_left.w;
+    near_top_right /= near_top_right.w;
+    near_bottom_left /= near_bottom_left.w;
+    near_bottom_right /= near_bottom_right.w;
+    far_top_left /= far_top_left.w;
+    far_top_right /= far_top_right.w; 
+    far_bottom_right /= far_bottom_right.w;
+    far_bottom_left /= far_bottom_left.w;
+
+    //near plane
+    mesh_build_quad_3d(mesh, near_top_left.xyz, near_top_right.xyz, near_bottom_right.xyz, near_bottom_left.xyz);
+
+    // right plane
+    mesh_build_quad_3d(mesh, near_top_right.xyz, far_top_right.xyz, far_bottom_right.xyz, near_bottom_right.xyz);
+
+    // top plane
+    mesh_build_quad_3d(mesh, near_top_left.xyz, far_top_left.xyz, far_top_right.xyz, near_top_right.xyz);
+
+    // left plane
+    mesh_build_quad_3d(mesh, near_bottom_left.xyz, far_bottom_left.xyz, far_top_left.xyz, near_top_left.xyz);
+    
+    // bottom plane
+    mesh_build_quad_3d(mesh, near_bottom_right.xyz, far_bottom_right.xyz, far_bottom_left.xyz, near_bottom_left.xyz);
+    
+    // far plane
+    mesh_build_quad_3d(mesh, far_top_right.xyz, far_top_left.xyz, far_bottom_left.xyz, far_bottom_right.xyz);
 }
 
 mesh_t* mesh_load_unit_axes()

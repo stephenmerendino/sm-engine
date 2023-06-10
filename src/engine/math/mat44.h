@@ -211,7 +211,6 @@ f32 calc_cofactor(const mat44& m, u32 row, u32 column)
 	
 	// Build Mat33 submatrix by removing the row and column we are getting cofactor for
 	u32 cur_row = 0;
-	u32 cur_col = 0;
 	for (u32 src_row = 0; src_row < 4; ++src_row)
 	{
 		if (src_row == row)
@@ -219,6 +218,7 @@ f32 calc_cofactor(const mat44& m, u32 row, u32 column)
 			continue;
 		}
 
+		u32 cur_col = 0;
 		for (u32 src_col = 0; src_col < 4; ++src_col)
 		{
 			if (src_col == column)
@@ -279,7 +279,7 @@ void inverse(mat44& m)
 };
 
 inline 
-mat44 get_inversed(const mat44&& m)
+mat44 get_inversed(const mat44& m)
 {
 	mat44 copy = m;
     inverse(copy);

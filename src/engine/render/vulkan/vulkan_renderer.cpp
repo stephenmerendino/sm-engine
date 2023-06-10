@@ -868,9 +868,26 @@ void mesh_instance_set_material(context_t& context, mesh_instance_t* mesh_instan
 
 void renderer_update(f32 ds)
 {
+    name_id_t world_axes_name_id = mesh_instance_get_name_id("world axes");
+    material_id_t uv_debug_mat_id = resource_manager_get_material_id("uv_debug_mat");
+    material_id_t viking_room_mat_id = resource_manager_get_material_id("viking_room_mat");
+
     if(input_was_key_pressed(KeyCode::KEY_F1))
     {
         s_globals->debug_render = !s_globals->debug_render; 
+    }
+
+    if(input_was_key_pressed(KeyCode::KEY_F2))
+    {
+        mat44 view = camera_get_view_tranform(*s_globals->main_camera);
+        f32 aspect = (f32)s_context->swapchain.extent.width / (f32)s_context->swapchain.extent.height;
+        mat44 projection = create_perspective_projection(45.0, 0.01f, 10.0f, aspect);
+        mat44 view_projection = view * projection;
+        mesh_t* test = new mesh_t;
+        test->topology = PrimitiveTopology::kTriangleList;
+        mesh_build_frustum(*test, view_projection);
+        mesh_id_t frustum_id = resource_manager_track_mesh(*s_context, "test_frustum", *test);
+        scene_create_and_add_mesh_instance(*s_context, "test frustum", frustum_id, uv_debug_mat_id);
     }
 
     if(input_was_key_pressed(KeyCode::KEY_UPARROW))
@@ -896,10 +913,6 @@ void renderer_update(f32 ds)
 
     static f32 pos_degs_per_second = 60.0f;
     static f32 rot_degs_per_second = 90.0f;
-
-    name_id_t world_axes_name_id = mesh_instance_get_name_id("world axes");
-    material_id_t uv_debug_mat_id = resource_manager_get_material_id("uv_debug_mat");
-    material_id_t viking_room_mat_id = resource_manager_get_material_id("viking_room_mat");
 
     for(i32 i = 0; i < (i32)s_scene.mesh_instances.size(); i++)
     {
