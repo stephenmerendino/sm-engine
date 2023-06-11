@@ -761,15 +761,17 @@ void renderer_load_assets(context_t& context)
             mesh->topology = PrimitiveTopology::kTriangleList;
             mesh_build_cylinder(*mesh, make_vec3(0.0f, 0.0f, 0.0f), make_vec3(1.0f, 0.0f, 0.0f), 1.0f, 0.01f, 32);
             mesh_id_t test_cylinder_id = resource_manager_track_mesh(context, "custom_cylinder", *mesh);
-            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh", test_cylinder_id, debug_mat_id);
+            scene_create_and_add_mesh_instance(context, "mesh", test_cylinder_id, debug_mat_id);
         }
 
         {
             mesh_t* mesh = new mesh_t;
             mesh->topology = PrimitiveTopology::kTriangleList;
-            mesh_build_cone(*mesh, get_normalized(make_vec3(1.0f, 0.0f, 0.0f)), make_vec3(1.0f, 0.0f, 0.0f), 0.1f, 0.025f, 32);
+            vec3 arrow_origin = make_vec3(2.0f, 2.0f, 3.0f);
+            vec3 dir = VEC3_ZERO - arrow_origin;
+            mesh_build_arrow_tip_to_origin(*mesh, VEC3_ZERO, make_vec3(1.0f, 1.0f, 1.0f), 5.0f, 0.05f, 0.25f);
             mesh_id_t test_cone_id = resource_manager_track_mesh(context, "custom_cone", *mesh);
-            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh", test_cone_id, debug_mat_id);
+            scene_create_and_add_mesh_instance(context, "mesh", test_cone_id, debug_mat_id);
         }
     }
 }

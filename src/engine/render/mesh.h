@@ -51,8 +51,8 @@ void mesh_build_cube(mesh_t& mesh, const vec3& center, f32 radius, u32 resolutio
 void mesh_build_frustum(mesh_t& mesh, const mat44& view_projection);
 void mesh_build_cylinder(mesh_t& mesh, const vec3& base_center, const vec3& dir, f32 height, f32 base_radius, f32 resolution);
 void mesh_build_cone(mesh_t& mesh, const vec3& base_center, const vec3& dir, f32 height, f32 base_radius, f32 resolution);
-//void mesh_build_arrow(mesh_t& mesh, const vec3& origin, const vec3& dir, f32 length, f32 width);
-//void mesh_build_arrow_tip_to_origin(mesh_t& mesh, const vec3& tip_position, const vec3& dir_to_arrow_origin, f32 length, f32 width);
+void mesh_build_arrow(mesh_t& mesh, const vec3& origin, const vec3& dir, f32 length, f32 body_radius, f32 tip_radius);
+void mesh_build_arrow_tip_to_origin(mesh_t& mesh, const vec3& tip_position, const vec3& dir_to_arrow_origin, f32 length, f32 body_radius, f32 tip_radius);
 
 mesh_t* mesh_load_unit_axes();
 mesh_t* mesh_load_unit_tetrahedron();

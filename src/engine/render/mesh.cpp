@@ -202,6 +202,7 @@ void mesh_build_cylinder(mesh_t& mesh, const vec3& base_center, const vec3& dir,
     vec3 k = get_normalized(dir);
     mat44 local_to_world_transform = make_mat44_basis_from_k(k);
     scale_local(local_to_world_transform, base_radius, base_radius, height);
+    set_translation(local_to_world_transform, base_center);
 
     for(u32 slice = 0; slice < resolution; slice++)
     {
@@ -275,10 +276,10 @@ void mesh_build_cylinder(mesh_t& mesh, const vec3& base_center, const vec3& dir,
 
 void mesh_build_cone(mesh_t& mesh, const vec3& base_center, const vec3& dir, f32 height, f32 base_radius, f32 resolution)
 {
-    vec3 k = get_normalized(dir) * height;
-    vec3 i = get_normalized(cross(k, VEC3_UP)) * base_radius;
-    vec3 j = get_normalized(cross(k, i)) * base_radius;
-    mat44 local_to_world_transform = make_mat44(i, j, k, base_center);
+    vec3 k = get_normalized(dir);
+    mat44 local_to_world_transform = make_mat44_basis_from_k(k);
+    scale_local(local_to_world_transform, base_radius, base_radius, height);
+    set_translation(local_to_world_transform, base_center);
 
     f32 theta_deg = 360.0f / (f32)resolution; 
 
@@ -335,6 +336,29 @@ void mesh_build_cone(mesh_t& mesh, const vec3& base_center, const vec3& dir, f32
             mesh_add_triangle_from_last_3_verts(mesh);
         }
     }
+}
+
+void mesh_build_arrow(mesh_t& mesh, const vec3& origin, const vec3& dir, f32 length, f32 body_radius, f32 tip_radius)
+{
+    vec3 dir_norm = get_normalized(dir);
+
+    u32 resolution = 32;
+
+    f32 percent_length_cylinder = 0.8f;  
+
+    f32 cylinder_len = percent_length_cylinder * length;
+    f32 cone_len = length - cylinder_len;
+    vec3 cone_origin = origin + (dir_norm * cylinder_len);
+
+    mesh_build_cylinder(mesh, origin, dir_norm, cylinder_len, body_radius, resolution);
+    mesh_build_cone(mesh, cone_origin, dir_norm, cone_len, tip_radius, resolution);
+}
+
+void mesh_build_arrow_tip_to_origin(mesh_t& mesh, const vec3& tip_position, const vec3& dir_to_arrow_origin, f32 length, f32 body_radius, f32 tip_radius)
+{
+    vec3 dir_to_arrow_origin_norm = get_normalized(dir_to_arrow_origin);
+    vec3 arrow_origin = tip_position + (dir_to_arrow_origin_norm * length);
+    mesh_build_arrow(mesh, arrow_origin, -dir_to_arrow_origin_norm, length, body_radius, tip_radius);
 }
 
 void mesh_build_frustum(mesh_t& mesh, const mat44& view_projection)
@@ -529,59 +553,8 @@ mesh_t* mesh_load_unit_plane()
 mesh_t* mesh_load_unit_cone()
 {
     mesh_t* mesh = new mesh_t;
-
-    u32 resolution = 64;
-    f32 theta_deg = 360.0f / (f32)resolution; 
-
-    vec4 white = color_get(Color::kWhite);
-
-    for(u32 slice = 0; slice <= resolution; slice++)
-    {
-        vec3 top = make_vec3(0.0f, 0.0f, 1.0f);
-        vec3 p0 = make_vec3(cos_deg(theta_deg * slice), sin_deg(theta_deg * slice), 0.0f);
-        vec3 p1 = make_vec3(cos_deg(theta_deg * (slice + 1)), sin_deg(theta_deg * (slice + 1)), 0.0f);
-        vec3 bot = make_vec3(0.0f, 0.0f, 0.0f);
-
-        f32 u0 = remap(p0.x, -1.0f, 1.0f, 0.0f, 1.0f);
-        f32 u1 = remap(p1.x, -1.0f, 1.0f, 0.0f, 1.0f);
-
-        f32 v0 = remap(p0.y, -1.0f, 1.0f, 0.0f, 1.0f);
-        f32 v1 = remap(p1.y, -1.0f, 1.0f, 0.0f, 1.0f);
-
-        // top triangle 1
-        {
-            mesh_add_vertex(*mesh, top, white, make_vec2(0.5, 0.5f));
-            mesh_add_vertex(*mesh, p0, white, make_vec2(u0, v0));
-            mesh_add_vertex(*mesh, p1, white, make_vec2(u1, v1));
-            mesh_add_triangle_from_last_3_verts(*mesh);
-        }
-
-        // top triangle 2
-        {
-            mesh_add_vertex(*mesh, top, white, make_vec2(0.5f, 0.5));
-            mesh_add_vertex(*mesh, p0, white, make_vec2(u0, v0));
-            mesh_add_vertex(*mesh, p1, white, make_vec2(u1, v1));
-            mesh_add_triangle_from_last_3_verts(*mesh);
-        }
-
-        // bottom triangle 1
-        {
-            mesh_add_vertex(*mesh, bot, white, make_vec2(0.5f, 0.5f));
-            mesh_add_vertex(*mesh, p1, white, make_vec2(u1, v1));
-            mesh_add_vertex(*mesh, p0, white, make_vec2(u0, v0));
-            mesh_add_triangle_from_last_3_verts(*mesh);
-        }
-
-        // bottom triangle 2
-        {
-            mesh_add_vertex(*mesh, bot, white, make_vec2(0.5f, 0.5f));
-            mesh_add_vertex(*mesh, p1, white, make_vec2(u1, v1));
-            mesh_add_vertex(*mesh, p0, white, make_vec2(u0, v0));
-            mesh_add_triangle_from_last_3_verts(*mesh);
-        }
-    }
-
     mesh->topology = PrimitiveTopology::kTriangleList;
+    mesh_build_cone(*mesh, VEC3_ZERO, VEC3_UP, 1.0f, 1.0f, 32);
     return mesh;
 }
 
@@ -635,12 +608,3 @@ mesh_t* mesh_load_unit_torus()
     mesh->topology = PrimitiveTopology::kTriangleList;
     return mesh;
 }
-
-//mesh_t* mesh_load_xxxx()
-//{
-//    mesh_t* mesh = new mesh_t;
-//
-//
-//    mesh->topology = PrimitiveTopology::kTriangleList;
-//    return mesh;
-//}
