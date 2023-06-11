@@ -107,47 +107,45 @@ mat44 make_mat44(const vec3& i, const vec3& j, const vec3& k, const vec3& t)
 }
 
 inline
-mat44 make_mat44_basis_from_i(const vec3& k)
+mat44 make_mat44_basis_from_i(const vec3& i)
 {
-    SM_ERROR_MSG("Need to implement for i\n");
-    vec3 k_norm = get_normalized(k);
+    vec3 i_norm = get_normalized(i);
 
-    // account for k_norm pointing directly up or down when trying to build basis
-    vec3 i_norm = VEC3_ZERO;
-    f32 cos_angle_abs = abs(dot(k_norm, VEC3_UP));
+    // account for i_norm pointing directly up or down when trying to build basis
+    vec3 j_norm = VEC3_ZERO;
+    f32 cos_angle_abs = abs(dot(i_norm, VEC3_UP));
     if(almost_equals(cos_angle_abs, 1.0f))
     {
-        i_norm = get_normalized(cross(VEC3_FORWARD, k_norm)); 
+        j_norm = get_normalized(cross(i_norm, VEC3_FORWARD)); 
     }
     else
     {
-        i_norm = get_normalized(cross(k_norm, VEC3_UP));
+        j_norm = get_normalized(cross(VEC3_UP, i_norm));
     }
 
-    vec3 j_norm = get_normalized(cross(k_norm, i_norm));
+    vec3 k_norm = cross(i_norm, j_norm);
 
     return make_mat44(i_norm, j_norm, k_norm);
 }
 
 inline
-mat44 make_mat44_basis_from_j(const vec3& k)
+mat44 make_mat44_basis_from_j(const vec3& j)
 {
-    SM_ERROR_MSG("Need to implement for j\n");
-    vec3 k_norm = get_normalized(k);
+    vec3 j_norm = get_normalized(j);
 
-    // account for k_norm pointing directly up or down when trying to build basis
+    // account for j_norm pointing directly up or down when trying to build basis
     vec3 i_norm = VEC3_ZERO;
-    f32 cos_angle_abs = abs(dot(k_norm, VEC3_UP));
+    f32 cos_angle_abs = abs(dot(j_norm, VEC3_UP));
     if(almost_equals(cos_angle_abs, 1.0f))
     {
-        i_norm = get_normalized(cross(VEC3_FORWARD, k_norm)); 
+        i_norm = get_normalized(cross(VEC3_LEFT, j_norm)); 
     }
     else
     {
-        i_norm = get_normalized(cross(k_norm, VEC3_UP));
+        i_norm = get_normalized(cross(j_norm, VEC3_UP));
     }
 
-    vec3 j_norm = get_normalized(cross(k_norm, i_norm));
+    vec3 k_norm = cross(i_norm, j_norm);
 
     return make_mat44(i_norm, j_norm, k_norm);
 }
@@ -169,7 +167,7 @@ mat44 make_mat44_basis_from_k(const vec3& k)
         i_norm = get_normalized(cross(k_norm, VEC3_UP));
     }
 
-    vec3 j_norm = get_normalized(cross(k_norm, i_norm));
+    vec3 j_norm = cross(k_norm, i_norm);
 
     return make_mat44(i_norm, j_norm, k_norm);
 }
