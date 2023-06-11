@@ -106,6 +106,74 @@ mat44 make_mat44(const vec3& i, const vec3& j, const vec3& k, const vec3& t)
     return m;
 }
 
+inline
+mat44 make_mat44_basis_from_i(const vec3& k)
+{
+    SM_ERROR_MSG("Need to implement for i\n");
+    vec3 k_norm = get_normalized(k);
+
+    // account for k_norm pointing directly up or down when trying to build basis
+    vec3 i_norm = VEC3_ZERO;
+    f32 cos_angle_abs = abs(dot(k_norm, VEC3_UP));
+    if(almost_equals(cos_angle_abs, 1.0f))
+    {
+        i_norm = get_normalized(cross(VEC3_FORWARD, k_norm)); 
+    }
+    else
+    {
+        i_norm = get_normalized(cross(k_norm, VEC3_UP));
+    }
+
+    vec3 j_norm = get_normalized(cross(k_norm, i_norm));
+
+    return make_mat44(i_norm, j_norm, k_norm);
+}
+
+inline
+mat44 make_mat44_basis_from_j(const vec3& k)
+{
+    SM_ERROR_MSG("Need to implement for j\n");
+    vec3 k_norm = get_normalized(k);
+
+    // account for k_norm pointing directly up or down when trying to build basis
+    vec3 i_norm = VEC3_ZERO;
+    f32 cos_angle_abs = abs(dot(k_norm, VEC3_UP));
+    if(almost_equals(cos_angle_abs, 1.0f))
+    {
+        i_norm = get_normalized(cross(VEC3_FORWARD, k_norm)); 
+    }
+    else
+    {
+        i_norm = get_normalized(cross(k_norm, VEC3_UP));
+    }
+
+    vec3 j_norm = get_normalized(cross(k_norm, i_norm));
+
+    return make_mat44(i_norm, j_norm, k_norm);
+}
+
+inline
+mat44 make_mat44_basis_from_k(const vec3& k)
+{
+    vec3 k_norm = get_normalized(k);
+
+    // account for k_norm pointing directly up or down when trying to build basis
+    vec3 i_norm = VEC3_ZERO;
+    f32 cos_angle_abs = abs(dot(k_norm, VEC3_UP));
+    if(almost_equals(cos_angle_abs, 1.0f))
+    {
+        i_norm = get_normalized(cross(VEC3_FORWARD, k_norm)); 
+    }
+    else
+    {
+        i_norm = get_normalized(cross(k_norm, VEC3_UP));
+    }
+
+    vec3 j_norm = get_normalized(cross(k_norm, i_norm));
+
+    return make_mat44(i_norm, j_norm, k_norm);
+}
+
 static const mat44 MAT44_IDENTITY = make_mat44(1.0f, 0.0f, 0.0f, 0.0f,
                                                0.0f, 1.0f, 0.0f, 0.0f,
                                                0.0f, 0.0f, 1.0f, 0.0f,
@@ -371,6 +439,53 @@ mat44 get_scaled(const mat44& m, const vec3& ijk_scale_factors)
 	return copy;
 }
 
+inline
+void scale_local(mat44& m, f32 uniform_scale)
+{
+	m.i.xyz *= uniform_scale;
+	m.j.xyz *= uniform_scale;
+	m.k.xyz *= uniform_scale;
+}
+
+inline
+void scale_local(mat44& m, f32 i_scale, f32 j_scale, f32 k_scale)
+{
+	m.i *= i_scale;
+	m.j *= j_scale;
+	m.k *= k_scale;
+}
+
+inline
+void scale_local(mat44& m, const vec3& ijk_scale_factors)
+{
+	m.i *= ijk_scale_factors.x;
+	m.j *= ijk_scale_factors.y;
+	m.k *= ijk_scale_factors.z;
+}
+
+inline 
+mat44 get_scaled_local(mat44& m, f32 uniform_scale)
+{
+	mat44 copy = m;
+    scale_local(copy, uniform_scale);
+	return copy;
+}
+
+inline 
+mat44 get_scaled_local(mat44& m, f32 i_scale, f32 j_scale, f32 k_scale)
+{
+	mat44 copy = m;
+    scale_local(m, i_scale, j_scale, k_scale);
+	return copy;
+}
+
+inline 
+mat44 get_scaled_local(const mat44& m, const vec3& ijk_scale_factors)
+{
+	mat44 copy = m;
+    scale_local(copy, ijk_scale_factors);
+	return copy;
+}
 inline
 void set_translation(mat44& m, const vec3& t)
 {

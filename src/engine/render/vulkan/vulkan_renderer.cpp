@@ -755,6 +755,22 @@ void renderer_load_assets(context_t& context)
             mesh_instance_t* mi = scene_get_mesh_instance(mesh_instance_id);
             mi->transform.model.t.xyz = make_vec3(0.0f, 6.0f, 0.0f);
         }
+
+        {
+            mesh_t* mesh = new mesh_t;
+            mesh->topology = PrimitiveTopology::kTriangleList;
+            mesh_build_cylinder(*mesh, make_vec3(0.0f, 0.0f, 0.0f), make_vec3(1.0f, 0.0f, 0.0f), 1.0f, 0.01f, 32);
+            mesh_id_t test_cylinder_id = resource_manager_track_mesh(context, "custom_cylinder", *mesh);
+            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh", test_cylinder_id, debug_mat_id);
+        }
+
+        {
+            mesh_t* mesh = new mesh_t;
+            mesh->topology = PrimitiveTopology::kTriangleList;
+            mesh_build_cone(*mesh, get_normalized(make_vec3(1.0f, 0.0f, 0.0f)), make_vec3(1.0f, 0.0f, 0.0f), 0.1f, 0.025f, 32);
+            mesh_id_t test_cone_id = resource_manager_track_mesh(context, "custom_cone", *mesh);
+            mesh_instance_id_t mesh_instance_id = scene_create_and_add_mesh_instance(context, "mesh", test_cone_id, debug_mat_id);
+        }
     }
 }
 
@@ -881,7 +897,7 @@ void renderer_update(f32 ds)
     {
         mat44 view = camera_get_view_tranform(*s_globals->main_camera);
         f32 aspect = (f32)s_context->swapchain.extent.width / (f32)s_context->swapchain.extent.height;
-        mat44 projection = create_perspective_projection(45.0, 0.01f, 10.0f, aspect);
+        mat44 projection = create_perspective_projection(45.0, 0.01f, 110.0f, aspect);
         mat44 view_projection = view * projection;
         mesh_t* test = new mesh_t;
         test->topology = PrimitiveTopology::kTriangleList;

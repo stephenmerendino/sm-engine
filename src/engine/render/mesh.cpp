@@ -1,4 +1,5 @@
 #include "engine/core/color.h"
+#include "engine/math/mat44.h"
 #include "engine/math/math_utils.h"
 #include "engine/math/vec3.h"
 #include "engine/render/mesh.h"
@@ -189,6 +190,151 @@ void mesh_build_cube(mesh_t& mesh, const vec3& center, f32 radius, u32 resolutio
     mesh_build_quad_3d(mesh, center + VEC3_RIGHT * radius, VEC3_FORWARD, VEC3_UP, radius, radius, resolution);
     mesh_build_quad_3d(mesh, center + VEC3_UP * radius, VEC3_RIGHT, VEC3_FORWARD, radius, radius, resolution);
     mesh_build_quad_3d(mesh, center + VEC3_DOWN * radius, VEC3_LEFT, VEC3_FORWARD, radius, radius, resolution);
+}
+
+void mesh_build_cylinder(mesh_t& mesh, const vec3& base_center, const vec3& dir, f32 height, f32 base_radius, f32 resolution)
+{
+    f32 theta_deg = 360.0f / (f32)resolution; 
+    f32 side_u_scale = 3.0f;
+
+    vec4 white = color_get(Color::kWhite);
+
+    vec3 k = get_normalized(dir);
+    mat44 local_to_world_transform = make_mat44_basis_from_k(k);
+    scale_local(local_to_world_transform, base_radius, base_radius, height);
+
+    for(u32 slice = 0; slice < resolution; slice++)
+    {
+        vec3 top = make_vec3(0.0f, 0.0f, 1.0f);
+        vec2 p0_xy = make_vec2(cos_deg(theta_deg * slice), sin_deg(theta_deg * slice));
+        vec2 p1_xy = make_vec2(cos_deg(theta_deg * (slice + 1)), sin_deg(theta_deg * (slice + 1)));
+        vec3 bot = make_vec3(0.0f, 0.0f, 0.0f);
+
+        vec3 top_ws = transform_point(local_to_world_transform, top);
+        vec3 p0_top_ws = transform_point(local_to_world_transform, make_vec3(p0_xy, 1.0f));
+        vec3 p1_top_ws = transform_point(local_to_world_transform, make_vec3(p1_xy, 1.0f));
+        vec3 p0_bot_ws = transform_point(local_to_world_transform, make_vec3(p0_xy, 0.0f));
+        vec3 p1_bot_ws = transform_point(local_to_world_transform, make_vec3(p1_xy, 0.0f));
+        vec3 bot_ws = transform_point(local_to_world_transform, bot);
+
+        // top triangle
+        {
+            f32 u0 = remap(p0_xy.x, -1.0f, 1.0f, 0.0f, 1.0f);
+            f32 u1 = remap(p1_xy.x, -1.0f, 1.0f, 0.0f, 1.0f);
+            f32 v0 = remap(p0_xy.y, -1.0f, 1.0f, 0.0f, 1.0f);
+            f32 v1 = remap(p1_xy.y, -1.0f, 1.0f, 0.0f, 1.0f);
+
+            mesh_add_vertex(mesh, top_ws, white, make_vec2(0.5, 0.5f));
+            mesh_add_vertex(mesh, p0_top_ws, white, make_vec2(u0, v0));
+            mesh_add_vertex(mesh, p1_top_ws, white, make_vec2(u1, v1));
+            mesh_add_triangle_from_last_3_verts(mesh);
+        }
+
+        // side triangle 1
+        {
+            f32 u0 = (f32)slice / (f32)resolution;
+            f32 u1 = (f32)(slice + 1) / (f32)resolution;
+            
+            u0 *= side_u_scale;
+            u1 *= side_u_scale;
+
+            mesh_add_vertex(mesh, p0_bot_ws, white, make_vec2(u0, 1.0f));
+            mesh_add_vertex(mesh, p1_bot_ws, white, make_vec2(u1, 1.0f));
+            mesh_add_vertex(mesh, p1_top_ws, white, make_vec2(u1, 0.0f));
+            mesh_add_triangle_from_last_3_verts(mesh);
+        }
+
+        // side triangle 2
+        {
+            f32 u0 = (f32)slice / (f32)resolution;
+            f32 u1 = (f32)(slice + 1) / (f32)resolution;
+
+            u0 *= side_u_scale;
+            u1 *= side_u_scale;
+
+            mesh_add_vertex(mesh, p0_bot_ws, white, make_vec2(u0, 1.0f));
+            mesh_add_vertex(mesh, p1_top_ws, white, make_vec2(u1, 0.0f));
+            mesh_add_vertex(mesh, p0_top_ws, white, make_vec2(u0, 0.0f));
+            mesh_add_triangle_from_last_3_verts(mesh);
+        }
+
+        // bottom triangle
+        {
+            f32 u0 = remap(p0_xy.x, -1.0f, 1.0f, 0.0f, 1.0f);
+            f32 u1 = remap(p1_xy.x, -1.0f, 1.0f, 0.0f, 1.0f);
+            f32 v0 = remap(p0_xy.y, -1.0f, 1.0f, 0.0f, 1.0f);
+            f32 v1 = remap(p1_xy.y, -1.0f, 1.0f, 0.0f, 1.0f);
+
+            mesh_add_vertex(mesh, bot_ws, white, make_vec2(0.5f, 0.5f));
+            mesh_add_vertex(mesh, p1_bot_ws, white, make_vec2(u1, v1));
+            mesh_add_vertex(mesh, p0_bot_ws, white, make_vec2(u0, v0));
+            mesh_add_triangle_from_last_3_verts(mesh);
+        }
+    }
+}
+
+void mesh_build_cone(mesh_t& mesh, const vec3& base_center, const vec3& dir, f32 height, f32 base_radius, f32 resolution)
+{
+    vec3 k = get_normalized(dir) * height;
+    vec3 i = get_normalized(cross(k, VEC3_UP)) * base_radius;
+    vec3 j = get_normalized(cross(k, i)) * base_radius;
+    mat44 local_to_world_transform = make_mat44(i, j, k, base_center);
+
+    f32 theta_deg = 360.0f / (f32)resolution; 
+
+    vec4 white = color_get(Color::kWhite);
+
+    vec3 top_local = make_vec3(0.0f, 0.0f, 1.0f);
+    vec3 bot_local = make_vec3(0.0f, 0.0f, 0.0f);
+    vec3 top_ws = transform_point(local_to_world_transform, top_local);
+    vec3 bot_ws = transform_point(local_to_world_transform, bot_local);
+
+    for(u32 slice = 0; slice <= resolution; slice++)
+    {
+        vec3 p0 = make_vec3(cos_deg(theta_deg * slice), sin_deg(theta_deg * slice), 0.0f);
+        vec3 p1 = make_vec3(cos_deg(theta_deg * (slice + 1)), sin_deg(theta_deg * (slice + 1)), 0.0f);
+
+        vec3 p0_ws = transform_point(local_to_world_transform, p0);
+        vec3 p1_ws = transform_point(local_to_world_transform, p1);
+
+        f32 u0 = remap(p0.x, -1.0f, 1.0f, 0.0f, 1.0f);
+        f32 u1 = remap(p1.x, -1.0f, 1.0f, 0.0f, 1.0f);
+
+        f32 v0 = remap(p0.y, -1.0f, 1.0f, 0.0f, 1.0f);
+        f32 v1 = remap(p1.y, -1.0f, 1.0f, 0.0f, 1.0f);
+
+        // top triangle 1
+        {
+            mesh_add_vertex(mesh, top_ws, white, make_vec2(0.5, 0.5f));
+            mesh_add_vertex(mesh, p0_ws, white, make_vec2(u0, v0));
+            mesh_add_vertex(mesh, p1_ws, white, make_vec2(u1, v1));
+            mesh_add_triangle_from_last_3_verts(mesh);
+        }
+
+        // top triangle 2
+        {
+            mesh_add_vertex(mesh, top_ws, white, make_vec2(0.5f, 0.5));
+            mesh_add_vertex(mesh, p0_ws, white, make_vec2(u0, v0));
+            mesh_add_vertex(mesh, p1_ws, white, make_vec2(u1, v1));
+            mesh_add_triangle_from_last_3_verts(mesh);
+        }
+
+        // bottom triangle 1
+        {
+            mesh_add_vertex(mesh, bot_ws, white, make_vec2(0.5f, 0.5f));
+            mesh_add_vertex(mesh, p1_ws, white, make_vec2(u1, v1));
+            mesh_add_vertex(mesh, p0_ws, white, make_vec2(u0, v0));
+            mesh_add_triangle_from_last_3_verts(mesh);
+        }
+
+        // bottom triangle 2
+        {
+            mesh_add_vertex(mesh, bot_ws, white, make_vec2(0.5f, 0.5f));
+            mesh_add_vertex(mesh, p1_ws, white, make_vec2(u1, v1));
+            mesh_add_vertex(mesh, p0_ws, white, make_vec2(u0, v0));
+            mesh_add_triangle_from_last_3_verts(mesh);
+        }
+    }
 }
 
 void mesh_build_frustum(mesh_t& mesh, const mat44& view_projection)
@@ -442,76 +588,8 @@ mesh_t* mesh_load_unit_cone()
 mesh_t* mesh_load_unit_cylinder()
 {
     mesh_t* mesh = new mesh_t;
-
-    u32 resolution = 64;
-    f32 theta_deg = 360.0f / (f32)resolution; 
-    f32 side_u_scale = 3.0f;
-
-    vec4 white = color_get(Color::kWhite);
-
-    for(u32 slice = 0; slice <= resolution; slice++)
-    {
-        vec3 top = make_vec3(0.0f, 0.0f, 1.0f);
-        vec2 p0_xy = make_vec2(cos_deg(theta_deg * slice), sin_deg(theta_deg * slice));
-        vec2 p1_xy = make_vec2(cos_deg(theta_deg * (slice + 1)), sin_deg(theta_deg * (slice + 1)));
-        vec3 bot = make_vec3(0.0f, 0.0f, -1.0f);
-
-        // top triangle
-        {
-            f32 u0 = remap(p0_xy.x, -1.0f, 1.0f, 0.0f, 1.0f);
-            f32 u1 = remap(p1_xy.x, -1.0f, 1.0f, 0.0f, 1.0f);
-            f32 v0 = remap(p0_xy.y, -1.0f, 1.0f, 0.0f, 1.0f);
-            f32 v1 = remap(p1_xy.y, -1.0f, 1.0f, 0.0f, 1.0f);
-
-            mesh_add_vertex(*mesh, top, white, make_vec2(0.5, 0.5f));
-            mesh_add_vertex(*mesh, make_vec3(p0_xy, 1.0f), white, make_vec2(u0, v0));
-            mesh_add_vertex(*mesh, make_vec3(p1_xy, 1.0f), white, make_vec2(u1, v1));
-            mesh_add_triangle_from_last_3_verts(*mesh);
-        }
-
-        // side triangle 1
-        {
-            f32 u0 = (f32)slice / (f32)resolution;
-            f32 u1 = (f32)(slice + 1) / (f32)resolution;
-            
-            u0 *= side_u_scale;
-            u1 *= side_u_scale;
-
-            mesh_add_vertex(*mesh, make_vec3(p0_xy, -1.0f), white, make_vec2(u0, 1.0f));
-            mesh_add_vertex(*mesh, make_vec3(p1_xy, -1.0f), white, make_vec2(u1, 1.0f));
-            mesh_add_vertex(*mesh, make_vec3(p1_xy, 1.0f), white, make_vec2(u1, 0.0f));
-            mesh_add_triangle_from_last_3_verts(*mesh);
-        }
-
-        // side triangle 2
-        {
-            f32 u0 = (f32)slice / (f32)resolution;
-            f32 u1 = (f32)(slice + 1) / (f32)resolution;
-
-            u0 *= side_u_scale;
-            u1 *= side_u_scale;
-
-            mesh_add_vertex(*mesh, make_vec3(p0_xy, -1.0f), white, make_vec2(u0, 1.0f));
-            mesh_add_vertex(*mesh, make_vec3(p1_xy, 1.0f), white, make_vec2(u1, 0.0f));
-            mesh_add_vertex(*mesh, make_vec3(p0_xy, 1.0f), white, make_vec2(u0, 0.0f));
-            mesh_add_triangle_from_last_3_verts(*mesh);
-        }
-
-        // bottom triangle
-        {
-            f32 u0 = remap(p0_xy.x, -1.0f, 1.0f, 0.0f, 1.0f);
-            f32 u1 = remap(p1_xy.x, -1.0f, 1.0f, 0.0f, 1.0f);
-            f32 v0 = remap(p0_xy.y, -1.0f, 1.0f, 0.0f, 1.0f);
-            f32 v1 = remap(p1_xy.y, -1.0f, 1.0f, 0.0f, 1.0f);
-
-            mesh_add_vertex(*mesh, bot, white, make_vec2(0.5f, 0.5f));
-            mesh_add_vertex(*mesh, make_vec3(p1_xy, -1.0f), white, make_vec2(u1, v1));
-            mesh_add_vertex(*mesh, make_vec3(p0_xy, -1.0f), white, make_vec2(u0, v0));
-            mesh_add_triangle_from_last_3_verts(*mesh);
-        }
-    }
-
     mesh->topology = PrimitiveTopology::kTriangleList;
+    mesh_build_cylinder(*mesh, VEC3_ZERO, VEC3_UP, 1.0f, 1.0f, 32);
     return mesh;
 }
 
