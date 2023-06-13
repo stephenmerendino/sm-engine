@@ -1,9 +1,0 @@
-[submodule "src/engine/thirdparty/imgui"]
-	path = src/engine/thirdparty/imgui
-	url = https://github.com/ocornut/imgui
-[submodule "src/engine/thirdparty/stb"]
-	path = src/engine/thirdparty/stb
-	url = https://github.com/nothings/stb
-[submodule "src/engine/thirdparty/tinyobjloader"]
-	path = src/engine/thirdparty/tinyobjloader
-	url = https://github.com/tinyobjloader/tinyobjloader

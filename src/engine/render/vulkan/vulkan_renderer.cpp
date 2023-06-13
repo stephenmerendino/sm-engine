@@ -21,6 +21,8 @@
 #include "engine/render/vulkan/vulkan_startup.h"
 #include "engine/render/vulkan/vulkan_types.h"
 #include "engine/render/window.h"
+#include "engine/thirdparty/imgui/imgui.h"
+#include "engine/thirdparty/imgui/backends/imgui_impl_vulkan.h"
 #include "engine/thirdparty/vulkan/vulkan_core.h"
 
 #include <set>

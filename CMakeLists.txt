@@ -69,6 +69,8 @@ add_library(sm-engine STATIC src/engine/core/assert.cpp
                              src/engine/thread/thread.cpp
                              src/engine/thread/thread.h
                              src/engine/thread/thread_safe_queue.h
+                             src/engine/thirdparty/imgui/imgui.cpp
+                             src/engine/thirdparty/imgui/backends/imgui_impl_vulkan.cpp
                              )
 
 target_include_directories(sm-engine PUBLIC src/)
