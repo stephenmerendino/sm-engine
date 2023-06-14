@@ -379,6 +379,8 @@ struct frame_t
     texture_t main_draw_color_target;
     texture_t main_draw_depth_target;
     texture_t main_draw_resolve_target;
+
+    framebuffer_t imgui_framebuffer;
 };
 
 struct renderer_globals_t
@@ -399,19 +401,16 @@ struct renderer_globals_t
     descriptor_set_layout_t frame_render_data_descriptor_set_layout;
     descriptor_pool_t frame_render_data_descriptor_pool;
 
-    // empty descriptor set for binding where we need padding between sets
+    // material data descriptor pool and empty set
+    descriptor_pool_t material_data_dp;
     descriptor_set_t empty_descriptor_set;
 
-    ///////////////////
-    //temp
-    //descriptor_set_layout_t material_data_ds_layout;
-    descriptor_pool_t material_data_dp;
-    //descriptor_set_t material_ds;
-    ///////////////////
-
-    //render_pass_t depth_only_render_pass;
+    // render passes
     render_pass_t main_draw_render_pass;
-    //render_pass_t post_process_render_pass;
+
+    // imgui
+    render_pass_t imgui_render_pass;
+    descriptor_pool_t imgui_dp;
     
     camera_t* main_camera = nullptr;
 

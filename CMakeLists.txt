@@ -70,7 +70,19 @@ add_library(sm-engine STATIC src/engine/core/assert.cpp
                              src/engine/thread/thread.h
                              src/engine/thread/thread_safe_queue.h
                              src/engine/thirdparty/imgui/imgui.cpp
+                             src/engine/thirdparty/imgui/imgui.h
+                             src/engine/thirdparty/imgui/imgui_demo.cpp
+                             src/engine/thirdparty/imgui/imgui_draw.cpp
+                             src/engine/thirdparty/imgui/imgui_internal.h
+                             src/engine/thirdparty/imgui/imgui_tables.cpp
+                             src/engine/thirdparty/imgui/imgui_widgets.cpp
+                             src/engine/thirdparty/imgui/imstb_rectpack.h
+                             src/engine/thirdparty/imgui/imstb_textedit.h
+                             src/engine/thirdparty/imgui/imstb_truetype.h
                              src/engine/thirdparty/imgui/backends/imgui_impl_vulkan.cpp
+                             src/engine/thirdparty/imgui/backends/imgui_impl_vulkan.h
+                             src/engine/thirdparty/imgui/backends/imgui_impl_win32.cpp
+                             src/engine/thirdparty/imgui/backends/imgui_impl_win32.h
                              )
 
 target_include_directories(sm-engine PUBLIC src/)

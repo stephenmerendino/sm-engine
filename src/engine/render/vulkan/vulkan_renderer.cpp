@@ -21,6 +21,7 @@
 #include "engine/render/vulkan/vulkan_startup.h"
 #include "engine/render/vulkan/vulkan_types.h"
 #include "engine/render/window.h"
+#include "engine/thirdparty/imgui/backends/imgui_impl_win32.h"
 #include "engine/thirdparty/imgui/imgui.h"
 #include "engine/thirdparty/imgui/backends/imgui_impl_vulkan.h"
 #include "engine/thirdparty/vulkan/vulkan_core.h"
@@ -206,6 +207,9 @@ frame_t frame_create(context_t& context)
     std::vector<VkImageView> attachments = { frame.main_draw_color_target.image_view, frame.main_draw_depth_target.image_view, frame.main_draw_resolve_target.image_view };
     frame.main_draw_framebuffer = framebuffer_create(context, s_globals->main_draw_render_pass, attachments, context.swapchain.extent.width, context.swapchain.extent.height, 1);
 
+    std::vector<VkImageView> imgui_attachments = { frame.main_draw_resolve_target.image_view };
+    frame.imgui_framebuffer = framebuffer_create(context, s_globals->imgui_render_pass, imgui_attachments, context.swapchain.extent.width, context.swapchain.extent.height, 1);
+
     // set up frame render data
     {
         frame.frame_render_data_buffer = buffer_create(context, BufferType::kUniformBuffer, sizeof(frame_render_data_t));
@@ -385,7 +389,7 @@ void renderer_globals_create(context_t& context)
                                                  VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
                                                  0);
         render_pass_add_attachment(attachments, context.swapchain.format, VK_SAMPLE_COUNT_1_BIT, 
-                                                 VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
+                                                 VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
                                                  VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE, 
                                                  VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
                                                  0);
@@ -417,9 +421,8 @@ void renderer_globals_create(context_t& context)
         descriptor_pool_sizes_t pool_sizes;
         descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_SAMPLER, MAX_SETS);
         s_globals->global_data_dp = descriptor_pool_create(context, pool_sizes, MAX_SETS + EMPTY_SET);
-
+        
         s_globals->global_ds = descriptor_set_allocate(context, s_globals->global_data_dp, s_globals->global_data_ds_layout);
-
         s_globals->linear_sampler_2d = sampler_create(context, 10);
 
         descriptor_sets_writes_t descriptor_sets_writes;
@@ -440,10 +443,16 @@ void renderer_globals_create(context_t& context)
 
     // material data descriptor pool
     {
-        const i32 INITIAL_MAX_SETS = 100;
+        const i32 MAX_SETS = 100;
         descriptor_pool_sizes_t pool_sizes;
-        descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, INITIAL_MAX_SETS);
-        s_globals->material_data_dp = descriptor_pool_create(context, pool_sizes, INITIAL_MAX_SETS);
+        descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, MAX_SETS);
+        s_globals->material_data_dp = descriptor_pool_create(context, pool_sizes, MAX_SETS);
+
+        // empty material ds
+        descriptor_set_layout_bindings_t bindings;
+        descriptor_set_layout_t empty_layout = descriptor_set_layout_create(context, bindings);
+        s_globals->empty_descriptor_set = descriptor_set_allocate(context, s_globals->material_data_dp, empty_layout);
+        descriptor_set_layout_destroy(context, empty_layout);
     }
 
     // mesh instance data descriptor set layout
@@ -453,12 +462,42 @@ void renderer_globals_create(context_t& context)
         s_globals->mesh_instance_render_data_ds_layout = descriptor_set_layout_create(context, bindings);
     }
 
-    // empty descriptor set for binding in places where we don't need a ds for materials
+    // imgui resources
     {
-        descriptor_set_layout_bindings_t bindings;
-        descriptor_set_layout_t empty_layout = descriptor_set_layout_create(context, bindings);
-        s_globals->empty_descriptor_set = descriptor_set_allocate(context, s_globals->global_data_dp, empty_layout);
-        descriptor_set_layout_destroy(context, empty_layout);
+        const i32 MAX_SETS = 1000;
+        descriptor_pool_sizes_t pool_sizes;
+        descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_SAMPLER, MAX_SETS);
+        descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_SETS);
+        descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, MAX_SETS);
+        descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, MAX_SETS);
+        descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, MAX_SETS);
+        descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, MAX_SETS);
+        descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_SETS);
+        descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_SETS);
+        descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, MAX_SETS);
+        descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, MAX_SETS);
+        descriptor_pool_add_size(pool_sizes, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, MAX_SETS);
+        s_globals->imgui_dp = descriptor_pool_create(context, pool_sizes, MAX_SETS);
+
+        render_pass_attachments_t attachments;
+        render_pass_add_attachment(attachments, context.swapchain.format, VK_SAMPLE_COUNT_1_BIT, 
+                                                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
+                                                 VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE, 
+                                                 VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 
+                                                 0);
+
+        subpasses_t subpasses;
+        subpasses_add_attachment_ref(subpasses, 0, SubpassAttachmentRefType::COLOR, 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+        subpass_dependencies_t subpass_dependencies;
+        subpass_add_dependency(subpass_dependencies, VK_SUBPASS_EXTERNAL, 
+                                                     0, 
+                                                     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                                     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                                     0,
+                                                     VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+
+        s_globals->imgui_render_pass = render_pass_create(context, attachments, subpasses, subpass_dependencies);
     }
 
     // frames
@@ -778,6 +817,19 @@ void renderer_load_assets(context_t& context)
     }
 }
 
+static
+void check_imgui_vk_result(VkResult result)
+{
+    SM_VULKAN_ASSERT(result);
+}
+
+static
+PFN_vkVoidFunction imgui_vulkan_func_loader(const char* function_name, void* user_data)
+{
+    UNUSED(user_data);
+    return vkGetInstanceProcAddr(s_context->instance.handle, function_name);
+}
+
 void renderer_init(window_t* app_window)
 {
     SM_ASSERT(nullptr != app_window);
@@ -797,24 +849,25 @@ void renderer_init(window_t* app_window)
         
         ImGui::StyleColorsDark();
 
-        ImGui_ImplGlfw_InitForVulkan(window, true);
+        ImGui_ImplWin32_Init(s_context->window->handle);
+        ImGui_ImplVulkan_LoadFunctions(imgui_vulkan_func_loader);
         ImGui_ImplVulkan_InitInfo init_info = {};
-        init_info.Instance = g_Instance;
-        init_info.PhysicalDevice = g_PhysicalDevice;
-        init_info.Device = g_Device;
-        init_info.QueueFamily = g_QueueFamily;
-        init_info.Queue = g_Queue;
-        init_info.PipelineCache = g_PipelineCache;
-        init_info.DescriptorPool = g_DescriptorPool;
+        init_info.Instance = s_context->instance.handle;
+        init_info.PhysicalDevice = s_context->device.phys_device_handle;
+        init_info.Device = s_context->device.device_handle;
+        init_info.QueueFamily = s_context->device.queue_families.graphics_family; 
+        init_info.Queue = s_context->device.graphics_queue;
+        init_info.PipelineCache = VK_NULL_HANDLE;
+        init_info.DescriptorPool = s_globals->imgui_dp.descriptor_pool;
         init_info.Subpass = 0;
-        init_info.MinImageCount = g_MinImageCount;
-        init_info.ImageCount = wd->ImageCount;
+        init_info.MinImageCount = s_context->swapchain.num_images; 
+        init_info.ImageCount = s_context->swapchain.num_images;
         init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-        init_info.Allocator = g_Allocator;
-        init_info.CheckVkResultFn = check_vk_result;
-        ImGui_ImplVulkan_Init(&init_info, wd->RenderPass);
+        init_info.Allocator = VK_NULL_HANDLE;
+        init_info.CheckVkResultFn = check_imgui_vk_result;
+        ImGui_ImplVulkan_Init(&init_info, s_globals->imgui_render_pass.handle);
 
-        /*
+        
         // Load Fonts
         // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
         // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
@@ -823,7 +876,7 @@ void renderer_init(window_t* app_window)
         // - Use '#define IMGUI_ENABLE_FREETYPE' in your imconfig file to use Freetype for higher quality font rendering.
         // - Read 'docs/FONTS.md' for more instructions and details.
         // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
-        //io.Fonts->AddFontDefault();
+        io.Fonts->AddFontDefault();
         //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf", 18.0f);
         //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
         //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
@@ -833,40 +886,10 @@ void renderer_init(window_t* app_window)
 
         // Upload Fonts
         {
-            // Use any command queue
-            VkCommandPool command_pool = wd->Frames[wd->FrameIndex].CommandPool;
-            VkCommandBuffer command_buffer = wd->Frames[wd->FrameIndex].CommandBuffer;
-
-            err = vkResetCommandPool(g_Device, command_pool, 0);
-            check_vk_result(err);
-            VkCommandBufferBeginInfo begin_info = {};
-            begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-            begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-            err = vkBeginCommandBuffer(command_buffer, &begin_info);
-            check_vk_result(err);
-
+            VkCommandBuffer command_buffer = command_begin_single_time(*s_context);
             ImGui_ImplVulkan_CreateFontsTexture(command_buffer);
-
-            VkSubmitInfo end_info = {};
-            end_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-            end_info.commandBufferCount = 1;
-            end_info.pCommandBuffers = &command_buffer;
-            err = vkEndCommandBuffer(command_buffer);
-            check_vk_result(err);
-            err = vkQueueSubmit(g_Queue, 1, &end_info, VK_NULL_HANDLE);
-            check_vk_result(err);
-
-            err = vkDeviceWaitIdle(g_Device);
-            check_vk_result(err);
+            command_end_single_time(*s_context, command_buffer);
             ImGui_ImplVulkan_DestroyFontUploadObjects();
-        }
-        */
-
-        // need this on swapchain recreation too
-        if (s_context->swapchain.extent.width > 0 && s_context->swapchain.extent.height > 0)
-        {
-            ImGui_ImplVulkan_SetMinImageCount(g_MinImageCount);
-            ImGui_ImplVulkanH_CreateOrResizeWindow(g_Instance, g_PhysicalDevice, g_Device, &g_MainWindowData, g_QueueFamily, g_Allocator, width, height, g_MinImageCount);
         }
     }
 }
@@ -936,6 +959,7 @@ void frame_generate_command_buffers(context_t& context, frame_t& frame)
         clear_colors.push_back(color_target_clear);
         clear_colors.push_back(depth_target_clear);
 
+        // main draw meshes
         command_buffer_begin_render_pass(command_buffer, s_globals->main_draw_render_pass.handle, frame.main_draw_framebuffer.handle, offset, context.swapchain.extent, clear_colors);
             for(mesh_instance_t& mesh_instance : s_scene.mesh_instances)
             {
@@ -950,6 +974,13 @@ void frame_generate_command_buffers(context_t& context, frame_t& frame)
                                                                     };
                 command_draw_mesh_instance(command_buffer, mesh_instance, *mesh_render_data, draw_descriptor_sets);
             }
+        command_buffer_end_render_pass(command_buffer);
+
+        // imgui
+        command_buffer_begin_render_pass(command_buffer, s_globals->imgui_render_pass.handle, frame.imgui_framebuffer.handle, offset, context.swapchain.extent);
+            ::ImGui::Render();
+            ::ImDrawData* draw_data = ::ImGui::GetDrawData();
+            ImGui_ImplVulkan_RenderDrawData(draw_data, command_buffer);
         command_buffer_end_render_pass(command_buffer);
     }
     command_buffer_end(command_buffer);
@@ -971,6 +1002,10 @@ void mesh_instance_set_material(context_t& context, mesh_instance_t* mesh_instan
 
 void renderer_update(f32 ds)
 {
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+
     name_id_t world_axes_name_id = mesh_instance_get_name_id("world axes");
     material_id_t uv_debug_mat_id = resource_manager_get_material_id("uv_debug_mat");
     material_id_t viking_room_mat_id = resource_manager_get_material_id("viking_room_mat");
@@ -1012,6 +1047,12 @@ void renderer_update(f32 ds)
     if(s_globals->debug_render)
     {
         ds = 0.0f;
+    }
+
+    static bool show_demo_window = true;
+    if(show_demo_window)
+    {
+        ImGui::ShowDemoWindow(&show_demo_window);
     }
 
     static f32 pos_degs_per_second = 60.0f;
@@ -1128,7 +1169,6 @@ void renderer_render_frame()
 
         fence_reset(*s_context, frame.frame_completed_fence);
         SM_VULKAN_ASSERT(vkQueueSubmit(s_context->device.graphics_queue, 1, &submit_info, frame.frame_completed_fence.handle));
-        
     }
 
 	// Present to screen
@@ -1148,6 +1188,10 @@ void renderer_render_frame()
 void renderer_deinit()
 {
     vkDeviceWaitIdle(s_context->device.device_handle);
+
+    ::ImGui_ImplVulkan_Shutdown();
+    ::ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
 
     for(mesh_instance_t& mesh_instance : s_scene.mesh_instances)
     {

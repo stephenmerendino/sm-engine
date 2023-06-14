@@ -272,6 +272,20 @@ void command_buffer_begin_render_pass(VkCommandBuffer command_buffer, VkRenderPa
     vkCmdBeginRenderPass(command_buffer, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
 }
 
+void command_buffer_begin_render_pass(VkCommandBuffer command_buffer, VkRenderPass render_pass, VkFramebuffer framebuffer, VkOffset2D offset, VkExtent2D extent)
+{
+    VkRenderPassBeginInfo begin_info = {};
+    begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    begin_info.renderPass = render_pass;
+    begin_info.framebuffer = framebuffer;
+    begin_info.renderArea.offset = offset;
+    begin_info.renderArea.extent = extent;
+    begin_info.clearValueCount = 0;
+    begin_info.pClearValues = nullptr;
+
+    vkCmdBeginRenderPass(command_buffer, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
+}
+
 void command_buffer_end_render_pass(VkCommandBuffer command_buffer)
 {
     vkCmdEndRenderPass(command_buffer);
