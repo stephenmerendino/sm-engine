@@ -1000,12 +1000,15 @@ void mesh_instance_set_material(context_t& context, mesh_instance_t* mesh_instan
     mesh_instance->material_id = new_mat_id;
 }
 
-void renderer_update(f32 ds)
+void renderer_begin_frame()
 {
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
+}
 
+void renderer_update(f32 ds)
+{
     name_id_t world_axes_name_id = mesh_instance_get_name_id("world axes");
     material_id_t uv_debug_mat_id = resource_manager_get_material_id("uv_debug_mat");
     material_id_t viking_room_mat_id = resource_manager_get_material_id("viking_room_mat");

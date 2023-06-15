@@ -4,6 +4,9 @@
 #include "engine/core/macros.h"
 #include "engine/math/ivec2.h"
 #include "engine/render/window.h"
+#include "engine/thirdparty/imgui/imgui.h"
+#include <vcruntime_string.h>
+#include <winuser.h>
 
 enum class KeyStateBitFlags : u8
 {
@@ -159,10 +162,23 @@ void handle_win_key_up(u32 win_key)
     set_key_state_flag(key_state, KeyStateBitFlags::IS_DOWN, false);
 }
 
+static
+void reset_all_input_state()
+{
+    memset(s_key_states, 0, (u32)KeyCode::NUM_KEY_CODES * sizeof(key_state_t));
+}
+
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 static void input_system_msg_handler(UINT msg, WPARAM w_param, LPARAM l_param, void* user_args)
 {
 	UNUSED(l_param);
     UNUSED(user_args);
+
+    if(ImGui_ImplWin32_WndProcHandler(s_window->handle, msg, w_param, l_param))
+    {
+        reset_all_input_state();
+        return;
+    }
 
 	switch (msg)
 	{
