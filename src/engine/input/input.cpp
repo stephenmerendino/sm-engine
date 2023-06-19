@@ -220,27 +220,32 @@ void reset_all_input_state()
     memset(s_key_states, 0, (u32)KeyCode::NUM_KEY_CODES * sizeof(key_state_t));
 }
 
-#define STR_PRINTF_BOOL(bool_val) (bool_val ? "True" : "False")
-
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 static void input_system_msg_handler(UINT msg, WPARAM w_param, LPARAM l_param, void* user_args)
 {
 	UNUSED(l_param);
     UNUSED(user_args);
 
-    // flag to unhide the mouse in input_update
-	if (msg == WM_RBUTTONUP && !s_mouse_is_shown)
-	{
-		s_unhide_mouse = true; 
-	}
-
-    // flag to hide the mouse in input_update
-    if(msg == WM_RBUTTONDOWN && s_mouse_is_shown)
+    ImGuiIO& io = ImGui::GetIO();
+    bool mouse_handled_by_imgui = io.WantSetMousePos || io.WantCaptureMouse;
+    if(!mouse_handled_by_imgui)
     {
-        s_hide_mouse = true;
+        // flag to unhide the mouse in input_update
+        if (msg == WM_RBUTTONUP && !s_mouse_is_shown)
+        {
+            s_unhide_mouse = true; 
+        }
+
+        // flag to hide the mouse in input_update
+        if(msg == WM_RBUTTONDOWN && s_mouse_is_shown)
+        {
+            s_hide_mouse = true;
+        }
     }
 
-	if(ImGui_ImplWin32_WndProcHandler(s_window->handle, msg, w_param, l_param))
+    bool input_handled_by_imgui = ImGui_ImplWin32_WndProcHandler(s_window->handle, msg, w_param, l_param);
+    bool halt_input_processing = input_handled_by_imgui || mouse_handled_by_imgui;
+	if(halt_input_processing)
 	{
         reset_all_input_state();
         return;

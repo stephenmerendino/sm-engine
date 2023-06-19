@@ -1,5 +1,7 @@
 #pragma once
 
+#define STR_PRINTF_BOOL(bool_val) (bool_val ? "True" : "False")
+
 inline constexpr bool is_debug()
 {
 #if defined(NDEBUG)
