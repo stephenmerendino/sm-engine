@@ -830,6 +830,69 @@ PFN_vkVoidFunction imgui_vulkan_func_loader(const char* function_name, void* use
     return vkGetInstanceProcAddr(s_context->instance.handle, function_name);
 }
 
+static
+void imgui_init()
+{
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+    
+    ImGui::StyleColorsDark();
+
+    ImGui_ImplWin32_Init(s_context->window->handle);
+    ImGui_ImplVulkan_LoadFunctions(imgui_vulkan_func_loader);
+    ImGui_ImplVulkan_InitInfo init_info = {};
+    init_info.Instance = s_context->instance.handle;
+    init_info.PhysicalDevice = s_context->device.phys_device_handle;
+    init_info.Device = s_context->device.device_handle;
+    init_info.QueueFamily = s_context->device.queue_families.graphics_family; 
+    init_info.Queue = s_context->device.graphics_queue;
+    init_info.PipelineCache = VK_NULL_HANDLE;
+    init_info.DescriptorPool = s_globals->imgui_dp.descriptor_pool;
+    init_info.Subpass = 0;
+    init_info.MinImageCount = s_context->swapchain.num_images; 
+    init_info.ImageCount = s_context->swapchain.num_images;
+    init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+    init_info.Allocator = VK_NULL_HANDLE;
+    init_info.CheckVkResultFn = check_imgui_vk_result;
+    ImGui_ImplVulkan_Init(&init_info, s_globals->imgui_render_pass.handle);
+
+    
+    // Load Fonts
+    // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
+    // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
+    // - If the file cannot be loaded, the function will return a nullptr. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
+    // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
+    // - Use '#define IMGUI_ENABLE_FREETYPE' in your imconfig file to use Freetype for higher quality font rendering.
+    // - Read 'docs/FONTS.md' for more instructions and details.
+    // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
+    io.Fonts->AddFontDefault();
+    //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf", 18.0f);
+    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
+    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
+    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
+    //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
+    //IM_ASSERT(font != nullptr);
+
+    // Upload Fonts
+    {
+        VkCommandBuffer command_buffer = command_begin_single_time(*s_context);
+        ImGui_ImplVulkan_CreateFontsTexture(command_buffer);
+        command_end_single_time(*s_context, command_buffer);
+        ImGui_ImplVulkan_DestroyFontUploadObjects();
+    }
+}
+
+static
+void imgui_new_frame()
+{
+    ImGui_ImplWin32_NewFrame();
+    ImGui_ImplVulkan_NewFrame();
+    ImGui::NewFrame();
+}
+
 void renderer_init(window_t* app_window)
 {
     SM_ASSERT(nullptr != app_window);
@@ -838,60 +901,7 @@ void renderer_init(window_t* app_window)
     resource_manager_init(*s_context);
     renderer_globals_create(*s_context);
     renderer_load_assets(*s_context);
-
-    // imgui init
-    {
-        IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
-        ImGuiIO& io = ImGui::GetIO(); (void)io;
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-        //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-        
-        ImGui::StyleColorsDark();
-
-        ImGui_ImplWin32_Init(s_context->window->handle);
-        ImGui_ImplVulkan_LoadFunctions(imgui_vulkan_func_loader);
-        ImGui_ImplVulkan_InitInfo init_info = {};
-        init_info.Instance = s_context->instance.handle;
-        init_info.PhysicalDevice = s_context->device.phys_device_handle;
-        init_info.Device = s_context->device.device_handle;
-        init_info.QueueFamily = s_context->device.queue_families.graphics_family; 
-        init_info.Queue = s_context->device.graphics_queue;
-        init_info.PipelineCache = VK_NULL_HANDLE;
-        init_info.DescriptorPool = s_globals->imgui_dp.descriptor_pool;
-        init_info.Subpass = 0;
-        init_info.MinImageCount = s_context->swapchain.num_images; 
-        init_info.ImageCount = s_context->swapchain.num_images;
-        init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-        init_info.Allocator = VK_NULL_HANDLE;
-        init_info.CheckVkResultFn = check_imgui_vk_result;
-        ImGui_ImplVulkan_Init(&init_info, s_globals->imgui_render_pass.handle);
-
-        
-        // Load Fonts
-        // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
-        // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
-        // - If the file cannot be loaded, the function will return a nullptr. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
-        // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
-        // - Use '#define IMGUI_ENABLE_FREETYPE' in your imconfig file to use Freetype for higher quality font rendering.
-        // - Read 'docs/FONTS.md' for more instructions and details.
-        // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
-        io.Fonts->AddFontDefault();
-        //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf", 18.0f);
-        //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
-        //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
-        //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
-        //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
-        //IM_ASSERT(font != nullptr);
-
-        // Upload Fonts
-        {
-            VkCommandBuffer command_buffer = command_begin_single_time(*s_context);
-            ImGui_ImplVulkan_CreateFontsTexture(command_buffer);
-            command_end_single_time(*s_context, command_buffer);
-            ImGui_ImplVulkan_DestroyFontUploadObjects();
-        }
-    }
+    imgui_init();
 }
 
 renderer_globals_t* renderer_get_globals()
@@ -1000,15 +1010,10 @@ void mesh_instance_set_material(context_t& context, mesh_instance_t* mesh_instan
     mesh_instance->material_id = new_mat_id;
 }
 
-void renderer_begin_frame()
-{
-    ImGui_ImplVulkan_NewFrame();
-    ImGui_ImplWin32_NewFrame();
-    ImGui::NewFrame();
-}
-
 void renderer_update(f32 ds)
 {
+    imgui_new_frame();
+
     name_id_t world_axes_name_id = mesh_instance_get_name_id("world axes");
     material_id_t uv_debug_mat_id = resource_manager_get_material_id("uv_debug_mat");
     material_id_t viking_room_mat_id = resource_manager_get_material_id("viking_room_mat");

@@ -23,6 +23,8 @@ struct key_state_t
 static key_state_t s_key_states[(u32)KeyCode::NUM_KEY_CODES];
 static vec2 s_mouse_movement_normalized = VEC2_ZERO;
 static bool s_mouse_is_shown = true;
+static bool s_unhide_mouse = false;
+static bool s_hide_mouse = false;
 static ivec2 s_saved_mouse_pos = IVEC2_ZERO;
 static window_t* s_window = nullptr;
 
@@ -129,75 +131,6 @@ bool get_key_state_index_from_win_key(int* out_index, u32 win_key)
 }
 
 static
-void handle_win_key_down(u32 win_key)
-{
-	int key_state_index = -1;
-	if (!get_key_state_index_from_win_key(&key_state_index, win_key))
-	{
-		return;
-	}
-
-	key_state_t& key_state = s_key_states[key_state_index];
-	if (!get_key_state_flag(key_state, KeyStateBitFlags::IS_DOWN))
-	{
-        set_key_state_flag(key_state, KeyStateBitFlags::WAS_PRESSED, true);
-	}
-    set_key_state_flag(key_state, KeyStateBitFlags::IS_DOWN, true);
-}
-
-static
-void handle_win_key_up(u32 win_key)
-{
-	int key_state_index = -1;
-	if (!get_key_state_index_from_win_key(&key_state_index, win_key))
-	{
-		return;
-	}
-
-	key_state_t& key_state = s_key_states[key_state_index];
-	if (get_key_state_flag(key_state, KeyStateBitFlags::IS_DOWN))
-	{
-        set_key_state_flag(key_state, KeyStateBitFlags::WAS_RELEASED, true);
-	}
-    set_key_state_flag(key_state, KeyStateBitFlags::IS_DOWN, false);
-}
-
-static
-void reset_all_input_state()
-{
-    memset(s_key_states, 0, (u32)KeyCode::NUM_KEY_CODES * sizeof(key_state_t));
-}
-
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-static void input_system_msg_handler(UINT msg, WPARAM w_param, LPARAM l_param, void* user_args)
-{
-	UNUSED(l_param);
-    UNUSED(user_args);
-
-    if(ImGui_ImplWin32_WndProcHandler(s_window->handle, msg, w_param, l_param))
-    {
-        reset_all_input_state();
-        return;
-    }
-
-	switch (msg)
-	{
-		// Keyboard / mouse
-		case WM_KEYDOWN:	    handle_win_key_down((u32)w_param); break;
-		case WM_SYSKEYDOWN:     handle_win_key_down((u32)w_param); break;
-		case WM_LBUTTONDOWN:    handle_win_key_down(VK_LBUTTON); break;
-		case WM_MBUTTONDOWN:    handle_win_key_down(VK_MBUTTON); break;
-		case WM_RBUTTONDOWN:    handle_win_key_down(VK_RBUTTON); break;
-		
-		case WM_KEYUP:		    handle_win_key_up((u32)w_param); break;
-		case WM_SYSKEYUP:	    handle_win_key_up((u32)w_param); break;
-		case WM_LBUTTONUP:      handle_win_key_up(VK_LBUTTON); break;
-		case WM_MBUTTONUP:      handle_win_key_up(VK_MBUTTON); break;
-		case WM_RBUTTONUP:      handle_win_key_up(VK_RBUTTON); break;
-	}
-}
-
-static
 void save_mouse_pos()
 {
     POINT mouse_pos;
@@ -247,6 +180,89 @@ void show_cursor()
     s_mouse_is_shown = true;
 }
 
+static
+void handle_win_key_down(u32 win_key)
+{
+	int key_state_index = -1;
+	if (!get_key_state_index_from_win_key(&key_state_index, win_key))
+	{
+		return;
+	}
+
+	key_state_t& key_state = s_key_states[key_state_index];
+	if (!get_key_state_flag(key_state, KeyStateBitFlags::IS_DOWN))
+	{
+        set_key_state_flag(key_state, KeyStateBitFlags::WAS_PRESSED, true);
+	}
+    set_key_state_flag(key_state, KeyStateBitFlags::IS_DOWN, true);
+}
+
+static
+void handle_win_key_up(u32 win_key)
+{
+	int key_state_index = -1;
+	if (!get_key_state_index_from_win_key(&key_state_index, win_key))
+	{
+		return;
+	}
+
+	key_state_t& key_state = s_key_states[key_state_index];
+	if (get_key_state_flag(key_state, KeyStateBitFlags::IS_DOWN))
+	{
+        set_key_state_flag(key_state, KeyStateBitFlags::WAS_RELEASED, true);
+	}
+    set_key_state_flag(key_state, KeyStateBitFlags::IS_DOWN, false);
+}
+
+static
+void reset_all_input_state()
+{
+    memset(s_key_states, 0, (u32)KeyCode::NUM_KEY_CODES * sizeof(key_state_t));
+}
+
+#define STR_PRINTF_BOOL(bool_val) (bool_val ? "True" : "False")
+
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+static void input_system_msg_handler(UINT msg, WPARAM w_param, LPARAM l_param, void* user_args)
+{
+	UNUSED(l_param);
+    UNUSED(user_args);
+
+    // flag to unhide the mouse in input_update
+	if (msg == WM_RBUTTONUP && !s_mouse_is_shown)
+	{
+		s_unhide_mouse = true; 
+	}
+
+    // flag to hide the mouse in input_update
+    if(msg == WM_RBUTTONDOWN && s_mouse_is_shown)
+    {
+        s_hide_mouse = true;
+    }
+
+	if(ImGui_ImplWin32_WndProcHandler(s_window->handle, msg, w_param, l_param))
+	{
+        reset_all_input_state();
+        return;
+	}
+
+	switch (msg)
+	{
+		// Keyboard / mouse
+		case WM_KEYDOWN:	    handle_win_key_down((u32)w_param); break;
+		case WM_SYSKEYDOWN:     handle_win_key_down((u32)w_param); break;
+		case WM_LBUTTONDOWN:    handle_win_key_down(VK_LBUTTON); break;
+		case WM_MBUTTONDOWN:    handle_win_key_down(VK_MBUTTON); break;
+		case WM_RBUTTONDOWN:    handle_win_key_down(VK_RBUTTON); break;
+		
+		case WM_KEYUP:		    handle_win_key_up((u32)w_param); break;
+		case WM_SYSKEYUP:	    handle_win_key_up((u32)w_param); break;
+		case WM_LBUTTONUP:      handle_win_key_up(VK_LBUTTON); break;
+		case WM_MBUTTONUP:      handle_win_key_up(VK_MBUTTON); break;
+		case WM_RBUTTONUP:      handle_win_key_up(VK_RBUTTON); break;
+	}
+}
+
 void input_init(window_t* window)
 {
     SM_ASSERT(nullptr != window);
@@ -267,13 +283,15 @@ void input_begin_frame()
 void input_update()
 {
 	// Mouse movement update
-    if (input_was_key_released(KeyCode::MOUSE_RBUTTON) && !s_mouse_is_shown)
+    if (s_unhide_mouse)
     {
+        s_unhide_mouse = false;
         show_cursor();
         restore_mouse_pos();
     }
-    else if (input_was_key_pressed(KeyCode::MOUSE_RBUTTON) && s_mouse_is_shown)
+    else if (s_hide_mouse)
     {
+        s_hide_mouse = false;
         hide_cursor();
         save_mouse_pos();
         center_mouse_on_screen();
