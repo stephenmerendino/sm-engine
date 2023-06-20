@@ -10,6 +10,7 @@
 #include "engine/math/vec3.h"
 #include "engine/render/Camera.h"
 #include "engine/render/mesh.h"
+#include "engine/render/ui/ui.h"
 #include "engine/render/vertex.h"
 #include "engine/render/vulkan/vulkan_commands.h"
 #include "engine/render/vulkan/vulkan_formats.h"
@@ -835,7 +836,7 @@ void imgui_init()
 {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
     
@@ -987,6 +988,7 @@ void frame_generate_command_buffers(context_t& context, frame_t& frame)
         command_buffer_end_render_pass(command_buffer);
 
         // imgui
+        ui_render();
         command_buffer_begin_render_pass(command_buffer, s_globals->imgui_render_pass.handle, frame.imgui_framebuffer.handle, offset, context.swapchain.extent);
             ::ImGui::Render();
             ::ImDrawData* draw_data = ::ImGui::GetDrawData();
@@ -1057,12 +1059,6 @@ void renderer_update(f32 ds)
         ds = 0.0f;
     }
 
-    static bool show_demo_window = true;
-    if(show_demo_window)
-    {
-        ImGui::ShowDemoWindow(&show_demo_window);
-    }
-
     static f32 pos_degs_per_second = 60.0f;
     static f32 rot_degs_per_second = 90.0f;
 
@@ -1124,9 +1120,6 @@ void renderer_render_frame()
     {
         VkSubmitInfo submit_info = {};
         submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-        //VkSemaphore wait_semaphores[] = { frame.swapchain_image_available_semaphore.handle };
-        //VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
         submit_info.waitSemaphoreCount = 0;
         submit_info.pWaitSemaphores = nullptr;
         submit_info.pWaitDstStageMask = nullptr;
@@ -1139,7 +1132,6 @@ void renderer_render_frame()
         submit_info.signalSemaphoreCount = 1;
         submit_info.pSignalSemaphores = signal_semaphores;
         
-        //fence_reset(*s_context, frame.frame_completed_fence);
         SM_VULKAN_ASSERT(vkQueueSubmit(s_context->device.graphics_queue, 1, &submit_info, VK_NULL_HANDLE));
     }
 

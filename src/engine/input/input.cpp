@@ -221,10 +221,10 @@ void reset_all_input_state()
 }
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-static void input_system_msg_handler(UINT msg, WPARAM w_param, LPARAM l_param, void* user_args)
+static
+bool imgui_msg_handler(UINT msg, WPARAM w_param, LPARAM l_param)
 {
-	UNUSED(l_param);
-    UNUSED(user_args);
+    if(!ImGui::GetCurrentContext()) return false;
 
     ImGuiIO& io = ImGui::GetIO();
     bool mouse_handled_by_imgui = io.WantSetMousePos || io.WantCaptureMouse;
@@ -244,12 +244,19 @@ static void input_system_msg_handler(UINT msg, WPARAM w_param, LPARAM l_param, v
     }
 
     bool input_handled_by_imgui = ImGui_ImplWin32_WndProcHandler(s_window->handle, msg, w_param, l_param);
-    bool halt_input_processing = input_handled_by_imgui || mouse_handled_by_imgui;
-	if(halt_input_processing)
-	{
+    return input_handled_by_imgui || mouse_handled_by_imgui;
+}
+
+static void input_system_msg_handler(UINT msg, WPARAM w_param, LPARAM l_param, void* user_args)
+{
+	UNUSED(l_param);
+    UNUSED(user_args);
+
+    if(imgui_msg_handler(msg, w_param, l_param))
+    {
         reset_all_input_state();
         return;
-	}
+    }
 
 	switch (msg)
 	{
