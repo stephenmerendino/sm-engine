@@ -42,6 +42,8 @@ add_library(sm-engine STATIC src/engine/core/assert.cpp
                              src/engine/render/vertex.h
                              src/engine/render/ui/ui.cpp
                              src/engine/render/ui/ui.h
+                             src/engine/render/ui/ui_debug_log.cpp
+                             src/engine/render/ui/ui_debug_log.h
                              src/engine/render/vulkan/vulkan_commands.cpp
                              src/engine/render/vulkan/vulkan_commands.h
                              src/engine/render/vulkan/vulkan_formats.cpp

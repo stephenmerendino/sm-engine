@@ -859,7 +859,6 @@ void imgui_init()
     init_info.Allocator = VK_NULL_HANDLE;
     init_info.CheckVkResultFn = check_imgui_vk_result;
     ImGui_ImplVulkan_Init(&init_info, s_globals->imgui_render_pass.handle);
-
     
     // Load Fonts
     // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
