@@ -1,7 +1,7 @@
 #pragma once
 
 #include "engine/thirdparty/imgui/imgui.h"
+#include "engine/render/ui/ui_debug_log.h"
 
+void ui_begin_frame();
 void ui_render();
-void ui_log_msg(const char* msg);
-void ui_log_msg_fmt(const char* fmt, ...);

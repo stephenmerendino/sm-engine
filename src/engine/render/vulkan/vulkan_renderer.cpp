@@ -904,15 +904,9 @@ void renderer_init(window_t* app_window)
     imgui_init();
 }
 
-renderer_globals_t* renderer_get_globals()
+void renderer_begin_frame()
 {
-    return s_globals;
-}
-
-void renderer_set_main_camera(camera_t* camera)
-{
-    SM_ASSERT(nullptr != camera); 
-    s_globals->main_camera = camera;
+    ui_begin_frame(); 
 }
 
 static
@@ -1202,3 +1196,15 @@ void renderer_deinit()
 
     context_destroy(s_context);
 }
+
+renderer_globals_t* renderer_get_globals()
+{
+    return s_globals;
+}
+
+void renderer_set_main_camera(camera_t* camera)
+{
+    SM_ASSERT(nullptr != camera); 
+    s_globals->main_camera = camera;
+}
+

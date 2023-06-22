@@ -2,7 +2,6 @@
 #include "engine/render/ui/ui_debug_log.h"
 
 static bool s_show_demo_window = false;
-static ui_debug_log log;
 
 static
 void draw_main_menu_bar()
@@ -17,6 +16,11 @@ void draw_main_menu_bar()
     }
 }
 
+void ui_begin_frame()
+{
+    ui_log_begin_frame(); 
+}
+
 void ui_render()
 {
     draw_main_menu_bar(); 
@@ -26,18 +30,5 @@ void ui_render()
         ImGui::ShowDemoWindow(&s_show_demo_window);
     }
 
-    log.draw();
-}
-
-void ui_log_msg(const char* msg)
-{
-    log.log_msg(msg); 
-}
-
-void ui_log_msg_fmt(const char* fmt, ...)
-{
-    va_list args;
-    va_start(args, fmt);
-    log.log_msg_fmt(fmt, args);
-    va_end(args);
+    ui_log_draw();
 }

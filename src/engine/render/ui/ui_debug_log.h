@@ -1,17 +1,14 @@
 #pragma once
 #include "engine/thirdparty/imgui/imgui.h"
 
-struct ui_debug_log
-{
-    ImGuiTextBuffer text_buffer;
-    ImGuiTextFilter text_filter;
-    ImVector<int>   line_offsets;
-    bool            auto_scroll = true;
-
-    ui_debug_log();
-    void clear();
-    void log_msg(const char* msg);
-    void log_msg_fmt(const char* fmt, ...);
-    void log_msg_fmt(const char* fmt, va_list args);
-    void draw();
-};
+void ui_log_init();
+void ui_log_begin_frame();
+void ui_log_clear_persistent();
+void ui_log_clear_frame();
+void ui_log_msg_persistent(const char* msg);
+void ui_log_msg_persistent_fmt(const char* fmt, ...);
+void ui_log_msg_persistent_fmt(const char* fmt, va_list args);
+void ui_log_msg_frame(const char* msg);
+void ui_log_msg_frame_fmt(const char* fmt, ...);
+void ui_log_msg_frame_fmt(const char* fmt, va_list args);
+void ui_log_draw();

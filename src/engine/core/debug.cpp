@@ -15,5 +15,5 @@ void debug_printf(const char* format, ...)
 	va_end(args);
 
 	OutputDebugStringA(formatted_msg);
-    ui_log_msg(formatted_msg);
+    ui_log_msg_persistent(formatted_msg);
 }
