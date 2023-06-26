@@ -885,14 +885,6 @@ void imgui_init()
     }
 }
 
-static
-void imgui_new_frame()
-{
-    ImGui_ImplWin32_NewFrame();
-    ImGui_ImplVulkan_NewFrame();
-    ImGui::NewFrame();
-}
-
 void renderer_init(window_t* app_window)
 {
     SM_ASSERT(nullptr != app_window);
@@ -901,6 +893,7 @@ void renderer_init(window_t* app_window)
     resource_manager_init(*s_context);
     renderer_globals_create(*s_context);
     renderer_load_assets(*s_context);
+
     imgui_init();
 }
 
@@ -1007,7 +1000,14 @@ void mesh_instance_set_material(context_t& context, mesh_instance_t* mesh_instan
 
 void renderer_update(f32 ds)
 {
-    imgui_new_frame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui_ImplVulkan_NewFrame();
+    ImGui::NewFrame();
+
+    for(int i = 0; i < 10; i++)
+    {
+        ui_log_msg_frame_fmt("Hello World! %i\n", i);
+    }
 
     name_id_t world_axes_name_id = mesh_instance_get_name_id("world axes");
     material_id_t uv_debug_mat_id = resource_manager_get_material_id("uv_debug_mat");
