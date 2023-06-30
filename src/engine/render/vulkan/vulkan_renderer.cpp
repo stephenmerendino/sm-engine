@@ -1004,11 +1004,6 @@ void renderer_update(f32 ds)
     ImGui_ImplVulkan_NewFrame();
     ImGui::NewFrame();
 
-    for(int i = 0; i < 10; i++)
-    {
-        ui_log_msg_frame_fmt("Hello World! %i\n", i);
-    }
-
     name_id_t world_axes_name_id = mesh_instance_get_name_id("world axes");
     material_id_t uv_debug_mat_id = resource_manager_get_material_id("uv_debug_mat");
     material_id_t viking_room_mat_id = resource_manager_get_material_id("viking_room_mat");
