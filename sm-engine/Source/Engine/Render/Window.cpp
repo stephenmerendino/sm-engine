@@ -118,37 +118,35 @@ bool Window::Init(const char* name, U32 width, U32 height, bool bResizable)
 	I32 create_width = full_size.right - full_size.left;
 	I32 create_height = full_size.bottom - full_size.top;
 
-	Window* pWindow = new Window;
-	MEM_ZERO(*pWindow);
-	pWindow->m_name = name;
-	pWindow->m_bWasResized = false;
-	pWindow->m_bWasClosed = false;
-	pWindow->m_bIsMinimized = false;
+	m_name = name;
+	m_bWasResized = false;
+	m_bWasClosed = false;
+	m_bIsMinimized = false;
 
 	wchar_t* unicodeName = AllocAndConvertUnicodeStr(name);
 	FREE_AFTER_SCOPE(unicodeName);
 
-	pWindow->m_handle = CreateWindowEx(0,
-									   WINDOW_CLASS_NAME,
-									   unicodeName,
-									   style,
-									   CW_USEDEFAULT,
-									   CW_USEDEFAULT,
-									   create_width,
-									   create_height,
-									   NULL, NULL,
-									   GetModuleHandle(NULL),
-									   pWindow);
-	SM_ASSERT(NULL != pWindow->m_handle);
+	m_handle = CreateWindowEx(0,
+						      WINDOW_CLASS_NAME,
+						      unicodeName,
+						      style,
+						      CW_USEDEFAULT,
+						      CW_USEDEFAULT,
+						      create_width,
+						      create_height,
+						      NULL, NULL,
+						      GetModuleHandle(NULL),
+						      this);
+	SM_ASSERT(NULL != m_handle);
 
-	UpdateWindowSize(pWindow);
-	UpdateWindowPosition(pWindow);
+	UpdateWindowSize(this);
+	UpdateWindowPosition(this);
 
 	// window adds a self subscription to catch windows messages for itself
-	AddMsgCallback(InteralWindowMsgHandler, pWindow);
+	AddMsgCallback(InteralWindowMsgHandler, this);
 
 	// make sure to show on init
-	::ShowWindow(pWindow->m_handle, SW_SHOW);
+	::ShowWindow(m_handle, SW_SHOW);
 
 	return true;
 }
