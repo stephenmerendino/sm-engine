@@ -73,6 +73,22 @@ static void InteralWindowMsgHandler(UINT msg, WPARAM wParam, LPARAM lParam, void
 	}
 }
 
+static void UpdateWindowSize(Window* pWindow)
+{
+	RECT size;
+	::GetClientRect(pWindow->m_handle, &size);
+	pWindow->m_width = size.right - size.left;
+	pWindow->m_height = size.bottom - size.top;
+}
+
+static void UpdateWindowPosition(Window* pWindow)
+{
+	RECT pos;
+	::GetWindowRect(pWindow->m_handle, &pos);
+	pWindow->m_x = pos.left;
+	pWindow->m_y = pos.top;
+}
+
 bool Window::Init(const char* name, U32 width, U32 height, bool bResizable)
 {
 	WNDCLASSEX wc = {};
@@ -125,16 +141,58 @@ bool Window::Init(const char* name, U32 width, U32 height, bool bResizable)
 									   pWindow);
 	SM_ASSERT(NULL != pWindow->m_handle);
 
-	// verify that the created size is actually correct
-	//window_update_size(window);
-	//window_update_position(window);
-	//SM_ASSERT(window->width == width && window->height == height);
+	UpdateWindowSize(pWindow);
+	UpdateWindowPosition(pWindow);
 
 	// window adds a self subscription to catch windows messages for itself
-	//window_add_msg_callback(window, internal_window_msg_handler, window);
+	AddMsgCallback(InteralWindowMsgHandler, pWindow);
 
 	// make sure to show on init
 	::ShowWindow(pWindow->m_handle, SW_SHOW);
 
 	return true;
+}
+
+void Window::Destroy()
+{
+	::DestroyWindow(m_handle);
+	::UnregisterClass(WINDOW_CLASS_NAME, ::GetModuleHandle(NULL));
+}
+
+void Window::Update()
+{
+	m_bWasResized = false;
+	m_bIsMoving = false;
+
+	// Pump messages
+	MSG msg;
+	while (::PeekMessage(&msg, m_handle, 0, 0, PM_REMOVE))
+	{
+		::TranslateMessage(&msg);
+		::DispatchMessage(&msg);
+	}
+
+	UpdateWindowSize(this);
+	UpdateWindowPosition(this);
+	m_bIsMinimized = ::IsIconic(m_handle);
+}
+
+void Window::SetTitle(const char* newTitle)
+{
+	wchar_t* unicodeTitle = AllocAndConvertUnicodeStr(newTitle);
+	FREE_AFTER_SCOPE(unicodeTitle);
+	::SetWindowText(m_handle, unicodeTitle);
+}
+
+void Window::AddMsgCallback(WindowMsgCallbackFunc cb, void* userArgs)
+{
+	WindowMsgCallbackWithArgs cbWithArgs = { cb, userArgs };
+	m_msgCallbacks.push_back(cbWithArgs);
+}
+
+IVec2 Window::CalcCenterPosition()
+{
+	U32 halfWidth = m_width / 2;
+	U32 halfHeight = m_height / 2;
+	return IVec2(m_x + halfWidth, m_y + halfHeight);
 }

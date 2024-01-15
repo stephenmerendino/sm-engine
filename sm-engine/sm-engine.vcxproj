@@ -37,6 +37,7 @@
     <ClInclude Include="Source\Engine\Core\Assert.h" />
     <ClInclude Include="Source\Engine\Core\Macros.h" />
     <ClInclude Include="Source\Engine\Core\Types.h" />
+    <ClInclude Include="Source\Engine\Math\IVec2.h" />
     <ClInclude Include="Source\Engine\Math\Mat33.h" />
     <ClInclude Include="Source\Engine\Math\Mat44.h" />
     <ClInclude Include="Source\Engine\Math\MathUtils.h" />

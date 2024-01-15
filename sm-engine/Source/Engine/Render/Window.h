@@ -1,7 +1,8 @@
 #pragma once
 
-#include "Engine/Platform/WindowsInclude.h"
 #include "Engine/Core/Types.h"
+#include "Engine/Math/IVec2.h"
+#include "Engine/Platform/WindowsInclude.h"
 #include <vector>
 
 typedef void (*WindowMsgCallbackFunc)(UINT msg, WPARAM wParam, LPARAM lParam, void* userArgs);
@@ -15,12 +16,12 @@ class Window
 {
 public:
 	bool Init(const char* name, U32 width, U32 height, bool bResizable);
-	//void Update();
-	//void Destroy();
+	void Update();
+	void Destroy();
 
-	//void SetTitle(const char* newTitle);
-	//void AddMsgCallback(WindowMsgCallbackFunc cb, void* userArgs = nullptr);
-	//IVec2 GetCenterPosition();
+	void SetTitle(const char* newTitle);
+	void AddMsgCallback(WindowMsgCallbackFunc cb, void* userArgs = nullptr);
+	IVec2 CalcCenterPosition();
 
 	HWND m_handle;
 	const char* m_name;

@@ -293,6 +293,9 @@
     <ClInclude Include="Source\Engine\Platform\WindowsUtils.h">
       <Filter>Source\Platform</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Math\IVec2.h">
+      <Filter>Source\Math</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Source\Engine\ThirdParty\imgui\vulkan\generate_spv.sh">
