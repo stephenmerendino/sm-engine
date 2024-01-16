@@ -36,6 +36,8 @@ public:
 
 		I32 data[2];
 	};
+
+	static const IVec2 ZERO;
 };
 
 inline IVec2::IVec2()
@@ -115,7 +117,7 @@ inline I32 IVec2::CalcLengthSq() const
 
 inline F32 IVec2::CalcLength() const
 {
-	return (F32)sqrt(CalcLengthSq());
+	return sqrtf(CalcLengthSq());
 }
 
 inline I32 Dot(const IVec2& a, const IVec2& b)
@@ -137,5 +139,3 @@ inline IVec2 operator*(I32 s, const IVec2& iv)
 {
 	return IVec2(iv.x * s, iv.y * s);
 }
-
-static const IVec2 IVEC2_ZERO = IVec2(0, 0);

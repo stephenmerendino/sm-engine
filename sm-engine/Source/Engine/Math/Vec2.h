@@ -1,174 +1,174 @@
 #pragma once
 #pragma warning(disable:4201)
 
-#include "engine/math/math_utils.h"
-#include "engine/core/types.h"
-#include "engine/core/assert.h"
+#include "Engine/Math/MathUtils.h"
+#include "Engine/Core/Types.h"
+#include "Engine/Core/Assert.h"
 
 #include <cmath>
 
-struct vec2
+class Vec2
 {
-	inline vec2() {}
+public:
+	inline Vec2();
+	inline Vec2(F32 inX, F32 inY);
+
+	inline Vec2 operator*(F32 s) const;
+	inline Vec2 operator/(F32 s) const;
+	inline Vec2& operator*=(F32 s);
+	inline Vec2& operator/=(F32 s);
+	inline Vec2 operator+(const Vec2& other) const;
+	inline Vec2 operator-(const Vec2& other) const;
+	inline Vec2& operator+=(const Vec2& other);
+	inline Vec2& operator-=(const Vec2& other);
+	inline Vec2 operator-() const;
+	inline bool operator==(const Vec2& other) const;
+
+	inline F32 CalcLengthSq() const;
+	inline F32 CalcLength() const;
+	inline void Normalize();
+	inline Vec2 Normalized() const;
 
 	union
 	{
 		struct
 		{
-			f32 x;
-			f32 y;
+			F32 x;
+			F32 y;
 		};
 
-		f32 data[2];
+		F32 data[2];
 	};
+
+	static const Vec2 ZERO;
 };
 
-inline
-vec2 make_vec2(f32 in_x, f32 in_y)
+inline Vec2::Vec2()
+	:x(0)
+	,y(0)
 {
-	vec2 v;
-	v.x = in_x;
-	v.y = in_y;
-	return v;
 }
 
-inline
-vec2 operator*(const vec2& v, f32 s)
+inline Vec2::Vec2(F32 inX, F32 inY)
+	:x(inX)
+	,y(inY)
 {
-	return make_vec2(v.x * s, v.y * s);
 }
 
-inline
-vec2 operator/(const vec2& v, f32 s)
+inline Vec2 Vec2::operator*(F32 s) const
 {
-	return make_vec2(v.x * s, v.y * s);
+	return Vec2(x * s, y * s);
 }
 
-inline
-vec2& operator*=(vec2& v, f32 s)
+inline Vec2 Vec2::operator/(F32 s) const
 {
-	v.x *= s;
-	v.y *= s;
-	return v;
+	return Vec2(x * s, y * s);
 }
 
-inline
-vec2& operator/=(vec2& v, f32 s)
+inline Vec2& Vec2::operator*=(F32 s)
 {
-	v.x *= s;
-	v.y *= s;
-	return v;
+	x *= s;
+	y *= s;
+	return *this;
 }
 
-inline
-vec2 operator+(const vec2& a, const vec2& b)
+inline Vec2& Vec2::operator/=(F32 s)
 {
-	return make_vec2(a.x + b.x, a.y + b.y);
+	x *= s;
+	y *= s;
+	return *this;
 }
 
-inline
-vec2& operator+=(vec2& v, const vec2& add)
+inline Vec2 Vec2::operator+(const Vec2& other) const
 {
-	v.x += add.x;
-	v.y += add.y;
-	return v;
+	return Vec2(x + other.x, y + other.y);
 }
 
-inline
-vec2 operator-(const vec2& a, const vec2& b)
+inline Vec2 Vec2::operator-(const Vec2& other) const
 {
-	return make_vec2(a.x - b.x, a.y - b.y);
+	return Vec2(x - other.x, y - other.y);
 }
 
-inline
-vec2& operator-=(vec2& v, const vec2& sub)
+inline Vec2& Vec2::operator+=(const Vec2& other)
 {
-	v.x -= sub.x;
-	v.y -= sub.y;
-	return v;
+	x += other.x;
+	y += other.y;
+	return *this;
 }
 
-inline
-vec2 operator-(const vec2& v)
+inline Vec2& Vec2::operator-=(const Vec2& other)
 {
-	return make_vec2(-v.x, -v.y);
+	x -= other.x;
+	y -= other.y;
+	return *this;
 }
 
-
-inline
-bool operator==(const vec2& a, const vec2& b)
+inline Vec2 Vec2::operator-() const
 {
-	return (a.x == b.x) && (a.y == b.y);
+	return Vec2(-x, -y);
 }
 
-inline
-f32 calc_length_sq(const vec2& v)
+inline bool Vec2::operator==(const Vec2& other) const
 {
-	return (v.x * v.x) + (v.y * v.y);
+	return (x == other.x) && (y == other.y);
 }
 
-inline
-f32 calc_length(const vec2& v)
+inline F32 Vec2::CalcLengthSq() const
 {
-	return sqrtf(calc_length_sq(v));
+	return (x * x) + (y * y);
 }
 
-inline
-void normalize(vec2& v)
+inline F32 Vec2::CalcLength() const
+{
+	return sqrtf(CalcLengthSq());
+}
+
+inline void Vec2::Normalize()
 {
 	// prevent division by zero by checking for zero length and asserting
-	f32 length_sq = calc_length_sq(v);
-	SM_ASSERT(!is_zero(length_sq));
+	F32 lengthSq = CalcLengthSq();
+	SM_ASSERT(!IsZero(lengthSq));
 
 	// do normalization now that we know length is not zero
-	f32 length = sqrtf(length_sq);
-	f32 inv_length = 1.0f / length;
+	F32 length = sqrtf(lengthSq);
+	F32 invLength = 1.0f / length;
 
-	v *= inv_length;
+	*this *= invLength;
 }
 
-inline
-vec2 get_normalized(const vec2& v)
+inline Vec2 Vec2::Normalized() const
 {
-	vec2 copy = v;
-	normalize(copy);
+	Vec2 copy = *this;
+	copy.Normalize();
 	return copy;
 }
 
-inline
-vec2 operator*(f32 s, const vec2& v)
+inline Vec2 operator*(F32 s, const Vec2& v)
 {
 	return v * s;
 }
 
-inline
-f32 dot(const vec2& a, const vec2& b)
+inline F32 Dot(const Vec2& a, const Vec2& b)
 {
 	return (a.x * b.x) + (a.y * b.y);
 }
 
-inline
-f32 distance(const vec2& a, const vec2& b)
+inline F32 Distance(const Vec2& a, const Vec2& b)
 {
-	return calc_length(a - b);
+	return (a - b).CalcLength();
 }
 
-inline
-f32 distance_sq(const vec2& a, const vec2& b)
+inline F32 DistanceSq(const Vec2& a, const Vec2& b)
 {
-	return calc_length_sq(a - b);
+	return (a - b).CalcLengthSq();
 }
 
-inline
-vec2 calc_2d_polar_to_xy_rad(f32 radians, f32 radius = 1.0f)
+inline Vec2 PolarToCartesianRads(F32 radians, F32 radius = 1.0f)
 {
-	return radius * make_vec2(cosf(radians), sinf(radians));
+	return radius * Vec2(cosf(radians), sinf(radians));
 }
 
-inline
-vec2 calc_2d_polar_to_xy_deg(f32 deg, f32 radius = 1.0f)
+inline Vec2 PolarToCartesianDegs(F32 deg, F32 radius = 1.0f)
 {
-	return radius * make_vec2(cos_deg(deg), sin_deg(deg));
+	return radius * Vec2(CosDeg(deg), SinDeg(deg));
 }
-
-static const vec2 VEC2_ZERO = make_vec2(0, 0);
