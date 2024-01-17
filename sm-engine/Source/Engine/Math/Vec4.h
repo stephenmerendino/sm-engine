@@ -1,119 +1,112 @@
 #pragma once
 #pragma warning(disable:4201)
 
-#include "engine/core/assert.h"
-#include "engine/core/types.h"
-#include "engine/math/math_utils.h"
-#include "engine/math/vec3.h"
+#include "Engine/Core/Assert.h"
+#include "Engine/Core/Types.h"
+#include "Engine/Math/MathUtils.h"
+#include "Engine/Math/Vec3.h"
 
-struct vec4
+class Vec4
 {
-	inline vec4() {}
+public:
+	inline Vec4();
+	inline Vec4(F32 inX, F32 inY, F32 inZ, F32 inW);
+
+	inline Vec4 operator*(F32 s) const;
+	inline Vec4 operator/(F32 s) const;
+	inline Vec4& operator*=(F32 s);
+	inline Vec4& operator/=(F32 s);
+	inline Vec4 operator+(const Vec4& other) const;
+	inline Vec4 operator-(const Vec4& other) const;
+	inline Vec4& operator+=(const Vec4& other);
+	inline Vec4& operator-=(const Vec4& other);
 
 	union
 	{
 		struct
 		{
-			f32 x;
-			f32 y;
-			f32 z;
-			f32 w;
+			F32 x;
+			F32 y;
+			F32 z;
+			F32 w;
 		};
 
-		struct
-		{
-			vec3 xyz;
-			f32 pad0;
-		};
-
-		f32 data[4];
+		F32 data[4];
 	};
 };
 
-inline
-vec4 make_vec4(f32 x, f32 y, f32 z, f32 w)
+inline Vec4::Vec4()
+	:x(0)
+	,y(0)
+	,z(0)
+	,w(0)
 {
-	vec4 v;
-	v.x = x;
-	v.y = y;
-	v.z = z;
-	v.w = w;
-	return v;
 }
 
-inline
-vec4 make_vec4(const vec3& xyz, f32 w)
+inline Vec4::Vec4(F32 inX, F32 inY, F32 inZ, F32 inW)
+	:x(inX)
+	,y(inY)
+	,z(inZ)
+	,w(inW)
 {
-	vec4 v;
-	v.xyz = xyz;
-	v.w = w;
-	return v;
 }
 
-inline
-vec4 operator*(const vec4& v, f32 s)
+inline Vec4 Vec4::operator*(F32 s) const
 {
-	return make_vec4(v.x * s, v.y * s, v.z * s, v.w * s);
+	return Vec4(x * s, y * s, z * s, w * s);
 }
 
-inline
-vec4 operator/(const vec4& v, f32 s)
+inline Vec4 Vec4::operator/(F32 s) const
 {
-	f32 inv_s = 1.0f / s;
-	return make_vec4(v.x * inv_s, v.y * inv_s, v.z * inv_s, v.w * inv_s);
+	F32 invS = 1.0f / s;
+	return Vec4(x * invS, y * invS, z * invS, w * invS);
 }
 
-inline
-vec4& operator*=(vec4& v, f32 s)
+inline Vec4& Vec4::operator*=(F32 s)
 {
-	v.x *= s;
-	v.y *= s;
-	v.z *= s;
-	v.w *= s;
-	return v;
+	x *= s;
+	y *= s;
+	z *= s;
+	w *= s;
+	return *this;
 }
 
-inline
-vec4& operator/=(vec4& v, f32 s)
+inline Vec4& Vec4::operator/=(F32 s)
 {
-	f32 inv_s = 1.0f / s;
-	v.x *= inv_s;
-	v.y *= inv_s;
-	v.z *= inv_s;
-	v.w *= inv_s;
-	return v;
+	F32 invS = 1.0f / s;
+	x *= invS;
+	y *= invS;
+	z *= invS;
+	w *= invS;
+	return *this;
 }
 
-inline
-vec4 operator+(const vec4& a, const vec4& b)
+inline Vec4 Vec4::operator+(const Vec4& other) const
 {
-	return make_vec4(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w);
+	return Vec4(x + other.x, y + other.y, z + other.z, w + other.w);
 }
 
-inline
-vec4& operator+=(vec4& v, const vec4& add)
+inline Vec4 Vec4::operator-(const Vec4& other) const
 {
-	v.x += add.x;
-	v.y += add.y;
-	v.z += add.z;
-	v.w += add.w;
-	return v;
+	return Vec4(x - other.x, y - other.y, z - other.z, w - other.w);
 }
 
-inline
-vec4 operator-(const vec4& a, const vec4& b)
+inline Vec4& Vec4::operator+=(const Vec4& other)
 {
-	return make_vec4(a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w);
+	x += other.x;
+	y += other.y;
+	z += other.z;
+	w += other.w;
+	return *this;
 }
 
-inline
-vec4& operator-=(vec4& v, const vec4& sub)
+inline Vec4& Vec4::operator-=(const Vec4& other)
 {
-	v.x -= sub.x;
-	v.y -= sub.y;
-	v.z -= sub.z;
-	v.w -= sub.w;
-	return v;
+	x -= other.x;
+	y -= other.y;
+	z -= other.z;
+	w -= other.w;
+	return *this;
 }
 
 inline
