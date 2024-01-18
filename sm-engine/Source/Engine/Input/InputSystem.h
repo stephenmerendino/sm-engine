@@ -124,13 +124,29 @@ enum class KeyCode : U32
 	NUM_KEY_CODES
 };
 
-class Window;
+enum class KeyStateBitFlags : U8
+{
+	IS_DOWN = 0b000000001,
+	WAS_PRESSED = 0b000000010,
+	WAS_RELEASED = 0b000000100
+};
 
 struct KeyState
 {
-	U8 state = 0;
+	void SetFlag(KeyStateBitFlags flag, bool value);
+	bool GetFlag(KeyStateBitFlags flag);
+
+	static I32 GetIndexFromWin32Key(U32 windowsKey);
+
+	U8 m_state = 0;
+
+	enum
+	{
+		kInvalidIndex = -1
+	};
 };
 
+class Window;
 class InputSystem
 {
 public:
@@ -143,8 +159,17 @@ public:
 	bool IsKeyDown(KeyCode key) const;
 	bool WasKeyPressed(KeyCode key) const;
 	bool WasKeyReleased(KeyCode key) const;
+	void HandleWinKeyDown(U32 winKey);
+	void HandleWinKeyUp(U32 winKey);
 	Vec2 GetMouseMovement() const;
 	void ResetAllInputState();
+
+	void SaveMousePos();
+	void RestoreMousePos();
+	void CenterMouseOnScreen();
+	void UpdateMouseMovement();
+	void HideCursor();
+	void ShowCursor();
 
 	KeyState m_keyStates[(U32)KeyCode::NUM_KEY_CODES];
 	Vec2 m_mouseMovementNormalized;
