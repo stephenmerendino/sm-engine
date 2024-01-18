@@ -2,14 +2,10 @@
 
 #include "Engine/Core/Types.h"
 
-class ColurU8;
-
 class ColorF32
 {
 public:
 	ColorF32(F32 inR, F32 inG, F32 inB, F32 inA);
-
-	ColorU8 ToColorU8();
 
 	F32 r;
 	F32 g;
@@ -26,8 +22,6 @@ class ColorU8
 {
 public:
 	ColorU8(U8 inR, U8 inG, U8 inB, U8 inA);
-
-	ColorF32 ToColorF32();
 
 	U8 r;
 	U8 g;

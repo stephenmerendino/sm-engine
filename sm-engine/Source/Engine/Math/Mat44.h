@@ -43,18 +43,56 @@ public:
 	Mat44& operator*=(const Mat44& other);
 
 	inline void Transpose();
-	inline Mat44 GetTransposed() const;
+	inline Mat44 Transposed() const;
 	inline F32 CalcDeterminant() const;
 	inline void Inverse();
-	inline Mat44 GetInversed() const;
+	inline Mat44 Inversed() const;
 	inline void FastOrthoInverse();
-	inline Mat44 GetFastOrthoInversed() const;
+	inline Mat44 FastOrthoInversed() const;
 
 	inline void Scale(F32 uniformScale);
+	inline void Scale(F32 iScale, F32 jScale, F32 kScale);
+	inline void Scale(const Vec3& ijkScale);
+	inline Mat44 Scaled(F32 uniformScale) const;
+	inline Mat44 Scaled(F32 iScale, F32 jScale, F32 kScale) const;
+	inline Mat44 Scaled(const Vec3& ijkScale) const;
 
-	static Mat44 CreateBasisFromI(const Vec3& inI);
-	static Mat44 CreateBasisFromJ(const Vec3& inJ);
-	static Mat44 CreateBasisFromK(const Vec3& inK);
+	inline void SetTranslation(const Vec3& inT);
+	inline void Translate(const Vec3& inT);
+	inline static Mat44 CreateTranslation(const Vec3& t);
+
+	inline void RotateXRads(F32 xRads);
+	inline void RotateYRads(F32 yRads);
+	inline void RotateZRads(F32 zRads);
+	inline void RotateXDegs(F32 xDegs);
+	inline void RotateYDegs(F32 yDegs);
+	inline void RotateZDegs(F32 zDegs);
+	inline static Mat44 CreateRotationXRads(F32 xRads);
+	inline static Mat44 CreateRotationYRads(F32 yRads);
+	inline static Mat44 CreateRotationZRads(F32 zRads);
+	inline static Mat44 CreateRotationXDegs(F32 xDegs);
+	inline static Mat44 CreateRotationYDegs(F32 yDegs);
+	inline static Mat44 CreateRotationZDegs(F32 zDegs);
+
+	inline void RotateAroundAxisRads(const Vec3& axis, F32 rads);
+	inline void RotateAroundAxisDegs(const Vec3& axis, F32 degs);
+	inline static Mat44 CreateRotationArounAxisRads(const Vec3& axis, F32 rads);
+	inline static Mat44 CreateRotationAroundAxisDegs(const Vec3& axis, F32 degs);
+
+	inline Mat44 GetRotation() const;
+	inline void SetRotation(const Mat44& rotation);
+
+	inline Vec3 TransformVec(const Vec3& v) const;
+	inline Vec3 TransformPoint(const Vec3& p) const;
+	inline void TransformInModelSpace(const Mat44& transform);
+	inline Mat44 GetTransformedInModelSpace(const Mat44& transform) const;
+
+	inline static Mat44 CreatePerspectiveProjection(F32 verticalFovDeg, F32 nearPlane, F32 farPlane, F32 aspect);
+
+	inline static Mat44 CreateBasisFromI(const Vec3& inI);
+	inline static Mat44 CreateBasisFromJ(const Vec3& inJ);
+	inline static Mat44 CreateBasisFromK(const Vec3& inK);
+
 
 	union
 	{
@@ -150,69 +188,6 @@ inline Mat44 Mat44::operator*(F32 s) const
 	return Mat44(i * s, j * s, k * s, t * s);
 }
 
-inline Mat44 Mat44::CreateBasisFromI(const Vec3& inI)
-{
-	Vec3 iNorm = inI.Normalized();
-
-	// account for iNorm pointing directly up or down when trying to build basis
-	Vec3 jNorm = Vec3::ZERO;
-	F32 cosAngleAbs = abs(Dot(iNorm, Vec3::UP));
-	if (AlmostEquals(cosAngleAbs, 1.0f))
-	{
-		jNorm = Cross(iNorm, Vec3::FORWARD).Normalized();
-	}
-	else
-	{
-		jNorm = Cross(Vec3::UP, iNorm).Normalized();
-	}
-
-	Vec3 kNorm = Cross(iNorm, jNorm);
-
-	return Mat44(iNorm, jNorm, kNorm);
-}
-
-inline Mat44 Mat44::CreateBasisFromJ(const Vec3& inJ)
-{
-	Vec3 jNorm = inJ.Normalized();
-
-	// account for j_norm pointing directly up or down when trying to build basis
-	Vec3 iNorm = Vec3::ZERO;
-	F32 cosAngleAbs = abs(Dot(jNorm, Vec3::UP));
-	if (AlmostEquals(cosAngleAbs, 1.0f))
-	{
-		iNorm = Cross(Vec3::LEFT, jNorm).Normalized();
-	}
-	else
-	{
-		iNorm = Cross(jNorm, Vec3::UP).Normalized();
-	}
-
-	Vec3 kNorm = Cross(iNorm, jNorm);
-
-	return Mat44(iNorm, jNorm, kNorm);
-}
-
-inline Mat44 Mat44::CreateBasisFromK(const Vec3& inK)
-{
-	Vec3 kNorm = inK.Normalized();
-
-	// account for k_norm pointing directly up or down when trying to build basis
-	Vec3 iNorm = Vec3::ZERO;
-	F32 cosAngleAbs = abs(Dot(kNorm, Vec3::UP));
-	if (AlmostEquals(cosAngleAbs, 1.0f))
-	{
-		iNorm = Cross(Vec3::FORWARD, kNorm).Normalized();
-	}
-	else
-	{
-		iNorm = Cross(kNorm, Vec3::UP).Normalized();
-	}
-
-	Vec3 jNorm = Cross(kNorm, iNorm);
-
-	return Mat44(iNorm, jNorm, kNorm);
-}
-
 inline Mat44& Mat44::operator*=(F32 s)
 {
 	for (int i = 0; i < 16; i++)
@@ -269,7 +244,7 @@ inline void Mat44::Transpose()
 	Swap(data[11], data[14]);
 }
 
-inline Mat44 Mat44::GetTransposed() const
+inline Mat44 Mat44::Transposed() const
 {
 	Mat44 copy = *this;
 	copy.Transpose();
@@ -346,7 +321,7 @@ inline void Mat44::Inverse()
 	*this = cofactorMat * invDeterminant;
 };
 
-inline Mat44 Mat44::GetInversed() const
+inline Mat44 Mat44::Inversed() const
 {
 	Mat44 copy = *this;
 	copy.Inverse();
@@ -365,7 +340,7 @@ inline void Mat44::FastOrthoInverse()
 	t.xyz = -t.xyz;
 }
 
-inline Mat44 Mat44::GetFastOrthoInversed() const
+inline Mat44 Mat44::FastOrthoInversed() const
 {
 	Mat44 copy = *this;
 	copy.FastOrthoInverse();
@@ -379,344 +354,312 @@ inline void Mat44::Scale(F32 uniformScale)
 	k.xyz *= uniformScale;
 }
 
-//inline
-//void scale(mat44& m, f32 i_scale, f32 j_scale, f32 k_scale)
-//{
-//	m.i.x *= i_scale;
-//	m.i.y *= j_scale;
-//	m.i.z *= k_scale;
-//
-//	m.j.x *= i_scale;
-//	m.j.y *= j_scale;
-//	m.j.z *= k_scale;
-//
-//	m.k.x *= i_scale;
-//	m.k.y *= j_scale;
-//	m.k.z *= k_scale;
-//}
-//
-//inline
-//void scale(mat44& m, const vec3& ijk_scale_factors)
-//{
-//	m.i.x *= ijk_scale_factors.x;
-//	m.i.y *= ijk_scale_factors.y;
-//	m.i.z *= ijk_scale_factors.z;
-//
-//	m.j.x *= ijk_scale_factors.x;
-//	m.j.y *= ijk_scale_factors.y;
-//	m.j.z *= ijk_scale_factors.z;
-//
-//	m.k.x *= ijk_scale_factors.x;
-//	m.k.y *= ijk_scale_factors.y;
-//	m.k.z *= ijk_scale_factors.z;
-//}
-//
-//inline
-//mat44 get_scaled(mat44& m, f32 uniform_scale)
-//{
-//	mat44 copy = m;
-//	scale(copy, uniform_scale);
-//	return copy;
-//}
-//
-//inline
-//mat44 get_scaled(mat44& m, f32 i_scale, f32 j_scale, f32 k_scale)
-//{
-//	mat44 copy = m;
-//	scale(m, i_scale, j_scale, k_scale);
-//	return copy;
-//}
-//
-//inline
-//mat44 get_scaled(const mat44& m, const vec3& ijk_scale_factors)
-//{
-//	mat44 copy = m;
-//	scale(copy, ijk_scale_factors);
-//	return copy;
-//}
-//
-//inline
-//void scale_local(mat44& m, f32 uniform_scale)
-//{
-//	m.i.xyz *= uniform_scale;
-//	m.j.xyz *= uniform_scale;
-//	m.k.xyz *= uniform_scale;
-//}
-//
-//inline
-//void scale_local(mat44& m, f32 i_scale, f32 j_scale, f32 k_scale)
-//{
-//	m.i *= i_scale;
-//	m.j *= j_scale;
-//	m.k *= k_scale;
-//}
-//
-//inline
-//void scale_local(mat44& m, const vec3& ijk_scale_factors)
-//{
-//	m.i *= ijk_scale_factors.x;
-//	m.j *= ijk_scale_factors.y;
-//	m.k *= ijk_scale_factors.z;
-//}
-//
-//inline
-//mat44 get_scaled_local(mat44& m, f32 uniform_scale)
-//{
-//	mat44 copy = m;
-//	scale_local(copy, uniform_scale);
-//	return copy;
-//}
-//
-//inline
-//mat44 get_scaled_local(mat44& m, f32 i_scale, f32 j_scale, f32 k_scale)
-//{
-//	mat44 copy = m;
-//	scale_local(m, i_scale, j_scale, k_scale);
-//	return copy;
-//}
-//
-//inline
-//mat44 get_scaled_local(const mat44& m, const vec3& ijk_scale_factors)
-//{
-//	mat44 copy = m;
-//	scale_local(copy, ijk_scale_factors);
-//	return copy;
-//}
-//inline
-//void set_translation(mat44& m, const vec3& t)
-//{
-//	m.t = make_vec4(t, 1.0f);
-//}
-//
-//inline
-//void translate(mat44& m, const vec3& t)
-//{
-//	set_translation(m, m.t.xyz + t);
-//}
-//
-//inline
-//mat44 make_translation(const vec3& t)
-//{
-//	mat44 translation = MAT44_IDENTITY;
-//	translate(translation, t);
-//	return translation;
-//}
-//
-//inline
-//void rotate_x_rad(mat44& m, f32 x_rads)
-//{
-//	f32 cos_rads = cosf(x_rads);
-//	f32 sin_rads = sinf(x_rads);
-//
-//	mat44 x_rot = make_mat44(1.0f, 0.0f, 0.0f, 0.0f,
-//		0.0f, cos_rads, sin_rads, 0.0f,
-//		0.0f, -sin_rads, cos_rads, 0.0f,
-//		0.0f, 0.0f, 0.0f, 1.0f);
-//
-//	m *= x_rot;
-//}
-//
-//inline
-//void rotate_y_rad(mat44& m, f32 y_rads)
-//{
-//	f32 cos_rads = cosf(y_rads);
-//	f32 sin_rads = sinf(y_rads);
-//
-//	mat44 y_rot = make_mat44(cos_rads, 0.0f, -sin_rads, 0.0f,
-//		0.0f, 1.0f, 0.0f, 0.0f,
-//		sin_rads, 0.0f, cos_rads, 0.0f,
-//		0.0f, 0.0f, 0.0f, 1.0f);
-//
-//	m *= y_rot;
-//}
-//
-//inline
-//void rotate_z_rad(mat44& m, f32 z_rads)
-//{
-//	f32 cos_rads = cosf(z_rads);
-//	f32 sin_rads = sinf(z_rads);
-//
-//	mat44 z_rot = make_mat44(cos_rads, sin_rads, 0.0f, 0.0f,
-//		-sin_rads, cos_rads, 0.0f, 0.0f,
-//		0.0f, 0.0f, 1.0f, 0.0f,
-//		0.0f, 0.0f, 0.0f, 1.0f);
-//
-//	m *= z_rot;
-//}
-//
-//inline
-//void rotate_x_deg(mat44& m, f32 x_deg)
-//{
-//	rotate_x_rad(m, deg_to_rad(x_deg));
-//}
-//
-//inline
-//void rotate_y_deg(mat44& m, f32 y_deg)
-//{
-//	rotate_y_rad(m, deg_to_rad(y_deg));
-//}
-//
-//inline
-//void rotate_z_deg(mat44& m, f32 z_deg)
-//{
-//	rotate_z_rad(m, deg_to_rad(z_deg));
-//}
-//
-//inline
-//mat44 make_rotation_x_deg(f32 x_deg)
-//{
-//	mat44 m = MAT44_IDENTITY;
-//	rotate_x_deg(m, x_deg);
-//	return m;
-//}
-//
-//inline
-//mat44 make_rotation_y_deg(f32 y_deg)
-//{
-//	mat44 m = MAT44_IDENTITY;
-//	rotate_y_deg(m, y_deg);
-//	return m;
-//}
-//
-//inline
-//mat44 make_rotation_z_deg(f32 z_deg)
-//{
-//	mat44 m = MAT44_IDENTITY;
-//	rotate_z_deg(m, z_deg);
-//	return m;
-//}
-//
-//inline
-//mat44 make_rotation_x_rad(f32 x_rad)
-//{
-//	mat44 m = MAT44_IDENTITY;
-//	rotate_x_rad(m, x_rad);
-//	return m;
-//}
-//
-//inline
-//mat44 make_rotation_y_rad(f32 y_rad)
-//{
-//	mat44 m = MAT44_IDENTITY;
-//	rotate_y_rad(m, y_rad);
-//	return m;
-//}
-//
-//inline
-//mat44 make_rotation_z_rad(f32 z_rad)
-//{
-//	mat44 m = MAT44_IDENTITY;
-//	rotate_z_rad(m, z_rad);
-//	return m;
-//}
-//
-//inline
-//void rotate_around_axis_rad(mat44& m, const vec3& axis, f32 rad)
-//{
-//	vec3 i = get_normalized(axis);
-//	vec3 j = get_normalized(cross(VEC3_UP, axis));
-//	vec3 k = cross(i, j);
-//	mat44 axis_rotation_world_basis = make_mat44(i, j, k);
-//	mat44 change_of_basis = get_transposed(axis_rotation_world_basis);
-//	mat44 local_rotation = make_rotation_x_rad(rad);
-//
-//	m *= (change_of_basis * local_rotation * axis_rotation_world_basis);
-//}
-//
-//inline
-//void rotate_around_axis_deg(mat44& m, const vec3& axis, f32 deg)
-//{
-//	rotate_around_axis_rad(m, axis, deg_to_rad(deg));
-//}
-//
-//inline
-//mat44 make_rotation_around_axis_rad(const vec3& axis, f32 rad)
-//{
-//	mat44 m = MAT44_IDENTITY;
-//	rotate_around_axis_rad(m, axis, rad);
-//	return m;
-//}
-//
-//inline
-//mat44 make_rotation_around_axis_deg(const vec3& axis, f32 deg)
-//{
-//	mat44 m = MAT44_IDENTITY;
-//	rotate_around_axis_deg(m, axis, deg);
-//	return m;
-//}
-//
-//inline
-//mat44 get_rotation(mat44& m)
-//{
-//	mat44 rot_only = MAT44_IDENTITY;
-//	rot_only.i.xyz = m.i.xyz;
-//	rot_only.j.xyz = m.j.xyz;
-//	rot_only.k.xyz = m.k.xyz;
-//	return rot_only;
-//}
-//
-//inline
-//void set_rotation(mat44& m, const mat44& rotation)
-//{
-//	m.i.xyz = rotation.i.xyz;
-//	m.j.xyz = rotation.j.xyz;
-//	m.k.xyz = rotation.k.xyz;
-//}
-//
-//inline
-//vec4 operator*(const vec4& v, const mat44& mat)
-//{
-//	vec4 result;
-//	result.x = (v.x * mat.ix) + (v.y * mat.jx) + (v.z * mat.kx) + (v.w * mat.tx);
-//	result.y = (v.x * mat.iy) + (v.y * mat.jy) + (v.z * mat.ky) + (v.w * mat.ty);
-//	result.z = (v.x * mat.iz) + (v.y * mat.jz) + (v.z * mat.kz) + (v.w * mat.tz);
-//	result.w = (v.x * mat.iw) + (v.y * mat.jw) + (v.z * mat.kw) + (v.w * mat.tw);
-//	return result;
-//}
-//
-//inline
-//vec3 transform_vec(const mat44& m, const vec3& v)
-//{
-//	vec4 res = make_vec4(v, 0.0f) * m;
-//	return res.xyz;
-//}
-//
-//inline
-//vec3 transform_point(const mat44& m, const vec3& p)
-//{
-//	vec4 res = make_vec4(p, 1.0f) * m;
-//	return res.xyz;
-//}
-//
-//inline
-//void transform_in_model_space(mat44& m, const mat44& transform)
-//{
-//	vec3 translation = m.t.xyz;
-//	m *= make_translation(-translation);
-//	m *= transform;
-//	m *= make_translation(translation);
-//}
-//
-//inline
-//mat44 get_transformed_in_model_space(const mat44& m, const mat44& transform)
-//{
-//	mat44 copy = m;
-//	transform_in_model_space(copy, transform);
-//	return copy;
-//}
-//
-//inline
-//mat44 create_perspective_projection(f32 vertical_fov_deg, f32 near_plane, f32 far_plane, f32 aspect)
-//{
-//	f32 focal_len = 1.0f / tan_deg(vertical_fov_deg * 0.5f);
-//
-//	return make_mat44(focal_len / aspect, 0.0f, 0.0f, 0.0f,
-//		0.0f, -focal_len, 0.0f, 0.0f,
-//		0.0f, 0.0f, far_plane / (far_plane - near_plane), 1.0f,
-//		0.0f, 0.0f, -near_plane * far_plane / (far_plane - near_plane), 0.0f);
-//}
-//
-//// TODO(smerendino): orthographic projection
+inline void Mat44::Scale(F32 iScale, F32 jScale, F32 kScale)
+{
+	i.xyz *= iScale;
+	j.xyz *= jScale;
+	k.xyz *= kScale;
+}
+
+inline void Mat44::Scale(const Vec3& ijkScale)
+{
+	i.xyz *= ijkScale.x;
+	j.xyz *= ijkScale.y;
+	k.xyz *= ijkScale.z;
+}
+
+inline Mat44 Mat44::Scaled(F32 uniformScale) const
+{
+	Mat44 copy = *this;
+	copy.Scale(uniformScale);
+	return copy;
+}
+
+inline Mat44 Mat44::Scaled(F32 iScale, F32 jScale, F32 kScale) const
+{
+	Mat44 copy = *this;
+	copy.Scale(iScale, jScale, kScale);
+	return copy;
+}
+
+inline Mat44 Mat44::Scaled(const Vec3& ijkScale) const
+{
+	Mat44 copy = *this;
+	copy.Scale(ijkScale);
+	return copy;
+}
+
+inline void Mat44::SetTranslation(const Vec3& inT)
+{
+	t.xyz = inT;
+}
+
+inline void Mat44::Translate(const Vec3& inT)
+{
+	SetTranslation(t.xyz + inT);
+}
+
+inline Mat44 Mat44::CreateTranslation(const Vec3& t)
+{
+	Mat44 translation = Mat44::IDENTITY;
+	translation.SetTranslation(t);
+	return translation;
+}
+
+inline void Mat44::RotateXRads(F32 xRads)
+{
+	F32 cosRads = cosf(xRads);
+	F32 sinRads = sinf(xRads);
+
+	Mat44 xRot = Mat44(1.0f, 0.0f, 0.0f, 0.0f,
+					   0.0f, cosRads, sinRads, 0.0f,
+					   0.0f, -sinRads, cosRads, 0.0f,
+					   0.0f, 0.0f, 0.0f, 1.0f);
+
+	*this *= xRot;
+}
+
+inline void Mat44::RotateYRads(F32 yRads)
+{
+	F32 cosRads = cosf(yRads);
+	F32 sinRads = sinf(yRads);
+
+	Mat44 yRot = Mat44(cosRads, 0.0f, -sinRads, 0.0f,
+					   0.0f, 1.0f, 0.0f, 0.0f,
+					   sinRads, 0.0f, cosRads, 0.0f,
+					   0.0f, 0.0f, 0.0f, 1.0f);
+
+	*this *= yRot;
+}
+
+inline void Mat44::RotateZRads(F32 zRads)
+{
+	F32 cosRads = cosf(zRads);
+	F32 sinRads = sinf(zRads);
+
+	Mat44 zRot = Mat44(cosRads, sinRads, 0.0f, 0.0f,
+					   -sinRads, cosRads, 0.0f, 0.0f,
+					   0.0f, 0.0f, 1.0f, 0.0f,
+					   0.0f, 0.0f, 0.0f, 1.0f);
+
+	*this *= zRot;
+}
+
+inline void Mat44::RotateXDegs(F32 xDegs)
+{
+	RotateXRads(DegToRad(xDegs));
+}
+
+inline void Mat44::RotateYDegs(F32 yDegs)
+{
+	RotateYRads(DegToRad(yDegs));
+}
+
+inline void Mat44::RotateZDegs(F32 zDegs)
+{
+	RotateZRads(DegToRad(zDegs));
+}
+
+inline Mat44 Mat44::CreateRotationXRads(F32 xRads)
+{
+	Mat44 m = Mat44::IDENTITY;
+	m.RotateYRads(xRads);
+	return m;
+}
+
+inline Mat44 Mat44::CreateRotationYRads(F32 yRads)
+{
+	Mat44 m = Mat44::IDENTITY;
+	m.RotateYRads(yRads);
+	return m;
+}
+
+inline Mat44 Mat44::CreateRotationZRads(F32 zRads)
+{
+	Mat44 m = Mat44::IDENTITY;
+	m.RotateZRads(zRads);
+	return m;
+}
+
+inline Mat44 Mat44::CreateRotationXDegs(F32 xDegs)
+{
+	Mat44 m = Mat44::IDENTITY;
+	m.RotateXDegs(xDegs);
+	return m;
+}
+
+inline Mat44 Mat44::CreateRotationYDegs(F32 yDegs)
+{
+	Mat44 m = Mat44::IDENTITY;
+	m.RotateYDegs(yDegs);
+	return m;
+}
+
+inline Mat44 Mat44::CreateRotationZDegs(F32 zDegs)
+{
+	Mat44 m = Mat44::IDENTITY;
+	m.RotateZDegs(zDegs);
+	return m;
+}
+
+inline void Mat44::RotateAroundAxisRads(const Vec3& axis, F32 rads)
+{
+	Vec3 i = axis.Normalized();
+	Vec3 j = Cross(Vec3::UP, axis).Normalized();
+	Vec3 k = Cross(i, j);
+	Mat44 axisOfRotationWorldBasis = Mat44(i, j, k);
+	Mat44 axisOfRotationLocalBasis = axisOfRotationWorldBasis.Transposed();
+	Mat44 localRotation = Mat44::CreateRotationXRads(rads);
+
+	*this *= (axisOfRotationLocalBasis * localRotation * axisOfRotationWorldBasis);
+}
+
+inline void Mat44::RotateAroundAxisDegs(const Vec3& axis, F32 degs)
+{
+	RotateAroundAxisRads(axis, DegToRad(degs));
+}
+
+inline Mat44 Mat44::CreateRotationArounAxisRads(const Vec3& axis, F32 rads)
+{
+	Mat44 m = Mat44::IDENTITY;
+	m.RotateAroundAxisRads(axis, rads);
+	return m;
+}
+
+inline Mat44 Mat44::CreateRotationAroundAxisDegs(const Vec3& axis, F32 degs)
+{
+	Mat44 m = Mat44::IDENTITY;
+	m.RotateAroundAxisDegs(axis, degs);
+	return m;
+}
+
+inline Mat44 Mat44::GetRotation() const
+{
+	Mat44 rot = Mat44::IDENTITY;
+	rot.i.xyz = i.xyz;
+	rot.j.xyz = j.xyz;
+	rot.k.xyz = k.xyz;
+	return rot;
+}
+
+inline void Mat44::SetRotation(const Mat44& rotation)
+{
+	i.xyz = rotation.i.xyz;
+	j.xyz = rotation.j.xyz;
+	k.xyz = rotation.k.xyz;
+}
+
+inline Vec4 operator*(const Vec4& v, const Mat44& mat)
+{
+	Vec4 result;
+	result.x = (v.x * mat.ix) + (v.y * mat.jx) + (v.z * mat.kx) + (v.w * mat.tx);
+	result.y = (v.x * mat.iy) + (v.y * mat.jy) + (v.z * mat.ky) + (v.w * mat.ty);
+	result.z = (v.x * mat.iz) + (v.y * mat.jz) + (v.z * mat.kz) + (v.w * mat.tz);
+	result.w = (v.x * mat.iw) + (v.y * mat.jw) + (v.z * mat.kw) + (v.w * mat.tw);
+	return result;
+}
+
+inline Vec3 Mat44::TransformVec(const Vec3& v) const
+{
+	Vec4 res = Vec4(v, 0.0f) * *this;
+	return res.xyz;
+}
+
+inline Vec3 Mat44::TransformPoint(const Vec3& p) const
+{
+	Vec4 res = Vec4(p, 1.0f) * *this;
+	return res.xyz;
+}
+
+inline void Mat44::TransformInModelSpace(const Mat44& transform)
+{
+	Vec3 translation = t.xyz;
+	*this *= Mat44::CreateTranslation(-translation);
+	*this *= transform;
+	*this *= Mat44::CreateTranslation(translation);
+}
+
+inline Mat44 Mat44::GetTransformedInModelSpace(const Mat44& transform) const
+{
+	Mat44 copy = *this;
+	copy.TransformInModelSpace(transform);
+	return copy;
+}
+
+inline Mat44 Mat44::CreatePerspectiveProjection(F32 verticalFovDeg, F32 nearPlane, F32 farPlane, F32 aspect)
+{
+	F32 focalLen = 1.0f / TanDeg(verticalFovDeg * 0.5f);
+
+	return Mat44(focalLen / aspect, 0.0f, 0.0f, 0.0f,
+				 0.0f, -focalLen, 0.0f, 0.0f,
+				 0.0f, 0.0f, farPlane / (farPlane - nearPlane), 1.0f,
+				 0.0f, 0.0f, -nearPlane * farPlane / (farPlane - nearPlane), 0.0f);
+}
+
+// TODO: orthographic projection
+
+inline Mat44 Mat44::CreateBasisFromI(const Vec3& inI)
+{
+	Vec3 iNorm = inI.Normalized();
+
+	// account for iNorm pointing directly up or down when trying to build basis
+	Vec3 jNorm = Vec3::ZERO;
+	F32 cosAngleAbs = abs(Dot(iNorm, Vec3::UP));
+	if (AlmostEquals(cosAngleAbs, 1.0f))
+	{
+		jNorm = Cross(iNorm, Vec3::FORWARD).Normalized();
+	}
+	else
+	{
+		jNorm = Cross(Vec3::UP, iNorm).Normalized();
+	}
+
+	Vec3 kNorm = Cross(iNorm, jNorm);
+
+	return Mat44(iNorm, jNorm, kNorm);
+}
+
+inline Mat44 Mat44::CreateBasisFromJ(const Vec3& inJ)
+{
+	Vec3 jNorm = inJ.Normalized();
+
+	// account for j_norm pointing directly up or down when trying to build basis
+	Vec3 iNorm = Vec3::ZERO;
+	F32 cosAngleAbs = abs(Dot(jNorm, Vec3::UP));
+	if (AlmostEquals(cosAngleAbs, 1.0f))
+	{
+		iNorm = Cross(Vec3::LEFT, jNorm).Normalized();
+	}
+	else
+	{
+		iNorm = Cross(jNorm, Vec3::UP).Normalized();
+	}
+
+	Vec3 kNorm = Cross(iNorm, jNorm);
+
+	return Mat44(iNorm, jNorm, kNorm);
+}
+
+inline Mat44 Mat44::CreateBasisFromK(const Vec3& inK)
+{
+	Vec3 kNorm = inK.Normalized();
+
+	// account for k_norm pointing directly up or down when trying to build basis
+	Vec3 iNorm = Vec3::ZERO;
+	F32 cosAngleAbs = abs(Dot(kNorm, Vec3::UP));
+	if (AlmostEquals(cosAngleAbs, 1.0f))
+	{
+		iNorm = Cross(Vec3::FORWARD, kNorm).Normalized();
+	}
+	else
+	{
+		iNorm = Cross(kNorm, Vec3::UP).Normalized();
+	}
+
+	Vec3 jNorm = Cross(kNorm, iNorm);
+
+	return Mat44(iNorm, jNorm, kNorm);
+}
 
 inline Mat44 operator*(F32 s, const Mat44& m)
 {

@@ -46,6 +46,15 @@
     <Filter Include="Source\Render\Vulkan">
       <UniqueIdentifier>{b5ba5c69-001b-45d6-ade0-5d109820a3ba}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Input">
+      <UniqueIdentifier>{5b0465c7-e302-46e8-b916-4b024597eaa2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Job">
+      <UniqueIdentifier>{427aea42-8d62-48c7-8f52-c0abb8b5d030}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Thread">
+      <UniqueIdentifier>{a9544c38-5b4d-4c62-846d-f8c3f4c2c569}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Engine\Core\Assert.cpp">
@@ -83,6 +92,42 @@
     </ClCompile>
     <ClCompile Include="Source\Engine\Core\Macros.cpp">
       <Filter>Source\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Core\Time.cpp">
+      <Filter>Source\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Core\Debug.cpp">
+      <Filter>Source\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Core\Color.cpp">
+      <Filter>Source\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Core\File.cpp">
+      <Filter>Source\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Core\Hash.cpp">
+      <Filter>Source\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Core\Random.cpp">
+      <Filter>Source\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Math\IVec2.cpp">
+      <Filter>Source\Math</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Math\Vec2.cpp">
+      <Filter>Source\Math</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Math\Vec3.cpp">
+      <Filter>Source\Math</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Math\Vec4.cpp">
+      <Filter>Source\Math</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Math\Mat33.cpp">
+      <Filter>Source\Math</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Math\Mat44.cpp">
+      <Filter>Source\Math</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -295,6 +340,33 @@
     </ClInclude>
     <ClInclude Include="Source\Engine\Math\IVec2.h">
       <Filter>Source\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Core\Time.h">
+      <Filter>Source\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Core\BitFlags.h">
+      <Filter>Source\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Core\Debug.h">
+      <Filter>Source\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Core\Color.h">
+      <Filter>Source\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Core\File.h">
+      <Filter>Source\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Core\Utils.h">
+      <Filter>Source\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Core\Guid.h">
+      <Filter>Source\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Core\Hash.h">
+      <Filter>Source\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Core\Random.h">
+      <Filter>Source\Core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

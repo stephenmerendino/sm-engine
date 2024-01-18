@@ -20,8 +20,20 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Engine\Core\Assert.cpp" />
+    <ClCompile Include="Source\Engine\Core\Color.cpp" />
+    <ClCompile Include="Source\Engine\Core\Debug.cpp" />
+    <ClCompile Include="Source\Engine\Core\File.cpp" />
+    <ClCompile Include="Source\Engine\Core\Hash.cpp" />
     <ClCompile Include="Source\Engine\Core\Macros.cpp" />
+    <ClCompile Include="Source\Engine\Core\Random.cpp" />
+    <ClCompile Include="Source\Engine\Core\Time.cpp" />
+    <ClCompile Include="Source\Engine\Math\IVec2.cpp" />
+    <ClCompile Include="Source\Engine\Math\Mat33.cpp" />
+    <ClCompile Include="Source\Engine\Math\Mat44.cpp" />
     <ClCompile Include="Source\Engine\Math\MathUtils.cpp" />
+    <ClCompile Include="Source\Engine\Math\Vec2.cpp" />
+    <ClCompile Include="Source\Engine\Math\Vec3.cpp" />
+    <ClCompile Include="Source\Engine\Math\Vec4.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanFunctions.cpp" />
     <ClCompile Include="Source\Engine\Render\Window.cpp" />
     <ClCompile Include="Source\Engine\ThirdParty\imgui\backends\imgui_impl_vulkan.cpp" />
@@ -35,8 +47,17 @@
   <ItemGroup>
     <ClInclude Include="Source\Engine\Config.h" />
     <ClInclude Include="Source\Engine\Core\Assert.h" />
+    <ClInclude Include="Source\Engine\Core\BitFlags.h" />
+    <ClInclude Include="Source\Engine\Core\Color.h" />
+    <ClInclude Include="Source\Engine\Core\Debug.h" />
+    <ClInclude Include="Source\Engine\Core\File.h" />
+    <ClInclude Include="Source\Engine\Core\Guid.h" />
+    <ClInclude Include="Source\Engine\Core\Hash.h" />
     <ClInclude Include="Source\Engine\Core\Macros.h" />
+    <ClInclude Include="Source\Engine\Core\Random.h" />
+    <ClInclude Include="Source\Engine\Core\Time.h" />
     <ClInclude Include="Source\Engine\Core\Types.h" />
+    <ClInclude Include="Source\Engine\Core\Utils.h" />
     <ClInclude Include="Source\Engine\Math\IVec2.h" />
     <ClInclude Include="Source\Engine\Math\Mat33.h" />
     <ClInclude Include="Source\Engine\Math\Mat44.h" />

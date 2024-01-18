@@ -117,7 +117,7 @@ inline I32 IVec2::CalcLengthSq() const
 
 inline F32 IVec2::CalcLength() const
 {
-	return sqrtf(CalcLengthSq());
+	return sqrtf((F32)CalcLengthSq());
 }
 
 inline I32 Dot(const IVec2& a, const IVec2& b)
