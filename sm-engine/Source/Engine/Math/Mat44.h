@@ -42,6 +42,16 @@ public:
 	Mat44 operator*(const Mat44& other) const;
 	Mat44& operator*=(const Mat44& other);
 
+	inline void Transpose();
+	inline Mat44 GetTransposed() const;
+	inline F32 CalcDeterminant() const;
+	inline void Inverse();
+	inline Mat44 GetInversed() const;
+	inline void FastOrthoInverse();
+	inline Mat44 GetFastOrthoInversed() const;
+
+	inline void Scale(F32 uniformScale);
+
 	static Mat44 CreateBasisFromI(const Vec3& inI);
 	static Mat44 CreateBasisFromJ(const Vec3& inJ);
 	static Mat44 CreateBasisFromK(const Vec3& inK);
@@ -249,142 +259,126 @@ inline Mat44& Mat44::operator*=(const Mat44& other)
 	return *this;
 }
 
-//inline
-//mat44 operator*(f32 s, const mat44& m)
-//{
-//	return m * s;
-//}
-//
-//inline
-//void transpose(mat44& m)
-//{
-//	swap(m.data[1], m.data[4]);
-//	swap(m.data[2], m.data[8]);
-//	swap(m.data[3], m.data[12]);
-//	swap(m.data[6], m.data[9]);
-//	swap(m.data[7], m.data[13]);
-//	swap(m.data[11], m.data[14]);
-//}
-//
-//inline
-//mat44 get_transposed(const mat44& m)
-//{
-//	mat44 copy = m;
-//	transpose(copy);
-//	return copy;
-//}
-//
-//inline
-//f32 calc_cofactor(const mat44& m, u32 row, u32 column)
-//{
-//	mat33 submatrix;
-//
-//	// Build Mat33 submatrix by removing the row and column we are getting cofactor for
-//	u32 cur_row = 0;
-//	for (u32 src_row = 0; src_row < 4; ++src_row)
-//	{
-//		if (src_row == row)
-//		{
-//			continue;
-//		}
-//
-//		u32 cur_col = 0;
-//		for (u32 src_col = 0; src_col < 4; ++src_col)
-//		{
-//			if (src_col == column)
-//			{
-//				continue;
-//			}
-//
-//			//submatrix.SetElement(currentIndex, GetElement(srcRow, srcCol));
-//			submatrix[cur_row][cur_col] = m[src_row][src_col];
-//
-//			cur_col++;
-//		}
-//
-//		cur_row++;
-//	}
-//
-//	// Calculate determinant of submatrix
-//	f32 sub_det = calc_determinant(submatrix);
-//
-//	// Use correct sign based on row and column
-//	if ((row + column) % 2 != 0)
-//	{
-//		sub_det = -sub_det;
-//	}
-//
-//	return sub_det;
-//}
-//
-//inline
-//f32 calc_determinant(const mat44& m)
-//{
-//	return m.ix * calc_cofactor(m, 0, 0) +
-//		m.iy * calc_cofactor(m, 0, 1) +
-//		m.iz * calc_cofactor(m, 0, 2) +
-//		m.iw * calc_cofactor(m, 0, 3);
-//}
-//
-//inline
-//void inverse(mat44& m)
-//{
-//	// Cramer's method of inverse determinant multiplied by adjoint matrix
-//	f32 inv_det = 1.0f / calc_determinant(m);
-//
-//	// Build matrix of cofactors
-//	mat44 cofactor_mat;
-//	for (u32 row = 0; row < 4; ++row)
-//	{
-//		for (u32 col = 0; col < 4; ++col)
-//		{
-//			cofactor_mat[row][col] = calc_cofactor(m, row, col);
-//		}
-//	}
-//
-//	// Turn cofactor matrix into adjoint matrix by transposing
-//	transpose(cofactor_mat);
-//
-//	m = cofactor_mat * inv_det;
-//};
-//
-//inline
-//mat44 get_inversed(const mat44& m)
-//{
-//	mat44 copy = m;
-//	inverse(copy);
-//	return copy;
-//}
-//
-//// Inverses rotation and translation
-//inline
-//void fast_ortho_inverse(mat44& m)
-//{
-//	// Transpose upper 3x3 matrix
-//	swap(m.data[1], m.data[4]);
-//	swap(m.data[2], m.data[8]);
-//	swap(m.data[6], m.data[9]);
-//
-//	// Negate translation
-//	m.t.xyz = -m.t.xyz;
-//}
-//
-//inline
-//mat44 get_fast_ortho_inversed(const mat44& m)
-//{
-//	mat44 copy = m;
-//	fast_ortho_inverse(copy);
-//	return copy;
-//}
-//
-//inline
-//void scale(mat44& m, f32 uniform_scale)
-//{
-//	m.i.xyz *= uniform_scale;
-//	m.j.xyz *= uniform_scale;
-//	m.k.xyz *= uniform_scale;
-//}
-//
+inline void Mat44::Transpose()
+{
+	Swap(data[1], data[4]);
+	Swap(data[2], data[8]);
+	Swap(data[3], data[12]);
+	Swap(data[6], data[9]);
+	Swap(data[7], data[13]);
+	Swap(data[11], data[14]);
+}
+
+inline Mat44 Mat44::GetTransposed() const
+{
+	Mat44 copy = *this;
+	copy.Transpose();
+	return copy;
+}
+
+inline static F32 CalcCofactor(const Mat44& m, U32 row, U32 column)
+{
+	Mat33 submatrix;
+
+	// Build Mat33 submatrix by removing the row and column we are getting cofactor for
+	U32 curRow = 0;
+	for (U32 srcRow = 0; srcRow < 4; ++srcRow)
+	{
+		if (srcRow == row)
+		{
+			continue;
+		}
+
+		U32 curCol = 0;
+		for (U32 srcCol = 0; srcCol < 4; ++srcCol)
+		{
+			if (srcCol == column)
+			{
+				continue;
+			}
+
+			submatrix[curRow][curCol] = m[srcRow][srcCol];
+
+			curCol++;
+		}
+
+		curRow++;
+	}
+
+	// Calculate determinant of submatrix
+	F32 subDeterminant = submatrix.CalcDeterminant();
+
+	// Use correct sign based on row and column
+	if ((row + column) % 2 != 0)
+	{
+		subDeterminant = -subDeterminant;
+	}
+
+	return subDeterminant;
+}
+
+inline F32 Mat44::CalcDeterminant() const
+{
+	return ix * CalcCofactor(*this, 0, 0) +
+		   iy * CalcCofactor(*this, 0, 1) +
+		   iz * CalcCofactor(*this, 0, 2) +
+		   iw * CalcCofactor(*this, 0, 3);
+}
+
+inline void Mat44::Inverse()
+{
+	// Cramer's method of inverse determinant multiplied by adjoint matrix
+	F32 invDeterminant = 1.0f / CalcDeterminant();
+
+	// Build matrix of cofactors
+	Mat44 cofactorMat;
+	for (U32 row = 0; row < 4; ++row)
+	{
+		for (U32 col = 0; col < 4; ++col)
+		{
+			cofactorMat[row][col] = CalcCofactor(*this, row, col);
+		}
+	}
+
+	// Turn cofactor matrix into adjoint matrix by transposing
+	cofactorMat.Transpose();
+
+	*this = cofactorMat * invDeterminant;
+};
+
+inline Mat44 Mat44::GetInversed() const
+{
+	Mat44 copy = *this;
+	copy.Inverse();
+	return copy;
+}
+
+// Inverses rotation and translation
+inline void Mat44::FastOrthoInverse()
+{
+	// Transpose upper 3x3 matrix
+	Swap(data[1], data[4]);
+	Swap(data[2], data[8]);
+	Swap(data[6], data[9]);
+
+	// Negate translation
+	t.xyz = -t.xyz;
+}
+
+inline Mat44 Mat44::GetFastOrthoInversed() const
+{
+	Mat44 copy = *this;
+	copy.FastOrthoInverse();
+	return copy;
+}
+
+inline void Mat44::Scale(F32 uniformScale)
+{
+	i.xyz *= uniformScale;
+	j.xyz *= uniformScale;
+	k.xyz *= uniformScale;
+}
+
 //inline
 //void scale(mat44& m, f32 i_scale, f32 j_scale, f32 k_scale)
 //{
@@ -723,3 +717,8 @@ inline Mat44& Mat44::operator*=(const Mat44& other)
 //}
 //
 //// TODO(smerendino): orthographic projection
+
+inline Mat44 operator*(F32 s, const Mat44& m)
+{
+	return m * s;
+}
