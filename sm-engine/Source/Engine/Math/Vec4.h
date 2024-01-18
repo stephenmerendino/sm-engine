@@ -11,6 +11,7 @@ class Vec4
 public:
 	inline Vec4();
 	inline Vec4(F32 inX, F32 inY, F32 inZ, F32 inW);
+	inline Vec4(const Vec3& xyz, F32 inW);
 
 	inline Vec4 operator*(F32 s) const;
 	inline Vec4 operator/(F32 s) const;
@@ -20,6 +21,13 @@ public:
 	inline Vec4 operator-(const Vec4& other) const;
 	inline Vec4& operator+=(const Vec4& other);
 	inline Vec4& operator-=(const Vec4& other);
+	inline Vec4 operator-() const;
+	inline bool operator==(const Vec4& other) const;
+
+	inline F32 CalcLengthSq() const;
+	inline F32 CalcLength() const;
+	inline void Normalize();
+	inline Vec4 GetNormalized() const;
 
 	union
 	{
@@ -31,8 +39,22 @@ public:
 			F32 w;
 		};
 
+		struct
+		{
+			Vec3 xyz;
+			F32 pad0;
+		};
+
 		F32 data[4];
 	};
+
+	static const Vec4 ZERO;
+	static const Vec4 FORWARD;
+	static const Vec4 BACKWARD;
+	static const Vec4 UP;
+	static const Vec4 DOWN;
+	static const Vec4 LEFT;
+	static const Vec4 RIGHT;
 };
 
 inline Vec4::Vec4()
@@ -49,6 +71,13 @@ inline Vec4::Vec4(F32 inX, F32 inY, F32 inZ, F32 inW)
 	,z(inZ)
 	,w(inW)
 {
+}
+
+inline Vec4::Vec4(const Vec3& inXYZ, F32 inW)
+{
+	// can't initializer list members from 2 different unions so just do it in the body
+	xyz = inXYZ;
+	w = inW;
 }
 
 inline Vec4 Vec4::operator*(F32 s) const
@@ -109,74 +138,62 @@ inline Vec4& Vec4::operator-=(const Vec4& other)
 	return *this;
 }
 
-inline
-vec4 operator-(const vec4& v)
+inline Vec4 Vec4::operator-() const
 {
-	return make_vec4(-v.x, -v.y, -v.z, -v.w);
+	return Vec4(-x, -y, -z, -w);
 }
 
-inline
-bool operator==(const vec4& a, const vec4& b)
+inline bool Vec4::operator==(const Vec4& other) const
 {
-	return (a.x == b.x) && (a.y == b.y) && (a.z == b.z) && (a.w == b.w);
+	return (x == other.x) && (y == other.y) && (z == other.z) && (w == other.w);
 }
 
-inline
-f32 calc_length_sq(const vec4& v)
+inline F32 Vec4::CalcLengthSq() const
 {
-	return (v.x * v.x) + (v.y * v.y) + (v.z * v.z) + (v.w * v.w);
+	return (x * x) + (y * y) + (z * z) + (w * w);
 }
 
-inline
-f32 calc_length(const vec4& v)
+inline F32 Vec4::CalcLength() const
 {
-	return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z + v.w * v.w);
+	return sqrtf(CalcLengthSq());
 }
 
-inline
-void normalize(vec4& v)
+inline void Vec4::Normalize()
 {
 	// prevent division by zero by checking for zero length and asserting
-	f32 length_sq = calc_length_sq(v);
-	SM_ASSERT(!is_zero(length_sq));
+	F32 lengthSq = CalcLengthSq();
+	SM_ASSERT(!IsZero(lengthSq));
 
 	// do normalization now that we know length is not zero
-	f32 length = sqrtf(length_sq);
-	f32 inv_length = 1.0f / length;
+	F32 length = sqrtf(lengthSq);
+	F32 invLength = 1.0f / length;
 
-	v *= inv_length;
+	*this *= invLength;
 }
 
-inline
-vec4 get_normalized(const vec4& v)
+inline Vec4 Vec4::GetNormalized() const
 {
-	vec4 copy = v;
-	normalize(copy);
+	Vec4 copy = *this;
+	copy.Normalize();
 	return copy;
 }
 
-inline
-vec4 operator*(f32 s, vec4& v)
+inline Vec4 operator*(F32 s, const Vec4& v)
 {
 	return v * s;
 }
 
-inline
-f32 dot(vec4& a, vec4& b)
+inline F32 Dot(const Vec4& a, const Vec4& b)
 {
 	return (a.x * b.x) + (a.y * b.y) + (a.z * b.z) + (a.w * b.w);
 }
 
-inline
-f32 distance(vec4& a, vec4& b)
+inline F32 Distance(const Vec4& a, const Vec4& b)
 {
-	return calc_length(a - b);
+	return (a - b).CalcLength();
 }
 
-inline
-f32 distance_sq(vec4& a, vec4& b)
+inline F32 DistanceSq(const Vec4& a, const Vec4& b)
 {
-	return calc_length_sq(a - b);
+	return (a - b).CalcLengthSq();
 }
-
-static const vec4 VEC4_ZERO = make_vec4(0.0f, 0.0f, 0.0f, 0.0f);
