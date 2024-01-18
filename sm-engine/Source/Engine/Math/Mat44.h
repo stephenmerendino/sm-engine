@@ -38,6 +38,9 @@ public:
 	inline const F32* operator[](U32 row) const;
 
 	inline Mat44 operator*(F32 s) const;
+	inline Mat44& operator*=(F32 s);
+	Mat44 operator*(const Mat44& other) const;
+	Mat44& operator*=(const Mat44& other);
 
 	static Mat44 CreateBasisFromI(const Vec3& inI);
 	static Mat44 CreateBasisFromJ(const Vec3& inJ);
@@ -200,54 +203,52 @@ inline Mat44 Mat44::CreateBasisFromK(const Vec3& inK)
 	return Mat44(iNorm, jNorm, kNorm);
 }
 
-//inline
-//mat44& operator*=(mat44& m, f32 s)
-//{
-//	for (int i = 0; i < 16; i++)
-//	{
-//		m.data[i] *= s;
-//	}
-//
-//	return m;
-//}
-//
-//inline
-//mat44& operator*=(mat44& m, const mat44& other)
-//{
-//	mat44 result;
-//
-//	result.ix = (m.ix * other.ix) + (m.iy * other.jx) + (m.iz * other.kx) + (m.iw * other.tx);
-//	result.iy = (m.ix * other.iy) + (m.iy * other.jy) + (m.iz * other.ky) + (m.iw * other.ty);
-//	result.iz = (m.ix * other.iz) + (m.iy * other.jz) + (m.iz * other.kz) + (m.iw * other.tz);
-//	result.iw = (m.ix * other.iw) + (m.iy * other.jw) + (m.iz * other.kw) + (m.iw * other.tw);
-//
-//	result.jx = (m.jx * other.ix) + (m.jy * other.jx) + (m.jz * other.kx) + (m.jw * other.tx);
-//	result.jy = (m.jx * other.iy) + (m.jy * other.jy) + (m.jz * other.ky) + (m.jw * other.ty);
-//	result.jz = (m.jx * other.iz) + (m.jy * other.jz) + (m.jz * other.kz) + (m.jw * other.tz);
-//	result.jw = (m.jx * other.iw) + (m.jy * other.jw) + (m.jz * other.kw) + (m.jw * other.tw);
-//
-//	result.kx = (m.kx * other.ix) + (m.ky * other.jx) + (m.kz * other.kx) + (m.kw * other.tx);
-//	result.ky = (m.kx * other.iy) + (m.ky * other.jy) + (m.kz * other.ky) + (m.kw * other.ty);
-//	result.kz = (m.kx * other.iz) + (m.ky * other.jz) + (m.kz * other.kz) + (m.kw * other.tz);
-//	result.kw = (m.kx * other.iw) + (m.ky * other.jw) + (m.kz * other.kw) + (m.kw * other.tw);
-//
-//	result.tx = (m.tx * other.ix) + (m.ty * other.jx) + (m.tz * other.kx) + (m.tw * other.tx);
-//	result.ty = (m.tx * other.iy) + (m.ty * other.jy) + (m.tz * other.ky) + (m.tw * other.ty);
-//	result.tz = (m.tx * other.iz) + (m.ty * other.jz) + (m.tz * other.kz) + (m.tw * other.tz);
-//	result.tw = (m.tx * other.iw) + (m.ty * other.jw) + (m.tz * other.kw) + (m.tw * other.tw);
-//
-//	m = result;
-//	return m;
-//}
-//
-//inline
-//mat44 operator*(const mat44& a, const mat44& b)
-//{
-//	mat44 copy = a;
-//	copy *= b;
-//	return copy;
-//}
-//
+inline Mat44& Mat44::operator*=(F32 s)
+{
+	for (int i = 0; i < 16; i++)
+	{
+		data[i] *= s;
+	}
+
+	return *this;
+}
+
+inline Mat44 Mat44::operator*(const Mat44& other) const
+{
+	Mat44 copy = *this;
+	copy *= other;
+	return copy;
+}
+
+
+inline Mat44& Mat44::operator*=(const Mat44& other)
+{
+	Mat44 result;
+
+	result.ix = (ix * other.ix) + (iy * other.jx) + (iz * other.kx) + (iw * other.tx);
+	result.iy = (ix * other.iy) + (iy * other.jy) + (iz * other.ky) + (iw * other.ty);
+	result.iz = (ix * other.iz) + (iy * other.jz) + (iz * other.kz) + (iw * other.tz);
+	result.iw = (ix * other.iw) + (iy * other.jw) + (iz * other.kw) + (iw * other.tw);
+
+	result.jx = (jx * other.ix) + (jy * other.jx) + (jz * other.kx) + (jw * other.tx);
+	result.jy = (jx * other.iy) + (jy * other.jy) + (jz * other.ky) + (jw * other.ty);
+	result.jz = (jx * other.iz) + (jy * other.jz) + (jz * other.kz) + (jw * other.tz);
+	result.jw = (jx * other.iw) + (jy * other.jw) + (jz * other.kw) + (jw * other.tw);
+
+	result.kx = (kx * other.ix) + (ky * other.jx) + (kz * other.kx) + (kw * other.tx);
+	result.ky = (kx * other.iy) + (ky * other.jy) + (kz * other.ky) + (kw * other.ty);
+	result.kz = (kx * other.iz) + (ky * other.jz) + (kz * other.kz) + (kw * other.tz);
+	result.kw = (kx * other.iw) + (ky * other.jw) + (kz * other.kw) + (kw * other.tw);
+
+	result.tx = (tx * other.ix) + (ty * other.jx) + (tz * other.kx) + (tw * other.tx);
+	result.ty = (tx * other.iy) + (ty * other.jy) + (tz * other.ky) + (tw * other.ty);
+	result.tz = (tx * other.iz) + (ty * other.jz) + (tz * other.kz) + (tw * other.tz);
+	result.tw = (tx * other.iw) + (ty * other.jw) + (tz * other.kw) + (tw * other.tw);
+
+	*this = result;
+	return *this;
+}
+
 //inline
 //mat44 operator*(f32 s, const mat44& m)
 //{
