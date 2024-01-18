@@ -27,6 +27,7 @@
     <ClCompile Include="Source\Engine\Core\Macros.cpp" />
     <ClCompile Include="Source\Engine\Core\Random.cpp" />
     <ClCompile Include="Source\Engine\Core\Time.cpp" />
+    <ClCompile Include="Source\Engine\Input\InputSystem.cpp" />
     <ClCompile Include="Source\Engine\Math\IVec2.cpp" />
     <ClCompile Include="Source\Engine\Math\Mat33.cpp" />
     <ClCompile Include="Source\Engine\Math\Mat44.cpp" />
@@ -58,6 +59,7 @@
     <ClInclude Include="Source\Engine\Core\Time.h" />
     <ClInclude Include="Source\Engine\Core\Types.h" />
     <ClInclude Include="Source\Engine\Core\Utils.h" />
+    <ClInclude Include="Source\Engine\Input\InputSystem.h" />
     <ClInclude Include="Source\Engine\Math\IVec2.h" />
     <ClInclude Include="Source\Engine\Math\Mat33.h" />
     <ClInclude Include="Source\Engine\Math\Mat44.h" />

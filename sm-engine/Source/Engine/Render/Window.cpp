@@ -194,3 +194,8 @@ IVec2 Window::CalcCenterPosition()
 	U32 halfHeight = m_height / 2;
 	return IVec2(m_x + halfWidth, m_y + halfHeight);
 }
+
+IVec2 Window::GetSize()
+{
+	return IVec2(m_width, m_height);
+}

@@ -22,6 +22,7 @@ public:
 	void SetTitle(const char* newTitle);
 	void AddMsgCallback(WindowMsgCallbackFunc cb, void* userArgs = nullptr);
 	IVec2 CalcCenterPosition();
+	IVec2 GetSize();
 
 	HWND m_handle;
 	const char* m_name;
