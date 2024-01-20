@@ -40,8 +40,8 @@ F32 Stopwatch::GetElapsedSeconds()
 {
 	I64 curTick = GetCurrentTick();
 	I64 ticksSinceStart = curTick - m_startTick;
-	F32 seconds_elapsed = (F32)(ticksSinceStart) / (F32)(s_freqPerSec);
-	return seconds_elapsed;
+	F32 secondsElapsed = (F32)(ticksSinceStart) / (F32)(s_freqPerSec);
+	return secondsElapsed;
 }
 
 F32 Stopwatch::GetElapsedMs()
