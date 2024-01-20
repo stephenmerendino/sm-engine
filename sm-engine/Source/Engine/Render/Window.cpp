@@ -1,5 +1,6 @@
 #include "Engine/Render/Window.h"
 #include "Engine/Core/Assert.h"
+#include "Engine/Core/Debug.h"
 #include "Engine/Core/Macros.h"
 #include "Engine/Platform/WindowsUtils.h"
 #include <cstdlib>
@@ -186,6 +187,18 @@ void Window::AddMsgCallback(WindowMsgCallbackFunc cb, void* userArgs)
 {
 	WindowMsgCallbackWithArgs cbWithArgs = { cb, userArgs };
 	m_msgCallbacks.push_back(cbWithArgs);
+}
+
+void Window::RemoveMsgCallback(WindowMsgCallbackFunc cb, void* userArgs)
+{		
+	WindowMsgCallbackWithArgs cbWithArgs = { cb, userArgs };
+	for (int i = 0; i < m_msgCallbacks.size(); i++)
+	{
+		if (m_msgCallbacks[i] == cbWithArgs)
+		{
+			m_msgCallbacks.erase(m_msgCallbacks.cbegin() + i);
+		}
+	}
 }
 
 IVec2 Window::CalcCenterPosition()

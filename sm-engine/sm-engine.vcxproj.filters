@@ -132,6 +132,18 @@
     <ClCompile Include="Source\Engine\Input\InputSystem.cpp">
       <Filter>Source\Input</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Thread\CriticalSection.cpp">
+      <Filter>Source\Thread</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Thread\Event.cpp">
+      <Filter>Source\Thread</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Thread\Thread.cpp">
+      <Filter>Source\Thread</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Job\JobSystem.cpp">
+      <Filter>Source\Job</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Engine\Core\Assert.h">
@@ -373,6 +385,24 @@
     </ClInclude>
     <ClInclude Include="Source\Engine\Input\InputSystem.h">
       <Filter>Source\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Thread\AtomicUtil.h">
+      <Filter>Source\Thread</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Thread\CriticalSection.h">
+      <Filter>Source\Thread</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Thread\Event.h">
+      <Filter>Source\Thread</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Thread\ThreadSafeQueue.h">
+      <Filter>Source\Thread</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Thread\Thread.h">
+      <Filter>Source\Thread</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Job\JobSystem.h">
+      <Filter>Source\Job</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

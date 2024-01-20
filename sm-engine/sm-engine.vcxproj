@@ -28,6 +28,7 @@
     <ClCompile Include="Source\Engine\Core\Random.cpp" />
     <ClCompile Include="Source\Engine\Core\Time.cpp" />
     <ClCompile Include="Source\Engine\Input\InputSystem.cpp" />
+    <ClCompile Include="Source\Engine\Job\JobSystem.cpp" />
     <ClCompile Include="Source\Engine\Math\IVec2.cpp" />
     <ClCompile Include="Source\Engine\Math\Mat33.cpp" />
     <ClCompile Include="Source\Engine\Math\Mat44.cpp" />
@@ -44,6 +45,9 @@
     <ClCompile Include="Source\Engine\ThirdParty\imgui\imgui_draw.cpp" />
     <ClCompile Include="Source\Engine\ThirdParty\imgui\imgui_tables.cpp" />
     <ClCompile Include="Source\Engine\ThirdParty\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="Source\Engine\Thread\CriticalSection.cpp" />
+    <ClCompile Include="Source\Engine\Thread\Event.cpp" />
+    <ClCompile Include="Source\Engine\Thread\Thread.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Engine\Config.h" />
@@ -60,6 +64,7 @@
     <ClInclude Include="Source\Engine\Core\Types.h" />
     <ClInclude Include="Source\Engine\Core\Utils.h" />
     <ClInclude Include="Source\Engine\Input\InputSystem.h" />
+    <ClInclude Include="Source\Engine\Job\JobSystem.h" />
     <ClInclude Include="Source\Engine\Math\IVec2.h" />
     <ClInclude Include="Source\Engine\Math\Mat33.h" />
     <ClInclude Include="Source\Engine\Math\Mat44.h" />
@@ -126,6 +131,11 @@
     <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_xcb.h" />
     <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_xlib.h" />
     <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_xlib_xrandr.h" />
+    <ClInclude Include="Source\Engine\Thread\AtomicUtil.h" />
+    <ClInclude Include="Source\Engine\Thread\CriticalSection.h" />
+    <ClInclude Include="Source\Engine\Thread\Event.h" />
+    <ClInclude Include="Source\Engine\Thread\Thread.h" />
+    <ClInclude Include="Source\Engine\Thread\ThreadSafeQueue.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Source\Engine\Render\Vulkan\VulkanFunctionsManifest.inl" />

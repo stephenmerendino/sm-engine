@@ -100,9 +100,9 @@ inline Mat33 Mat33::operator*(F32 s) const
 
 inline Mat33& Mat33::operator*=(F32 s)
 {
-	for (int i = 0; i < 9; i++)
+	for (int idx = 0; idx < 9; idx++)
 	{
-		data[i] *= s;
+		data[idx] *= s;
 	}
 
 	return *this;

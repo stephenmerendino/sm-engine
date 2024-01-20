@@ -249,6 +249,11 @@ bool InputSystem::Init(Window* pWindow)
 	return true;
 }
 
+void InputSystem::Shutdown()
+{
+	m_pWindow->RemoveMsgCallback(InputSystemMsgHandler);
+}
+
 void InputSystem::ResetAllInputState()
 {
 	memset(m_keyStates, 0, (U32)KeyCode::NUM_KEY_CODES * sizeof(KeyState));

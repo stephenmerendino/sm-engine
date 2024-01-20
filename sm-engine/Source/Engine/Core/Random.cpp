@@ -5,7 +5,7 @@
 
 void RandomInit()
 {
-	srand(time(NULL));
+	srand((U32)time(NULL));
 }
 
 F32 RandomNumberBetween(F32 low, F32 high)
@@ -13,7 +13,7 @@ F32 RandomNumberBetween(F32 low, F32 high)
 	// generate between 0 and RAND_MAX
 	// map [0, RAND_MAX] => [low, high]
 	I32 randNum = ::rand();
-	return Remap(randNum, 0, RAND_MAX, low, high);
+	return Remap((F32)randNum, 0.0f, RAND_MAX, low, high);
 }
 
 I32 RandomNumberBetween(I32 low, I32 high)

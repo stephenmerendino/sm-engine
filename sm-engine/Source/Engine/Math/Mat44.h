@@ -190,9 +190,9 @@ inline Mat44 Mat44::operator*(F32 s) const
 
 inline Mat44& Mat44::operator*=(F32 s)
 {
-	for (int i = 0; i < 16; i++)
+	for (int idx = 0; idx < 16; idx++)
 	{
-		data[i] *= s;
+		data[idx] *= s;
 	}
 
 	return *this;
@@ -504,10 +504,10 @@ inline Mat44 Mat44::CreateRotationZDegs(F32 zDegs)
 
 inline void Mat44::RotateAroundAxisRads(const Vec3& axis, F32 rads)
 {
-	Vec3 i = axis.Normalized();
-	Vec3 j = Cross(Vec3::UP, axis).Normalized();
-	Vec3 k = Cross(i, j);
-	Mat44 axisOfRotationWorldBasis = Mat44(i, j, k);
+	Vec3 iBasis = axis.Normalized();
+	Vec3 jBasis = Cross(Vec3::UP, axis).Normalized();
+	Vec3 kBasis = Cross(iBasis, jBasis);
+	Mat44 axisOfRotationWorldBasis = Mat44(iBasis, jBasis, kBasis);
 	Mat44 axisOfRotationLocalBasis = axisOfRotationWorldBasis.Transposed();
 	Mat44 localRotation = Mat44::CreateRotationXRads(rads);
 

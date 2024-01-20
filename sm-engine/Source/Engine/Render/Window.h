@@ -10,6 +10,11 @@ struct WindowMsgCallbackWithArgs
 {
 	WindowMsgCallbackFunc m_cb;
 	void* m_userArgs;
+
+	bool operator==(const WindowMsgCallbackWithArgs cbWithArgs)
+	{
+		return m_cb == cbWithArgs.m_cb && m_userArgs == cbWithArgs.m_userArgs;
+	}
 };
 
 class Window
@@ -21,6 +26,7 @@ public:
 
 	void SetTitle(const char* newTitle);
 	void AddMsgCallback(WindowMsgCallbackFunc cb, void* userArgs = nullptr);
+	void RemoveMsgCallback(WindowMsgCallbackFunc cb, void* userArgs = nullptr);
 	IVec2 CalcCenterPosition();
 	IVec2 GetSize();
 

@@ -2,7 +2,10 @@
 
 #include "Engine/Core/Types.h"
 
-void TimeInit();
+namespace Time
+{
+	bool Init();
+}
 
 class Stopwatch 
 {

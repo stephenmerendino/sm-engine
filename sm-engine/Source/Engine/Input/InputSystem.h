@@ -153,6 +153,7 @@ public:
 	InputSystem();
 
 	bool Init(Window* pWindow);
+	void Shutdown();
 
 	void BeginFrame();
 	void Update();

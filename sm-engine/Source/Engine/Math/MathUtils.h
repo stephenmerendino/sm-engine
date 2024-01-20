@@ -62,8 +62,7 @@ T Max(T a, T b)
 	return a > b ? a : b;
 }
 
-inline
-F32 Remap(F32 value, F32 old_min, F32 old_max, F32 new_min, F32 new_max)
+inline F32 Remap(F32 value, F32 oldMin, F32 oldMax, F32 newMin, F32 newMax)
 {
-	return ((value - old_min) / (old_max - old_min)) * (new_max - new_min) + new_min;
+	return ((value - oldMin) / (oldMax - oldMin)) * (newMax - newMin) + newMin;
 }
