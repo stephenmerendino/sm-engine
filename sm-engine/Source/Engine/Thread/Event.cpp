@@ -1,16 +1,22 @@
 #include "Engine/Thread/Event.h"
+#include "Engine/Core/Assert.h"
 #include <synchapi.h>
 
 Event::Event()
 	:m_winEvent(NULL)
 {
+}
+
+void Event::Init()
+{
 	m_winEvent = ::CreateEvent(NULL,  // security attributes
 							   TRUE,  // is manual reset
 							   FALSE, // initial state
 							   NULL); // optional name
+	SM_ASSERT(m_winEvent != NULL);
 }
 
-Event::~Event()
+void Event::Destroy()
 {
 	::CloseHandle(m_winEvent);
 }

@@ -4,7 +4,7 @@
 
 namespace Time
 {
-	bool Init();
+	void Init();
 }
 
 class Stopwatch 

@@ -7,7 +7,9 @@ class Event
 {
 public:
 	Event();
-	~Event();
+
+	void Init();
+	void Destroy();
 
 	void Wait();
 	void WaitForMs(U32 ms);

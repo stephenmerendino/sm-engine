@@ -1,258 +1,221 @@
 #include "Engine/Job/JobSystem.h"
+#include "Engine/Core/Assert.h"
+#include "Engine/Math/MathUtils.h"
 
 JobSystem g_jobSystem;
 
-bool JobSystem::Init()
+// this function needs to pull jobs out of the job queue and execute them
+static DWORD WINAPI JobWorkerThreadFunc(void* args)
 {
-	return true;
+	UNUSED(args);
+
+	while (true)
+	{
+		{
+			SCOPED_CRITICAL_SECTION(&g_jobSystem.m_shutdownJobSystemCs);
+			if (g_jobSystem.m_bShouldShutdown && g_jobSystem.m_jobQueue.Empty())
+			{
+				break;
+			}
+		}
+
+		Job* job = nullptr;
+		if (g_jobSystem.m_jobQueue.Pop(&job))
+		{
+			job->Execute();
+			job->Finish();
+			g_jobSystem.ReleaseJob(job);
+
+			SCOPED_CRITICAL_SECTION(&g_jobSystem.m_numJobsCompletedCs);
+			g_jobSystem.m_numJobsCompleted++;
+		}
+		else
+		{
+			g_jobSystem.m_jobAddedEvent.Wait();
+		}
+	}
+
+	return 0;
+}
+
+void Job::Init(::JobFunc func, void* args)
+{
+	m_func = func;
+	m_args = args;
+	m_jobWaitingOnMe = nullptr;
+	m_waitingOnCount = 0;
+	m_status = JobStatus::CREATED;
+	m_jobStatusRwLock.Init();
+	m_refCount = 1;
+}
+
+void Job::Acquire()
+{
+	AtomicIncr(&m_refCount);
+}
+
+void Job::Release()
+{
+	AtomicDecr(&m_refCount);
+}
+
+bool Job::IsReleased() const
+{
+	return m_refCount == 0;
+}
+
+JobStatus Job::GetStatus()
+{
+	SCOPED_CRITICAL_SECTION(&m_jobStatusRwLock);
+	return m_status;
+}
+
+void Job::SetStatus(JobStatus status)
+{
+	m_jobStatusRwLock.Lock();
+	m_status = status;
+}
+
+void Job::Execute()
+{
+	SetStatus(JobStatus::RUNNING);
+	m_func(m_args);
+}
+
+void Job::Finish()
+{
+	SetStatus(JobStatus::FINISHED);
+	if (m_jobWaitingOnMe)
+	{
+		m_jobWaitingOnMe->JobBeingWaitedOnIsFinished();
+	}
+}
+
+bool Job::IsWaitingOnOthers()
+{
+	return GetStatus() == JobStatus::WAITING;
+}
+
+void Job::JobBeingWaitedOnIsFinished()
+{
+	m_waitingOnCount--;
+	g_jobSystem.SubmitJob(this);
+}
+
+void Job::WaitOn(Job* job)
+{
+	m_waitingOnCount++;
+	job->m_jobWaitingOnMe = this;
+	SetStatus(JobStatus::WAITING);
+}
+
+JobSystem::JobSystem()
+	:m_bShouldShutdown(false)
+	,m_workerThreads(nullptr)
+	,m_numWorkerThreads(0)
+	,m_numJobsSubmitted(0)
+	,m_numJobsCompleted(0)
+{
+}
+
+void JobSystem::Init()
+{
+	m_shutdownJobSystemCs.Init();
+	m_numJobsSubmittedCs.Init();
+	m_numJobsCompletedCs.Init();
+
+	// Determine how many threads we need to make based on cpu, leaving 1 thread for the main thread
+	m_numWorkerThreads = std::thread::hardware_concurrency() - 1;
+
+	// handle case where we get 0 back for thread count
+	m_numWorkerThreads = Max(1u, m_numWorkerThreads);
+
+	// allocate Threads
+	m_workerThreads = new Thread[m_numWorkerThreads];
+
+	// Start each Thread
+	for (U32 i = 0; i < m_numWorkerThreads; ++i)
+	{
+		m_workerThreads[i].Run(JobWorkerThreadFunc);
+	}
 }
 
 void JobSystem::Shutdown()
 {
-
+	SCOPED_CRITICAL_SECTION(&m_shutdownJobSystemCs);
+	m_bShouldShutdown = true;
+	// TODO: We need to cleanup s_shutdown_job_system_cs and s_num_jobs_processed_cs
 }
 
-//#include "engine/job/job_system.h"
-//#include "engine/core/assert.h"
-//#include "engine/thread/critical_section.h"
-//#include "engine/thread/event.h"
-//#include "engine/thread/thread.h"
-//#include "engine/thread/thread_safe_queue.h"
-//#include "engine/math/math_utils.h"
-//
-//static event_t                  s_jobs_added_event;
-//static ThreadSafeQueue<job_t*>  s_job_queue;
-//static i64                      s_num_jobs_submitted = 0;
-//static i64                      s_num_jobs_completed = 0;
-//static bool                     s_should_shutdown_job_system = false;
-//static critical_section_t       s_shutdown_job_system_cs;
-//static critical_section_t       s_num_jobs_processed_cs;
-//static u32                      s_num_worker_threads = 0;
-//static thread_t* s_worker_threads = nullptr;
-//
-//static
-//void job_setup(job_t* job, job_func_t func, void* args)
-//{
-//	SM_ASSERT(nullptr != job);
-//	job->m_func = func;
-//	job->m_args = args;
-//	job->m_job_waiting_on_me = nullptr;
-//	job->m_waiting_on_count = 0;
-//	job->m_status = JobStatus::CREATED;
-//	job->m_job_status_rw_cs = critical_section_create();
-//	job->m_ref_count = 1;
-//}
-//
-//static
-//void job_acquire(job_t* job)
-//{
-//	SM_ASSERT(nullptr != job);
-//	atomic_incr(&job->m_ref_count);
-//}
-//
-//static
-//void job_release(job_t* job)
-//{
-//	SM_ASSERT(nullptr != job);
-//	atomic_decr(&job->m_ref_count);
-//}
-//
-//static
-//bool job_is_released(job_t* job)
-//{
-//	SM_ASSERT(nullptr != job);
-//	return job->m_ref_count == 0;
-//}
-//
-//static
-//void job_set_status(job_t* job, JobStatus status)
-//{
-//	SM_ASSERT(nullptr != job);
-//	SCOPED_CRITICAL_SECTION(&job->m_job_status_rw_cs);
-//	job->m_status = status;
-//}
-//
-//static
-//void job_notify_waiting_on_finished(job_t* job)
-//{
-//	SM_ASSERT(nullptr != job);
-//	job->m_waiting_on_count--;
-//	job_system_submit_job(job);
-//}
-//
-//static
-//void job_execute(job_t* job)
-//{
-//	SM_ASSERT(nullptr != job);
-//	job_set_status(job, JobStatus::RUNNING);
-//	job->m_func(job->m_args);
-//}
-//
-//static
-//void job_finish(job_t* job)
-//{
-//	SM_ASSERT(nullptr != job);
-//	job_set_status(job, JobStatus::FINISHED);
-//	if (job->m_job_waiting_on_me)
-//	{
-//		job_notify_waiting_on_finished(job->m_job_waiting_on_me);
-//	}
-//}
-//
-//static
-//bool job_is_waiting_on_others(job_t* job)
-//{
-//	SM_ASSERT(nullptr != job);
-//	return job_get_status(job) == JobStatus::WAITING;
-//}
-//
-//void job_wait_on(job_t* job, job_t* job_to_wait_for)
-//{
-//	job->m_waiting_on_count++;
-//	job_to_wait_for->m_job_waiting_on_me = job;
-//	job_set_status(job, JobStatus::WAITING);
-//}
-//
-//JobStatus job_get_status(job_t* job)
-//{
-//	SCOPED_CRITICAL_SECTION(&job->m_job_status_rw_cs);
-//	return job->m_status;
-//}
-//
-//// this function needs to pull jobs out of the job queue and execute them
-//static
-//DWORD WINAPI job_worker_thread_func(void* args)
-//{
-//	UNUSED(args);
-//
-//	while (true)
-//	{
-//		{
-//			SCOPED_CRITICAL_SECTION(&s_shutdown_job_system_cs);
-//			if (s_should_shutdown_job_system && s_job_queue.empty())
-//			{
-//				break;
-//			}
-//		}
-//
-//		job_t* job = nullptr;
-//		if (s_job_queue.pop(&job))
-//		{
-//			job_execute(job);
-//			job_finish(job);
-//			job_system_release_job(job);
-//
-//			SCOPED_CRITICAL_SECTION(&s_num_jobs_processed_cs);
-//			s_num_jobs_completed++;
-//		}
-//		else
-//		{
-//			event_wait(s_jobs_added_event);
-//		}
-//	}
-//
-//	return 0;
-//}
-//
-//void job_system_init()
-//{
-//	s_shutdown_job_system_cs = critical_section_create();
-//	s_num_jobs_processed_cs = critical_section_create();
-//
-//	// determine how many threads we need to make based on cpu, leaving 1 thread for the main thread
-//	s_num_worker_threads = std::thread::hardware_concurrency() - 1;
-//
-//	// handle case where we get 0 back for thread count
-//	s_num_worker_threads = max(1u, s_num_worker_threads);
-//
-//	// allocate Threads
-//	s_worker_threads = new thread_t[s_num_worker_threads];
-//
-//	// Start each Thread
-//	for (u32 i = 0; i < s_num_worker_threads; ++i)
-//	{
-//		s_worker_threads[i] = create_thread(job_worker_thread_func);
-//		thread_t& t = s_worker_threads[i];
-//		thread_run(t);
-//	}
-//}
-//
-//void job_system_shutdown()
-//{
-//	SCOPED_CRITICAL_SECTION(&s_shutdown_job_system_cs);
-//	s_should_shutdown_job_system = true;
-//
-//	// TODO(smerendino): We need to cleanup s_shutdown_job_system_cs and s_num_jobs_processed_cs
-//}
-//
-//job_t* job_system_create_job(job_func_t func, void* args)
-//{
-//	job_t* j = new job_t;
-//	job_setup(j, func, args);
-//	return j;
-//}
-//
-//void job_system_submit_job(job_t* job)
-//{
-//	SM_ASSERT(job);
-//
-//	job_acquire(job);
-//
-//	if (job_is_waiting_on_others(job))
-//	{
-//		return;
-//	}
-//
-//	job_set_status(job, JobStatus::ENQUEUED);
-//
-//	s_job_queue.push(job);
-//	event_signal_and_reset(s_jobs_added_event);
-//
-//	SCOPED_CRITICAL_SECTION(&s_num_jobs_processed_cs);
-//	s_num_jobs_submitted++;
-//}
-//
-//void job_system_release_job(job_t* job)
-//{
-//	SM_ASSERT(job);
-//
-//	job_release(job);
-//	if (job_is_released(job))
-//	{
-//		delete job;
-//	}
-//}
-//
-//void job_system_submit_and_release_job(job_t* job)
-//{
-//	job_system_submit_job(job);
-//	job_system_release_job(job);
-//}
-//
-//void job_system_submit_and_release_job(job_func_t func, void* args)
-//{
-//	job_t* new_job = job_system_create_job(func, args);
-//	job_system_submit_and_release_job(new_job);
-//}
-//
-//bool job_system_is_busy()
-//{
-//	SCOPED_CRITICAL_SECTION(&s_num_jobs_processed_cs);
-//	return s_num_jobs_completed < s_num_jobs_submitted;
-//}
-//
-//void job_system_wait_on_job(job_t* job)
-//{
-//	while (job_get_status(job) != JobStatus::FINISHED)
-//	{
-//		thread_yield();
-//	}
-//}
-//
-//void job_system_wait_all()
-//{
-//	while (job_system_is_busy())
-//	{
-//		thread_yield();
-//	}
-//}
+void JobSystem::SubmitJob(Job* job)
+{
+	SM_ASSERT(job != nullptr);
+
+	if (job->IsWaitingOnOthers())
+	{
+		return;
+	}
+
+	job->Acquire();
+	job->SetStatus(JobStatus::ENQUEUED);
+	m_jobQueue.Push(job);
+
+	m_jobAddedEvent.SignalAndReset();
+
+	SCOPED_CRITICAL_SECTION(&m_numJobsSubmittedCs);
+	m_numJobsSubmitted++;
+}
+
+Job* JobSystem::SubmitJob(JobFunc func, void* args)
+{
+	Job* job = new Job();
+	job->Init(func, args);
+	SubmitJob(job);
+	return job;
+}
+
+void JobSystem::ReleaseJob(Job* job)
+{
+	SM_ASSERT(job != nullptr);
+	job->Release();
+	if (job->IsReleased())
+	{
+		delete job;
+	}
+}
+
+void JobSystem::SubmitAndReleaseJob(Job* job)
+{
+	SubmitJob(job);
+	ReleaseJob(job);
+}
+
+void JobSystem::SubmitAndReleaseJob(JobFunc func, void* args)
+{
+	Job* job = SubmitJob(func, args);
+	ReleaseJob(job);
+}
+
+bool JobSystem::IsBusy()
+{
+	SCOPED_CRITICAL_SECTION(&m_numJobsSubmittedCs);
+	SCOPED_CRITICAL_SECTION(&m_numJobsCompletedCs);
+	return m_numJobsCompleted < m_numJobsSubmitted;
+}
+
+void JobSystem::WaitOnJob(Job* job)
+{
+	SM_ASSERT(job != nullptr);
+	while (job->GetStatus() != JobStatus::FINISHED)
+	{
+		Thread::Yield();
+	}
+}
+
+void JobSystem::WaitOnAllJobs()
+{
+	while (IsBusy())
+	{
+		Thread::Yield();
+	}
+}

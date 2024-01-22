@@ -241,12 +241,11 @@ InputSystem::InputSystem()
 {
 }
 
-bool InputSystem::Init(Window* pWindow)
+void InputSystem::Init(Window* pWindow)
 {
 	SM_ASSERT(nullptr != pWindow);
 	m_pWindow = pWindow;
 	m_pWindow->AddMsgCallback(InputSystemMsgHandler);
-	return true;
 }
 
 void InputSystem::Shutdown()

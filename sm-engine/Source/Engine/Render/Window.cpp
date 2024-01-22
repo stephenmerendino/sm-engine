@@ -90,7 +90,7 @@ static void UpdateWindowPosition(Window* pWindow)
 	pWindow->m_y = pos.top;
 }
 
-bool Window::Init(const char* name, U32 width, U32 height, bool bResizable)
+void Window::Init(const char* name, U32 width, U32 height, bool bResizable)
 {
 	WNDCLASSEX wc = {};
 	wc.cbSize = sizeof(wc);
@@ -148,8 +148,6 @@ bool Window::Init(const char* name, U32 width, U32 height, bool bResizable)
 
 	// make sure to show on init
 	::ShowWindow(m_handle, SW_SHOW);
-
-	return true;
 }
 
 void Window::Destroy()

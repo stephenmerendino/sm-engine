@@ -1,11 +1,11 @@
 #include "Engine/Thread/CriticalSection.h"
 
-CriticalSection::CriticalSection()
+void CriticalSection::Init()
 {
 	::InitializeCriticalSection(&m_winCs);
 }
 
-CriticalSection::~CriticalSection()
+void CriticalSection::Destroy()
 {
 	::DeleteCriticalSection(&m_winCs);
 }

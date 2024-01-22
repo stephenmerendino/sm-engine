@@ -20,7 +20,7 @@ struct WindowMsgCallbackWithArgs
 class Window
 {
 public:
-	bool Init(const char* name, U32 width, U32 height, bool bResizable);
+	void Init(const char* name, U32 width, U32 height, bool bResizable);
 	void Update();
 	void Destroy();
 

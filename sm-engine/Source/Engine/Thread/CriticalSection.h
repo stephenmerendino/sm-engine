@@ -6,9 +6,8 @@
 class CriticalSection
 {
 public:
-	CriticalSection();
-	~CriticalSection();
-
+	void Init();
+	void Destroy();
 	void Lock();
 	void Unlock();
 

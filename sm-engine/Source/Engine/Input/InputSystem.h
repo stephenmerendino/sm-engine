@@ -152,7 +152,7 @@ class InputSystem
 public:
 	InputSystem();
 
-	bool Init(Window* pWindow);
+	void Init(Window* pWindow);
 	void Shutdown();
 
 	void BeginFrame();

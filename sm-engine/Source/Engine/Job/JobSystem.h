@@ -2,7 +2,9 @@
 
 #include "Engine/Thread/AtomicUtil.h"
 #include "Engine/Thread/CriticalSection.h"
+#include "Engine/Thread/Event.h"
 #include "Engine/Thread/Thread.h"
+#include "Engine/Thread/ThreadSafeQueue.h"
 
 typedef void (*JobFunc)(void* args);
 
@@ -16,8 +18,22 @@ enum class JobStatus : U8
 	NUM_JOB_STATUSES
 };
 
-struct Job
+class Job
 {
+public:
+	void Init(JobFunc func, void* args);
+	void Acquire();
+	void Release();
+	bool IsReleased() const;
+	JobStatus GetStatus();
+	void SetStatus(JobStatus status);
+	void Execute();
+	void Finish();
+	bool IsWaitingOnOthers();
+	void JobBeingWaitedOnIsFinished();
+	void WaitOn(Job* job);
+
+private:
 	JobFunc m_func;
 	void* m_args;
 	Job* m_jobWaitingOnMe;
@@ -30,8 +46,29 @@ struct Job
 class JobSystem
 {
 public:
-	bool Init();
+	JobSystem();
+	void Init();
 	void Shutdown();
+
+	void SubmitJob(Job* job);
+	Job* SubmitJob(JobFunc func, void* args);
+	void ReleaseJob(Job* job);
+	void SubmitAndReleaseJob(Job* job);
+	void SubmitAndReleaseJob(JobFunc func, void* args);
+	void WaitOnJob(Job* job);
+	void WaitOnAllJobs();
+	bool IsBusy();
+
+	CriticalSection m_shutdownJobSystemCs;
+	CriticalSection m_numJobsSubmittedCs;
+	CriticalSection m_numJobsCompletedCs;
+	U32 m_numWorkerThreads;
+	Thread* m_workerThreads;
+	bool m_bShouldShutdown;
+	ThreadSafeQueue<Job*> m_jobQueue;
+	Event m_jobAddedEvent;
+	I32 m_numJobsSubmitted;
+	I32 m_numJobsCompleted;
 };
 
 extern JobSystem g_jobSystem;
@@ -46,6 +83,3 @@ extern JobSystem g_jobSystem;
 //bool job_system_is_busy();
 //void job_system_wait_all();
 //void job_system_wait_on_job(job_t* job);
-//
-//void job_wait_on(job_t* job, job_t* job_to_wait_for);
-//JobStatus job_get_status(job_t* job);

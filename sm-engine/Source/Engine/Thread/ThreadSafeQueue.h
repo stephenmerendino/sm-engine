@@ -7,8 +7,8 @@ template<typename T>
 class ThreadSafeQueue
 {
 public:
-	ThreadSafeQueue();
-	~ThreadSafeQueue();
+	void Init();
+	void Destroy();
 
 	void Push(T& t);
 	bool Pop(T* outT);
@@ -20,13 +20,15 @@ public:
 };
 
 template<typename T>
-ThreadSafeQueue<T>::ThreadSafeQueue()
+void ThreadSafeQueue<T>::Init()
 {
+	m_rwLock.Init();
 }
 
 template<typename T>
-ThreadSafeQueue<T>::~ThreadSafeQueue()
+void ThreadSafeQueue<T>::Destroy()
 {
+	m_rwLock.Destroy();
 }
 
 template<typename T>

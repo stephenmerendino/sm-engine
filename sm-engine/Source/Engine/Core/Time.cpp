@@ -11,7 +11,7 @@ static I64 GetCurrentTick()
 	return tick.QuadPart;
 }
 
-bool Time::Init()
+void Time::Init()
 {
 	static bool didInit = false;
 	if (!didInit)
@@ -22,8 +22,6 @@ bool Time::Init()
 		s_freqPerSec = freq.QuadPart;
 		didInit = true;
 	}
-
-	return true;
 }
 
 Stopwatch::Stopwatch()
