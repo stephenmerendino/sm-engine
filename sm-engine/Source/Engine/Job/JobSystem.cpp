@@ -13,7 +13,7 @@ static DWORD WINAPI JobWorkerThreadFunc(void* args)
 	{
 		{
 			SCOPED_CRITICAL_SECTION(&g_jobSystem.m_shutdownJobSystemCs);
-			if (g_jobSystem.m_bShouldShutdown && g_jobSystem.m_jobQueue.Empty())
+			if (g_jobSystem.m_bStartShutdown && g_jobSystem.m_jobQueue.Empty())
 			{
 				break;
 			}
@@ -110,19 +110,24 @@ void Job::WaitOn(Job* job)
 }
 
 JobSystem::JobSystem()
-	:m_bShouldShutdown(false)
+	:m_bStartShutdown(false)
 	,m_workerThreads(nullptr)
 	,m_numWorkerThreads(0)
 	,m_numJobsSubmitted(0)
 	,m_numJobsCompleted(0)
+	,m_numJobsSubmittedCs()
+	,m_numJobsCompletedCs()
+	,m_shutdownJobSystemCs()
 {
 }
 
 void JobSystem::Init()
 {
+	m_jobQueue.Init();
 	m_shutdownJobSystemCs.Init();
 	m_numJobsSubmittedCs.Init();
 	m_numJobsCompletedCs.Init();
+	m_jobAddedEvent.Init();
 
 	// Determine how many threads we need to make based on cpu, leaving 1 thread for the main thread
 	m_numWorkerThreads = std::thread::hardware_concurrency() - 1;
@@ -143,8 +148,15 @@ void JobSystem::Init()
 void JobSystem::Shutdown()
 {
 	SCOPED_CRITICAL_SECTION(&m_shutdownJobSystemCs);
-	m_bShouldShutdown = true;
-	// TODO: We need to cleanup s_shutdown_job_system_cs and s_num_jobs_processed_cs
+	m_bStartShutdown = true;
+
+	WaitOnAllJobs();
+
+	m_jobAddedEvent.Destroy();
+	m_numJobsCompletedCs.Destroy();
+	m_numJobsSubmittedCs.Destroy();
+	m_shutdownJobSystemCs.Destroy();
+	m_jobQueue.Destroy();
 }
 
 void JobSystem::SubmitJob(Job* job)
@@ -157,6 +169,7 @@ void JobSystem::SubmitJob(Job* job)
 	}
 
 	job->Acquire();
+
 	job->SetStatus(JobStatus::ENQUEUED);
 	m_jobQueue.Push(job);
 

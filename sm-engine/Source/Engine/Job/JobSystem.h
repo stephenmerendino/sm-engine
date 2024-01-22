@@ -8,6 +8,8 @@
 
 typedef void (*JobFunc)(void* args);
 
+#define JOB_ENTRY_POINT(funcName) void funcName(void* args)
+
 enum class JobStatus : U8
 {
 	CREATED,
@@ -64,7 +66,7 @@ public:
 	CriticalSection m_numJobsCompletedCs;
 	U32 m_numWorkerThreads;
 	Thread* m_workerThreads;
-	bool m_bShouldShutdown;
+	bool m_bStartShutdown;
 	ThreadSafeQueue<Job*> m_jobQueue;
 	Event m_jobAddedEvent;
 	I32 m_numJobsSubmitted;
@@ -72,14 +74,3 @@ public:
 };
 
 extern JobSystem g_jobSystem;
-
-//void job_system_init();
-//void job_system_shutdown();
-//job_t* job_system_create_job(job_func_t func, void* args = nullptr);
-//void job_system_submit_job(job_t* job);
-//void job_system_release_job(job_t* job);
-//void job_system_submit_and_release_job(job_t* job);
-//void job_system_submit_and_release_job(job_func_t func, void* args = nullptr);
-//bool job_system_is_busy();
-//void job_system_wait_all();
-//void job_system_wait_on_job(job_t* job);
