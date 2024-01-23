@@ -36,7 +36,11 @@
     <ClCompile Include="Source\Engine\Math\Vec2.cpp" />
     <ClCompile Include="Source\Engine\Math\Vec3.cpp" />
     <ClCompile Include="Source\Engine\Math\Vec4.cpp" />
+    <ClCompile Include="Source\Engine\Render\DX12\DX12Renderer.cpp" />
+    <ClCompile Include="Source\Engine\Render\Renderer.cpp" />
+    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanContext.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanFunctions.cpp" />
+    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanRenderer.cpp" />
     <ClCompile Include="Source\Engine\Render\Window.cpp" />
     <ClCompile Include="Source\Engine\ThirdParty\imgui\backends\imgui_impl_vulkan.cpp" />
     <ClCompile Include="Source\Engine\ThirdParty\imgui\backends\imgui_impl_win32.cpp" />
@@ -74,8 +78,12 @@
     <ClInclude Include="Source\Engine\Math\Vec4.h" />
     <ClInclude Include="Source\Engine\Platform\WindowsInclude.h" />
     <ClInclude Include="Source\Engine\Platform\WindowsUtils.h" />
+    <ClInclude Include="Source\Engine\Render\DX12\DX12Renderer.h" />
+    <ClInclude Include="Source\Engine\Render\Renderer.h" />
+    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanContext.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanFunctions.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanInclude.h" />
+    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanRenderer.h" />
     <ClInclude Include="Source\Engine\Render\Window.h" />
     <ClInclude Include="Source\Engine\ThirdParty\imgui\backends\imgui_impl_vulkan.h" />
     <ClInclude Include="Source\Engine\ThirdParty\imgui\backends\imgui_impl_win32.h" />
