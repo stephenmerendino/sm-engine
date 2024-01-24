@@ -6,6 +6,7 @@
 #include "Engine/Render/Vulkan/VulkanInclude.h"
 #include "Engine/Render/Vulkan/VulkanInstance.h"
 #include "Engine/Render/Vulkan/VulkanSurface.h"
+#include "Engine/Render/Vulkan/VulkanSwapchain.h"
 #include <vector>
 
 class VulkanRenderer : public Renderer
@@ -20,4 +21,5 @@ public:
 	VulkanInstance m_instance;
 	VulkanSurface m_surface;
 	VulkanDevice m_device;
+	VulkanSwapchain m_swapchain;
 };

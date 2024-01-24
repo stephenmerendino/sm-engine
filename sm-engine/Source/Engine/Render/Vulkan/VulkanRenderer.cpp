@@ -17,13 +17,15 @@ void VulkanRenderer::Init(Window* pWindow)
 	m_pWindow = pWindow;
 
 	m_instance.Init();
-	m_surface.Init(m_pWindow, m_instance.m_instance);
-	m_device.Init(m_instance.m_instance, m_surface.m_surface);
+	m_surface.Init(m_pWindow, m_instance.m_instanceHandle);
+	m_device.Init(m_instance.m_instanceHandle, m_surface.m_surfaceHandle);
+	m_swapchain.Init(m_pWindow, m_surface.m_surfaceHandle, m_device);
 }
 
 void VulkanRenderer::Shutdown()
 {
+	m_swapchain.Destroy(m_device.m_deviceHandle);
 	m_device.Destroy();
-	m_surface.Destroy(m_instance.m_instance);
+	m_surface.Destroy(m_instance.m_instanceHandle);
 	m_instance.Destroy();
 }

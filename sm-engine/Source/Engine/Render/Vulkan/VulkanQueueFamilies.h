@@ -11,8 +11,8 @@ public:
 	void Init(VkPhysicalDevice device, VkSurfaceKHR surface);
 	bool HasRequiredFamilies();
 
-	I32 m_graphicsFamily;
-	I32 m_presentFamily;
+	I32 m_graphicsFamilyIndex;
+	I32 m_presentFamilyIndex;
 
 	enum
 	{

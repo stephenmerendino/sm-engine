@@ -137,8 +137,8 @@ static void PrintInstanceInfo()
 }
 
 VulkanInstance::VulkanInstance()
-	:m_instance(VK_NULL_HANDLE)
-	,m_debugMessenger(VK_NULL_HANDLE)
+	:m_instanceHandle(VK_NULL_HANDLE)
+	,m_debugMessengerHandle(VK_NULL_HANDLE)
 {
 }
 
@@ -188,20 +188,20 @@ void VulkanInstance::Init()
 		}
 	}
 
-	SM_VULKAN_ASSERT(vkCreateInstance(&createInfo, nullptr, &m_instance));
+	SM_VULKAN_ASSERT(vkCreateInstance(&createInfo, nullptr, &m_instanceHandle));
 
-	LoadVulkanInstanceFuncs(m_instance);
+	LoadVulkanInstanceFuncs(m_instanceHandle);
 
 	// real debug messenger for the whole game
 	if (ENABLE_VALIDATION_LAYERS)
 	{
 		VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = SetupDebugMessengerCreateInfo(VulkanDebugFunc);
-		SM_VULKAN_ASSERT(vkCreateDebugUtilsMessengerEXT(m_instance, &debugMessengerCreateInfo, nullptr, &m_debugMessenger));
+		SM_VULKAN_ASSERT(vkCreateDebugUtilsMessengerEXT(m_instanceHandle, &debugMessengerCreateInfo, nullptr, &m_debugMessengerHandle));
 	}
 }
 
 void VulkanInstance::Destroy()
 {
-	vkDestroyDebugUtilsMessengerEXT(m_instance, m_debugMessenger, nullptr);
-	vkDestroyInstance(m_instance, nullptr);
+	vkDestroyDebugUtilsMessengerEXT(m_instanceHandle, m_debugMessengerHandle, nullptr);
+	vkDestroyInstance(m_instanceHandle, nullptr);
 }

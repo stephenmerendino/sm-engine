@@ -1,16 +1,10 @@
 #include "Engine/Render/Vulkan/VulkanDevice.h"
+#include "Engine/Render/Vulkan/VulkanSwapchain.h"
 #include "Engine/Config.h"
 #include "Engine/Core/Assert.h"
 #include "Engine/Core/Debug.h"
 #include <vector>
 #include <set>
-
-struct VulkanSwapchainDetails 
-{
-	VkSurfaceCapabilitiesKHR capabilities;
-	std::vector<VkSurfaceFormatKHR> formats;
-	std::vector<VkPresentModeKHR> present_modes;
-};
 
 static VkSampleCountFlagBits GetMaxMsaaSampleCount(VkPhysicalDeviceProperties props)
 {
@@ -42,36 +36,6 @@ static bool CheckPhysicalDeviceExtensionSupport(VkPhysicalDevice device)
 	return requiredExtensions.empty();
 }
 
-static VulkanSwapchainDetails QuerySwapchainSupport(VkPhysicalDevice device, VkSurfaceKHR surface)
-{
-	VulkanSwapchainDetails details;
-
-	// surface capabilities
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
-
-	// surface formats
-	U32 numSurfaceFormats = 0;
-	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &numSurfaceFormats, nullptr);
-
-	if (numSurfaceFormats != 0)
-	{
-		details.formats.resize(numSurfaceFormats);
-		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &numSurfaceFormats, details.formats.data());
-	}
-
-	// present modes
-	U32 numPresentModes = 0;
-	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &numPresentModes, nullptr);
-
-	if (numPresentModes != 0)
-	{
-		details.present_modes.resize(numPresentModes);
-		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &numPresentModes, details.present_modes.data());
-	}
-
-	return details;
-}
-
 static bool IsPhysicalDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface)
 {
 	VkPhysicalDeviceProperties props;
@@ -97,8 +61,8 @@ static bool IsPhysicalDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surfa
 		return false;
 	}
 
-	VulkanSwapchainDetails swapchainDetails = QuerySwapchainSupport(device, surface);
-	if (swapchainDetails.formats.empty() || swapchainDetails.present_modes.empty())
+	VulkanSwapchainDetails swapchainDetails = VulkanSwapchain::QuerySwapchainSupport(device, surface);
+	if (swapchainDetails.formats.empty() || swapchainDetails.presentModes.empty())
 	{
 		return false;
 	}
@@ -151,9 +115,9 @@ static VkFormat FindDepthFormat(VkPhysicalDevice physicalDevice)
 }
 
 VulkanDevice::VulkanDevice()
-	:m_physicalDevice(VK_NULL_HANDLE)
+	:m_physicalDeviceHandle(VK_NULL_HANDLE)
 	,m_physicalDeviceProps({})
-	,m_device(VK_NULL_HANDLE)
+	,m_deviceHandle(VK_NULL_HANDLE)
 	,m_graphicsQueue(VK_NULL_HANDLE)
 	,m_presentQueue(VK_NULL_HANDLE)
 	,m_maxNumMsaaSamples(VK_SAMPLE_COUNT_1_BIT)
@@ -212,7 +176,7 @@ void VulkanDevice::Init(VkInstance instance, VkSurfaceKHR surface)
 	VkDevice logicalDevice = VK_NULL_HANDLE;
 	{
 		std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-		std::set<I32> uniqueQueueFamilies = { queueFamilies.m_graphicsFamily, queueFamilies.m_presentFamily };
+		std::set<I32> uniqueQueueFamilies = { queueFamilies.m_graphicsFamilyIndex, queueFamilies.m_presentFamilyIndex };
 
 		F32 queuePriority = 1.0f;
 		for (I32 queueFamily : uniqueQueueFamilies)
@@ -259,21 +223,21 @@ void VulkanDevice::Init(VkInstance instance, VkSurfaceKHR surface)
 	VkQueue graphicsQueue = VK_NULL_HANDLE;
 	VkQueue presentQueue = VK_NULL_HANDLE;
 	{
-		vkGetDeviceQueue(logicalDevice, queueFamilies.m_graphicsFamily, 0, &graphicsQueue);
-		vkGetDeviceQueue(logicalDevice, queueFamilies.m_presentFamily, 0, &presentQueue);
+		vkGetDeviceQueue(logicalDevice, queueFamilies.m_graphicsFamilyIndex, 0, &graphicsQueue);
+		vkGetDeviceQueue(logicalDevice, queueFamilies.m_presentFamilyIndex, 0, &presentQueue);
 	}
 
-	m_physicalDevice = selecetedPhysicalDevice;
-	m_device = logicalDevice;
+	m_physicalDeviceHandle = selecetedPhysicalDevice;
+	m_deviceHandle = logicalDevice;
 	m_graphicsQueue = graphicsQueue;
 	m_presentQueue = presentQueue;
 	m_maxNumMsaaSamples = maxNumMsaaSamples;
 	m_queueFamilies = queueFamilies;
 	m_physicalDeviceProps = selectedPhysicalDeviceProps;
-	m_depthFormat = FindDepthFormat(m_physicalDevice);
+	m_depthFormat = FindDepthFormat(m_physicalDeviceHandle);
 }
 
 void VulkanDevice::Destroy()
 {
-	vkDestroyDevice(m_device, nullptr);
+	vkDestroyDevice(m_deviceHandle, nullptr);
 }

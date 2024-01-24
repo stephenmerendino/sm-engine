@@ -2,8 +2,8 @@
 #include <vector>
 
 VulkanQueueFamilies::VulkanQueueFamilies()
-	:m_graphicsFamily(kInvalidFamilyIndex)
-	,m_presentFamily(kInvalidFamilyIndex)
+	:m_graphicsFamilyIndex(kInvalidFamilyIndex)
+	,m_presentFamilyIndex(kInvalidFamilyIndex)
 {
 }
 
@@ -20,7 +20,7 @@ void VulkanQueueFamilies::Init(VkPhysicalDevice device, VkSurfaceKHR surface)
 		const VkQueueFamilyProperties& props = queueFamilyProps[i];
 		if (props.queueFlags & VK_QUEUE_GRAPHICS_BIT)
 		{
-			m_graphicsFamily = i;
+			m_graphicsFamilyIndex = i;
 		}
 
 		// query for presentation support on this queue
@@ -28,7 +28,7 @@ void VulkanQueueFamilies::Init(VkPhysicalDevice device, VkSurfaceKHR surface)
 		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
 		if (presentSupport)
 		{
-			m_presentFamily = i;
+			m_presentFamilyIndex = i;
 		}
 
 		// has required families
@@ -41,5 +41,5 @@ void VulkanQueueFamilies::Init(VkPhysicalDevice device, VkSurfaceKHR surface)
 
 bool VulkanQueueFamilies::HasRequiredFamilies()
 {
-	return m_graphicsFamily != kInvalidFamilyIndex && m_presentFamily != kInvalidFamilyIndex;
+	return m_graphicsFamilyIndex != kInvalidFamilyIndex && m_presentFamilyIndex != kInvalidFamilyIndex;
 }

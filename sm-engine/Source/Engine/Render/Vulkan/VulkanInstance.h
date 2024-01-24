@@ -10,6 +10,6 @@ public:
 	void Init();
 	void Destroy();
 
-	VkInstance m_instance;
-	VkDebugUtilsMessengerEXT m_debugMessenger;
+	VkInstance m_instanceHandle;
+	VkDebugUtilsMessengerEXT m_debugMessengerHandle;
 };

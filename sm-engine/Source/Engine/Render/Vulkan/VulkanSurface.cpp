@@ -3,7 +3,7 @@
 #include "Engine/Core/Assert.h"
 
 VulkanSurface::VulkanSurface()
-	:m_surface(VK_NULL_HANDLE)
+	:m_surfaceHandle(VK_NULL_HANDLE)
 {
 }
 
@@ -15,10 +15,10 @@ void VulkanSurface::Init(Window* pWindow, VkInstance instance)
 	createInfo.pNext = nullptr;
 	createInfo.hwnd = pWindow->m_hwnd;
 	createInfo.hinstance = GetModuleHandle(nullptr);
-	SM_VULKAN_ASSERT(vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &m_surface));
+	SM_VULKAN_ASSERT(vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &m_surfaceHandle));
 }
 
 void VulkanSurface::Destroy(VkInstance instance)
 {
-	vkDestroySurfaceKHR(instance, m_surface, nullptr);
+	vkDestroySurfaceKHR(instance, m_surfaceHandle, nullptr);
 }

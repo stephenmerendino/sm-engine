@@ -12,5 +12,5 @@ public:
 	void Init(Window* pWindow, VkInstance instance);
 	void Destroy(VkInstance instance);
 
-	VkSurfaceKHR m_surface;
+	VkSurfaceKHR m_surfaceHandle;
 };

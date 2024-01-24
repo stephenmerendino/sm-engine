@@ -11,12 +11,14 @@ public:
 	void Init(VkInstance instance, VkSurfaceKHR surface);
 	void Destroy();
 
-	VkPhysicalDevice m_physicalDevice;
+	VkPhysicalDevice m_physicalDeviceHandle;
 	VkPhysicalDeviceProperties m_physicalDeviceProps;
-	VkDevice m_device;
+	VkDevice m_deviceHandle;
+
+	VulkanQueueFamilies m_queueFamilies;
 	VkQueue m_graphicsQueue;
 	VkQueue m_presentQueue;
+
 	VkSampleCountFlags m_maxNumMsaaSamples;
-	VulkanQueueFamilies m_queueFamilies;
 	VkFormat m_depthFormat;
 };
