@@ -105,13 +105,13 @@ static VkFormat FindSupportedFormat(VkPhysicalDevice physicalDevice, const std::
 
 static VkFormat FindDepthFormat(VkPhysicalDevice physicalDevice)
 {
-	VkFormat depth_format = FindSupportedFormat(physicalDevice,
+	VkFormat depthFormat = FindSupportedFormat(physicalDevice,
 												{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
 												VK_IMAGE_TILING_OPTIMAL,
 												VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
-	SM_ASSERT(depth_format != VK_FORMAT_UNDEFINED);
-	return depth_format;
+	SM_ASSERT(depthFormat != VK_FORMAT_UNDEFINED);
+	return depthFormat;
 }
 
 VulkanDevice::VulkanDevice()
