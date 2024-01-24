@@ -49,7 +49,7 @@ static void InteralWindowMsgHandler(UINT msg, WPARAM wParam, LPARAM lParam, void
 	{
 		if (wParam == SIZE_RESTORED)
 		{
-			::ShowWindow(pWindow->m_handle, SW_SHOW);
+			::ShowWindow(pWindow->m_hwnd, SW_SHOW);
 		}
 		else
 		{
@@ -77,7 +77,7 @@ static void InteralWindowMsgHandler(UINT msg, WPARAM wParam, LPARAM lParam, void
 static void UpdateWindowSize(Window* pWindow)
 {
 	RECT size;
-	::GetClientRect(pWindow->m_handle, &size);
+	::GetClientRect(pWindow->m_hwnd, &size);
 	pWindow->m_width = size.right - size.left;
 	pWindow->m_height = size.bottom - size.top;
 }
@@ -85,7 +85,7 @@ static void UpdateWindowSize(Window* pWindow)
 static void UpdateWindowPosition(Window* pWindow)
 {
 	RECT pos;
-	::GetWindowRect(pWindow->m_handle, &pos);
+	::GetWindowRect(pWindow->m_hwnd, &pos);
 	pWindow->m_x = pos.left;
 	pWindow->m_y = pos.top;
 }
@@ -127,18 +127,18 @@ void Window::Init(const char* name, U32 width, U32 height, bool bResizable)
 	wchar_t* unicodeName = AllocAndConvertUnicodeStr(name);
 	FREE_AFTER_SCOPE(unicodeName);
 
-	m_handle = CreateWindowEx(0,
-						      WINDOW_CLASS_NAME,
-						      unicodeName,
-						      style,
-						      CW_USEDEFAULT,
-						      CW_USEDEFAULT,
-						      create_width,
-						      create_height,
-						      NULL, NULL,
-						      GetModuleHandle(NULL),
-						      this);
-	SM_ASSERT(NULL != m_handle);
+	m_hwnd = CreateWindowEx(0,
+						    WINDOW_CLASS_NAME,
+						    unicodeName,
+						    style,
+						    CW_USEDEFAULT,
+						    CW_USEDEFAULT,
+						    create_width,
+						    create_height,
+						    NULL, NULL,
+						    GetModuleHandle(NULL),
+						    this);
+	SM_ASSERT(NULL != m_hwnd);
 
 	UpdateWindowSize(this);
 	UpdateWindowPosition(this);
@@ -147,12 +147,12 @@ void Window::Init(const char* name, U32 width, U32 height, bool bResizable)
 	AddMsgCallback(InteralWindowMsgHandler, this);
 
 	// make sure to show on init
-	::ShowWindow(m_handle, SW_SHOW);
+	::ShowWindow(m_hwnd, SW_SHOW);
 }
 
 void Window::Destroy()
 {
-	::DestroyWindow(m_handle);
+	::DestroyWindow(m_hwnd);
 	::UnregisterClass(WINDOW_CLASS_NAME, ::GetModuleHandle(NULL));
 }
 
@@ -163,7 +163,7 @@ void Window::Update()
 
 	// Pump messages
 	MSG msg;
-	while (::PeekMessage(&msg, m_handle, 0, 0, PM_REMOVE))
+	while (::PeekMessage(&msg, m_hwnd, 0, 0, PM_REMOVE))
 	{
 		::TranslateMessage(&msg);
 		::DispatchMessage(&msg);
@@ -171,14 +171,14 @@ void Window::Update()
 
 	UpdateWindowSize(this);
 	UpdateWindowPosition(this);
-	m_bIsMinimized = ::IsIconic(m_handle);
+	m_bIsMinimized = ::IsIconic(m_hwnd);
 }
 
 void Window::SetTitle(const char* newTitle)
 {
 	wchar_t* unicodeTitle = AllocAndConvertUnicodeStr(newTitle);
 	FREE_AFTER_SCOPE(unicodeTitle);
-	::SetWindowText(m_handle, unicodeTitle);
+	::SetWindowText(m_hwnd, unicodeTitle);
 }
 
 void Window::AddMsgCallback(WindowMsgCallbackFunc cb, void* userArgs)

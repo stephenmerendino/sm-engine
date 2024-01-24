@@ -30,7 +30,7 @@ public:
 	IVec2 CalcCenterPosition();
 	IVec2 GetSize();
 
-	HWND m_handle;
+	HWND m_hwnd;
 	const char* m_name;
 	U32 m_width;
 	U32 m_height;

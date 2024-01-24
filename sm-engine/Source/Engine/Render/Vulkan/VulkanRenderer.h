@@ -1,10 +1,23 @@
 #pragma once
 
 #include "Engine/Render/Renderer.h"
+#include "Engine/Core/Types.h"
+#include "Engine/Render/Vulkan/VulkanDevice.h"
+#include "Engine/Render/Vulkan/VulkanInclude.h"
+#include "Engine/Render/Vulkan/VulkanInstance.h"
+#include "Engine/Render/Vulkan/VulkanSurface.h"
+#include <vector>
 
 class VulkanRenderer : public Renderer
 {
 public:
+	VulkanRenderer();
+
 	virtual void Init(Window* pWindow) final;
 	virtual void Shutdown() final;
+
+	Window* m_pWindow;
+	VulkanInstance m_instance;
+	VulkanSurface m_surface;
+	VulkanDevice m_device;
 };

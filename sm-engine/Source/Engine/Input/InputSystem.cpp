@@ -28,7 +28,7 @@ static bool ImGuiMsgHandler(UINT msg, WPARAM wParam, LPARAM lParam)
 		}
 	}
 
-	bool input_handled_by_imgui = ImGui_ImplWin32_WndProcHandler(g_inputSystem.m_pWindow->m_handle, msg, wParam, lParam);
+	bool input_handled_by_imgui = ImGui_ImplWin32_WndProcHandler(g_inputSystem.m_pWindow->m_hwnd, msg, wParam, lParam);
 	return input_handled_by_imgui || mouse_handled_by_imgui;
 }
 
