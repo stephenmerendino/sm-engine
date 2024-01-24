@@ -2,6 +2,7 @@
 
 #include "Engine/Render/Renderer.h"
 #include "Engine/Core/Types.h"
+#include "Engine/Render/Vulkan/VulkanCommandPool.h"
 #include "Engine/Render/Vulkan/VulkanDevice.h"
 #include "Engine/Render/Vulkan/VulkanInclude.h"
 #include "Engine/Render/Vulkan/VulkanInstance.h"
@@ -22,4 +23,5 @@ public:
 	VulkanSurface m_surface;
 	VulkanDevice m_device;
 	VulkanSwapchain m_swapchain;
+	VulkanCommandPool m_graphicsCommandPool;
 };
