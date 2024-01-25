@@ -18,9 +18,6 @@ public:
 	//std::vector<VkCommandBuffer> AllocateCommandBuffers(context_t& context, VkCommandBufferLevel level, u32 num_buffers);
 	//void FreeCommandBuffers(context_t& context, std::vector<VkCommandBuffer>& command_buffers);
 
-	//void command_buffer_begin(VkCommandBuffer command_buffer)
-	//void command_buffer_end(VkCommandBuffer command_buffer)
-
 	VkCommandBuffer BeginSingleTime();
 	void EndSingleTime(VkCommandBuffer commandBuffer);
 

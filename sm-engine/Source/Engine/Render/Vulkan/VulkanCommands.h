@@ -5,6 +5,9 @@
 
 namespace VulkanCommands
 {
+	void Begin(VkCommandBuffer commandBuffer);
+	void End(VkCommandBuffer commandBuffer);
+
 	void TransitionImageLayout(VkCommandBuffer commandBuffer, 
 							   VkImage image, 
 							   U32 num_mips, 
