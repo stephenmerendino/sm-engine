@@ -22,6 +22,6 @@ public:
 	VulkanInstance m_instance;
 	VulkanSurface m_surface;
 	VulkanDevice m_device;
-	VulkanSwapchain m_swapchain;
 	VulkanCommandPool m_graphicsCommandPool;
+	VulkanSwapchain m_swapchain;
 };
