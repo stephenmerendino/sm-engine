@@ -2,6 +2,7 @@
 
 #include "Engine/Render/Vulkan/VulkanInclude.h"
 #include "Engine/Render/Vulkan/VulkanDevice.h"
+#include "Engine/Render/Vulkan/VulkanCommandPool.h"
 #include "Engine/Core/Types.h"
 #include <vector>
 
@@ -19,7 +20,7 @@ class VulkanSwapchain
 public:
 	VulkanSwapchain();
 
-	void Init(Window* pWindow, const VkSurfaceKHR& surface, const VulkanDevice& device);
+	void Init(Window* pWindow, const VkSurfaceKHR& surface, const VulkanDevice& device, const VulkanCommandPool& graphicsCommandPool);
 	void Destroy(VkDevice device);
 
 	static VulkanSwapchainDetails QuerySwapchainSupport(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface);

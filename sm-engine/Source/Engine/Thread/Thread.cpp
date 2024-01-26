@@ -12,7 +12,7 @@ Thread::Thread()
 
 void Thread::Run(ThreadFunc func)
 {
-	SM_ASSERT(!m_bIsRunning)
+	SM_ASSERT(!m_bIsRunning);
 
 	m_func = func;
 

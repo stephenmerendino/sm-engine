@@ -18,6 +18,8 @@ public:
 	virtual void Init(Window* pWindow) final;
 	virtual void Shutdown() final;
 
+	void InitSwapchainImageLayouts(VulkanSwapchain& swapchain, VulkanCommandPool graphicsCommandPool);
+
 	Window* m_pWindow;
 	VulkanInstance m_instance;
 	VulkanSurface m_surface;

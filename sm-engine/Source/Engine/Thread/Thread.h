@@ -4,7 +4,7 @@
 #include "Engine/Platform/WindowsInclude.h"
 #include <thread>
 
-#undef Yield // Something in Windows #defines this and I want to use it as a member function
+#undef Yield
 
 typedef LPTHREAD_START_ROUTINE ThreadFunc;
 

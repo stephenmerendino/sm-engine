@@ -1,6 +1,7 @@
 #include "Engine/Render/Vulkan/VulkanSwapchain.h"
 #include "Engine/Core/Assert.h"
 #include "Engine/Math/MathUtils.h"
+#include "Engine/Render/Vulkan/VulkanCommands.h"
 #include "Engine/Render/Window.h"
 
 static VkSurfaceFormatKHR ChooseSurfaceFormat(std::vector<VkSurfaceFormatKHR> formats)
@@ -88,7 +89,7 @@ VulkanSwapchain::VulkanSwapchain()
 {
 }
 
-void VulkanSwapchain::Init(Window* pWindow, const VkSurfaceKHR& surface, const VulkanDevice& device)
+void VulkanSwapchain::Init(Window* pWindow, const VkSurfaceKHR& surface, const VulkanDevice& device, const VulkanCommandPool& graphicsCommandPool)
 {
 	SM_ASSERT(pWindow != nullptr);
 
@@ -152,6 +153,17 @@ void VulkanSwapchain::Init(Window* pWindow, const VkSurfaceKHR& surface, const V
 	m_format = surfaceFormat.format;
 	m_extent = imageExtent;
 	m_imageInFlightFences.resize(m_numImages);
+
+	// init image layouts to correct layout
+	VkCommandBuffer commandBuffer = graphicsCommandPool.BeginSingleTime();
+	for (I32 i = 0; i < (I32)m_numImages; i++)
+	{
+		VulkanCommands::TransitionImageLayout(commandBuffer, m_images[i], 1, 
+															 VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+															 VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+															 VK_ACCESS_NONE, VK_ACCESS_NONE);
+	}
+	graphicsCommandPool.EndSingleTime(commandBuffer);
 }
 
 void VulkanSwapchain::Destroy(VkDevice device)

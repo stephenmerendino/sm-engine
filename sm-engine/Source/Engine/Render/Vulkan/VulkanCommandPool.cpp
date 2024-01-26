@@ -34,7 +34,7 @@ void VulkanCommandPool::Destroy()
 	vkDestroyCommandPool(m_pDevice->m_deviceHandle, m_commandPoolHandle, nullptr);
 }
 
-VkCommandBuffer VulkanCommandPool::AllocateCommandBuffer(VkCommandBufferLevel level)
+VkCommandBuffer VulkanCommandPool::AllocateCommandBuffer(VkCommandBufferLevel level) const
 {
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -48,12 +48,12 @@ VkCommandBuffer VulkanCommandPool::AllocateCommandBuffer(VkCommandBufferLevel le
 	return commandBuffer;
 }
 
-void VulkanCommandPool::FreeCommandBuffer(VkCommandBuffer commandBuffer)
+void VulkanCommandPool::FreeCommandBuffer(VkCommandBuffer commandBuffer) const
 {
 	vkFreeCommandBuffers(m_pDevice->m_deviceHandle, m_commandPoolHandle, 1, &commandBuffer);
 }
 
-std::vector<VkCommandBuffer> VulkanCommandPool::AllocateCommandBuffers(VkCommandBufferLevel level, U32 numBuffers)
+std::vector<VkCommandBuffer> VulkanCommandPool::AllocateCommandBuffers(VkCommandBufferLevel level, U32 numBuffers) const
 {
 	std::vector<VkCommandBuffer> buffers;
 	buffers.resize(numBuffers);
@@ -68,19 +68,19 @@ std::vector<VkCommandBuffer> VulkanCommandPool::AllocateCommandBuffers(VkCommand
 	return buffers;
 }
 
-void VulkanCommandPool::FreeCommandBuffers(std::vector<VkCommandBuffer>& commandBuffers)
+void VulkanCommandPool::FreeCommandBuffers(std::vector<VkCommandBuffer>& commandBuffers) const
 {
 	vkFreeCommandBuffers(m_pDevice->m_deviceHandle, m_commandPoolHandle, (U32)commandBuffers.size(), commandBuffers.data());
 }
 
-VkCommandBuffer VulkanCommandPool::BeginSingleTime()
+VkCommandBuffer VulkanCommandPool::BeginSingleTime() const
 {
 	VkCommandBuffer commandBuffer = AllocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 	VulkanCommands::Begin(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	return commandBuffer;
 }
 
-void VulkanCommandPool::EndSingleTime(VkCommandBuffer commandBuffer)
+void VulkanCommandPool::EndSingleTime(VkCommandBuffer commandBuffer) const
 {
 	VulkanCommands::End(commandBuffer);
 

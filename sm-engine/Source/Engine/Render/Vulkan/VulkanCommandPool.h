@@ -14,14 +14,14 @@ public:
 	void Init(VulkanDevice* pDevice, VkQueueFlags requestedQueueFamilies, VkCommandPoolCreateFlags creatFlags);
 	void Destroy();
 
-	VkCommandBuffer AllocateCommandBuffer(VkCommandBufferLevel level);
-	void FreeCommandBuffer(VkCommandBuffer commandBuffer);
+	VkCommandBuffer AllocateCommandBuffer(VkCommandBufferLevel level) const;
+	void FreeCommandBuffer(VkCommandBuffer commandBuffer) const;
 
-	std::vector<VkCommandBuffer> AllocateCommandBuffers(VkCommandBufferLevel level, U32 numBuffers);
-	void FreeCommandBuffers(std::vector<VkCommandBuffer>& commandBuffers);
+	std::vector<VkCommandBuffer> AllocateCommandBuffers(VkCommandBufferLevel level, U32 numBuffers) const;
+	void FreeCommandBuffers(std::vector<VkCommandBuffer>& commandBuffers) const;
 
-	VkCommandBuffer BeginSingleTime();
-	void EndSingleTime(VkCommandBuffer commandBuffer);
+	VkCommandBuffer BeginSingleTime() const;
+	void EndSingleTime(VkCommandBuffer commandBuffer) const;
 
 	VulkanDevice* m_pDevice;
 	VkCommandPool m_commandPoolHandle;

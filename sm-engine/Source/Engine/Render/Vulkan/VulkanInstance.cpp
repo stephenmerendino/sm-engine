@@ -202,6 +202,9 @@ void VulkanInstance::Init()
 
 void VulkanInstance::Destroy()
 {
-	vkDestroyDebugUtilsMessengerEXT(m_instanceHandle, m_debugMessengerHandle, nullptr);
+	if (m_debugMessengerHandle != VK_NULL_HANDLE)
+	{
+		vkDestroyDebugUtilsMessengerEXT(m_instanceHandle, m_debugMessengerHandle, nullptr);
+	}
 	vkDestroyInstance(m_instanceHandle, nullptr);
 }

@@ -1,4 +1,5 @@
 #include "Engine/Render/Vulkan/VulkanRenderer.h"
+#include "Engine/Render/Vulkan/VulkanCommands.h"
 #include "Engine/Config.h"
 #include "Engine/Core/Assert.h"
 #include "Engine/Core/Debug.h"
@@ -20,7 +21,7 @@ void VulkanRenderer::Init(Window* pWindow)
 	m_surface.Init(m_pWindow, m_instance.m_instanceHandle);
 	m_device.Init(m_instance.m_instanceHandle, m_surface.m_surfaceHandle);
 	m_graphicsCommandPool.Init(&m_device, VK_QUEUE_GRAPHICS_BIT, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-	m_swapchain.Init(m_pWindow, m_surface.m_surfaceHandle, m_device);
+	m_swapchain.Init(m_pWindow, m_surface.m_surfaceHandle, m_device, m_graphicsCommandPool);
 }
 
 void VulkanRenderer::Shutdown()
