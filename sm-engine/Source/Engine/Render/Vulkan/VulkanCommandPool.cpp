@@ -33,24 +33,56 @@ void VulkanCommandPool::Destroy()
 	vkDestroyCommandPool(m_pDevice->m_deviceHandle, m_commandPoolHandle, nullptr);
 }
 
+VkCommandBuffer VulkanCommandPool::AllocateCommandBuffer(VkCommandBufferLevel level)
+{
+	VkCommandBufferAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.level = level;
+	allocInfo.commandPool = m_commandPoolHandle;
+	allocInfo.commandBufferCount = 1;
+
+	VkCommandBuffer commandBuffer;
+	vkAllocateCommandBuffers(m_pDevice->m_deviceHandle, &allocInfo, &commandBuffer);
+
+	return commandBuffer;
+}
+
+void VulkanCommandPool::FreeCommandBuffer(VkCommandBuffer commandBuffer)
+{
+	vkFreeCommandBuffers(m_pDevice->m_deviceHandle, m_commandPoolHandle, 1, &commandBuffer);
+}
+
+std::vector<VkCommandBuffer> VulkanCommandPool::AllocateCommandBuffers(VkCommandBufferLevel level, U32 numBuffers)
+{
+	std::vector<VkCommandBuffer> buffers;
+	buffers.resize(numBuffers);
+
+	VkCommandBufferAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.commandPool = m_commandPoolHandle;
+	allocInfo.level = level;
+	allocInfo.commandBufferCount = numBuffers;
+
+	SM_VULKAN_ASSERT(vkAllocateCommandBuffers(m_pDevice->m_deviceHandle, &allocInfo, buffers.data()));
+	return buffers;
+}
+
+void VulkanCommandPool::FreeCommandBuffers(std::vector<VkCommandBuffer>& commandBuffers)
+{
+	vkFreeCommandBuffers(m_pDevice->m_deviceHandle, m_commandPoolHandle, (U32)commandBuffers.size(), commandBuffers.data());
+}
+
 VkCommandBuffer VulkanCommandPool::BeginSingleTime()
 {
-	VkCommandBufferAllocateInfo alloc_info = {};
-	alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	alloc_info.commandPool = m_commandPoolHandle;
-	alloc_info.commandBufferCount = 1;
-
-	VkCommandBuffer command_buffer;
-	vkAllocateCommandBuffers(m_pDevice->m_deviceHandle, &alloc_info, &command_buffer);
+	VkCommandBuffer commandBuffer = AllocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
 	VkCommandBufferBeginInfo begin_info = {};
 	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	vkBeginCommandBuffer(command_buffer, &begin_info);
+	vkBeginCommandBuffer(commandBuffer, &begin_info);
 
-	return command_buffer;
+	return commandBuffer;
 }
 
 void VulkanCommandPool::EndSingleTime(VkCommandBuffer commandBuffer)

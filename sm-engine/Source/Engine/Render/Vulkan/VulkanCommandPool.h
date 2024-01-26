@@ -2,6 +2,7 @@
 
 #include "Engine/Render/Vulkan/VulkanInclude.h"
 #include "Engine/Render/Vulkan/VulkanDevice.h"
+#include <vector>
 
 class VulkanDevice;
 
@@ -13,10 +14,11 @@ public:
 	void Init(VulkanDevice* pDevice, VkQueueFlags requestedQueueFamilies, VkCommandPoolCreateFlags creatFlags);
 	void Destroy();
 
-	//VkCommandBuffer AllocateCommandBuffer(context_t& context, VkCommandBufferLevel level, u32 num_buffers);
-	//void FreeCommandBuffer(context_t& context, VkCommandBuffer commandBufferr);
-	//std::vector<VkCommandBuffer> AllocateCommandBuffers(context_t& context, VkCommandBufferLevel level, u32 num_buffers);
-	//void FreeCommandBuffers(context_t& context, std::vector<VkCommandBuffer>& command_buffers);
+	VkCommandBuffer AllocateCommandBuffer(VkCommandBufferLevel level);
+	void FreeCommandBuffer(VkCommandBuffer commandBuffer);
+
+	std::vector<VkCommandBuffer> AllocateCommandBuffers(VkCommandBufferLevel level, U32 numBuffers);
+	void FreeCommandBuffers(std::vector<VkCommandBuffer>& commandBuffers);
 
 	VkCommandBuffer BeginSingleTime();
 	void EndSingleTime(VkCommandBuffer commandBuffer);
