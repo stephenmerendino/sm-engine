@@ -1,4 +1,5 @@
 #include "Engine/Render/Vulkan/VulkanCommandPool.h"
+#include "Engine/Render/Vulkan/VulkanCommands.h"
 #include "Engine/Core/Assert.h"
 
 VulkanCommandPool::VulkanCommandPool()
@@ -75,27 +76,21 @@ void VulkanCommandPool::FreeCommandBuffers(std::vector<VkCommandBuffer>& command
 VkCommandBuffer VulkanCommandPool::BeginSingleTime()
 {
 	VkCommandBuffer commandBuffer = AllocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
-	VkCommandBufferBeginInfo begin_info = {};
-	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	vkBeginCommandBuffer(commandBuffer, &begin_info);
-
+	VulkanCommands::Begin(commandBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	return commandBuffer;
 }
 
 void VulkanCommandPool::EndSingleTime(VkCommandBuffer commandBuffer)
 {
-	vkEndCommandBuffer(commandBuffer);
+	VulkanCommands::End(commandBuffer);
 
-	VkSubmitInfo submit_info = {};
-	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &commandBuffer;
+	VkSubmitInfo submitInfo{};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
 
-	vkQueueSubmit(m_pDevice->m_graphicsQueue, 1, &submit_info, VK_NULL_HANDLE);
+	vkQueueSubmit(m_pDevice->m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
 	vkQueueWaitIdle(m_pDevice->m_graphicsQueue);
 
-	vkFreeCommandBuffers(m_pDevice->m_deviceHandle, m_commandPoolHandle, 1, &commandBuffer);
+	FreeCommandBuffer(commandBuffer);
 }

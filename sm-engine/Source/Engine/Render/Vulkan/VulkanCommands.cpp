@@ -2,6 +2,20 @@
 
 namespace VulkanCommands
 {
+	void Begin(VkCommandBuffer commandBuffer, VkCommandBufferUsageFlags usageFlags)
+	{
+		VkCommandBufferBeginInfo beginInfo{};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.pInheritanceInfo = nullptr;
+		beginInfo.flags = usageFlags;
+		vkBeginCommandBuffer(commandBuffer, &beginInfo);
+	}
+
+	void End(VkCommandBuffer commandBuffer)
+	{
+		vkEndCommandBuffer(commandBuffer);
+	}
+
 	void TransitionImageLayout(VkCommandBuffer commandBuffer, 
 							   VkImage image, 
 							   U32 num_mips, 

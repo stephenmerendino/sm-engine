@@ -39,6 +39,7 @@
     <ClCompile Include="Source\Engine\Render\DX12\DX12Renderer.cpp" />
     <ClCompile Include="Source\Engine\Render\Renderer.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanCommandPool.cpp" />
+    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanCommands.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanDevice.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanFunctions.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanInstance.cpp" />
@@ -86,6 +87,7 @@
     <ClInclude Include="Source\Engine\Render\DX12\DX12Renderer.h" />
     <ClInclude Include="Source\Engine\Render\Renderer.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanCommandPool.h" />
+    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanCommands.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanDevice.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanFunctions.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanInclude.h" />

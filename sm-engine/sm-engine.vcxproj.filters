@@ -174,6 +174,9 @@
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanCommandPool.cpp">
       <Filter>Source\Render\Vulkan</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanCommands.cpp">
+      <Filter>Source\Render\Vulkan</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Engine\Core\Assert.h">
@@ -459,6 +462,9 @@
       <Filter>Source\Render\Vulkan</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanCommandPool.h">
+      <Filter>Source\Render\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanCommands.h">
       <Filter>Source\Render\Vulkan</Filter>
     </ClInclude>
   </ItemGroup>

@@ -5,7 +5,7 @@
 
 namespace VulkanCommands
 {
-	void Begin(VkCommandBuffer commandBuffer);
+	void Begin(VkCommandBuffer commandBuffer, VkCommandBufferUsageFlags usageFlags);
 	void End(VkCommandBuffer commandBuffer);
 
 	void TransitionImageLayout(VkCommandBuffer commandBuffer, 
