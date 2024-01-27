@@ -8,6 +8,7 @@ class Vec3
 public:
 	inline Vec3();
 	inline Vec3(F32 inX, F32 inY, F32 inZ);
+	inline Vec3(const Vec2& inXY, F32 inZ);
 
 	inline Vec3 operator*(F32 s) const;
 	inline Vec3 operator/(F32 s) const;
@@ -56,6 +57,13 @@ inline Vec3::Vec3()
 inline Vec3::Vec3(F32 inX, F32 inY, F32 inZ)
 	:x(inX)
 	,y(inY)
+	,z(inZ)
+{
+}
+
+inline Vec3::Vec3(const Vec2& inXY, F32 inZ)
+	:x(inXY.x)
+	,y(inXY.y)
 	,z(inZ)
 {
 }

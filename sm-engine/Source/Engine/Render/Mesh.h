@@ -30,10 +30,10 @@ enum PrimitiveMeshType : U32
 class Mesh
 {
 public:
+	Mesh();
+
 	size_t CalcVertexBufferSize() const;
 	size_t CalcIndexBufferSize() const;
-
-	void InitFromObj(const char* objFilepath);
 
 	static void	LoadPrimitives();
 	static const Mesh* GetPrimitive(PrimitiveMeshType primtive);

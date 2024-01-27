@@ -356,16 +356,22 @@ inline void Mat44::Scale(F32 uniformScale)
 
 inline void Mat44::Scale(F32 iScale, F32 jScale, F32 kScale)
 {
-	i.xyz *= iScale;
-	j.xyz *= jScale;
-	k.xyz *= kScale;
+	i.x *= iScale;
+	j.x *= iScale;
+	k.x *= iScale;
+
+	i.y *= jScale;
+	j.y *= jScale;
+	k.y *= jScale;
+
+	i.z *= kScale;
+	j.z *= kScale;
+	k.z *= kScale;
 }
 
 inline void Mat44::Scale(const Vec3& ijkScale)
 {
-	i.xyz *= ijkScale.x;
-	j.xyz *= ijkScale.y;
-	k.xyz *= ijkScale.z;
+	Scale(ijkScale.x, ijkScale.y, ijkScale.z);
 }
 
 inline Mat44 Mat44::Scaled(F32 uniformScale) const
