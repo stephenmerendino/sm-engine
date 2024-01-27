@@ -38,7 +38,10 @@
     <ClCompile Include="Source\Engine\Math\Vec4.cpp" />
     <ClCompile Include="Source\Engine\Render\Camera.cpp" />
     <ClCompile Include="Source\Engine\Render\DX12\DX12Renderer.cpp" />
+    <ClCompile Include="Source\Engine\Render\Mesh.cpp" />
+    <ClCompile Include="Source\Engine\Render\MeshBuilder.cpp" />
     <ClCompile Include="Source\Engine\Render\Renderer.cpp" />
+    <ClCompile Include="Source\Engine\Render\Vertex.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanCommandPool.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanCommands.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanDevice.cpp" />
@@ -87,7 +90,10 @@
     <ClInclude Include="Source\Engine\Platform\WindowsUtils.h" />
     <ClInclude Include="Source\Engine\Render\Camera.h" />
     <ClInclude Include="Source\Engine\Render\DX12\DX12Renderer.h" />
+    <ClInclude Include="Source\Engine\Render\Mesh.h" />
+    <ClInclude Include="Source\Engine\Render\MeshBuilder.h" />
     <ClInclude Include="Source\Engine\Render\Renderer.h" />
+    <ClInclude Include="Source\Engine\Render\Vertex.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanCommandPool.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanCommands.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanDevice.h" />

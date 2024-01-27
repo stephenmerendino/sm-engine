@@ -9,6 +9,11 @@ ColorF32::ColorF32(F32 inR, F32 inG, F32 inB, F32 inA)
 {
 }
 
+Vec4 ColorF32::ToVec4() const
+{
+	return Vec4(r, g, b, a);
+}
+
 const ColorF32 ColorF32::WHITE	= { 1.0f, 1.0f, 1.0f, 1.0f };
 const ColorF32 ColorF32::RED	= { 1.0f, 0.0f, 0.0f, 1.0f };
 const ColorF32 ColorF32::GREEN	= { 0.0f, 1.0f, 0.0f, 1.0f };

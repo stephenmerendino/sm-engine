@@ -1,11 +1,14 @@
 #pragma once
 
 #include "Engine/Core/Types.h"
+#include "Engine/Math/Vec4.h"
 
 class ColorF32
 {
 public:
 	ColorF32(F32 inR, F32 inG, F32 inB, F32 inA);
+
+	Vec4 ToVec4() const;
 
 	F32 r;
 	F32 g;

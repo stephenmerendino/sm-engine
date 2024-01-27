@@ -9,6 +9,7 @@
 class VertexPCT
 {
 public:
+	VertexPCT() = default;
 	VertexPCT(const Vec3& pos, const Vec4& color, const Vec2& uv);
 	
 	Vec3 m_pos;

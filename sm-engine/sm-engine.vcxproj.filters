@@ -180,6 +180,15 @@
     <ClCompile Include="Source\Engine\Render\Camera.cpp">
       <Filter>Source\Render</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Render\Vertex.cpp">
+      <Filter>Source\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Render\Mesh.cpp">
+      <Filter>Source\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Render\MeshBuilder.cpp">
+      <Filter>Source\Render</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Engine\Core\Assert.h">
@@ -471,6 +480,15 @@
       <Filter>Source\Render\Vulkan</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Camera.h">
+      <Filter>Source\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Vertex.h">
+      <Filter>Source\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Mesh.h">
+      <Filter>Source\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\MeshBuilder.h">
       <Filter>Source\Render</Filter>
     </ClInclude>
   </ItemGroup>
