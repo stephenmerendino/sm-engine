@@ -25,6 +25,8 @@ struct VulkanSubpass
 class VulkanRenderPass
 {
 public:
+	VulkanRenderPass();
+
 	void PreInitAddAttachment(VkFormat format, VkSampleCountFlagBits sampleCount,
 							  VkImageLayout initialLayout, VkImageLayout finalLayout,
 							  VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp,
@@ -38,10 +40,12 @@ public:
 									 VkAccessFlags srcAccess,
 									 VkAccessFlags dstAccess,
 									 VkDependencyFlags dependencyFlags = 0);
-	void Init();
+	void Init(VkDevice device);
 	void Destroy();
 
 	std::vector<VkAttachmentDescription2> m_attachments;
 	std::vector<VulkanSubpass> m_subpasses;
 	std::vector<VkSubpassDependency2> m_subpassDependencies;
+	VkDevice m_deviceHandle;
+	VkRenderPass m_renderPassHandle;
 };

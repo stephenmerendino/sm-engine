@@ -1,6 +1,12 @@
 #include "Engine/Render/Vulkan/VulkanRenderPass.h"
 #include "Engine/Core/Assert.h"
 
+VulkanRenderPass::VulkanRenderPass()
+	:m_deviceHandle(VK_NULL_HANDLE)
+	,m_renderPassHandle(VK_NULL_HANDLE)
+{
+}
+
 void VulkanRenderPass::PreInitAddAttachment(VkFormat format, VkSampleCountFlagBits sampleCount,
 											VkImageLayout initialLayout, VkImageLayout finalLayout,
 											VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp,
@@ -76,57 +82,51 @@ void VulkanRenderPass::PreInitAddSubpassDependency(U32 srcSubpass,
 	m_subpassDependencies.push_back(subpassDependency);
 }
 
-void VulkanRenderPass::Init()
+void VulkanRenderPass::Init(VkDevice device)
 {
-	//render_pass_t render_pass;
+	m_deviceHandle = device;
 
-	//std::vector<VkSubpassDescription2> subpass_descriptions;
-	//subpass_descriptions.resize(subpasses.subpasses.size());
+	std::vector<VkSubpassDescription2> subpassDescriptions;
+	subpassDescriptions.resize(m_subpasses.size());
 
-	//for (i32 i = 0; i < subpasses.subpasses.size(); i++)
-	//{
-	//	subpass_t& subpass = subpasses.subpasses[i];
+	for (I32 i = 0; i < m_subpasses.size(); i++)
+	{
+		VulkanSubpass& subpass = m_subpasses[i];
 
-	//	VkSubpassDescription2 subpass_desc = {};
-	//	subpass_desc.sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2;
-	//	subpass_desc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	//	subpass_desc.colorAttachmentCount = (u32)subpass.color_attach_refs.size();
-	//	subpass_desc.pColorAttachments = subpass.color_attach_refs.data();
-	//	subpass_desc.pResolveAttachments = subpass.color_resolve_attach_refs.data();
-	//	subpass_desc.pDepthStencilAttachment = subpass.has_depth_attach ? &subpass.depth_attach_ref : VK_NULL_HANDLE;
+		VkSubpassDescription2 subpassDesc = {};
+		subpassDesc.sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2;
+		subpassDesc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpassDesc.colorAttachmentCount = (U32)subpass.m_colorAttachRefs.size();
+		subpassDesc.pColorAttachments = subpass.m_colorAttachRefs.data();
+		subpassDesc.pResolveAttachments = subpass.m_colorResolveAttachRefs.data();
+		subpassDesc.pDepthStencilAttachment = subpass.m_bHasDepthAttach ? &subpass.m_depthAttachRef : VK_NULL_HANDLE;
 
-	//	// resolve multisample depth if its needed using pNext w/ struct 
-	//	VkSubpassDescriptionDepthStencilResolve ds_resolve = {};
-	//	if (subpass.resolve_depth)
-	//	{
-	//		ds_resolve.sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE;
-	//		ds_resolve.depthResolveMode = VK_RESOLVE_MODE_MAX_BIT;
-	//		ds_resolve.pDepthStencilResolveAttachment = &subpass.depth_resolve_attach_ref;
-	//		subpass_desc.pNext = &ds_resolve;
-	//	}
+		// resolve multisample depth if its needed using pNext w/ struct 
+		VkSubpassDescriptionDepthStencilResolve depthStencilResolve = {};
+		if (subpass.m_bHasDepthResolveAttach)
+		{
+			depthStencilResolve.sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE;
+			depthStencilResolve.depthResolveMode = VK_RESOLVE_MODE_MAX_BIT;
+			depthStencilResolve.pDepthStencilResolveAttachment = &subpass.m_depthResolveAttachRef;
+			subpassDesc.pNext = &depthStencilResolve;
+		}
 
-	//	subpass_descriptions[i] = subpass_desc;
-	//}
+		subpassDescriptions[i] = subpassDesc;
+	}
 
-	//VkRenderPassCreateInfo2 create_info = {};
-	//create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2;
-	//create_info.attachmentCount = (u32)attachments.attachments.size();
-	//create_info.pAttachments = attachments.attachments.data();
-	//create_info.subpassCount = (u32)subpass_descriptions.size();
-	//create_info.pSubpasses = subpass_descriptions.data();
-	//create_info.dependencyCount = (u32)subpass_dependencies.dependencies.size();
-	//create_info.pDependencies = subpass_dependencies.dependencies.data();
+	VkRenderPassCreateInfo2 createInfo = {};
+	createInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2;
+	createInfo.attachmentCount = (U32)m_attachments.size();
+	createInfo.pAttachments = m_attachments.data();
+	createInfo.subpassCount = (U32)subpassDescriptions.size();
+	createInfo.pSubpasses = subpassDescriptions.data();
+	createInfo.dependencyCount = (U32)m_subpassDependencies.size();
+	createInfo.pDependencies = m_subpassDependencies.data();
 
-	//SM_VULKAN_ASSERT(vkCreateRenderPass2(context.device.device_handle, &create_info, nullptr, &render_pass.handle));
-
-	//render_pass.attachments = attachments;
-	//render_pass.subpasses = subpasses;
-	//render_pass.subpass_dependencies = subpass_dependencies;
-
-	//return render_pass;
+	SM_VULKAN_ASSERT(vkCreateRenderPass2(m_deviceHandle, &createInfo, nullptr, &m_renderPassHandle));
 }
 
 void VulkanRenderPass::Destroy()
 {
-	//vkDestroyRenderPass(context.device.device_handle, render_pass.handle, nullptr);
+	vkDestroyRenderPass(m_deviceHandle, m_renderPassHandle, nullptr);
 }
