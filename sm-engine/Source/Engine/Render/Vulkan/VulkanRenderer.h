@@ -10,6 +10,8 @@
 #include "Engine/Render/Vulkan/VulkanSwapchain.h"
 #include <vector>
 
+class Camera;
+
 class VulkanRenderer : public Renderer
 {
 public:
@@ -17,6 +19,7 @@ public:
 
 	virtual void Init(Window* pWindow) final;
 	virtual void Shutdown() final;
+	virtual void SetCamera(const Camera* pCamera) final;
 
 	void InitSwapchainImageLayouts(VulkanSwapchain& swapchain, VulkanCommandPool graphicsCommandPool);
 
@@ -26,4 +29,6 @@ public:
 	VulkanDevice m_device;
 	VulkanCommandPool m_graphicsCommandPool;
 	VulkanSwapchain m_swapchain;
+
+	const Camera* m_pMainCamera;
 };

@@ -27,7 +27,7 @@ public:
 	void AddQuad3d(const Vec3& centerPos, const Vec3& right, const Vec3& up, F32 halfWidth, F32 halfHeight, U32 resolution = 1);
 	void AddQuad3d(const Vec3& topLeft, const Vec3& topRight, const Vec3& bottomRight, const Vec3& bottomLeft);
 	void AddAxesLines3d(const Vec3& origin, const Vec3& i, const Vec3& j, const Vec3& k);
-	void AddUvSphere(Vec3& origin, F32 radius, U32 resolution = 32);
+	void AddUvSphere(const Vec3& origin, F32 radius, U32 resolution = 32);
 	void AddCube(const Vec3& center, F32 radius, U32 resolution = 1);
 	void AddFrustum(const Mat44& viewProjection);
 	void AddCylinder(const Vec3& baseCenter, const Vec3& dir, F32 height, F32 baseRadius, U32 resolution);

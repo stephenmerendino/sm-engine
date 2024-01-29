@@ -1,11 +1,14 @@
 #include "Engine/Render/MeshBuilder.h"
 #include "Engine/Core/Color.h"
+
+#define TINYOBJLOADER_IMPLEMENTATION
 #include "Engine/ThirdParty/tinyobjloader/tiny_obj_loader.h"
 
 #define CHECK_WORKING_MESH() SM_ASSERT_MSG(m_workingMesh != nullptr, "Begin() hasn't been called on MeshBuilder to start building a new mesh\n")
 
 MeshBuilder::MeshBuilder()
 	:m_workingMesh(nullptr)
+	,m_workingTopology(PrimitiveTopology::kTriangleList)
 {
 }
 
@@ -27,7 +30,7 @@ void MeshBuilder::SetTopology(PrimitiveTopology topology)
 
 U32 MeshBuilder::AddVertex(const Vec3& pos, const ColorF32& color, const Vec2& uv)
 {
-	AddVertex(VertexPCT(pos, color.ToVec4(), uv));
+	return AddVertex(VertexPCT(pos, color.ToVec4(), uv));
 }
 
 U32 MeshBuilder::AddVertex(const VertexPCT& vertex)
@@ -139,7 +142,7 @@ void MeshBuilder::AddAxesLines3d(const Vec3& origin, const Vec3& i, const Vec3& 
 	AddIndex(AddVertex(k, blue, uv));
 }
 
-void MeshBuilder::AddUvSphere(Vec3& origin, F32 radius, U32 resolution)
+void MeshBuilder::AddUvSphere(const Vec3& origin, F32 radius, U32 resolution)
 {
 	F32 uDeltaDeg = 360.0f / (F32)resolution;
 	F32 vDeltaDeg = 180.0f / (F32)resolution;
