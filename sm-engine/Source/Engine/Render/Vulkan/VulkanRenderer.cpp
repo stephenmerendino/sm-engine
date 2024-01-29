@@ -26,6 +26,14 @@ void VulkanRenderer::Init(Window* pWindow)
 	m_swapchain.Init(m_pWindow, m_surface.m_surfaceHandle, m_device, m_graphicsCommandPool);
 
 	Mesh::LoadPrimitives();
+
+	VulkanRenderPass renderPass;
+	renderPass.PreInitAddAttachment(....);
+	renderPass.PreInitAddAttachment(....);
+	renderPass.PreInitAddSubpassAttachmentReference(....);
+	renderPass.PreInitAddSubpassAttachmentReference(....);
+	renderPass.PreInitAddSubpassDependency(....);
+	renderPass.Init();
 }
 
 void VulkanRenderer::Shutdown()

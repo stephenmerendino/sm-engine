@@ -189,6 +189,9 @@
     <ClCompile Include="Source\Engine\Render\MeshBuilder.cpp">
       <Filter>Source\Render</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanRenderPass.cpp">
+      <Filter>Source\Render\Vulkan</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Engine\Core\Assert.h">
@@ -490,6 +493,9 @@
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\MeshBuilder.h">
       <Filter>Source\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanRenderPass.h">
+      <Filter>Source\Render\Vulkan</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
