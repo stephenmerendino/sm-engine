@@ -2,6 +2,7 @@
 
 #include "Engine/Render/Vulkan/VulkanInclude.h"
 #include "Engine/Render/Vulkan/VulkanQueueFamilies.h"
+#include <vector>
 
 class VulkanDevice
 {
@@ -11,8 +12,13 @@ public:
 	void Init(VkInstance instance, VkSurfaceKHR surface);
 	void Destroy();
 
+	VkFormat FindSupportedDepthFormat() const;
+	VkFormat FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
+	U32 FindSupportedMemoryType(U32 typeFilter, VkMemoryPropertyFlags properties) const;
+
 	VkPhysicalDevice m_physicalDeviceHandle;
 	VkPhysicalDeviceProperties m_physicalDeviceProps;
+	VkPhysicalDeviceMemoryProperties m_physicalDeviceMemoryProps;
 	VkDevice m_deviceHandle;
 
 	VulkanQueueFamilies m_queueFamilies;
@@ -20,5 +26,4 @@ public:
 	VkQueue m_presentQueue;
 
 	VkSampleCountFlags m_maxNumMsaaSamples;
-	VkFormat m_depthFormat;
 };

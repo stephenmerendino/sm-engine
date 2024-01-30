@@ -1,4 +1,5 @@
 #include "Engine/Render/Vulkan/VulkanDevice.h"
+#include "Engine/Render/Vulkan/VulkanFormats.h"
 #include "Engine/Render/Vulkan/VulkanSwapchain.h"
 #include "Engine/Config.h"
 #include "Engine/Core/Assert.h"
@@ -77,51 +78,14 @@ static bool IsPhysicalDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surfa
 	return true;
 }
 
-static bool FormatHasStencilComponent(VkFormat format)
-{
-	return (format == VK_FORMAT_D32_SFLOAT_S8_UINT) || 
-		   (format == VK_FORMAT_D24_UNORM_S8_UINT);
-}
-
-static VkFormat FindSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
-{
-	for (VkFormat format : candidates)
-	{
-		VkFormatProperties props;
-		vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
-
-		if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
-		{
-			return format;
-		}
-		else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
-		{
-			return format;
-		}
-	}
-
-	return VK_FORMAT_UNDEFINED;
-}
-
-static VkFormat FindDepthFormat(VkPhysicalDevice physicalDevice)
-{
-	VkFormat depthFormat = FindSupportedFormat(physicalDevice,
-												{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
-												VK_IMAGE_TILING_OPTIMAL,
-												VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
-
-	SM_ASSERT(depthFormat != VK_FORMAT_UNDEFINED);
-	return depthFormat;
-}
-
 VulkanDevice::VulkanDevice()
 	:m_physicalDeviceHandle(VK_NULL_HANDLE)
 	,m_physicalDeviceProps({})
+	,m_physicalDeviceMemoryProps({})
 	,m_deviceHandle(VK_NULL_HANDLE)
 	,m_graphicsQueue(VK_NULL_HANDLE)
 	,m_presentQueue(VK_NULL_HANDLE)
 	,m_maxNumMsaaSamples(VK_SAMPLE_COUNT_1_BIT)
-	,m_depthFormat(VK_FORMAT_UNDEFINED)
 {
 }
 
@@ -130,6 +94,7 @@ void VulkanDevice::Init(VkInstance instance, VkSurfaceKHR surface)
 	// physical device
 	VkPhysicalDevice selecetedPhysicalDevice = VK_NULL_HANDLE;
 	VkPhysicalDeviceProperties selectedPhysicalDeviceProps = {};
+	VkPhysicalDeviceMemoryProperties selectedPhysicalDeviceMemoryProps = {};
 	VulkanQueueFamilies queueFamilies;
 	VkSampleCountFlagBits maxNumMsaaSamples = VK_SAMPLE_COUNT_1_BIT;
 
@@ -163,6 +128,7 @@ void VulkanDevice::Init(VkInstance instance, VkSurfaceKHR surface)
 			{
 				selecetedPhysicalDevice = device;
 				vkGetPhysicalDeviceProperties(selecetedPhysicalDevice, &selectedPhysicalDeviceProps);
+				vkGetPhysicalDeviceMemoryProperties(selecetedPhysicalDevice, &selectedPhysicalDeviceMemoryProps);
 				queueFamilies.Init(selecetedPhysicalDevice, surface);
 				maxNumMsaaSamples = GetMaxMsaaSampleCount(selectedPhysicalDeviceProps);
 				break;
@@ -228,16 +194,62 @@ void VulkanDevice::Init(VkInstance instance, VkSurfaceKHR surface)
 	}
 
 	m_physicalDeviceHandle = selecetedPhysicalDevice;
+	m_physicalDeviceProps = selectedPhysicalDeviceProps;
+	m_physicalDeviceMemoryProps = selectedPhysicalDeviceMemoryProps;
 	m_deviceHandle = logicalDevice;
 	m_graphicsQueue = graphicsQueue;
 	m_presentQueue = presentQueue;
 	m_maxNumMsaaSamples = maxNumMsaaSamples;
 	m_queueFamilies = queueFamilies;
-	m_physicalDeviceProps = selectedPhysicalDeviceProps;
-	m_depthFormat = FindDepthFormat(m_physicalDeviceHandle);
 }
 
 void VulkanDevice::Destroy()
 {
 	vkDestroyDevice(m_deviceHandle, nullptr);
+}
+
+VkFormat VulkanDevice::FindSupportedDepthFormat() const
+{
+	VkFormat depthFormat = FindSupportedFormat({ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
+												VK_IMAGE_TILING_OPTIMAL,
+												VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+
+	SM_ASSERT(depthFormat != VK_FORMAT_UNDEFINED);
+	return depthFormat;
+}
+
+VkFormat VulkanDevice::FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const
+{
+	for (VkFormat format : candidates)
+	{
+		VkFormatProperties props;
+		vkGetPhysicalDeviceFormatProperties(m_physicalDeviceHandle, format, &props);
+
+		if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
+		{
+			return format;
+		}
+		else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
+		{
+			return format;
+		}
+	}
+
+	return VK_FORMAT_UNDEFINED;
+}
+
+U32 VulkanDevice::FindSupportedMemoryType(U32 typeFilter, VkMemoryPropertyFlags properties) const
+{
+	U32 foundMemType = UINT_MAX;
+	for (U32 i = 0; i < m_physicalDeviceMemoryProps.memoryTypeCount; i++)
+	{
+		if (typeFilter & (1 << i) && (m_physicalDeviceMemoryProps.memoryTypes[i].propertyFlags & properties) == properties)
+		{
+			foundMemType = i;
+			break;
+		}
+	}
+
+	SM_ASSERT(foundMemType != UINT_MAX);
+	return foundMemType;
 }

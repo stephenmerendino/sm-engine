@@ -7,6 +7,12 @@
 
 #include <vector>
 
+enum class VertexType : U8
+{
+	kPCT,
+	kNumTypes
+};
+
 class VertexPCT
 {
 public:
