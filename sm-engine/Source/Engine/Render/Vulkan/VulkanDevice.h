@@ -15,6 +15,7 @@ public:
 	VkFormat FindSupportedDepthFormat() const;
 	VkFormat FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
 	U32 FindSupportedMemoryType(U32 typeFilter, VkMemoryPropertyFlags properties) const;
+	VkFormatProperties QueryFormatProperties(VkFormat format) const;
 
 	VkPhysicalDevice m_physicalDeviceHandle;
 	VkPhysicalDeviceProperties m_physicalDeviceProps;

@@ -253,3 +253,10 @@ U32 VulkanDevice::FindSupportedMemoryType(U32 typeFilter, VkMemoryPropertyFlags 
 	SM_ASSERT(foundMemType != UINT_MAX);
 	return foundMemType;
 }
+
+VkFormatProperties VulkanDevice::QueryFormatProperties(VkFormat format) const
+{
+	VkFormatProperties formatProps;
+	vkGetPhysicalDeviceFormatProperties(m_physicalDeviceHandle, format, &formatProps);
+	return formatProps;
+}
