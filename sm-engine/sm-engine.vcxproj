@@ -45,6 +45,7 @@
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanBuffer.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanCommandPool.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanCommands.cpp" />
+    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanDescriptorSets.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanDevice.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanFormats.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanFunctions.cpp" />
@@ -102,6 +103,7 @@
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanBuffer.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanCommandPool.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanCommands.h" />
+    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanDescriptorSets.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanDevice.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanFormats.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanFunctions.h" />
