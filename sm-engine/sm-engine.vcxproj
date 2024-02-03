@@ -51,6 +51,7 @@
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanFramebuffer.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanFunctions.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanInstance.cpp" />
+    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanPipeline.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanQueueFamilies.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanRenderer.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanRenderPass.cpp" />
@@ -112,6 +113,7 @@
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanFunctions.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanInclude.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanInstance.h" />
+    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanPipeline.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanQueueFamilies.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanRenderer.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanRenderPass.h" />
