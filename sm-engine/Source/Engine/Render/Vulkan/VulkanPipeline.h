@@ -5,6 +5,7 @@
 #include <vector>
 
 class VulkanDevice;
+class Mesh;
 
 class VulkanShaderStages
 {
@@ -38,28 +39,31 @@ public:
 	VkPipelineLayout m_layoutHandle;
 };
 
-//class VulkanMeshPipelineInputInfo
-//{
-//public:
-//    // input assembly state
-//    VkPipelineInputAssemblyStateCreateInfo m_inputAssemblyInfo;
-//
-//    // vertex input state
-//    VkPipelineVertexInputStateCreateInfo m_vertexInputInfo;
-//    std::vector<VkVertexInputBindingDescription> m_inputBindingDescs;
-//    std::vector<VkVertexInputAttributeDescription> m_inputAttrDescs;
-//};
-//
+class VulkanMeshPipelineInputInfo
+{
+public:
+    void Init(const Mesh* pMesh, bool primitiveRestartEnabled);
+
+    // input assembly state
+    VkPipelineInputAssemblyStateCreateInfo m_inputAssemblyInfo;
+
+    // vertex input state
+    VkPipelineVertexInputStateCreateInfo m_vertexInputInfo;
+    std::vector<VkVertexInputBindingDescription> m_vertexInputBindingDescs;
+    std::vector<VkVertexInputAttributeDescription> m_vertexInputAttrDescs;
+};
+
 //class VulkanPipelineState
 //{
 //public:
 //    VulkanPipelineState();
 //
-//    void SetRasterState();
-//    void SetViewportState();
-//    void SetMultisampleState();
-//    void SetDepthStencilState();
-//    void SetColorBlendState();
+//    void InitRasterState();
+//    void InitViewportState();
+//    void InitMultisampleState();
+//    void InitDepthStencilState();
+//    void PreInitAddColorBlendAttachment();
+//    void InitColorBlendState();
 //
 //    VkPipelineRasterizationStateCreateInfo m_rasterState;
 //
@@ -74,7 +78,7 @@ public:
 //    VkPipelineColorBlendStateCreateInfo m_colorBlendState;
 //    std::vector<VkPipelineColorBlendAttachmentState> m_colorBlendAttachments;
 //};
-//
+
 //class VulkanPipeline
 //{
 //public:
@@ -88,7 +92,7 @@ public:
 //
 //	VkPipeline m_pipelineHandle;
 //};
-//
+
 //class VulkanPipelineFactory
 //{
 //public:

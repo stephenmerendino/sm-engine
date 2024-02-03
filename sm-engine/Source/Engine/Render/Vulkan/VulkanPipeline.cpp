@@ -85,3 +85,8 @@ void VulkanPipelineLayout::Destroy()
 {
     vkDestroyPipelineLayout(m_pDevice->m_deviceHandle, m_layoutHandle, nullptr);
 }
+
+void VulkanMeshPipelineInputInfo::Init(const Mesh* pMesh, bool primitiveRestartEnabled)
+{
+    SM_ASSERT(pMesh != nullptr);
+}
