@@ -90,10 +90,6 @@ public:
 //        const VulkanPipelineLayout& layout,
 //        const VulkanRenderPass& renderPass);
 //
+//  VkPipelineLayout m_pipelineLayout;
 //	VkPipeline m_pipelineHandle;
-//};
-
-//class VulkanPipelineFactory
-//{
-//public:
 //};
