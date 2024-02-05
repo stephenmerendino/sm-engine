@@ -42,6 +42,8 @@ public:
 class VulkanMeshPipelineInputInfo
 {
 public:
+    VulkanMeshPipelineInputInfo();
+
     void Init(const Mesh* pMesh, bool primitiveRestartEnabled);
 
     // input assembly state
@@ -53,31 +55,53 @@ public:
     std::vector<VkVertexInputAttributeDescription> m_vertexInputAttrDescs;
 };
 
-//class VulkanPipelineState
-//{
-//public:
-//    VulkanPipelineState();
-//
-//    void InitRasterState();
-//    void InitViewportState();
-//    void InitMultisampleState();
-//    void InitDepthStencilState();
-//    void PreInitAddColorBlendAttachment();
-//    void InitColorBlendState();
-//
-//    VkPipelineRasterizationStateCreateInfo m_rasterState;
-//
-//    VkPipelineViewportStateCreateInfo m_viewportState;
-//    VkViewport m_viewport;
-//    VkRect2D m_scissor;
-//
-//    VkPipelineMultisampleStateCreateInfo m_multisampleState;
-//
-//    VkPipelineDepthStencilStateCreateInfo m_depthStencilState;
-//
-//    VkPipelineColorBlendStateCreateInfo m_colorBlendState;
-//    std::vector<VkPipelineColorBlendAttachmentState> m_colorBlendAttachments;
-//};
+class VulkanPipelineState
+{
+public:
+    VulkanPipelineState();
+
+    void PreInitAddColorBlendAttachment();
+
+	void InitRasterState(VkPolygonMode polygonMode,
+						 VkFrontFace frontFace,
+						 VkCullModeFlags cullMode,
+						 bool rasterDiscardEnable,
+						 bool depthClampEnable,
+						 bool depthBiasEnable,
+						 F32 depthBiasConstant,
+						 F32 depthBiasClamp,
+						 F32 depthBiasSlope,
+						 F32 lineWidth);
+	void InitViewportState(F32 x, F32 y,
+						   F32 w, F32 h,
+						   F32 minDepth, F32 maxDepth,
+						   I32 scissorOffsetX, I32 scissorOffsetY,
+						   U32 scissorExtentX, U32 scissorExtentY);
+    void InitMultisampleState();
+    void InitDepthStencilState();
+    void InitColorBlendState();
+    
+    bool IsFullyInitialized() const;
+
+    bool m_bDidInitRasterState : 1;
+    bool m_bDidInitViewportState : 1;
+    bool m_bDidInitMultisampleState : 1;
+    bool m_bDepthStencilState : 1;
+    bool m_bDidSampleColorBlendState : 1;
+
+    VkPipelineRasterizationStateCreateInfo m_rasterState = {};
+
+    VkPipelineViewportStateCreateInfo m_viewportState = {};
+    VkViewport m_viewport = {};
+    VkRect2D m_scissor = {};
+
+    VkPipelineMultisampleStateCreateInfo m_multisampleState = {};
+
+    VkPipelineDepthStencilStateCreateInfo m_depthStencilState = {};
+
+    VkPipelineColorBlendStateCreateInfo m_colorBlendState = {};
+    std::vector<VkPipelineColorBlendAttachmentState> m_colorBlendAttachments;
+};
 
 //class VulkanPipeline
 //{

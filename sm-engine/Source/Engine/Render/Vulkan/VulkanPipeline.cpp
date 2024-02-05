@@ -88,11 +88,16 @@ void VulkanPipelineLayout::Destroy()
     vkDestroyPipelineLayout(m_pDevice->m_deviceHandle, m_layoutHandle, nullptr);
 }
 
+VulkanMeshPipelineInputInfo::VulkanMeshPipelineInputInfo()
+    :m_inputAssemblyInfo({})
+    ,m_vertexInputInfo({})
+{
+}
+
 void VulkanMeshPipelineInputInfo::Init(const Mesh* pMesh, bool primitiveRestartEnabled)
 {
     SM_ASSERT(pMesh != nullptr);
 
-    m_inputAssemblyInfo = {};
 	m_inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     switch (pMesh->m_topology)
     {
@@ -105,5 +110,81 @@ void VulkanMeshPipelineInputInfo::Init(const Mesh* pMesh, bool primitiveRestartE
     m_vertexInputBindingDescs = VulkanFormats::GetVertexInputBindingDescs(VertexType::kPCT);
     m_vertexInputAttrDescs = VulkanFormats::GetVertexInputAttrDescs(VertexType::kPCT);
 
-    VkPipelineVertexInputStateCreateInfo m_vertexInputInfo;
+	m_vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	m_vertexInputInfo.vertexBindingDescriptionCount = (U32)m_vertexInputBindingDescs.size();
+	m_vertexInputInfo.pVertexBindingDescriptions = m_vertexInputBindingDescs.data();
+	m_vertexInputInfo.vertexAttributeDescriptionCount = (U32)m_vertexInputAttrDescs.size();
+	m_vertexInputInfo.pVertexAttributeDescriptions = m_vertexInputAttrDescs.data();
+}
+
+VulkanPipelineState::VulkanPipelineState()
+    :m_bDidInitRasterState(false)
+    ,m_bDidInitViewportState(false)
+    ,m_bDidInitMultisampleState(false)
+    ,m_bDepthStencilState(false)
+    ,m_bDidSampleColorBlendState(false)
+{
+}
+
+void VulkanPipelineState::PreInitAddColorBlendAttachment();
+
+void VulkanPipelineState::InitRasterState(VkPolygonMode polygonMode,
+                                          VkFrontFace frontFace,
+                                          VkCullModeFlags cullMode,
+                                          bool rasterDiscardEnable,
+                                          bool depthClampEnable,
+                                          bool depthBiasEnable,
+                                          F32 depthBiasConstant,
+                                          F32 depthBiasClamp,
+                                          F32 depthBiasSlope,
+                                          F32 lineWidth)
+{
+	m_rasterState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	m_rasterState.depthClampEnable = depthClampEnable;
+	m_rasterState.rasterizerDiscardEnable = rasterDiscardEnable;
+	m_rasterState.polygonMode = polygonMode;
+	m_rasterState.lineWidth = lineWidth;
+	m_rasterState.cullMode = cullMode;
+	m_rasterState.frontFace = frontFace;
+	m_rasterState.depthBiasEnable = depthBiasEnable;
+	m_rasterState.depthBiasConstantFactor = depthBiasConstant;
+	m_rasterState.depthBiasClamp = depthBiasClamp;
+	m_rasterState.depthBiasSlopeFactor = depthBiasSlope;
+
+    m_bDidInitRasterState = true;
+}
+
+void VulkanPipelineState::InitViewportState(F32 x, F32 y,
+                                            F32 w, F32 h,
+                                            F32 minDepth, F32 maxDepth,
+                                            I32 scissorOffsetX, I32 scissorOffsetY,
+                                            U32 scissorExtentX, U32 scissorExtentY)
+{
+	m_viewport.x = x;
+	m_viewport.y = y;
+	m_viewport.width = w;
+	m_viewport.height = h;
+	m_viewport.minDepth = minDepth;
+	m_viewport.maxDepth = maxDepth;
+	m_scissor.offset = { scissorOffsetX, scissorOffsetY };
+	m_scissor.extent = { scissorExtentX, scissorExtentY };
+
+	m_viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	m_viewportState.pViewports = &m_viewport;
+	m_viewportState.viewportCount = 1;
+	m_viewportState.pScissors = &m_scissor;
+	m_viewportState.scissorCount = 1;
+}
+
+void VulkanPipelineState::InitMultisampleState();
+void VulkanPipelineState::InitDepthStencilState();
+void VulkanPipelineState::InitColorBlendState();
+
+bool VulkanPipelineState::IsFullyInitialized() const
+{
+    return m_bDidInitRasterState &&
+           m_bDidInitViewportState &&
+           m_bDidInitMultisampleState &&
+           m_bDepthStencilState &&
+           m_bDidSampleColorBlendState;
 }
