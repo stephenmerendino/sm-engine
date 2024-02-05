@@ -20,7 +20,7 @@ public:
 
 	VulkanBuffer();
 
-	void Init(const VulkanDevice* device, Type type, size_t size);
+	void Init(const VulkanDevice* device, Type type, VkDeviceSize size);
 	void Update(const VulkanCommandPool& commandPool, const void* data, VkDeviceSize gpuMemoryOffset);
 	void Destroy();
 
@@ -28,5 +28,5 @@ public:
 	VkBuffer m_bufferHandle;
 	VkDeviceMemory m_deviceMemory;
 	Type m_type;
-	size_t m_size;
+	VkDeviceSize m_size;
 };

@@ -89,7 +89,7 @@ void VulkanRenderPass::Init(VkDevice device)
 	std::vector<VkSubpassDescription2> subpassDescriptions;
 	subpassDescriptions.resize(m_subpasses.size());
 
-	for (I32 i = 0; i < m_subpasses.size(); i++)
+	for (I32 i = 0; i < (I32)m_subpasses.size(); i++)
 	{
 		VulkanSubpass& subpass = m_subpasses[i];
 

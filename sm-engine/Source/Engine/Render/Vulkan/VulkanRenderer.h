@@ -21,8 +21,6 @@ public:
 	virtual void Shutdown() final;
 	virtual void SetCamera(const Camera* pCamera) final;
 
-	void InitSwapchainImageLayouts(VulkanSwapchain& swapchain, VulkanCommandPool graphicsCommandPool);
-
 	Window* m_pWindow;
 	VulkanInstance m_instance;
 	VulkanSurface m_surface;

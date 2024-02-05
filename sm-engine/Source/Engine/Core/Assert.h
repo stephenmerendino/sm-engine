@@ -44,6 +44,5 @@ bool ReportError(const char* filename, int lineNumber);
 #define SM_ASSERT_MSG
 #define SM_ERROR
 #define SM_ERROR_MSG
-#define SM_VULKAN_ASSERT
 
 #endif

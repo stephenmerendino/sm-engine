@@ -4,6 +4,7 @@
 static Mesh* LoadUnitAxes()
 {
 	MeshBuilder builder;
+	builder.Begin();
 	builder.SetTopology(PrimitiveTopology::kLineList);
 	builder.AddAxesLines3d(Vec3::ZERO, Vec3::FORWARD, Vec3::LEFT, Vec3::UP);
 	return builder.Finish();
@@ -12,6 +13,7 @@ static Mesh* LoadUnitAxes()
 static Mesh* LoadUnitTetrahedron()
 {
 	MeshBuilder builder;
+	builder.Begin();
 	builder.SetTopology(PrimitiveTopology::kTriangleList);
 
 	Vec3 v0_pos(0.0f, 0.0f, 1.0f);
@@ -52,6 +54,7 @@ static Mesh* LoadUnitTetrahedron()
 static Mesh* LoadUnitCube()
 {
 	MeshBuilder builder;
+	builder.Begin();
 	builder.SetTopology(PrimitiveTopology::kTriangleList);
 	builder.AddCube(Vec3::ZERO, 1.0f);
 	return builder.Finish();
@@ -60,6 +63,7 @@ static Mesh* LoadUnitCube()
 static Mesh* LoadUnitOctahedron()
 {
 	MeshBuilder builder;
+	builder.Begin();
 	builder.SetTopology(PrimitiveTopology::kTriangleList);
 
 	Vec3 v0_pos = Vec3(0.0f, 0.0f, 1.0f);
@@ -131,6 +135,7 @@ static Mesh* LoadUnitOctahedron()
 static Mesh* LoadUnitUvSphere()
 {
 	MeshBuilder builder;
+	builder.Begin();
 	builder.SetTopology(PrimitiveTopology::kTriangleList);
 	builder.AddUvSphere(Vec3::ZERO, 1.0f, 64);
 	return builder.Finish();
@@ -139,6 +144,7 @@ static Mesh* LoadUnitUvSphere()
 static Mesh* LoadUnitPlane()
 {
 	MeshBuilder builder;
+	builder.Begin();
 	builder.SetTopology(PrimitiveTopology::kTriangleList);
 	builder.AddQuad3d(Vec3::ZERO, Vec3::RIGHT, Vec3::FORWARD, 1.0f, 1.0f, 1);
 	return builder.Finish();
@@ -147,6 +153,7 @@ static Mesh* LoadUnitPlane()
 static Mesh* LoadUnitQuad()
 {
 	MeshBuilder builder;
+	builder.Begin();
 	builder.SetTopology(PrimitiveTopology::kTriangleList);
 	// build a quad that is already in ndc space that takes up the entire screen
 	builder.AddQuad3d(Vec3::ZERO, Vec3(1.0f, 0.0f, 0.0f), Vec3(0.0f, -1.0f, 0.0f), 1.0f, 1.0f, 1);
@@ -156,6 +163,7 @@ static Mesh* LoadUnitQuad()
 static Mesh* LoadUnitCone()
 {
 	MeshBuilder builder;
+	builder.Begin();
 	builder.SetTopology(PrimitiveTopology::kTriangleList);
 	builder.AddCone(Vec3::ZERO, Vec3::UP, 1.0f, 1.0f, 32);
 	return builder.Finish();
@@ -164,6 +172,7 @@ static Mesh* LoadUnitCone()
 static Mesh* LoadUnitCylinder()
 {
 	MeshBuilder builder;
+	builder.Begin();
 	builder.SetTopology(PrimitiveTopology::kTriangleList);
 	builder.AddCylinder(Vec3::ZERO, Vec3::UP, 1.0f, 1.0f, 32);
 	return builder.Finish();
@@ -172,6 +181,7 @@ static Mesh* LoadUnitCylinder()
 static Mesh* LoadUnitTorus()
 {
 	MeshBuilder builder;
+	builder.Begin();
 	builder.SetTopology(PrimitiveTopology::kTriangleList);
 
 	U32 resolution = 128;

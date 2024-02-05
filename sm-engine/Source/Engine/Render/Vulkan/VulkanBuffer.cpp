@@ -33,7 +33,7 @@ VulkanBuffer::VulkanBuffer()
 {
 }
 
-void VulkanBuffer::Init(const VulkanDevice* device, VulkanBuffer::Type type, size_t size)
+void VulkanBuffer::Init(const VulkanDevice* device, VulkanBuffer::Type type, VkDeviceSize size)
 {
 	m_pDevice = device;
 	m_type = type;
@@ -58,7 +58,7 @@ void VulkanBuffer::Update(const VulkanCommandPool& commandPool, const void* data
 	{
 		void* mappedGpuMem;
 		vkMapMemory(m_pDevice->m_deviceHandle, m_deviceMemory, gpuMemoryOffset, m_size, 0, &mappedGpuMem);
-		memcpy(mappedGpuMem, data, m_size);
+		memcpy(mappedGpuMem, data, (size_t)m_size);
 		vkUnmapMemory(m_pDevice->m_deviceHandle, m_deviceMemory);
 	}
 	else if (m_type == Type::kVertexBuffer || m_type == Type::kIndexBuffer)

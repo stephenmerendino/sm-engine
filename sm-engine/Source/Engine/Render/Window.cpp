@@ -190,7 +190,7 @@ void Window::AddMsgCallback(WindowMsgCallbackFunc cb, void* userArgs)
 void Window::RemoveMsgCallback(WindowMsgCallbackFunc cb, void* userArgs)
 {		
 	WindowMsgCallbackWithArgs cbWithArgs = { cb, userArgs };
-	for (int i = 0; i < m_msgCallbacks.size(); i++)
+	for (I32 i = 0; i < (I32)m_msgCallbacks.size(); i++)
 	{
 		if (m_msgCallbacks[i] == cbWithArgs)
 		{

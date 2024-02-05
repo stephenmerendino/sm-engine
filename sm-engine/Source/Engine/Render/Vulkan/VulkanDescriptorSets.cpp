@@ -90,7 +90,7 @@ std::vector<VkDescriptorSet> VulkanDescriptorPool::AllocateSets(const std::vecto
 	allocInfo.descriptorSetCount = (U32)layouts.size();
 
 	std::vector<VkDescriptorSetLayout> vkLayouts(layouts.size());
-	for (I32 i = 0; i < vkLayouts.size(); i++)
+	for (I32 i = 0; i < (I32)vkLayouts.size(); i++)
 	{
 		vkLayouts[i] = layouts[i].m_layoutHandle;
 	}
