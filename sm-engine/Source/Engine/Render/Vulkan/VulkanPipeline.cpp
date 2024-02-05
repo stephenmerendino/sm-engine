@@ -121,12 +121,26 @@ VulkanPipelineState::VulkanPipelineState()
     :m_bDidInitRasterState(false)
     ,m_bDidInitViewportState(false)
     ,m_bDidInitMultisampleState(false)
-    ,m_bDepthStencilState(false)
-    ,m_bDidSampleColorBlendState(false)
+    ,m_bDidInitDepthStencilState(false)
+    ,m_bDidInitColorBlendState(false)
 {
 }
 
-void VulkanPipelineState::PreInitAddColorBlendAttachment();
+void VulkanPipelineState::PreInitAddColorBlendAttachment(bool bBlendEnable, VkBlendFactor srcColorBlendFactor, VkBlendFactor dstColorBlendFactor, VkBlendOp colorBlendOp, 
+                                                                            VkBlendFactor srcAlphaBlendFactor, VkBlendFactor dstAlphaBlendFactor, VkBlendOp alphaBlendOp, 
+                                                                            VkColorComponentFlags colorWriteMask)
+{
+    VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
+    colorBlendAttachment.blendEnable = bBlendEnable;
+    colorBlendAttachment.colorWriteMask = colorWriteMask;
+    colorBlendAttachment.srcColorBlendFactor = srcColorBlendFactor;
+    colorBlendAttachment.dstColorBlendFactor = dstColorBlendFactor;
+    colorBlendAttachment.colorBlendOp = colorBlendOp;
+    colorBlendAttachment.srcAlphaBlendFactor = srcAlphaBlendFactor;
+    colorBlendAttachment.dstAlphaBlendFactor = dstAlphaBlendFactor;
+    colorBlendAttachment.alphaBlendOp = alphaBlendOp;
+    m_colorBlendAttachments.push_back(colorBlendAttachment);
+}
 
 void VulkanPipelineState::InitRasterState(VkPolygonMode polygonMode,
                                           VkFrontFace frontFace,
@@ -174,17 +188,106 @@ void VulkanPipelineState::InitViewportState(F32 x, F32 y,
 	m_viewportState.viewportCount = 1;
 	m_viewportState.pScissors = &m_scissor;
 	m_viewportState.scissorCount = 1;
+
+    m_bDidInitViewportState = true;
 }
 
-void VulkanPipelineState::InitMultisampleState();
-void VulkanPipelineState::InitDepthStencilState();
-void VulkanPipelineState::InitColorBlendState();
+void VulkanPipelineState::InitMultisampleState(VkSampleCountFlagBits sampleCount, bool sampleShadingEnable, F32 minSampleShading)
+{
+    m_multisampleState.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    m_multisampleState.sampleShadingEnable = sampleShadingEnable;
+    m_multisampleState.rasterizationSamples = sampleCount;
+    m_multisampleState.minSampleShading = minSampleShading;
+    m_multisampleState.pSampleMask = nullptr;
+    m_multisampleState.alphaToCoverageEnable = VK_FALSE;
+    m_multisampleState.alphaToOneEnable = VK_FALSE;
+
+    m_bDidInitMultisampleState = true;
+}
+
+void VulkanPipelineState::InitDepthStencilState(bool depthTestEnable, bool depthWriteEnable, VkCompareOp depthCompareOp,
+                                                bool depthBoundsTestEnable, F32 minDepthBounds, F32 maxDepthBounds)
+{
+    m_depthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    m_depthStencilState.depthTestEnable = depthTestEnable;
+    m_depthStencilState.depthWriteEnable = depthWriteEnable;
+    m_depthStencilState.depthCompareOp = depthCompareOp;
+    m_depthStencilState.depthBoundsTestEnable = depthBoundsTestEnable;
+    m_depthStencilState.minDepthBounds = minDepthBounds;
+    m_depthStencilState.maxDepthBounds = maxDepthBounds;
+    //TODO(smerendino): Allow stencil to be passed in and set
+    m_depthStencilState.stencilTestEnable = VK_FALSE;
+    m_depthStencilState.front = {};
+    m_depthStencilState.back = {};
+
+    m_bDidInitDepthStencilState;
+}
+
+void VulkanPipelineState::InitColorBlendState(bool logicOpEnable, VkLogicOp logicOp, F32 blendConstant0, F32 blendConstant1, F32 blendConstant2, F32 blendConstant3)
+{
+    m_colorBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    m_colorBlendState.logicOpEnable = logicOpEnable;
+    m_colorBlendState.logicOp = logicOp;
+    m_colorBlendState.blendConstants[0] = blendConstant0;
+    m_colorBlendState.blendConstants[1] = blendConstant1;
+    m_colorBlendState.blendConstants[2] = blendConstant2;
+    m_colorBlendState.blendConstants[3] = blendConstant3;
+    m_colorBlendState.attachmentCount = (U32)m_colorBlendAttachments.size();
+    m_colorBlendState.pAttachments = m_colorBlendAttachments.data();
+
+    m_bDidInitColorBlendState = true;
+}
 
 bool VulkanPipelineState::IsFullyInitialized() const
 {
     return m_bDidInitRasterState &&
            m_bDidInitViewportState &&
            m_bDidInitMultisampleState &&
-           m_bDepthStencilState &&
-           m_bDidSampleColorBlendState;
+           m_bDidInitDepthStencilState &&
+           m_bDidInitColorBlendState;
+}
+
+VulkanPipeline::VulkanPipeline()
+    :m_pDevice(nullptr)
+    ,m_pipelineLayout(VK_NULL_HANDLE)
+    ,m_pipelineHandle(VK_NULL_HANDLE)
+{
+}
+
+void VulkanPipeline::Init(const VulkanDevice* pDevice,
+                          const VulkanShaderStages& shaderStages,
+                          const VulkanPipelineLayout& layout,
+                          const VulkanMeshPipelineInputInfo& meshPipelineInputInfo,
+                          const VulkanPipelineState& pipelineState,
+                          const VulkanRenderPass& renderPass)
+{
+    SM_ASSERT(pipelineState.IsFullyInitialized());
+
+    m_pDevice = pDevice;
+
+    VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
+    pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineCreateInfo.flags = 0;
+    pipelineCreateInfo.stageCount = (U32)shaderStages.m_shaderStageInfos.size();
+    pipelineCreateInfo.pStages = shaderStages.m_shaderStageInfos.data();
+    pipelineCreateInfo.pVertexInputState = &meshPipelineInputInfo.m_vertexInputInfo;
+    pipelineCreateInfo.pInputAssemblyState = &meshPipelineInputInfo.m_inputAssemblyInfo;
+    pipelineCreateInfo.pRasterizationState = &pipelineState.m_rasterState;
+    pipelineCreateInfo.pViewportState = &pipelineState.m_viewportState;
+    pipelineCreateInfo.pMultisampleState = &pipelineState.m_multisampleState;
+    pipelineCreateInfo.pDepthStencilState = &pipelineState.m_depthStencilState;
+    pipelineCreateInfo.pColorBlendState = &pipelineState.m_colorBlendState;
+    pipelineCreateInfo.pDynamicState = nullptr; //#TODO(smerendino): Enable this pipeline state
+    pipelineCreateInfo.layout = layout.m_layoutHandle;
+    pipelineCreateInfo.renderPass = renderPass.m_renderPassHandle;
+    pipelineCreateInfo.subpass = 0;
+    pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
+    pipelineCreateInfo.basePipelineIndex = -1;
+
+    SM_VULKAN_ASSERT(vkCreateGraphicsPipelines(m_pDevice->m_deviceHandle, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &m_pipelineHandle));
+}
+
+void VulkanPipeline::Destroy()
+{
+	vkDestroyPipeline(m_pDevice->m_deviceHandle, m_pipelineHandle, nullptr);
 }

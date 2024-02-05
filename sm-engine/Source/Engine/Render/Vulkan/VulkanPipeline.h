@@ -60,7 +60,9 @@ class VulkanPipelineState
 public:
     VulkanPipelineState();
 
-    void PreInitAddColorBlendAttachment();
+    void PreInitAddColorBlendAttachment(bool bBlendEnable, VkBlendFactor srcColorBlendFactor, VkBlendFactor dstColorBlendFactor, VkBlendOp colorBlendOp,
+                                                           VkBlendFactor srcAlphaBlendFactor, VkBlendFactor dstAlphaBlendFactor, VkBlendOp alphaBlendOp,
+                                                           VkColorComponentFlags colorWriteMask);
 
 	void InitRasterState(VkPolygonMode polygonMode,
 						 VkFrontFace frontFace,
@@ -72,22 +74,27 @@ public:
 						 F32 depthBiasClamp,
 						 F32 depthBiasSlope,
 						 F32 lineWidth);
+
 	void InitViewportState(F32 x, F32 y,
 						   F32 w, F32 h,
 						   F32 minDepth, F32 maxDepth,
 						   I32 scissorOffsetX, I32 scissorOffsetY,
 						   U32 scissorExtentX, U32 scissorExtentY);
-    void InitMultisampleState();
-    void InitDepthStencilState();
-    void InitColorBlendState();
+
+    void InitMultisampleState(VkSampleCountFlagBits sampleCount, bool sampleShadingEnable, F32 minSampleShading);
+
+    void InitDepthStencilState(bool depthTestEnable, bool depthWriteEnable, VkCompareOp depthCompareOp, 
+                               bool depthBoundsTestEnable, F32 minDepthBounds, F32 maxDepthBounds);
+
+    void InitColorBlendState(bool logicOpEnable, VkLogicOp logicOp, F32 blendConstant0, F32 blendConstant1, F32 blendConstant2, F32 blendConstant3);
     
     bool IsFullyInitialized() const;
 
     bool m_bDidInitRasterState : 1;
     bool m_bDidInitViewportState : 1;
     bool m_bDidInitMultisampleState : 1;
-    bool m_bDepthStencilState : 1;
-    bool m_bDidSampleColorBlendState : 1;
+    bool m_bDidInitDepthStencilState : 1;
+    bool m_bDidInitColorBlendState : 1;
 
     VkPipelineRasterizationStateCreateInfo m_rasterState = {};
 
@@ -103,17 +110,21 @@ public:
     std::vector<VkPipelineColorBlendAttachmentState> m_colorBlendAttachments;
 };
 
-//class VulkanPipeline
-//{
-//public:
-//	VulkanPipeline();
-//
-//    void Init(const VulkanShaderStages& shaderStages,
-//        const VulkanMeshPipelineInputInfo& meshPipelineInputInfo,
-//        const VulkanPipelineState& pipelineState,
-//        const VulkanPipelineLayout& layout,
-//        const VulkanRenderPass& renderPass);
-//
-//  VkPipelineLayout m_pipelineLayout;
-//	VkPipeline m_pipelineHandle;
-//};
+class VulkanPipeline
+{
+public:
+	VulkanPipeline();
+
+    void Init(const VulkanDevice* pDevice,
+              const VulkanShaderStages& shaderStages,
+              const VulkanPipelineLayout& layout,
+              const VulkanMeshPipelineInputInfo& meshPipelineInputInfo,
+              const VulkanPipelineState& pipelineState,
+              const VulkanRenderPass& renderPass);
+
+    void Destroy();
+
+    const VulkanDevice* m_pDevice;
+    VkPipelineLayout m_pipelineLayout;
+    VkPipeline m_pipelineHandle;
+};
