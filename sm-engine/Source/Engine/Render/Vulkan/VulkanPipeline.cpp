@@ -1,7 +1,9 @@
 #include "Engine/Render/Vulkan/VulkanPipeline.h"
 #include "Engine/Render/Vulkan/VulkanDevice.h"
+#include "Engine/Render/Vulkan/VulkanFormats.h"
 #include "Engine/Core/Types.h"
 #include "Engine/Core/File.h"
+#include "Engine/Render/Mesh.h"
 
 VkShaderModule CreateShaderModule(const VulkanDevice* pDevice, const char* shaderFilepath)
 {
@@ -89,4 +91,19 @@ void VulkanPipelineLayout::Destroy()
 void VulkanMeshPipelineInputInfo::Init(const Mesh* pMesh, bool primitiveRestartEnabled)
 {
     SM_ASSERT(pMesh != nullptr);
+
+    m_inputAssemblyInfo = {};
+	m_inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    switch (pMesh->m_topology)
+    {
+		case PrimitiveTopology::kPointList: m_inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+		case PrimitiveTopology::kLineList: m_inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+		case PrimitiveTopology::kTriangleList: m_inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    }
+	m_inputAssemblyInfo.primitiveRestartEnable = primitiveRestartEnabled;
+
+    m_vertexInputBindingDescs = VulkanFormats::GetVertexInputBindingDescs(VertexType::kPCT);
+    m_vertexInputAttrDescs = VulkanFormats::GetVertexInputAttrDescs(VertexType::kPCT);
+
+    VkPipelineVertexInputStateCreateInfo m_vertexInputInfo;
 }
