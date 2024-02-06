@@ -16,13 +16,10 @@ public:
         const char* m_entryName;
     };
 
-    VulkanShaderStages();
-
-    void Init(const VulkanDevice* pDevice, const ShaderInfo& vertexInfo, const ShaderInfo& fragmentInfo);
-    void Init(const VulkanDevice* pDevice, const char* vertexFilepath, const char* vertexEntryName, const char* fragmentFilepath, const char* fragmentEntryName);
+    void Init(const ShaderInfo& vertexInfo, const ShaderInfo& fragmentInfo);
+    void Init(const char* vertexFilepath, const char* vertexEntryName, const char* fragmentFilepath, const char* fragmentEntryName);
     void Destroy();
 
-    const VulkanDevice* m_pDevice;
     std::vector<VkShaderModule> m_shaders;
     std::vector<VkPipelineShaderStageCreateInfo> m_shaderStageInfos;
 };
@@ -32,10 +29,9 @@ class VulkanPipelineLayout
 public:
     VulkanPipelineLayout();
 
-    void Init(const VulkanDevice* pDevice, const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts);
+    void Init(const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts);
     void Destroy();
 
-    const VulkanDevice* m_pDevice;
 	VkPipelineLayout m_layoutHandle;
 };
 
@@ -115,8 +111,7 @@ class VulkanPipeline
 public:
 	VulkanPipeline();
 
-    void Init(const VulkanDevice* pDevice,
-              const VulkanShaderStages& shaderStages,
+    void Init(const VulkanShaderStages& shaderStages,
               const VulkanPipelineLayout& layout,
               const VulkanMeshPipelineInputInfo& meshPipelineInputInfo,
               const VulkanPipelineState& pipelineState,
@@ -124,7 +119,5 @@ public:
 
     void Destroy();
 
-    const VulkanDevice* m_pDevice;
-    VkPipelineLayout m_pipelineLayout;
     VkPipeline m_pipelineHandle;
 };

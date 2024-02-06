@@ -3,7 +3,6 @@
 
 VulkanDescriptorSetLayout::VulkanDescriptorSetLayout()
 	:m_layoutHandle(VK_NULL_HANDLE)
-	,m_pDevice(nullptr)
 {
 }
 
@@ -18,26 +17,23 @@ void VulkanDescriptorSetLayout::PreInitAddLayoutBinding(U32 bindingIndex, U32 de
 	m_layoutBindings.push_back(newBinding);
 }
 
-void VulkanDescriptorSetLayout::Init(const VulkanDevice* device)
+void VulkanDescriptorSetLayout::Init()
 {
-	m_pDevice = device;
-
 	VkDescriptorSetLayoutCreateInfo layoutCreateInfo = {};
 	layoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	layoutCreateInfo.bindingCount = (U32)m_layoutBindings.size();
 	layoutCreateInfo.pBindings = m_layoutBindings.data();
 
-	SM_VULKAN_ASSERT(vkCreateDescriptorSetLayout(m_pDevice->m_deviceHandle, &layoutCreateInfo, nullptr, &m_layoutHandle));
+	SM_VULKAN_ASSERT(vkCreateDescriptorSetLayout(VulkanDevice::GetHandle(), &layoutCreateInfo, nullptr, &m_layoutHandle));
 }
 
 void VulkanDescriptorSetLayout::Destroy()
 {
-	vkDestroyDescriptorSetLayout(m_pDevice->m_deviceHandle, m_layoutHandle, nullptr);
+	vkDestroyDescriptorSetLayout(VulkanDevice::GetHandle(), m_layoutHandle, nullptr);
 }
 
 VulkanDescriptorPool::VulkanDescriptorPool()
-	:m_pDevice(nullptr)
-	,m_poolHandle(VK_NULL_HANDLE)
+	:m_poolHandle(VK_NULL_HANDLE)
 	,m_maxSets(0)
 {
 }
@@ -50,10 +46,8 @@ void VulkanDescriptorPool::PreInitAddPoolSize(VkDescriptorType type, U32 count)
 	m_poolSizes.push_back(poolSize);
 }
 
-void VulkanDescriptorPool::Init(const VulkanDevice* pDevice, U32 maxSets)
+void VulkanDescriptorPool::Init(U32 maxSets)
 {
-	SM_ASSERT(pDevice != nullptr);
-	m_pDevice = pDevice;
 	m_maxSets = maxSets;
 
 	VkDescriptorPoolCreateInfo createInfo = {};
@@ -62,17 +56,17 @@ void VulkanDescriptorPool::Init(const VulkanDevice* pDevice, U32 maxSets)
 	createInfo.pPoolSizes = m_poolSizes.data();
 	createInfo.maxSets = m_maxSets;
 
-	SM_VULKAN_ASSERT(vkCreateDescriptorPool(m_pDevice->m_deviceHandle, &createInfo, nullptr, &m_poolHandle));
+	SM_VULKAN_ASSERT(vkCreateDescriptorPool(VulkanDevice::GetHandle(), &createInfo, nullptr, &m_poolHandle));
 }
 
 void VulkanDescriptorPool::Reset(VkDescriptorPoolResetFlags flags)
 {
-	vkResetDescriptorPool(m_pDevice->m_deviceHandle, m_poolHandle, flags);
+	vkResetDescriptorPool(VulkanDevice::GetHandle(), m_poolHandle, flags);
 }
 
 void VulkanDescriptorPool::Destroy()
 {
-	vkDestroyDescriptorPool(m_pDevice->m_deviceHandle, m_poolHandle, nullptr);
+	vkDestroyDescriptorPool(VulkanDevice::GetHandle(), m_poolHandle, nullptr);
 }
 
 VkDescriptorSet VulkanDescriptorPool::AllocateSet(VulkanDescriptorSetLayout& layout)
@@ -97,7 +91,7 @@ std::vector<VkDescriptorSet> VulkanDescriptorPool::AllocateSets(const std::vecto
 	allocInfo.pSetLayouts = vkLayouts.data();
 
 	std::vector<VkDescriptorSet> vkDescriptorSets(layouts.size());
-	SM_VULKAN_ASSERT(vkAllocateDescriptorSets(m_pDevice->m_deviceHandle, &allocInfo, vkDescriptorSets.data()));
+	SM_VULKAN_ASSERT(vkAllocateDescriptorSets(VulkanDevice::GetHandle(), &allocInfo, vkDescriptorSets.data()));
 
 	return vkDescriptorSets;
 }
@@ -155,7 +149,7 @@ void VulkanDescriptorSetWriter::AddSampledImageWrite(VkDescriptorSet descriptorS
 	m_writeInfos.push_back(writeInfo);
 }
 
-void VulkanDescriptorSetWriter::PerformWrites(const VulkanDevice* pDevice)
+void VulkanDescriptorSetWriter::PerformWrites()
 {
 	std::vector<VkWriteDescriptorSet> vkWrites(m_writeInfos.size());
 	for (int i = 0; i < (int)m_writeInfos.size(); i++)
@@ -193,5 +187,5 @@ void VulkanDescriptorSetWriter::PerformWrites(const VulkanDevice* pDevice)
 		}
 	}
 
-	vkUpdateDescriptorSets(pDevice->m_deviceHandle, (U32)vkWrites.size(), vkWrites.data(), 0, nullptr);
+	vkUpdateDescriptorSets(VulkanDevice::GetHandle(), (U32)vkWrites.size(), vkWrites.data(), 0, nullptr);
 }

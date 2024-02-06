@@ -2,15 +2,12 @@
 #include "Engine/Render/Vulkan/VulkanDevice.h"
 
 VulkanFramebuffer::VulkanFramebuffer()
-	:m_pDevice(nullptr)
-	,m_framebufferHandle(VK_NULL_HANDLE)
+	:m_framebufferHandle(VK_NULL_HANDLE)
 {
 }
 
-void VulkanFramebuffer::Init(const VulkanDevice* pDevice, const VulkanRenderPass& renderPass, const std::vector<VkImageView> attachments, U32 width, U32 height, U32 layers)
+void VulkanFramebuffer::Init(const VulkanRenderPass& renderPass, const std::vector<VkImageView>& attachments, U32 width, U32 height, U32 layers)
 {
-	m_pDevice = pDevice;
-
 	VkFramebufferCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 	createInfo.renderPass = renderPass.m_renderPassHandle;
@@ -20,10 +17,10 @@ void VulkanFramebuffer::Init(const VulkanDevice* pDevice, const VulkanRenderPass
 	createInfo.height = height;
 	createInfo.layers = layers;
 
-	SM_VULKAN_ASSERT(vkCreateFramebuffer(m_pDevice->m_deviceHandle, &createInfo, nullptr, &m_framebufferHandle));
+	SM_VULKAN_ASSERT(vkCreateFramebuffer(VulkanDevice::GetHandle(), &createInfo, nullptr, &m_framebufferHandle));
 }
 
 void VulkanFramebuffer::Destroy()
 {
-	vkDestroyFramebuffer(m_pDevice->m_deviceHandle, m_framebufferHandle, nullptr);
+	vkDestroyFramebuffer(VulkanDevice::GetHandle(), m_framebufferHandle, nullptr);
 }

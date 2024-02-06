@@ -34,7 +34,6 @@ void VulkanRenderer::Init(Window* pWindow)
 
 	VulkanDevice::Init(m_surface);
 	m_swapchain.Init(m_pWindow, m_surface);
-
 	VulkanFormats::Init();
 
 	m_graphicsCommandPool.Init(VK_QUEUE_GRAPHICS_BIT, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);

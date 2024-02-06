@@ -27,7 +27,7 @@ class VulkanRenderPass
 public:
 	VulkanRenderPass();
 
-	void PreInitAddAttachment(VkFormat format, VkSampleCountFlagBits sampleCount,
+	void PreInitAddAttachmentDesc(VkFormat format, VkSampleCountFlagBits sampleCount,
 							  VkImageLayout initialLayout, VkImageLayout finalLayout,
 							  VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp,
 							  VkAttachmentLoadOp stencilLoadOp, VkAttachmentStoreOp stencilStoreOp,
@@ -40,12 +40,11 @@ public:
 									 VkAccessFlags srcAccess,
 									 VkAccessFlags dstAccess,
 									 VkDependencyFlags dependencyFlags = 0);
-	void Init(VkDevice device);
+	void Init();
 	void Destroy();
 
-	std::vector<VkAttachmentDescription2> m_attachments;
+	std::vector<VkAttachmentDescription2> m_attachmentDescs;
 	std::vector<VulkanSubpass> m_subpasses;
 	std::vector<VkSubpassDependency2> m_subpassDependencies;
-	VkDevice m_deviceHandle;
 	VkRenderPass m_renderPassHandle;
 };

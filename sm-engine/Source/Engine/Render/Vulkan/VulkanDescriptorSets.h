@@ -7,18 +7,15 @@
 #include "Engine/Render/Vulkan/VulkanTexture.h"
 #include <vector>
 
-class VulkanDevice;
-
 class VulkanDescriptorSetLayout
 {
 public:
 	VulkanDescriptorSetLayout();
 
 	void PreInitAddLayoutBinding(U32 bindingIndex, U32 descriptorCount, VkDescriptorType descriptorType, VkShaderStageFlagBits shaderStages);
-	void Init(const VulkanDevice* device);
+	void Init();
 	void Destroy();
 
-	const VulkanDevice* m_pDevice;
 	VkDescriptorSetLayout m_layoutHandle;
 	std::vector<VkDescriptorSetLayoutBinding> m_layoutBindings;
 };
@@ -29,14 +26,13 @@ public:
 	VulkanDescriptorPool();
 
 	void PreInitAddPoolSize(VkDescriptorType type, U32 count);
-	void Init(const VulkanDevice* pDevice, U32 maxSets);
+	void Init(U32 maxSets);
 	void Reset(VkDescriptorPoolResetFlags flags);
 	void Destroy();
 
 	VkDescriptorSet AllocateSet(VulkanDescriptorSetLayout& layout);
 	std::vector<VkDescriptorSet> AllocateSets(const std::vector<VulkanDescriptorSetLayout> layouts);
 
-	const VulkanDevice* m_pDevice;
 	VkDescriptorPool m_poolHandle;
 	std::vector<VkDescriptorPoolSize> m_poolSizes;
 	U32 m_maxSets;
@@ -64,7 +60,7 @@ public:
 	void AddSamplerWrite(VkDescriptorSet descriptorSet, const VulkanSampler& sampler, U32 dstBinding, U32 dstArrayElement, U32 descriptorCount);
 	void AddSampledImageWrite(VkDescriptorSet descriptorSet, const VulkanTexture& texture, VkImageLayout imageLayout, U32 dstBinding, U32 dstArrayElement, U32 descriptorCount);
 
-	void PerformWrites(const VulkanDevice* pDevice);
+	void PerformWrites();
 
 	std::vector<WriteInfo> m_writeInfos;
 };

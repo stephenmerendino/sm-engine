@@ -21,7 +21,7 @@ namespace VulkanCommands
 
 	void CopyBuffer(VkCommandBuffer commandBuffer, VulkanBuffer& src, VulkanBuffer& dst, VkDeviceSize copySize);
 
-	void GenerateMipMaps(const VulkanDevice& device, VkCommandBuffer commandBuffer, VkImage image, VkFormat format, U32 width, U32 height, U32 numMips);
+	void GenerateMipMaps(VkCommandBuffer commandBuffer, VkImage image, VkFormat format, U32 width, U32 height, U32 numMips);
 
 	void CopyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer buffer, VkImage image, VkImageLayout imageLayout, U32 width, U32 height);
 

@@ -13,7 +13,7 @@
 
 #include <cmath>
 
-static VkImageView CreateImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, U32 numMips)
+static VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, U32 numMips)
 {
 	VkImageViewCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -27,11 +27,11 @@ static VkImageView CreateImageView(VkDevice device, VkImage image, VkFormat form
 	createInfo.subresourceRange.layerCount = 1;
 
 	VkImageView image_view;
-	SM_VULKAN_ASSERT(vkCreateImageView(device, &createInfo, nullptr, &image_view));
+	SM_VULKAN_ASSERT(vkCreateImageView(VulkanDevice::GetHandle(), &createInfo, nullptr, &image_view));
 	return image_view;
 }
 
-static void CreateImage(const VulkanDevice& device, U32 width, U32 height, U32 numMips, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags memProps, VkImage* outImage, VkDeviceMemory* outMemory)
+static void CreateImage(U32 width, U32 height, U32 numMips, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags memProps, VkImage* outImage, VkDeviceMemory* outMemory)
 {
 	// Create vulkan image object
 	VkImageCreateInfo imageCreateInfo = {};
@@ -50,35 +50,32 @@ static void CreateImage(const VulkanDevice& device, U32 width, U32 height, U32 n
 	imageCreateInfo.samples = numSamples;
 	imageCreateInfo.flags = 0;
 
-	SM_VULKAN_ASSERT(vkCreateImage(device.m_deviceHandle, &imageCreateInfo, nullptr, outImage));
+	SM_VULKAN_ASSERT(vkCreateImage(VulkanDevice::GetHandle(), &imageCreateInfo, nullptr, outImage));
 
 	// Setup backing memory of image
 	VkMemoryRequirements memRequirements;
-	vkGetImageMemoryRequirements(device.m_deviceHandle, *outImage, &memRequirements);
+	vkGetImageMemoryRequirements(VulkanDevice::GetHandle(), *outImage, &memRequirements);
 
 	VkMemoryAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = device.FindSupportedMemoryType(memRequirements.memoryTypeBits, memProps);
+	allocInfo.memoryTypeIndex = VulkanDevice::Get()->FindSupportedMemoryType(memRequirements.memoryTypeBits, memProps);
 
-	SM_VULKAN_ASSERT(vkAllocateMemory(device.m_deviceHandle, &allocInfo, nullptr, outMemory));
+	SM_VULKAN_ASSERT(vkAllocateMemory(VulkanDevice::GetHandle(), &allocInfo, nullptr, outMemory));
 
-	vkBindImageMemory(device.m_deviceHandle, *outImage, *outMemory, 0);
+	vkBindImageMemory(VulkanDevice::GetHandle(), *outImage, *outMemory, 0);
 }
 
 VulkanTexture::VulkanTexture()
-	:m_device(VK_NULL_HANDLE)
-	,m_image(VK_NULL_HANDLE)
+	:m_image(VK_NULL_HANDLE)
 	,m_imageView(VK_NULL_HANDLE)
 	,m_deviceMemory(VK_NULL_HANDLE)
 	,m_numMips(0)
 {
 }
 
-void VulkanTexture::InitFromFile(const VulkanDevice& device, const VulkanCommandPool& commandPool, const char* filepath)
+void VulkanTexture::InitFromFile(const VulkanCommandPool& commandPool, const char* filepath)
 {
-	m_device = &device;
-
 	int texWidth;
 	int texHeight;
 	int texChannels;
@@ -101,7 +98,7 @@ void VulkanTexture::InitFromFile(const VulkanDevice& device, const VulkanCommand
 	stbi_image_free(pixels);
 
 	// Create the vulkan image and its memory
-	CreateImage(*m_device, texWidth, texHeight, m_numMips, VK_SAMPLE_COUNT_1_BIT, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &m_image, &m_deviceMemory);
+	CreateImage(texWidth, texHeight, m_numMips, VK_SAMPLE_COUNT_1_BIT, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &m_image, &m_deviceMemory);
 
 	// Transition the image to transfer destination layout
 	VkCommandBuffer commandBuffer = commandPool.BeginSingleTime();
@@ -114,7 +111,7 @@ void VulkanTexture::InitFromFile(const VulkanDevice& device, const VulkanCommand
 
 		// Transition image to shader read layout so it can be used in fragment shader
 		//command_generate_mip_maps(context, texture.handle, format, tex_width, tex_height, texture.num_mips);
-		VulkanCommands::GenerateMipMaps(*m_device, commandBuffer, m_image, format, texWidth, texHeight, m_numMips);
+		VulkanCommands::GenerateMipMaps(commandBuffer, m_image, format, texWidth, texHeight, m_numMips);
 	commandPool.EndAndSubmitSingleTime(commandBuffer);
 
 	// Set user friendly debug name
@@ -127,20 +124,18 @@ void VulkanTexture::InitFromFile(const VulkanDevice& device, const VulkanCommand
 		debugNameInfo.pObjectName = filepath;
 		debugNameInfo.pNext = nullptr;
 
-		vkSetDebugUtilsObjectNameEXT(device.m_deviceHandle, &debugNameInfo);
+		vkSetDebugUtilsObjectNameEXT(VulkanDevice::GetHandle(), &debugNameInfo);
 	}
 
 	stagingBuffer.Destroy();
 
-	m_imageView = CreateImageView(device.m_deviceHandle, m_image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, m_numMips);
+	m_imageView = CreateImageView(m_image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT, m_numMips);
 }
 
-void VulkanTexture::InitColorTarget(const VulkanDevice& device, VkFormat format, U32 width, U32 height, VkImageUsageFlags usage, VkSampleCountFlagBits numSamples)
+void VulkanTexture::InitColorTarget(VkFormat format, U32 width, U32 height, VkImageUsageFlags usage, VkSampleCountFlagBits numSamples)
 {
-	m_device = &device;
 	m_numMips = 1;
-	CreateImage(device,
-				width, height,
+	CreateImage(width, height,
 				m_numMips,
 				numSamples,
 				format,
@@ -149,15 +144,13 @@ void VulkanTexture::InitColorTarget(const VulkanDevice& device, VkFormat format,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 				&m_image,
 				&m_deviceMemory);
-	m_imageView = CreateImageView(device.m_deviceHandle, m_image, format, VK_IMAGE_ASPECT_COLOR_BIT, m_numMips);
+	m_imageView = CreateImageView(m_image, format, VK_IMAGE_ASPECT_COLOR_BIT, m_numMips);
 }
 
-void VulkanTexture::InitDepthTarget(const VulkanDevice& device, VkFormat format, U32 width, U32 height, VkImageUsageFlags usage, VkSampleCountFlagBits numSamples)
+void VulkanTexture::InitDepthTarget(VkFormat format, U32 width, U32 height, VkImageUsageFlags usage, VkSampleCountFlagBits numSamples)
 {
-	m_device = &device;
 	m_numMips = 1;
-	CreateImage(device,
-				width, height,
+	CreateImage(width, height,
 				m_numMips,
 				numSamples,
 				format,
@@ -166,12 +159,12 @@ void VulkanTexture::InitDepthTarget(const VulkanDevice& device, VkFormat format,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 				&m_image,
 				&m_deviceMemory);
-	m_imageView = CreateImageView(device.m_deviceHandle, m_image, format, VK_IMAGE_ASPECT_DEPTH_BIT, m_numMips);
+	m_imageView = CreateImageView(m_image, format, VK_IMAGE_ASPECT_DEPTH_BIT, m_numMips);
 }
 
 void VulkanTexture::Destroy()
 {
-	vkDestroyImageView(m_device->m_deviceHandle, m_imageView, nullptr);
-	vkDestroyImage(m_device->m_deviceHandle, m_image, nullptr);
-	vkFreeMemory(m_device->m_deviceHandle, m_deviceMemory, nullptr);
+	vkDestroyImageView(VulkanDevice::GetHandle(), m_imageView, nullptr);
+	vkDestroyImage(VulkanDevice::GetHandle(), m_image, nullptr);
+	vkFreeMemory(VulkanDevice::GetHandle(), m_deviceMemory, nullptr);
 }

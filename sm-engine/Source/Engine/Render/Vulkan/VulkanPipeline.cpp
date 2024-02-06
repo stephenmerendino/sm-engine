@@ -5,7 +5,7 @@
 #include "Engine/Core/File.h"
 #include "Engine/Render/Mesh.h"
 
-VkShaderModule CreateShaderModule(const VulkanDevice* pDevice, const char* shaderFilepath)
+VkShaderModule CreateShaderModule(const char* shaderFilepath)
 {
 	std::vector<Byte> rawShaderCode = ReadBinaryFile(shaderFilepath);
 
@@ -15,27 +15,20 @@ VkShaderModule CreateShaderModule(const VulkanDevice* pDevice, const char* shade
 	createInfo.pCode = (const U32*)rawShaderCode.data();
 
 	VkShaderModule shaderModule = VK_NULL_HANDLE;
-	SM_VULKAN_ASSERT(vkCreateShaderModule(pDevice->m_deviceHandle, &createInfo, nullptr, &shaderModule));
+	SM_VULKAN_ASSERT(vkCreateShaderModule(VulkanDevice::GetHandle(), &createInfo, nullptr, &shaderModule));
 
 	return shaderModule;
 }
 
-VulkanShaderStages::VulkanShaderStages()
-	:m_pDevice(nullptr)
+void VulkanShaderStages::Init(const ShaderInfo& vertexInfo, const ShaderInfo& fragmentInfo)
 {
+	Init(vertexInfo.m_filepath, vertexInfo.m_entryName, fragmentInfo.m_filepath, fragmentInfo.m_entryName);
 }
 
-void VulkanShaderStages::Init(const VulkanDevice* pDevice, const ShaderInfo& vertexInfo, const ShaderInfo& fragmentInfo)
+void VulkanShaderStages::Init(const char* vertexFilepath, const char* vertexEntryName, const char* fragmentFilepath, const char* fragmentEntryName)
 {
-	Init(pDevice, vertexInfo.m_filepath, vertexInfo.m_entryName, fragmentInfo.m_filepath, fragmentInfo.m_entryName);
-}
-
-void VulkanShaderStages::Init(const VulkanDevice* pDevice, const char* vertexFilepath, const char* vertexEntryName, const char* fragmentFilepath, const char* fragmentEntryName)
-{
-	m_pDevice = pDevice;
-
-    VkShaderModule vertShader = CreateShaderModule(pDevice, vertexFilepath);
-    VkShaderModule fragShader = CreateShaderModule(pDevice, fragmentFilepath);
+    VkShaderModule vertShader = CreateShaderModule(vertexFilepath);
+    VkShaderModule fragShader = CreateShaderModule(fragmentFilepath);
 
     VkPipelineShaderStageCreateInfo vertShaderStageCreateInfo = {};
     vertShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -59,20 +52,17 @@ void VulkanShaderStages::Destroy()
 {
     for (int i = 0; i < (int)m_shaders.size(); i++)
     {
-        vkDestroyShaderModule(m_pDevice->m_deviceHandle, m_shaders[i], nullptr);
+        vkDestroyShaderModule(VulkanDevice::GetHandle(), m_shaders[i], nullptr);
     }
 }
 
 VulkanPipelineLayout::VulkanPipelineLayout()
-    :m_pDevice(nullptr)
-    ,m_layoutHandle(VK_NULL_HANDLE)
+    :m_layoutHandle(VK_NULL_HANDLE)
 {
 }
 
-void VulkanPipelineLayout::Init(const VulkanDevice* pDevice, const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts)
+void VulkanPipelineLayout::Init(const std::vector<VkDescriptorSetLayout>& descriptorSetLayouts)
 {
-    m_pDevice = pDevice;
-
     VkPipelineLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     layoutInfo.setLayoutCount = (U32)descriptorSetLayouts.size();
@@ -80,12 +70,12 @@ void VulkanPipelineLayout::Init(const VulkanDevice* pDevice, const std::vector<V
     layoutInfo.pushConstantRangeCount = 0;
     layoutInfo.pPushConstantRanges = nullptr;
 
-    SM_VULKAN_ASSERT(vkCreatePipelineLayout(m_pDevice->m_deviceHandle, &layoutInfo, nullptr, &m_layoutHandle));
+    SM_VULKAN_ASSERT(vkCreatePipelineLayout(VulkanDevice::GetHandle(), &layoutInfo, nullptr, &m_layoutHandle));
 }
 
 void VulkanPipelineLayout::Destroy()
 {
-    vkDestroyPipelineLayout(m_pDevice->m_deviceHandle, m_layoutHandle, nullptr);
+    vkDestroyPipelineLayout(VulkanDevice::GetHandle(), m_layoutHandle, nullptr);
 }
 
 VulkanMeshPipelineInputInfo::VulkanMeshPipelineInputInfo()
@@ -248,22 +238,17 @@ bool VulkanPipelineState::IsFullyInitialized() const
 }
 
 VulkanPipeline::VulkanPipeline()
-    :m_pDevice(nullptr)
-    ,m_pipelineLayout(VK_NULL_HANDLE)
-    ,m_pipelineHandle(VK_NULL_HANDLE)
+    :m_pipelineHandle(VK_NULL_HANDLE)
 {
 }
 
-void VulkanPipeline::Init(const VulkanDevice* pDevice,
-                          const VulkanShaderStages& shaderStages,
+void VulkanPipeline::Init(const VulkanShaderStages& shaderStages,
                           const VulkanPipelineLayout& layout,
                           const VulkanMeshPipelineInputInfo& meshPipelineInputInfo,
                           const VulkanPipelineState& pipelineState,
                           const VulkanRenderPass& renderPass)
 {
     SM_ASSERT(pipelineState.IsFullyInitialized());
-
-    m_pDevice = pDevice;
 
     VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
     pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -284,10 +269,10 @@ void VulkanPipeline::Init(const VulkanDevice* pDevice,
     pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
     pipelineCreateInfo.basePipelineIndex = -1;
 
-    SM_VULKAN_ASSERT(vkCreateGraphicsPipelines(m_pDevice->m_deviceHandle, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &m_pipelineHandle));
+    SM_VULKAN_ASSERT(vkCreateGraphicsPipelines(VulkanDevice::GetHandle(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &m_pipelineHandle));
 }
 
 void VulkanPipeline::Destroy()
 {
-	vkDestroyPipeline(m_pDevice->m_deviceHandle, m_pipelineHandle, nullptr);
+	vkDestroyPipeline(VulkanDevice::GetHandle(), m_pipelineHandle, nullptr);
 }

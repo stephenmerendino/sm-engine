@@ -58,10 +58,10 @@ namespace VulkanCommands
 		vkCmdCopyBuffer(commandBuffer, src.m_bufferHandle, dst.m_bufferHandle, 1, &copyRegion);
 	}
 
-	void GenerateMipMaps(const VulkanDevice& device, VkCommandBuffer commandBuffer, VkImage image, VkFormat format, U32 width, U32 height, U32 numMips)
+	void GenerateMipMaps(VkCommandBuffer commandBuffer, VkImage image, VkFormat format, U32 width, U32 height, U32 numMips)
 	{
 		// Check if image format supports linear filtered blitting
-		VkFormatProperties formatProps = device.QueryFormatProperties(format);;
+		VkFormatProperties formatProps = VulkanDevice::Get()->QueryFormatProperties(format);;
 		SM_ASSERT(formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT);
 
 		VkImageMemoryBarrier barrier{};

@@ -1,13 +1,13 @@
 #include "Engine/Render/Vulkan/VulkanRenderPass.h"
+#include "Engine/Render/Vulkan/VulkanDevice.h"
 #include "Engine/Core/Assert.h"
 
 VulkanRenderPass::VulkanRenderPass()
-	:m_deviceHandle(VK_NULL_HANDLE)
-	,m_renderPassHandle(VK_NULL_HANDLE)
+	:m_renderPassHandle(VK_NULL_HANDLE)
 {
 }
 
-void VulkanRenderPass::PreInitAddAttachment(VkFormat format, VkSampleCountFlagBits sampleCount,
+void VulkanRenderPass::PreInitAddAttachmentDesc(VkFormat format, VkSampleCountFlagBits sampleCount,
 											VkImageLayout initialLayout, VkImageLayout finalLayout,
 											VkAttachmentLoadOp loadOp, VkAttachmentStoreOp storeOp,
 											VkAttachmentLoadOp stencilLoadOp, VkAttachmentStoreOp stencilStoreOp,
@@ -24,7 +24,7 @@ void VulkanRenderPass::PreInitAddAttachment(VkFormat format, VkSampleCountFlagBi
 	attachmentDesc.initialLayout = initialLayout;
 	attachmentDesc.finalLayout = finalLayout;
 	attachmentDesc.flags = flags;
-	m_attachments.push_back(attachmentDesc);
+	m_attachmentDescs.push_back(attachmentDesc);
 }
 
 void VulkanRenderPass::PreInitAddSubpassAttachmentReference(U32 subpassIndex, VulkanSubpass::AttachmentRefType type, U32 attachment, VkImageLayout layout)
@@ -82,10 +82,8 @@ void VulkanRenderPass::PreInitAddSubpassDependency(U32 srcSubpass,
 	m_subpassDependencies.push_back(subpassDependency);
 }
 
-void VulkanRenderPass::Init(VkDevice device)
+void VulkanRenderPass::Init()
 {
-	m_deviceHandle = device;
-
 	std::vector<VkSubpassDescription2> subpassDescriptions;
 	subpassDescriptions.resize(m_subpasses.size());
 
@@ -116,17 +114,17 @@ void VulkanRenderPass::Init(VkDevice device)
 
 	VkRenderPassCreateInfo2 createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2;
-	createInfo.attachmentCount = (U32)m_attachments.size();
-	createInfo.pAttachments = m_attachments.data();
+	createInfo.attachmentCount = (U32)m_attachmentDescs.size();
+	createInfo.pAttachments = m_attachmentDescs.data();
 	createInfo.subpassCount = (U32)subpassDescriptions.size();
 	createInfo.pSubpasses = subpassDescriptions.data();
 	createInfo.dependencyCount = (U32)m_subpassDependencies.size();
 	createInfo.pDependencies = m_subpassDependencies.data();
 
-	SM_VULKAN_ASSERT(vkCreateRenderPass2(m_deviceHandle, &createInfo, nullptr, &m_renderPassHandle));
+	SM_VULKAN_ASSERT(vkCreateRenderPass2(VulkanDevice::GetHandle(), &createInfo, nullptr, &m_renderPassHandle));
 }
 
 void VulkanRenderPass::Destroy()
 {
-	vkDestroyRenderPass(m_deviceHandle, m_renderPassHandle, nullptr);
+	vkDestroyRenderPass(VulkanDevice::GetHandle(), m_renderPassHandle, nullptr);
 }
