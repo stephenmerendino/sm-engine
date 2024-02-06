@@ -56,7 +56,6 @@
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanRenderer.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanRenderPass.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanSampler.cpp" />
-    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanSurface.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanSwapchain.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanSync.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanTexture.cpp" />
@@ -118,7 +117,6 @@
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanRenderer.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanRenderPass.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanSampler.h" />
-    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanSurface.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanSwapchain.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanSync.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanTexture.h" />

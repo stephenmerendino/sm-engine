@@ -9,33 +9,31 @@ static void InteralInit(VulkanBuffer* bufferToInit, VkDeviceSize size, VkBufferU
 	createInfo.usage = usageFlags;
 	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	SM_VULKAN_ASSERT(vkCreateBuffer(bufferToInit->m_pDevice->m_deviceHandle, &createInfo, nullptr, &bufferToInit->m_bufferHandle));
+	SM_VULKAN_ASSERT(vkCreateBuffer(VulkanDevice::GetHandle(), &createInfo, nullptr, &bufferToInit->m_bufferHandle));
 
 	VkMemoryRequirements memRequirements;
-	vkGetBufferMemoryRequirements(bufferToInit->m_pDevice->m_deviceHandle, bufferToInit->m_bufferHandle, &memRequirements);
+	vkGetBufferMemoryRequirements(VulkanDevice::GetHandle(), bufferToInit->m_bufferHandle, &memRequirements);
 
 	VkMemoryAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = bufferToInit->m_pDevice->FindSupportedMemoryType(memRequirements.memoryTypeBits, memoryPropertyFlags);
+	allocInfo.memoryTypeIndex = VulkanDevice::Get()->FindSupportedMemoryType(memRequirements.memoryTypeBits, memoryPropertyFlags);
 
-	SM_VULKAN_ASSERT(vkAllocateMemory(bufferToInit->m_pDevice->m_deviceHandle, &allocInfo, nullptr, &bufferToInit->m_deviceMemory));
+	SM_VULKAN_ASSERT(vkAllocateMemory(VulkanDevice::GetHandle(), &allocInfo, nullptr, &bufferToInit->m_deviceMemory));
 
-	vkBindBufferMemory(bufferToInit->m_pDevice->m_deviceHandle, bufferToInit->m_bufferHandle, bufferToInit->m_deviceMemory, 0);
+	vkBindBufferMemory(VulkanDevice::GetHandle(), bufferToInit->m_bufferHandle, bufferToInit->m_deviceMemory, 0);
 }
 
 VulkanBuffer::VulkanBuffer()
-	:m_pDevice(nullptr)
-	,m_bufferHandle(VK_NULL_HANDLE)
+	:m_bufferHandle(VK_NULL_HANDLE)
 	,m_deviceMemory(VK_NULL_HANDLE)
 	,m_type(Type::kInvalid)
 	,m_size(0)
 {
 }
 
-void VulkanBuffer::Init(const VulkanDevice* device, VulkanBuffer::Type type, VkDeviceSize size)
+void VulkanBuffer::Init(VulkanBuffer::Type type, VkDeviceSize size)
 {
-	m_pDevice = device;
 	m_type = type;
 	m_size = size;
 
@@ -57,19 +55,19 @@ void VulkanBuffer::Update(const VulkanCommandPool& commandPool, const void* data
 	if (m_type == Type::kUniformBuffer || m_type == Type::kStagingBuffer)
 	{
 		void* mappedGpuMem;
-		vkMapMemory(m_pDevice->m_deviceHandle, m_deviceMemory, gpuMemoryOffset, m_size, 0, &mappedGpuMem);
+		vkMapMemory(VulkanDevice::Get()->m_deviceHandle, m_deviceMemory, gpuMemoryOffset, m_size, 0, &mappedGpuMem);
 		memcpy(mappedGpuMem, data, (size_t)m_size);
-		vkUnmapMemory(m_pDevice->m_deviceHandle, m_deviceMemory);
+		vkUnmapMemory(VulkanDevice::Get()->m_deviceHandle, m_deviceMemory);
 	}
 	else if (m_type == Type::kVertexBuffer || m_type == Type::kIndexBuffer)
 	{
 		VulkanBuffer stagingBuffer;
-		stagingBuffer.Init(m_pDevice, Type::kStagingBuffer, m_size);
+		stagingBuffer.Init(Type::kStagingBuffer, m_size);
 		stagingBuffer.Update(commandPool, data, gpuMemoryOffset);
 
 		VkCommandBuffer updateCommand = commandPool.BeginSingleTime();
 		VulkanCommands::CopyBuffer(updateCommand, stagingBuffer, *this, m_size);
-		commandPool.EndSingleTime(updateCommand);
+		commandPool.EndAndSubmitSingleTime(updateCommand);
 
 		stagingBuffer.Destroy();
 	}
@@ -77,6 +75,6 @@ void VulkanBuffer::Update(const VulkanCommandPool& commandPool, const void* data
 
 void VulkanBuffer::Destroy()
 {
-	vkDestroyBuffer(m_pDevice->m_deviceHandle, m_bufferHandle, nullptr);
-	vkFreeMemory(m_pDevice->m_deviceHandle, m_deviceMemory, nullptr);
+	vkDestroyBuffer(VulkanDevice::GetHandle(), m_bufferHandle, nullptr);
+	vkFreeMemory(VulkanDevice::GetHandle(), m_deviceMemory, nullptr);
 }

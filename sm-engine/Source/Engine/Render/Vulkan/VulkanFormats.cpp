@@ -1,12 +1,13 @@
 #include "Engine/Render/Vulkan/VulkanFormats.h"
+#include "Engine/Render/Vulkan/VulkanDevice.h"
 
 static VkFormat s_mainDepthFormat = VK_FORMAT_UNDEFINED;
 
 namespace VulkanFormats
 {
-	void Init(const VulkanDevice& device)
+	void Init()
 	{
-		s_mainDepthFormat = device.FindSupportedDepthFormat();
+		s_mainDepthFormat = VulkanDevice::Get()->FindSupportedDepthFormat();
 	}
 
 	VkFormat GetMainColorFormat()

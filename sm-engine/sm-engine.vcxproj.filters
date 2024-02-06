@@ -165,9 +165,6 @@
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanQueueFamilies.cpp">
       <Filter>Source\Render\Vulkan</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanSurface.cpp">
-      <Filter>Source\Render\Vulkan</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanSwapchain.cpp">
       <Filter>Source\Render\Vulkan</Filter>
     </ClCompile>
@@ -492,9 +489,6 @@
       <Filter>Source\Render\Vulkan</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanQueueFamilies.h">
-      <Filter>Source\Render\Vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanSurface.h">
       <Filter>Source\Render\Vulkan</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanSwapchain.h">

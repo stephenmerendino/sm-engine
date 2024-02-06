@@ -1,11 +1,14 @@
 #include "Engine/Render/Vulkan/VulkanDevice.h"
 #include "Engine/Render/Vulkan/VulkanFormats.h"
+#include "Engine/Render/Vulkan/VulkanInstance.h"
 #include "Engine/Render/Vulkan/VulkanSwapchain.h"
 #include "Engine/Config.h"
 #include "Engine/Core/Assert.h"
 #include "Engine/Core/Debug.h"
 #include <vector>
 #include <set>
+
+VulkanDevice* VulkanDevice::s_device = nullptr;
 
 static VkSampleCountFlagBits GetMaxMsaaSampleCount(VkPhysicalDeviceProperties props)
 {
@@ -89,7 +92,7 @@ VulkanDevice::VulkanDevice()
 {
 }
 
-void VulkanDevice::Init(VkInstance instance, VkSurfaceKHR surface)
+void VulkanDevice::Init(VkSurfaceKHR surface)
 {
 	// physical device
 	VkPhysicalDevice selecetedPhysicalDevice = VK_NULL_HANDLE;
@@ -100,11 +103,11 @@ void VulkanDevice::Init(VkInstance instance, VkSurfaceKHR surface)
 
 	{
 		U32 deviceCount = 0;
-		vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+		vkEnumeratePhysicalDevices(VulkanInstance::GetHandle(), &deviceCount, nullptr);
 		SM_ASSERT(deviceCount != 0);
 
 		std::vector<VkPhysicalDevice> devices(deviceCount);
-		vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+		vkEnumeratePhysicalDevices(VulkanInstance::GetHandle(), &deviceCount, devices.data());
 
 		if (IsDebug())
 		{
@@ -193,19 +196,36 @@ void VulkanDevice::Init(VkInstance instance, VkSurfaceKHR surface)
 		vkGetDeviceQueue(logicalDevice, queueFamilies.m_presentFamilyIndex, 0, &presentQueue);
 	}
 
-	m_physicalDeviceHandle = selecetedPhysicalDevice;
-	m_physicalDeviceProps = selectedPhysicalDeviceProps;
-	m_physicalDeviceMemoryProps = selectedPhysicalDeviceMemoryProps;
-	m_deviceHandle = logicalDevice;
-	m_graphicsQueue = graphicsQueue;
-	m_presentQueue = presentQueue;
-	m_maxNumMsaaSamples = maxNumMsaaSamples;
-	m_queueFamilies = queueFamilies;
+	s_device = new VulkanDevice();
+	s_device->m_physicalDeviceHandle = selecetedPhysicalDevice;
+	s_device->m_physicalDeviceProps = selectedPhysicalDeviceProps;
+	s_device->m_physicalDeviceMemoryProps = selectedPhysicalDeviceMemoryProps;
+	s_device->m_deviceHandle = logicalDevice;
+	s_device->m_graphicsQueue = graphicsQueue;
+	s_device->m_presentQueue = presentQueue;
+	s_device->m_maxNumMsaaSamples = maxNumMsaaSamples;
+	s_device->m_queueFamilies = queueFamilies;
 }
 
 void VulkanDevice::Destroy()
 {
-	vkDestroyDevice(m_deviceHandle, nullptr);
+	vkDestroyDevice(s_device->m_deviceHandle, nullptr);
+	delete s_device;
+}
+
+VulkanDevice* VulkanDevice::Get()
+{
+	return s_device;
+}
+
+VkDevice VulkanDevice::GetHandle()
+{
+	return s_device->m_deviceHandle;
+}
+
+VkPhysicalDevice VulkanDevice::GetPhysDeviceHandle()
+{
+	return s_device->m_physicalDeviceHandle;
 }
 
 VkFormat VulkanDevice::FindSupportedDepthFormat() const

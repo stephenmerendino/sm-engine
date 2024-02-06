@@ -7,10 +7,11 @@
 class VulkanDevice
 {
 public:
-	VulkanDevice();
-
-	void Init(VkInstance instance, VkSurfaceKHR surface);
-	void Destroy();
+	static void Init(VkSurfaceKHR surface);
+	static void Destroy();
+	static VulkanDevice* Get();
+	static VkDevice GetHandle();
+	static VkPhysicalDevice GetPhysDeviceHandle();
 
 	VkFormat FindSupportedDepthFormat() const;
 	VkFormat FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
@@ -20,6 +21,7 @@ public:
 	VkPhysicalDevice m_physicalDeviceHandle;
 	VkPhysicalDeviceProperties m_physicalDeviceProps;
 	VkPhysicalDeviceMemoryProperties m_physicalDeviceMemoryProps;
+
 	VkDevice m_deviceHandle;
 
 	VulkanQueueFamilies m_queueFamilies;
@@ -27,4 +29,9 @@ public:
 	VkQueue m_presentQueue;
 
 	VkSampleCountFlags m_maxNumMsaaSamples;
+
+private:
+	VulkanDevice();
+
+	static VulkanDevice* s_device;
 };

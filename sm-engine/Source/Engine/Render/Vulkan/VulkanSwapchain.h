@@ -20,8 +20,10 @@ class VulkanSwapchain
 public:
 	VulkanSwapchain();
 
-	void Init(Window* pWindow, const VkSurfaceKHR& surface, const VulkanDevice& device, const VulkanCommandPool& graphicsCommandPool);
-	void Destroy(VkDevice device);
+	void Init(Window* pWindow, const VkSurfaceKHR& surface);
+	void Destroy();
+
+	void AddInitialImageLayoutTransitionCommands(VkCommandBuffer commandBuffer);
 
 	static VulkanSwapchainDetails QuerySwapchainSupport(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface);
 

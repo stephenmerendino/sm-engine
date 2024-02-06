@@ -20,13 +20,31 @@ void VulkanRenderer::Init(Window* pWindow)
 	SM_ASSERT(pWindow != nullptr);
 	m_pWindow = pWindow;
 
-	m_instance.Init();
-	m_surface.Init(m_pWindow, m_instance.m_instanceHandle);
-	m_device.Init(m_instance.m_instanceHandle, m_surface.m_surfaceHandle);
-	m_graphicsCommandPool.Init(&m_device, VK_QUEUE_GRAPHICS_BIT, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-	m_swapchain.Init(m_pWindow, m_surface.m_surfaceHandle, m_device, m_graphicsCommandPool);
-	VulkanFormats::Init(m_device);
-	Mesh::LoadPrimitives();
+	Mesh::InitPrimitives();
+
+	VulkanInstance::Init();
+
+	// Create surface to render to in the window
+	VkWin32SurfaceCreateInfoKHR createInfo = {};
+	createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+	createInfo.pNext = nullptr;
+	createInfo.hwnd = pWindow->m_hwnd;
+	createInfo.hinstance = GetModuleHandle(nullptr);
+	SM_VULKAN_ASSERT(vkCreateWin32SurfaceKHR(VulkanInstance::GetHandle(), &createInfo, nullptr, &m_surface));
+
+	VulkanDevice::Init(m_surface);
+	m_swapchain.Init(m_pWindow, m_surface);
+
+	VulkanFormats::Init();
+
+	m_graphicsCommandPool.Init(VK_QUEUE_GRAPHICS_BIT, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+
+	// Initialize swapchain images to correct layout
+	{
+        VkCommandBuffer commandBuffer = m_graphicsCommandPool.BeginSingleTime();
+        m_swapchain.AddInitialImageLayoutTransitionCommands(commandBuffer);
+        m_graphicsCommandPool.EndAndSubmitSingleTime(commandBuffer);
+	}
 
 	/*
 	VulkanRenderPass renderPass;
@@ -41,11 +59,11 @@ void VulkanRenderer::Init(Window* pWindow)
 
 void VulkanRenderer::Shutdown()
 {
-	m_swapchain.Destroy(m_device.m_deviceHandle);
+	m_swapchain.Destroy();
 	m_graphicsCommandPool.Destroy();
-	m_device.Destroy();
-	m_surface.Destroy(m_instance.m_instanceHandle);
-	m_instance.Destroy();
+	VulkanDevice::Destroy();
+	vkDestroySurfaceKHR(VulkanInstance::GetHandle(), m_surface, nullptr);
+	VulkanInstance::Destroy();
 }
 
 void VulkanRenderer::SetCamera(const Camera* pCamera)

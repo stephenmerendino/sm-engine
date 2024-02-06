@@ -94,7 +94,7 @@ void VulkanTexture::InitFromFile(const VulkanDevice& device, const VulkanCommand
 	// Copy image data to staging buffer
 	VkDeviceSize imageSize = texWidth * texHeight * 4; // times 4 because of STBI_rgb_alpha
 	VulkanBuffer stagingBuffer;
-	stagingBuffer.Init(m_device, VulkanBuffer::Type::kStagingBuffer, imageSize);
+	stagingBuffer.Init(VulkanBuffer::Type::kStagingBuffer, imageSize);
 	stagingBuffer.Update(commandPool, pixels, 0);
 
 	// Make sure to free the pixels data
@@ -115,7 +115,7 @@ void VulkanTexture::InitFromFile(const VulkanDevice& device, const VulkanCommand
 		// Transition image to shader read layout so it can be used in fragment shader
 		//command_generate_mip_maps(context, texture.handle, format, tex_width, tex_height, texture.num_mips);
 		VulkanCommands::GenerateMipMaps(*m_device, commandBuffer, m_image, format, texWidth, texHeight, m_numMips);
-	commandPool.EndSingleTime(commandBuffer);
+	commandPool.EndAndSubmitSingleTime(commandBuffer);
 
 	// Set user friendly debug name
 	if (IsDebug())

@@ -6,7 +6,6 @@
 #include "Engine/Render/Vulkan/VulkanDevice.h"
 #include "Engine/Render/Vulkan/VulkanInclude.h"
 #include "Engine/Render/Vulkan/VulkanInstance.h"
-#include "Engine/Render/Vulkan/VulkanSurface.h"
 #include "Engine/Render/Vulkan/VulkanSwapchain.h"
 #include <vector>
 
@@ -22,11 +21,10 @@ public:
 	virtual void SetCamera(const Camera* pCamera) final;
 
 	Window* m_pWindow;
-	VulkanInstance m_instance;
-	VulkanSurface m_surface;
-	VulkanDevice m_device;
-	VulkanCommandPool m_graphicsCommandPool;
+	VkSurfaceKHR m_surface;
 	VulkanSwapchain m_swapchain;
+
+	VulkanCommandPool m_graphicsCommandPool;
 
 	const Camera* m_pMainCamera;
 };

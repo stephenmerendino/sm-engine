@@ -5,6 +5,8 @@
 #include "Engine/Core/Macros.h"
 #include "Engine/Core/Types.h"
 
+VulkanInstance* VulkanInstance::s_instance = nullptr;
+
 static VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugFunc(VkDebugUtilsMessageSeverityFlagBitsEXT      msgSeverity,
 													  VkDebugUtilsMessageTypeFlagsEXT             msgType,
 													  const VkDebugUtilsMessengerCallbackDataEXT* pCbData,
@@ -188,23 +190,35 @@ void VulkanInstance::Init()
 		}
 	}
 
-	SM_VULKAN_ASSERT(vkCreateInstance(&createInfo, nullptr, &m_instanceHandle));
+	s_instance = new VulkanInstance();
+	SM_VULKAN_ASSERT(vkCreateInstance(&createInfo, nullptr, &s_instance->m_instanceHandle));
 
-	LoadVulkanInstanceFuncs(m_instanceHandle);
+	LoadVulkanInstanceFuncs(s_instance->m_instanceHandle);
 
 	// real debug messenger for the whole game
 	if (ENABLE_VALIDATION_LAYERS)
 	{
 		VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = SetupDebugMessengerCreateInfo(VulkanDebugFunc);
-		SM_VULKAN_ASSERT(vkCreateDebugUtilsMessengerEXT(m_instanceHandle, &debugMessengerCreateInfo, nullptr, &m_debugMessengerHandle));
+		SM_VULKAN_ASSERT(vkCreateDebugUtilsMessengerEXT(s_instance->m_instanceHandle, &debugMessengerCreateInfo, nullptr, &s_instance->m_debugMessengerHandle));
 	}
 }
 
 void VulkanInstance::Destroy()
 {
-	if (m_debugMessengerHandle != VK_NULL_HANDLE)
+	if (s_instance->m_debugMessengerHandle != VK_NULL_HANDLE)
 	{
-		vkDestroyDebugUtilsMessengerEXT(m_instanceHandle, m_debugMessengerHandle, nullptr);
+		vkDestroyDebugUtilsMessengerEXT(s_instance->m_instanceHandle, s_instance->m_debugMessengerHandle, nullptr);
 	}
-	vkDestroyInstance(m_instanceHandle, nullptr);
+	vkDestroyInstance(s_instance->m_instanceHandle, nullptr);
+	delete s_instance;
+}
+
+VulkanInstance* VulkanInstance::Get()
+{
+	return s_instance;
+}
+
+VkInstance VulkanInstance::GetHandle()
+{
+	return s_instance->m_instanceHandle;
 }

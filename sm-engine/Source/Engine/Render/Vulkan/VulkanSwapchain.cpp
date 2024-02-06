@@ -89,11 +89,11 @@ VulkanSwapchain::VulkanSwapchain()
 {
 }
 
-void VulkanSwapchain::Init(Window* pWindow, const VkSurfaceKHR& surface, const VulkanDevice& device, const VulkanCommandPool& graphicsCommandPool)
+void VulkanSwapchain::Init(Window* pWindow, const VkSurfaceKHR& surface)
 {
 	SM_ASSERT(pWindow != nullptr);
 
-	VulkanSwapchainDetails swapchainDetails = QuerySwapchainSupport(device.m_physicalDeviceHandle, surface);
+	VulkanSwapchainDetails swapchainDetails = QuerySwapchainSupport(VulkanDevice::GetPhysDeviceHandle(), surface);
 
 	VkSurfaceFormatKHR surfaceFormat = ChooseSurfaceFormat(swapchainDetails.formats);
 	VkPresentModeKHR presentMode = ChoosePresentMode(swapchainDetails.presentModes);
@@ -123,9 +123,10 @@ void VulkanSwapchain::Init(Window* pWindow, const VkSurfaceKHR& surface, const V
 	createInfo.imageArrayLayers = 1;
 	createInfo.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-	U32 queueFamilyIndices[] = { (U32)device.m_queueFamilies.m_graphicsFamilyIndex, (U32)device.m_queueFamilies.m_presentFamilyIndex };
+	const VulkanQueueFamilies& queueFamilies = VulkanDevice::Get()->m_queueFamilies;
+	U32 queueFamilyIndices[] = { (U32)queueFamilies.m_graphicsFamilyIndex, (U32)queueFamilies.m_presentFamilyIndex};
 
-	if (device.m_queueFamilies.m_graphicsFamilyIndex != device.m_queueFamilies.m_presentFamilyIndex)
+	if (queueFamilies.m_graphicsFamilyIndex != queueFamilies.m_presentFamilyIndex)
 	{
 		createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 		createInfo.queueFamilyIndexCount = 2;
@@ -143,19 +144,25 @@ void VulkanSwapchain::Init(Window* pWindow, const VkSurfaceKHR& surface, const V
 	createInfo.clipped = VK_TRUE;
 	createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-	SM_VULKAN_ASSERT(vkCreateSwapchainKHR(device.m_deviceHandle, &createInfo, nullptr, &m_swapchainHandle));
+	SM_VULKAN_ASSERT(vkCreateSwapchainKHR(VulkanDevice::GetHandle(), &createInfo, nullptr, &m_swapchainHandle));
 
-	vkGetSwapchainImagesKHR(device.m_deviceHandle, m_swapchainHandle, &m_numImages, nullptr);
+	vkGetSwapchainImagesKHR(VulkanDevice::GetHandle(), m_swapchainHandle, &m_numImages, nullptr);
 
 	m_images.resize(m_numImages);
-	vkGetSwapchainImagesKHR(device.m_deviceHandle, m_swapchainHandle, &m_numImages, m_images.data());
+	vkGetSwapchainImagesKHR(VulkanDevice::GetHandle(), m_swapchainHandle, &m_numImages, m_images.data());
 
 	m_format = surfaceFormat.format;
 	m_extent = imageExtent;
 	m_imageInFlightFences.resize(m_numImages);
+}
 
-	// init image layouts to correct layout
-	VkCommandBuffer commandBuffer = graphicsCommandPool.BeginSingleTime();
+void VulkanSwapchain::Destroy()
+{
+	vkDestroySwapchainKHR(VulkanDevice::GetHandle(), m_swapchainHandle, nullptr);
+}
+
+void VulkanSwapchain::AddInitialImageLayoutTransitionCommands(VkCommandBuffer commandBuffer)
+{
 	for (I32 i = 0; i < (I32)m_numImages; i++)
 	{
 		VulkanCommands::TransitionImageLayout(commandBuffer, m_images[i], 1, 
@@ -163,10 +170,4 @@ void VulkanSwapchain::Init(Window* pWindow, const VkSurfaceKHR& surface, const V
 															 VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
 															 VK_ACCESS_NONE, VK_ACCESS_NONE);
 	}
-	graphicsCommandPool.EndSingleTime(commandBuffer);
-}
-
-void VulkanSwapchain::Destroy(VkDevice device)
-{
-	vkDestroySwapchainKHR(device, m_swapchainHandle, nullptr);
 }

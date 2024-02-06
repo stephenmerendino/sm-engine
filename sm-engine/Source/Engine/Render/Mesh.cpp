@@ -1,7 +1,7 @@
 #include "Engine/Render/Mesh.h"
 #include "Engine/Render/MeshBuilder.h"
 
-static Mesh* LoadUnitAxes()
+static Mesh* BuildUnitAxes()
 {
 	MeshBuilder builder;
 	builder.Begin();
@@ -10,7 +10,7 @@ static Mesh* LoadUnitAxes()
 	return builder.Finish();
 }
 
-static Mesh* LoadUnitTetrahedron()
+static Mesh* BuildUnitTetrahedron()
 {
 	MeshBuilder builder;
 	builder.Begin();
@@ -51,7 +51,7 @@ static Mesh* LoadUnitTetrahedron()
 	return builder.Finish();
 }
 
-static Mesh* LoadUnitCube()
+static Mesh* BuldUnitCube()
 {
 	MeshBuilder builder;
 	builder.Begin();
@@ -60,7 +60,7 @@ static Mesh* LoadUnitCube()
 	return builder.Finish();
 }
 
-static Mesh* LoadUnitOctahedron()
+static Mesh* BuildUnitOctahedron()
 {
 	MeshBuilder builder;
 	builder.Begin();
@@ -132,7 +132,7 @@ static Mesh* LoadUnitOctahedron()
 	return builder.Finish();
 }
 
-static Mesh* LoadUnitUvSphere()
+static Mesh* BuildUnitUvSphere()
 {
 	MeshBuilder builder;
 	builder.Begin();
@@ -141,7 +141,7 @@ static Mesh* LoadUnitUvSphere()
 	return builder.Finish();
 }
 
-static Mesh* LoadUnitPlane()
+static Mesh* BuildUnitPlane()
 {
 	MeshBuilder builder;
 	builder.Begin();
@@ -150,7 +150,7 @@ static Mesh* LoadUnitPlane()
 	return builder.Finish();
 }
 
-static Mesh* LoadUnitQuad()
+static Mesh* BuildUnitQuad()
 {
 	MeshBuilder builder;
 	builder.Begin();
@@ -160,7 +160,7 @@ static Mesh* LoadUnitQuad()
 	return builder.Finish();
 }
 
-static Mesh* LoadUnitCone()
+static Mesh* BuildUnitCone()
 {
 	MeshBuilder builder;
 	builder.Begin();
@@ -169,7 +169,7 @@ static Mesh* LoadUnitCone()
 	return builder.Finish();
 }
 
-static Mesh* LoadUnitCylinder()
+static Mesh* BuildUnitCylinder()
 {
 	MeshBuilder builder;
 	builder.Begin();
@@ -178,7 +178,7 @@ static Mesh* LoadUnitCylinder()
 	return builder.Finish();
 }
 
-static Mesh* LoadUnitTorus()
+static Mesh* BuildUnitTorus()
 {
 	MeshBuilder builder;
 	builder.Begin();
@@ -250,18 +250,18 @@ size_t Mesh::CalcIndexBufferSize() const
 	return sizeof(m_indices[0]) * m_indices.size();
 }
 
-void Mesh::LoadPrimitives()
+void Mesh::InitPrimitives()
 {
-	s_axesPrimitive = LoadUnitAxes();
-	s_tetrahedronPrimitive = LoadUnitTetrahedron();
-	s_hexahedronPrimitive = LoadUnitCube();
-	s_octahedronPrimitive = LoadUnitOctahedron();
-	s_uvSpherePrimitive = LoadUnitUvSphere();
-	s_planePrimitive = LoadUnitPlane();
-	s_quadPrimitive = LoadUnitQuad();
-	s_conePrimitive = LoadUnitCone();
-	s_cylinderPrimitive = LoadUnitCylinder();
-	s_torusPrimitive = LoadUnitTorus();
+	s_axesPrimitive = BuildUnitAxes();
+	s_tetrahedronPrimitive = BuildUnitTetrahedron();
+	s_hexahedronPrimitive = BuldUnitCube();
+	s_octahedronPrimitive = BuildUnitOctahedron();
+	s_uvSpherePrimitive = BuildUnitUvSphere();
+	s_planePrimitive = BuildUnitPlane();
+	s_quadPrimitive = BuildUnitQuad();
+	s_conePrimitive = BuildUnitCone();
+	s_cylinderPrimitive = BuildUnitCylinder();
+	s_torusPrimitive = BuildUnitTorus();
 }
 
 const Mesh* Mesh::GetPrimitive(PrimitiveMeshType primitive)

@@ -11,7 +11,7 @@ class VulkanCommandPool
 public:
 	VulkanCommandPool();
 
-	void Init(VulkanDevice* pDevice, VkQueueFlags requestedQueueFamilies, VkCommandPoolCreateFlags creatFlags);
+	void Init(VkQueueFlags requestedQueueFamilies, VkCommandPoolCreateFlags creatFlags);
 	void Destroy();
 
 	VkCommandBuffer AllocateCommandBuffer(VkCommandBufferLevel level) const;
@@ -21,9 +21,8 @@ public:
 	void FreeCommandBuffers(std::vector<VkCommandBuffer>& commandBuffers) const;
 
 	VkCommandBuffer BeginSingleTime() const;
-	void EndSingleTime(VkCommandBuffer commandBuffer) const;
+	void EndAndSubmitSingleTime(VkCommandBuffer commandBuffer) const;
 
-	VulkanDevice* m_pDevice;
 	VkCommandPool m_commandPoolHandle;
 	VkQueueFlags m_queueFamilies;
 	VkCommandPoolCreateFlags m_createFlags;

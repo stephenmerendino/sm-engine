@@ -35,7 +35,7 @@ public:
 	size_t CalcVertexBufferSize() const;
 	size_t CalcIndexBufferSize() const;
 
-	static void	LoadPrimitives();
+	static void	InitPrimitives();
 	static const Mesh* GetPrimitive(PrimitiveMeshType primtive);
 
 	PrimitiveTopology m_topology;
