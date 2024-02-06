@@ -12,6 +12,7 @@
 VulkanRenderer::VulkanRenderer()
 	:m_pWindow(nullptr)
 	,m_pMainCamera(nullptr)
+	,m_surface(VK_NULL_HANDLE)
 {
 }
 
