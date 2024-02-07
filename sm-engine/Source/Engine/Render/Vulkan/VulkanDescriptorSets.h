@@ -30,8 +30,8 @@ public:
 	void Reset(VkDescriptorPoolResetFlags flags);
 	void Destroy();
 
-	VkDescriptorSet AllocateSet(VulkanDescriptorSetLayout& layout);
-	std::vector<VkDescriptorSet> AllocateSets(const std::vector<VulkanDescriptorSetLayout> layouts);
+	VkDescriptorSet AllocateSet(const VulkanDescriptorSetLayout& layout);
+	std::vector<VkDescriptorSet> AllocateSets(const std::vector<VulkanDescriptorSetLayout>& layouts);
 
 	VkDescriptorPool m_poolHandle;
 	std::vector<VkDescriptorPoolSize> m_poolSizes;

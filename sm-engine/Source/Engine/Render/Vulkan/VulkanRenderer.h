@@ -3,6 +3,7 @@
 #include "Engine/Render/Renderer.h"
 #include "Engine/Core/Types.h"
 #include "Engine/Render/Vulkan/VulkanCommandPool.h"
+#include "Engine/Render/Vulkan/VulkanDescriptorSets.h"
 #include "Engine/Render/Vulkan/VulkanDevice.h"
 #include "Engine/Render/Vulkan/VulkanInclude.h"
 #include "Engine/Render/Vulkan/VulkanInstance.h"
@@ -18,6 +19,7 @@ public:
 	VulkanRenderer();
 
 	virtual void Init(Window* pWindow) final;
+	virtual void RenderFrame() final;
 	virtual void Shutdown() final;
 	virtual void SetCamera(const Camera* pCamera) final;
 
@@ -28,6 +30,13 @@ public:
 	VulkanCommandPool m_graphicsCommandPool;
 
 	VulkanRenderPass m_mainDrawRenderPass;
+
+	VulkanDescriptorSetLayout m_globalDescriptorSetLayout;
+	VulkanDescriptorPool m_globalDescriptorPool;
+	VkDescriptorSet m_globalDescriptorSet;
+	VulkanSampler m_globalLinearSampler;
+
+	U32 m_currentFrame;
 
 	const Camera* m_pMainCamera;
 };

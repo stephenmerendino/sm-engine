@@ -69,14 +69,14 @@ void VulkanDescriptorPool::Destroy()
 	vkDestroyDescriptorPool(VulkanDevice::GetHandle(), m_poolHandle, nullptr);
 }
 
-VkDescriptorSet VulkanDescriptorPool::AllocateSet(VulkanDescriptorSetLayout& layout)
+VkDescriptorSet VulkanDescriptorPool::AllocateSet(const VulkanDescriptorSetLayout& layout)
 {
 	std::vector<VulkanDescriptorSetLayout> layouts(1, layout);
 	std::vector<VkDescriptorSet> ds = AllocateSets(layouts);
 	return ds[0];
 }
 
-std::vector<VkDescriptorSet> VulkanDescriptorPool::AllocateSets(const std::vector<VulkanDescriptorSetLayout> layouts)
+std::vector<VkDescriptorSet> VulkanDescriptorPool::AllocateSets(const std::vector<VulkanDescriptorSetLayout>& layouts)
 {
 	VkDescriptorSetAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;

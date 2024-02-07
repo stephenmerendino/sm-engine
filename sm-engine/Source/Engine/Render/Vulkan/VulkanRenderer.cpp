@@ -13,6 +13,8 @@ VulkanRenderer::VulkanRenderer()
 	:m_pWindow(nullptr)
 	,m_pMainCamera(nullptr)
 	,m_surface(VK_NULL_HANDLE)
+	,m_currentFrame(0)
+	,m_globalDescriptorSet(VK_NULL_HANDLE)
 {
 }
 
@@ -46,25 +48,60 @@ void VulkanRenderer::Init(Window* pWindow)
         m_graphicsCommandPool.EndAndSubmitSingleTime(commandBuffer);
 	}
 
-	m_mainDrawRenderPass.PreInitAddAttachmentDesc(VulkanFormats::GetMainColorFormat(), VulkanDevice::Get()->m_maxNumMsaaSamples,
-                                                  VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-												  VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, 
-												  VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 0);
+	// Main draw render pass
+	{
+		m_mainDrawRenderPass.PreInitAddAttachmentDesc(VulkanFormats::GetMainColorFormat(), VulkanDevice::Get()->m_maxNumMsaaSamples,
+													  VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+													  VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, 
+													  VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 0);
 
+		m_mainDrawRenderPass.PreInitAddAttachmentDesc(VulkanFormats::GetMainDepthFormat(), VulkanDevice::Get()->m_maxNumMsaaSamples,
+													  VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+													  VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, 
+													  VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 0);
 
-	/*
-	VulkanRenderPass renderPass;
-	renderPass.PreInitAddAttachment(....);
-	renderPass.PreInitAddAttachment(....);
-	renderPass.PreInitAddSubpassAttachmentReference(....);
-	renderPass.PreInitAddSubpassAttachmentReference(....);
-	renderPass.PreInitAddSubpassDependency(....);
-	renderPass.Init();
-	*/
+		m_mainDrawRenderPass.PreInitAddSubpassAttachmentReference(0, VulkanSubpass::COLOR, 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+		m_mainDrawRenderPass.PreInitAddSubpassAttachmentReference(0, VulkanSubpass::DEPTH, 1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
+		m_mainDrawRenderPass.PreInitAddSubpassDependency(VK_SUBPASS_EXTERNAL, 0,
+														 VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
+														 VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
+														 0, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, 
+														 0);
+
+		m_mainDrawRenderPass.Init();
+	}
+
+	// Global data descriptors
+	{
+		m_globalDescriptorSetLayout.PreInitAddLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_SAMPLER, VK_SHADER_STAGE_ALL);
+		m_globalDescriptorSetLayout.Init();
+
+		m_globalDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_SAMPLER, 1);
+		m_globalDescriptorPool.Init(1);
+
+		m_globalDescriptorSet = m_globalDescriptorPool.AllocateSet(m_globalDescriptorSetLayout);
+
+		m_globalLinearSampler.Init(10);
+
+		VulkanDescriptorSetWriter globalDescriptorSetWriter;
+		globalDescriptorSetWriter.AddSamplerWrite(m_globalDescriptorSet, m_globalLinearSampler, 0, 0, 1);
+		globalDescriptorSetWriter.PerformWrites();
+	}
+}
+
+void VulkanRenderer::RenderFrame()
+{
+	m_currentFrame = (m_currentFrame + 1) % MAX_NUM_FRAMES_IN_FLIGHT;
 }
 
 void VulkanRenderer::Shutdown()
 {
+	m_globalLinearSampler.Destroy();
+	m_globalDescriptorPool.Destroy();
+	m_globalDescriptorSetLayout.Destroy();
+
+	m_mainDrawRenderPass.Destroy();
 	m_swapchain.Destroy();
 	m_graphicsCommandPool.Destroy();
 	VulkanDevice::Destroy();
