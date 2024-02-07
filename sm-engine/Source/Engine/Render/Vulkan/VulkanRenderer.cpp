@@ -46,6 +46,12 @@ void VulkanRenderer::Init(Window* pWindow)
         m_graphicsCommandPool.EndAndSubmitSingleTime(commandBuffer);
 	}
 
+	m_mainDrawRenderPass.PreInitAddAttachmentDesc(VulkanFormats::GetMainColorFormat(), VulkanDevice::Get()->m_maxNumMsaaSamples,
+                                                  VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+												  VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, 
+												  VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 0);
+
+
 	/*
 	VulkanRenderPass renderPass;
 	renderPass.PreInitAddAttachment(....);

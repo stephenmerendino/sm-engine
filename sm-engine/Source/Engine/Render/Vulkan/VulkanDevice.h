@@ -28,7 +28,7 @@ public:
 	VkQueue m_graphicsQueue;
 	VkQueue m_presentQueue;
 
-	VkSampleCountFlags m_maxNumMsaaSamples;
+	VkSampleCountFlagBits m_maxNumMsaaSamples;
 
 private:
 	VulkanDevice();

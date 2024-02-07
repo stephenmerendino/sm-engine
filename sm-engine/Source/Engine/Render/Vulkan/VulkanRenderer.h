@@ -6,6 +6,7 @@
 #include "Engine/Render/Vulkan/VulkanDevice.h"
 #include "Engine/Render/Vulkan/VulkanInclude.h"
 #include "Engine/Render/Vulkan/VulkanInstance.h"
+#include "Engine/Render/Vulkan/VulkanRenderPass.h"
 #include "Engine/Render/Vulkan/VulkanSwapchain.h"
 #include <vector>
 
@@ -25,6 +26,8 @@ public:
 	VulkanSwapchain m_swapchain;
 
 	VulkanCommandPool m_graphicsCommandPool;
+
+	VulkanRenderPass m_mainDrawRenderPass;
 
 	const Camera* m_pMainCamera;
 };
