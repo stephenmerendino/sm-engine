@@ -96,6 +96,12 @@ std::vector<VkDescriptorSet> VulkanDescriptorPool::AllocateSets(const std::vecto
 	return vkDescriptorSets;
 }
 
+std::vector<VkDescriptorSet> VulkanDescriptorPool::AllocateSets(const VulkanDescriptorSetLayout& layout, U32 numSets)
+{
+	std::vector<VulkanDescriptorSetLayout> layouts(numSets, layout);
+	return AllocateSets(layouts);
+}
+
 void VulkanDescriptorSetWriter::AddUniformBufferWrite(VkDescriptorSet descriptorSet, const VulkanBuffer& buffer, U32 bufferOffset, U32 dstBinding, U32 dstArrayElement, U32 descriptorCount)
 {
 	WriteInfo writeInfo;

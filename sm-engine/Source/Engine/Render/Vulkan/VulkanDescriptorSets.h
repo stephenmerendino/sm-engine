@@ -32,6 +32,7 @@ public:
 
 	VkDescriptorSet AllocateSet(const VulkanDescriptorSetLayout& layout);
 	std::vector<VkDescriptorSet> AllocateSets(const std::vector<VulkanDescriptorSetLayout>& layouts);
+	std::vector<VkDescriptorSet> AllocateSets(const VulkanDescriptorSetLayout& layout, U32 numSets);
 
 	VkDescriptorPool m_poolHandle;
 	std::vector<VkDescriptorPoolSize> m_poolSizes;

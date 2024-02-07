@@ -88,13 +88,60 @@ void VulkanRenderer::Init(Window* pWindow)
 		globalDescriptorSetWriter.AddSamplerWrite(m_globalDescriptorSet, m_globalLinearSampler, 0, 0, 1);
 		globalDescriptorSetWriter.PerformWrites();
 	}
+
+	// Frame data descriptors
+	{
+		VulkanDescriptorSetLayout frameDescriptorSetLayout;
+		frameDescriptorSetLayout.PreInitAddLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL);
+		frameDescriptorSetLayout.Init();
+
+		VulkanDescriptorPool frameDescriptorPool;
+		frameDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_NUM_FRAMES_IN_FLIGHT);
+		frameDescriptorPool.Init(MAX_NUM_FRAMES_IN_FLIGHT);
+
+		std::vector<VkDescriptorSet> frameDescriptorSets = m_frameDescriptorPool.AllocateSets(frameDescriptorSetLayout, MAX_NUM_FRAMES_IN_FLIGHT);
+	}
 }
 
 void VulkanRenderer::RenderFrame()
 {
+	/*
+	Basic High Level Frame Flow
+
+	1: Acquire a swapchain image to present at end of frame
+	2: Transition resolve buffers from transfer src to color/depth output
+	3: Update Frame Descriptor Set
+	4: Begin Main Draw Render Pass
+		4a: For each mesh
+			Update Mesh Descriptor Set with mvp
+			Bind Pipeline
+			Bind Descriptor Sets
+				Global
+				Frame
+				Material
+				Mesh
+			Bind Vertex Buffer
+			Bind Index Buffer
+			Draw Command
+	5: Transition Color Resolve to Transfer Src
+	6: Transition Swapchain Image to Transfer Dst
+	7: Copy Color Resolve to Swapchain Image
+	8: Transition Swapchain Image to Present
+	9: Present Swapchain Image
+	*/
+
 	m_currentFrame = (m_currentFrame + 1) % MAX_NUM_FRAMES_IN_FLIGHT;
 
+	VulkanSemaphore swapchainImageAvailableSemaphore;
+	VulkanFence swapchainImageAvailableFence;
+
 	U32 swapchainImageIndex = m_swapchain.AcquireNextImage();
+	//if (m_swapchain.NeedsRefresh())
+	//{
+	//	m_swapchain.Refresh();
+	//}
+
+
 }
 
 void VulkanRenderer::Shutdown()
