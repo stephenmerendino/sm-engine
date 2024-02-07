@@ -3,6 +3,7 @@
 #include "Engine/Render/Vulkan/VulkanInclude.h"
 #include "Engine/Render/Vulkan/VulkanDevice.h"
 #include "Engine/Render/Vulkan/VulkanCommandPool.h"
+#include "Engine/Render/Vulkan/VulkanSync.h"
 #include "Engine/Core/Types.h"
 #include <vector>
 
@@ -24,6 +25,7 @@ public:
 	void Destroy();
 
 	void AddInitialImageLayoutTransitionCommands(VkCommandBuffer commandBuffer);
+	U32 AcquireNextImage();
 
 	static VulkanSwapchainDetails QuerySwapchainSupport(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface);
 
@@ -32,5 +34,6 @@ public:
 	VkExtent2D m_extent;
 	U32 m_numImages;
 	std::vector<VkImage> m_images;
-	std::vector<VkFence> m_imageInFlightFences;
+	std::vector<VulkanSemaphore> m_imageIsReadySemaphore;
+	//;std::vector<VkFence> m_imageInFlightFences;
 };

@@ -93,6 +93,8 @@ void VulkanRenderer::Init(Window* pWindow)
 void VulkanRenderer::RenderFrame()
 {
 	m_currentFrame = (m_currentFrame + 1) % MAX_NUM_FRAMES_IN_FLIGHT;
+
+	U32 swapchainImageIndex = m_swapchain.AcquireNextImage();
 }
 
 void VulkanRenderer::Shutdown()

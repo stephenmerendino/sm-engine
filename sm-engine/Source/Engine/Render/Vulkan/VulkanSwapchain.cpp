@@ -153,7 +153,7 @@ void VulkanSwapchain::Init(Window* pWindow, const VkSurfaceKHR& surface)
 
 	m_format = surfaceFormat.format;
 	m_extent = imageExtent;
-	m_imageInFlightFences.resize(m_numImages);
+	//m_imageInFlightFences.resize(m_numImages);
 }
 
 void VulkanSwapchain::Destroy()
@@ -170,4 +170,11 @@ void VulkanSwapchain::AddInitialImageLayoutTransitionCommands(VkCommandBuffer co
 															 VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
 															 VK_ACCESS_NONE, VK_ACCESS_NONE);
 	}
+}
+
+U32 VulkanSwapchain::AcquireNextImage()
+{
+	U32 imageIndex;
+	vkAcquireNextImageKHR(VulkanDevice::GetHandle(), m_swapchainHandle, UINT64_MAX, m_imageIsReadySemaphore[imageIndex].m_semaphoreHandle, VK_NULL_HANDLE, &imageIndex);
+	return imageIndex;
 }
