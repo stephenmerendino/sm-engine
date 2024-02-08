@@ -18,7 +18,7 @@ namespace VulkanCommands
 
 	void TransitionImageLayout(VkCommandBuffer commandBuffer, 
 							   VkImage image, 
-							   U32 num_mips, 
+							   U32 numMips, 
 							   VkImageLayout oldLayout,
 							   VkImageLayout newLayout,
 							   VkPipelineStageFlags srcStage,
@@ -37,7 +37,7 @@ namespace VulkanCommands
 		barrier.image = image;
 		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		barrier.subresourceRange.baseMipLevel = 0;
-		barrier.subresourceRange.levelCount = num_mips;
+		barrier.subresourceRange.levelCount = numMips;
 		barrier.subresourceRange.baseArrayLayer = 0;
 		barrier.subresourceRange.layerCount = 1;
 

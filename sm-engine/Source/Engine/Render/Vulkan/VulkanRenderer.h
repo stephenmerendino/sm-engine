@@ -1,10 +1,12 @@
 #pragma once
 
 #include "Engine/Render/Renderer.h"
+#include "Engine/Config.h"
 #include "Engine/Core/Types.h"
 #include "Engine/Render/Vulkan/VulkanCommandPool.h"
 #include "Engine/Render/Vulkan/VulkanDescriptorSets.h"
 #include "Engine/Render/Vulkan/VulkanDevice.h"
+#include "Engine/Render/Vulkan/VulkanFramebuffer.h"
 #include "Engine/Render/Vulkan/VulkanInclude.h"
 #include "Engine/Render/Vulkan/VulkanInstance.h"
 #include "Engine/Render/Vulkan/VulkanRenderPass.h"
@@ -13,15 +15,36 @@
 
 class Camera;
 
+struct RenderFrame
+{
+	U32 m_swapchainImageIndex = VulkanSwapchain::kInvalidSwapchainIndex;
+	VulkanSemaphore m_swapchainImageIsReadySemaphore;
+	VulkanFence m_frameFinishedFence;
+
+	VkDescriptorSet m_frameDescriptorSet;
+
+	VkCommandBuffer m_frameCommandBuffer;
+
+	VulkanFramebuffer m_mainDrawFramebuffer;
+	VulkanTexture m_mainDrawColorMultisampleTexture;
+	VulkanTexture m_mainDrawDepthMultisampleTexture;
+	VulkanTexture m_mainDrawColorResolveTexture;
+};
+
 class VulkanRenderer : public Renderer
 {
 public:
 	VulkanRenderer();
 
 	virtual void Init(Window* pWindow) final;
-	virtual void RenderFrame() final;
+	virtual void Render() final;
 	virtual void Shutdown() final;
 	virtual void SetCamera(const Camera* pCamera) final;
+
+	void RefreshSwapchain();
+
+	void SetupNewFrame();
+	void PresentFinalImage();
 
 	Window* m_pWindow;
 	VkSurfaceKHR m_surface;
@@ -36,7 +59,12 @@ public:
 	VkDescriptorSet m_globalDescriptorSet;
 	VulkanSampler m_globalLinearSampler;
 
+	VulkanDescriptorSetLayout m_frameDescriptorSetLayout;
+	VulkanDescriptorPool m_frameDescriptorPool;
+
 	U32 m_currentFrame;
+
+	RenderFrame m_renderFrames[MAX_NUM_FRAMES_IN_FLIGHT];
 
 	const Camera* m_pMainCamera;
 };

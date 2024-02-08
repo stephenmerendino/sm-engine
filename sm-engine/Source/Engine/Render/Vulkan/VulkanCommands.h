@@ -11,7 +11,7 @@ namespace VulkanCommands
 
 	void TransitionImageLayout(VkCommandBuffer commandBuffer, 
 							   VkImage image, 
-							   U32 num_mips, 
+							   U32 numMips, 
 							   VkImageLayout oldLayout,
 							   VkImageLayout newLayout,
 							   VkPipelineStageFlags srcStage,

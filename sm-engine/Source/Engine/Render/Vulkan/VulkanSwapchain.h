@@ -25,7 +25,8 @@ public:
 	void Destroy();
 
 	void AddInitialImageLayoutTransitionCommands(VkCommandBuffer commandBuffer);
-	U32 AcquireNextImage();
+	VkResult AcquireNextImage(VulkanSemaphore* imageIsReadySemaphore, VulkanFence* imageIsReadyFence, U32* outImageIndex);
+	bool NeedsRefresh(VkResult result) const;
 
 	static VulkanSwapchainDetails QuerySwapchainSupport(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface);
 
@@ -34,6 +35,9 @@ public:
 	VkExtent2D m_extent;
 	U32 m_numImages;
 	std::vector<VkImage> m_images;
-	std::vector<VulkanSemaphore> m_imageIsReadySemaphore;
-	//;std::vector<VkFence> m_imageInFlightFences;
+
+	enum : U32
+	{
+		kInvalidSwapchainIndex = UINT32_MAX
+	};
 };

@@ -172,9 +172,15 @@ void VulkanSwapchain::AddInitialImageLayoutTransitionCommands(VkCommandBuffer co
 	}
 }
 
-U32 VulkanSwapchain::AcquireNextImage()
+VkResult VulkanSwapchain::AcquireNextImage(VulkanSemaphore* imageIsReadySemaphore, VulkanFence* imageIsReadyFence, U32* outImageIndex)
 {
-	U32 imageIndex;
-	vkAcquireNextImageKHR(VulkanDevice::GetHandle(), m_swapchainHandle, UINT64_MAX, m_imageIsReadySemaphore[imageIndex].m_semaphoreHandle, VK_NULL_HANDLE, &imageIndex);
-	return imageIndex;
+	VkSemaphore signalSemaphore = imageIsReadySemaphore ? imageIsReadySemaphore->m_semaphoreHandle : VK_NULL_HANDLE;
+	VkFence signalFence = imageIsReadyFence ? imageIsReadyFence->m_fenceHandle : VK_NULL_HANDLE;
+
+	return vkAcquireNextImageKHR(VulkanDevice::GetHandle(), m_swapchainHandle, UINT64_MAX, signalSemaphore, signalFence, outImageIndex);
+}
+
+bool VulkanSwapchain::NeedsRefresh(VkResult result) const
+{
+	return result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR;
 }
