@@ -54,13 +54,13 @@ void VulkanRenderer::Init(Window* pWindow)
 													  VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 0);
 
 		m_mainDrawRenderPass.PreInitAddAttachmentDesc(VulkanFormats::GetMainColorFormat(), VK_SAMPLE_COUNT_1_BIT,
-													  VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+													  VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 													  VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, 
 													  VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 0);
 
 		m_mainDrawRenderPass.PreInitAddSubpassAttachmentReference(0, VulkanSubpass::COLOR, 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 		m_mainDrawRenderPass.PreInitAddSubpassAttachmentReference(0, VulkanSubpass::DEPTH, 1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-		m_mainDrawRenderPass.PreInitAddSubpassAttachmentReference(0, VulkanSubpass::COLOR_RESOLVE, 2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+		m_mainDrawRenderPass.PreInitAddSubpassAttachmentReference(0, VulkanSubpass::COLOR_RESOLVE, 2, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
 		m_mainDrawRenderPass.PreInitAddSubpassDependency(VK_SUBPASS_EXTERNAL, 0,
 														 VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
@@ -103,7 +103,8 @@ void VulkanRenderer::Init(Window* pWindow)
 		{
 			RenderFrame& frame = m_renderFrames[i];
 			frame.m_swapchainImageIsReadySemaphore.Init();
-			frame.m_frameFinishedFence.Init();
+			frame.m_frameCompletedSemaphore.Init();
+			frame.m_frameCompletedFence.Init();
 			frame.m_frameCommandBuffer = m_graphicsCommandPool.AllocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 			frame.m_frameDescriptorSet = m_frameDescriptorPool.AllocateSet(m_frameDescriptorSetLayout);
 
@@ -156,6 +157,7 @@ void VulkanRenderer::Render()
 
 	SetupNewFrame();
 	RenderFrame& curRenderFrame = m_renderFrames[m_currentFrame];
+
 	VulkanCommands::Begin(curRenderFrame.m_frameCommandBuffer, 0);
 
 	// Main Draw
@@ -171,30 +173,42 @@ void VulkanRenderer::Render()
 		VkExtent2D mainDrawExtent = m_swapchain.m_extent;
 
 		VulkanCommands::BeginRenderPass(curRenderFrame.m_frameCommandBuffer, m_mainDrawRenderPass.m_renderPassHandle, curRenderFrame.m_mainDrawFramebuffer.m_framebufferHandle, mainDrawOffset, mainDrawExtent, mainDrawClearValues);
+			// Draw meshes here
 		VulkanCommands::EndRenderPass(curRenderFrame.m_frameCommandBuffer);
 
 	}
 
 	// Copy from main draw target to swapchain
 	{
-		VulkanCommands::TransitionImageLayout(curRenderFrame.m_frameCommandBuffer, curRenderFrame.m_mainDrawColorResolveTexture.m_image, 1,
-											  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		VulkanCommands::TransitionImageLayout(curRenderFrame.m_frameCommandBuffer, m_swapchain.m_images[curRenderFrame.m_swapchainImageIndex], 1,
+											  VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 											  VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-											  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_WRITE_BIT);
+											  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT);
+
+		VulkanCommands::CopyImage(curRenderFrame.m_frameCommandBuffer, curRenderFrame.m_mainDrawColorResolveTexture.m_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+								  m_swapchain.m_images[curRenderFrame.m_swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+								  m_swapchain.m_extent.width, m_swapchain.m_extent.height, 1);
+
+		VulkanCommands::TransitionImageLayout(curRenderFrame.m_frameCommandBuffer, m_swapchain.m_images[curRenderFrame.m_swapchainImageIndex], 1,
+											  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+											  VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_NONE,
+											  VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_NONE);
 	}
 
 	VulkanCommands::End(curRenderFrame.m_frameCommandBuffer);
+
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.pNext = nullptr;
-    submitInfo.waitSemaphoreCount = 0;
-    submitInfo.pWaitSemaphores = nullptr;
-    submitInfo.pWaitDstStageMask = nullptr;
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = &curRenderFrame.m_swapchainImageIsReadySemaphore.m_semaphoreHandle;
+	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_TRANSFER_BIT };
+    submitInfo.pWaitDstStageMask = waitStages;
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &curRenderFrame.m_frameCommandBuffer;
-    submitInfo.signalSemaphoreCount = 0;
-    submitInfo.pSignalSemaphores = nullptr;
-	vkQueueSubmit(VulkanDevice::Get()->m_graphicsQueue, 1, &submitInfo, curRenderFrame.m_frameFinishedFence.m_fenceHandle);
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = &curRenderFrame.m_frameCompletedSemaphore.m_semaphoreHandle;
+	vkQueueSubmit(VulkanDevice::Get()->m_graphicsQueue, 1, &submitInfo, curRenderFrame.m_frameCompletedFence.m_fenceHandle);
 
 	PresentFinalImage();
 }
@@ -203,6 +217,9 @@ void VulkanRenderer::SetupNewFrame()
 {
 	m_currentFrame = (m_currentFrame + 1) % MAX_NUM_FRAMES_IN_FLIGHT;
 	RenderFrame& curRenderFrame = m_renderFrames[m_currentFrame];
+
+	curRenderFrame.m_frameCompletedFence.Wait();
+	curRenderFrame.m_frameCompletedFence.Reset();
 
 	U32 swapchainImageIndex = VulkanSwapchain::kInvalidSwapchainIndex;
 	VkResult result = m_swapchain.AcquireNextImage(&curRenderFrame.m_swapchainImageIsReadySemaphore, nullptr, &swapchainImageIndex);
@@ -227,7 +244,7 @@ void VulkanRenderer::PresentFinalImage()
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.pNext = nullptr;
 	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = &m_renderFrames[m_currentFrame].m_swapchainImageIsReadySemaphore.m_semaphoreHandle;
+	presentInfo.pWaitSemaphores = &m_renderFrames[m_currentFrame].m_frameCompletedSemaphore.m_semaphoreHandle;
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = &m_swapchain.m_swapchainHandle;
 	presentInfo.pImageIndices = &m_renderFrames[m_currentFrame].m_swapchainImageIndex;
@@ -252,7 +269,8 @@ void VulkanRenderer::Shutdown()
 		for (int i = 0; i < MAX_NUM_FRAMES_IN_FLIGHT; i++)
 		{
 			RenderFrame& frame = m_renderFrames[i];
-			frame.m_frameFinishedFence.Destroy();
+			frame.m_frameCompletedFence.Destroy();
+			frame.m_frameCompletedSemaphore.Destroy();
 			frame.m_swapchainImageIsReadySemaphore.Destroy();
 			frame.m_mainDrawFramebuffer.Destroy();
 			frame.m_mainDrawColorMultisampleTexture.Destroy();

@@ -17,18 +17,16 @@ class Camera;
 
 struct RenderFrame
 {
-	U32 m_swapchainImageIndex = VulkanSwapchain::kInvalidSwapchainIndex;
-	VulkanSemaphore m_swapchainImageIsReadySemaphore;
-	VulkanFence m_frameFinishedFence;
-
-	VkDescriptorSet m_frameDescriptorSet;
-
-	VkCommandBuffer m_frameCommandBuffer;
-
-	VulkanFramebuffer m_mainDrawFramebuffer;
-	VulkanTexture m_mainDrawColorMultisampleTexture;
-	VulkanTexture m_mainDrawDepthMultisampleTexture;
-	VulkanTexture m_mainDrawColorResolveTexture;
+	U32					m_swapchainImageIndex = VulkanSwapchain::kInvalidSwapchainIndex;
+	VulkanSemaphore		m_swapchainImageIsReadySemaphore;
+	VulkanFence			m_frameCompletedFence;
+	VulkanSemaphore		m_frameCompletedSemaphore;
+	VkDescriptorSet		m_frameDescriptorSet;
+	VkCommandBuffer		m_frameCommandBuffer;
+	VulkanFramebuffer	m_mainDrawFramebuffer;
+	VulkanTexture		m_mainDrawColorMultisampleTexture;
+	VulkanTexture		m_mainDrawDepthMultisampleTexture;
+	VulkanTexture		m_mainDrawColorResolveTexture;
 };
 
 class VulkanRenderer : public Renderer
