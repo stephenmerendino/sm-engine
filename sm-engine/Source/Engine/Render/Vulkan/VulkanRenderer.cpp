@@ -135,7 +135,7 @@ void VulkanRenderer::Render()
 	// Main Draw
 	{
 		VkClearValue colorClear = {};
-		colorClear.color = { 1.0f, 0.0f, 1.0f, 1.0f };
+		colorClear.color = { 0.25f, 0.25f, 0.25f, 1.0f };
 		VkClearValue depthClear = {};
 		depthClear.depthStencil = { 1.0f, 0 };
 
