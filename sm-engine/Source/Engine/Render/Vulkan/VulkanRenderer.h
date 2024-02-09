@@ -96,6 +96,7 @@ public:
 	VkDescriptorSet m_vikingRoomMaterialDS;
 
 	VkDescriptorSet m_vikingRoomMeshInstanceDS;
+	VulkanPipelineLayout m_vikingRoomMainDrawPipelineLayout;
 	VulkanPipeline m_vikingRoomMainDrawPipeline;
 
 	VulkanBuffer m_vikingRoomMeshInstanceBuffer;

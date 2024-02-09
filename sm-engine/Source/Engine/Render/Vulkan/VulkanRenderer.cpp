@@ -129,7 +129,10 @@ void VulkanRenderer::Init(Window* pWindow)
 	m_pVikingRoomMesh = MeshBuilder::BuildFromObj("viking_room.obj");
 
 	m_vikingRoomVertexBuffer.Init(VulkanBuffer::Type::kVertexBuffer, m_pVikingRoomMesh->CalcVertexBufferSize());
-	m_vikingRoomVertexBuffer.Init(VulkanBuffer::Type::kIndexBuffer, m_pVikingRoomMesh->CalcIndexBufferSize());
+	m_vikingRoomVertexBuffer.Update(m_graphicsCommandPool, m_pVikingRoomMesh->m_vertices.data(), 0);
+
+	m_vikingRoomIndexBuffer.Init(VulkanBuffer::Type::kIndexBuffer, m_pVikingRoomMesh->CalcIndexBufferSize());
+	m_vikingRoomIndexBuffer.Update(m_graphicsCommandPool, m_pVikingRoomMesh->m_indices.data(), 0);
 
 	m_vikingRoomDiffuseTexture.InitFromFile(m_graphicsCommandPool, "viking-room.png");
 
@@ -152,8 +155,7 @@ void VulkanRenderer::Init(Window* pWindow)
 		m_meshInstanceDescriptorSetLayout.m_layoutHandle
 	};
 
-	VulkanPipelineLayout pipelineLayout;
-	pipelineLayout.Init(pipelineDescriptorSetLayouts);
+	m_vikingRoomMainDrawPipelineLayout.Init(pipelineDescriptorSetLayouts);
 
 	VulkanMeshPipelineInputInfo pipelineMeshInputInfo;
 	pipelineMeshInputInfo.Init(m_pVikingRoomMesh, false);
@@ -163,9 +165,10 @@ void VulkanRenderer::Init(Window* pWindow)
 	pipelineState.InitViewportState(0, 0, (F32)m_swapchain.m_extent.width, (F32)m_swapchain.m_extent.height);
 	pipelineState.InitMultisampleState(VulkanDevice::Get()->m_maxNumMsaaSamples);
 	pipelineState.InitDepthStencilState(true, true, VK_COMPARE_OP_LESS);
+	pipelineState.PreInitAddColorBlendAttachment(false);
 	pipelineState.InitColorBlendState(false);
 
-	m_vikingRoomMainDrawPipeline.Init(shaderStages, pipelineLayout, pipelineMeshInputInfo, pipelineState, m_mainDrawRenderPass);
+	m_vikingRoomMainDrawPipeline.Init(shaderStages, m_vikingRoomMainDrawPipelineLayout, pipelineMeshInputInfo, pipelineState, m_mainDrawRenderPass);
 }
 
 void VulkanRenderer::Update(F32 ds)
@@ -226,7 +229,7 @@ void VulkanRenderer::Render()
 
             MeshInstanceRenderData meshInstanceRenderData;
 			meshInstanceRenderData.m_mvp = model * view * projection;
-            m_vikingRoomMeshInstanceBuffer.Update(m_graphicsCommandPool, nullptr, 0);
+            m_vikingRoomMeshInstanceBuffer.Update(m_graphicsCommandPool, &meshInstanceRenderData, 0);
 
 			// Mesh instance descriptor set
             VkDescriptorSet meshInstanceDescriptorSet = curRenderFrame.m_meshInstanceDescriptorPool.AllocateSet(m_meshInstanceDescriptorSetLayout);
@@ -235,9 +238,26 @@ void VulkanRenderer::Render()
 			meshInstanceDescriptorWriter.PerformWrites();
 
 			// Bind vertex buffer
+			VkBuffer vertexBuffer[] = { m_vikingRoomVertexBuffer.m_bufferHandle };
+			VkDeviceSize offsets[] = { 0 };
+			vkCmdBindVertexBuffers(curRenderFrame.m_frameCommandBuffer, 0, 1, vertexBuffer, offsets);
+
 			// Bind index buffer
+			vkCmdBindIndexBuffer(curRenderFrame.m_frameCommandBuffer, m_vikingRoomIndexBuffer.m_bufferHandle, 0, VK_INDEX_TYPE_UINT32);
+
 			// Bind pipeline
+			vkCmdBindPipeline(curRenderFrame.m_frameCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_vikingRoomMainDrawPipeline.m_pipelineHandle);
+
+			std::vector<VkDescriptorSet> mainDrawDescriptorSets = {
+				m_globalDescriptorSet,
+				curRenderFrame.m_frameDescriptorSet,
+				m_vikingRoomMaterialDS,
+				meshInstanceDescriptorSet	
+			};
+			vkCmdBindDescriptorSets(curRenderFrame.m_frameCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_vikingRoomMainDrawPipelineLayout.m_layoutHandle, 0, (U32)mainDrawDescriptorSets.size(), mainDrawDescriptorSets.data(), 0, nullptr);
+
 			// Draw command
+			vkCmdDrawIndexed(curRenderFrame.m_frameCommandBuffer, (U32)m_pVikingRoomMesh->m_indices.size(), 1, 0, 0, 0);
 
 		VulkanCommands::EndRenderPass(curRenderFrame.m_frameCommandBuffer);
 
