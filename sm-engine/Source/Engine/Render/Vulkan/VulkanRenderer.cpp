@@ -39,7 +39,7 @@ void VulkanRenderer::Init(Window* pWindow)
 
 	m_graphicsCommandPool.Init(VK_QUEUE_GRAPHICS_BIT, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
-	RefreshSwapchain();
+	InitSwapchain();
 
 	// Main draw render pass
 	{
@@ -97,35 +97,7 @@ void VulkanRenderer::Init(Window* pWindow)
 		m_frameDescriptorPool.Init(MAX_NUM_FRAMES_IN_FLIGHT);
 	}
 
-	// Render Frames
-	{
-		for (int i = 0; i < MAX_NUM_FRAMES_IN_FLIGHT; i++)
-		{
-			RenderFrame& frame = m_renderFrames[i];
-			frame.m_swapchainImageIsReadySemaphore.Init();
-			frame.m_frameCompletedSemaphore.Init();
-			frame.m_frameCompletedFence.Init();
-			frame.m_frameCommandBuffer = m_graphicsCommandPool.AllocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-			frame.m_frameDescriptorSet = m_frameDescriptorPool.AllocateSet(m_frameDescriptorSetLayout);
-
-			frame.m_mainDrawColorMultisampleTexture.InitColorTarget(VulkanFormats::GetMainColorFormat(), m_swapchain.m_extent.width, m_swapchain.m_extent.height, 
-											 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VulkanDevice::Get()->m_maxNumMsaaSamples);
-
-			frame.m_mainDrawDepthMultisampleTexture.InitDepthTarget(VulkanFormats::GetMainDepthFormat(), m_swapchain.m_extent.width, m_swapchain.m_extent.height, 
-											 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VulkanDevice::Get()->m_maxNumMsaaSamples);
-
-			frame.m_mainDrawColorResolveTexture.InitColorTarget(VulkanFormats::GetMainColorFormat(), m_swapchain.m_extent.width, m_swapchain.m_extent.height, 
-											 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_SAMPLE_COUNT_1_BIT);
-
-			std::vector<VkImageView> mainDrawAttachments = {
-				frame.m_mainDrawColorMultisampleTexture.m_imageView,
-				frame.m_mainDrawDepthMultisampleTexture.m_imageView,
-				frame.m_mainDrawColorResolveTexture.m_imageView
-			};
-
-			frame.m_mainDrawFramebuffer.Init(m_mainDrawRenderPass, mainDrawAttachments, m_swapchain.m_extent.width, m_swapchain.m_extent.height, 1);
-		}
-	}
+	InitRenderFrames();
 }
 
 void VulkanRenderer::Render()
@@ -156,7 +128,7 @@ void VulkanRenderer::Render()
 	*/
 
 	SetupNewFrame();
-	RenderFrame& curRenderFrame = m_renderFrames[m_currentFrame];
+	VulkanRenderFrame& curRenderFrame = m_renderFrames[m_currentFrame];
 
 	VulkanCommands::Begin(curRenderFrame.m_frameCommandBuffer, 0);
 
@@ -216,7 +188,7 @@ void VulkanRenderer::Render()
 void VulkanRenderer::SetupNewFrame()
 {
 	m_currentFrame = (m_currentFrame + 1) % MAX_NUM_FRAMES_IN_FLIGHT;
-	RenderFrame& curRenderFrame = m_renderFrames[m_currentFrame];
+	VulkanRenderFrame& curRenderFrame = m_renderFrames[m_currentFrame];
 
 	curRenderFrame.m_frameCompletedFence.Wait();
 	curRenderFrame.m_frameCompletedFence.Reset();
@@ -264,20 +236,7 @@ void VulkanRenderer::Shutdown()
 {
 	vkQueueWaitIdle(VulkanDevice::Get()->m_graphicsQueue);
 
-	// Render Frames
-	{
-		for (int i = 0; i < MAX_NUM_FRAMES_IN_FLIGHT; i++)
-		{
-			RenderFrame& frame = m_renderFrames[i];
-			frame.m_frameCompletedFence.Destroy();
-			frame.m_frameCompletedSemaphore.Destroy();
-			frame.m_swapchainImageIsReadySemaphore.Destroy();
-			frame.m_mainDrawFramebuffer.Destroy();
-			frame.m_mainDrawColorMultisampleTexture.Destroy();
-			frame.m_mainDrawDepthMultisampleTexture.Destroy();
-			frame.m_mainDrawColorResolveTexture.Destroy();
-		}
-	}
+	DestroyRenderFrames();
 
 	m_frameDescriptorPool.Destroy();
 	m_frameDescriptorSetLayout.Destroy();
@@ -299,12 +258,65 @@ void VulkanRenderer::SetCamera(const Camera* pCamera)
 	m_pMainCamera = pCamera;
 }
 
-void VulkanRenderer::RefreshSwapchain()
+void VulkanRenderer::InitSwapchain()
 {
-	m_swapchain.Destroy();
 	m_swapchain.Init(m_pWindow, m_surface);
 
 	VkCommandBuffer commandBuffer = m_graphicsCommandPool.BeginSingleTime();
 	m_swapchain.AddInitialImageLayoutTransitionCommands(commandBuffer);
 	m_graphicsCommandPool.EndAndSubmitSingleTime(commandBuffer);
+}
+
+void VulkanRenderer::RefreshSwapchain()
+{
+	m_swapchain.Destroy();
+	InitSwapchain();
+	DestroyRenderFrames();
+	InitRenderFrames();
+}
+
+void VulkanRenderer::InitRenderFrames()
+{
+	for (int i = 0; i < MAX_NUM_FRAMES_IN_FLIGHT; i++)
+	{
+		VulkanRenderFrame& frame = m_renderFrames[i];
+		frame.m_swapchainImageIsReadySemaphore.Init();
+		frame.m_frameCompletedSemaphore.Init();
+		frame.m_frameCompletedFence.Init();
+		frame.m_frameCommandBuffer = m_graphicsCommandPool.AllocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+		frame.m_frameDescriptorSet = m_frameDescriptorPool.AllocateSet(m_frameDescriptorSetLayout);
+
+		frame.m_mainDrawColorMultisampleTexture.InitColorTarget(VulkanFormats::GetMainColorFormat(), m_swapchain.m_extent.width, m_swapchain.m_extent.height, 
+										 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VulkanDevice::Get()->m_maxNumMsaaSamples);
+
+		frame.m_mainDrawDepthMultisampleTexture.InitDepthTarget(VulkanFormats::GetMainDepthFormat(), m_swapchain.m_extent.width, m_swapchain.m_extent.height, 
+										 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VulkanDevice::Get()->m_maxNumMsaaSamples);
+
+		frame.m_mainDrawColorResolveTexture.InitColorTarget(VulkanFormats::GetMainColorFormat(), m_swapchain.m_extent.width, m_swapchain.m_extent.height, 
+										 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_SAMPLE_COUNT_1_BIT);
+
+		std::vector<VkImageView> mainDrawAttachments = {
+			frame.m_mainDrawColorMultisampleTexture.m_imageView,
+			frame.m_mainDrawDepthMultisampleTexture.m_imageView,
+			frame.m_mainDrawColorResolveTexture.m_imageView
+		};
+
+		frame.m_mainDrawFramebuffer.Init(m_mainDrawRenderPass, mainDrawAttachments, m_swapchain.m_extent.width, m_swapchain.m_extent.height, 1);
+	}
+}
+
+void VulkanRenderer::DestroyRenderFrames()
+{
+	for (int i = 0; i < MAX_NUM_FRAMES_IN_FLIGHT; i++)
+	{
+		VulkanRenderFrame& frame = m_renderFrames[i];
+		frame.m_frameCompletedFence.Destroy();
+		frame.m_frameCompletedSemaphore.Destroy();
+		frame.m_swapchainImageIsReadySemaphore.Destroy();
+		frame.m_mainDrawFramebuffer.Destroy();
+		frame.m_mainDrawColorMultisampleTexture.Destroy();
+		frame.m_mainDrawDepthMultisampleTexture.Destroy();
+		frame.m_mainDrawColorResolveTexture.Destroy();
+	}
+	m_frameDescriptorPool.Reset();
 }

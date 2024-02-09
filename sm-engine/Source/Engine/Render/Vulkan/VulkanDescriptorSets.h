@@ -27,7 +27,7 @@ public:
 
 	void PreInitAddPoolSize(VkDescriptorType type, U32 count);
 	void Init(U32 maxSets);
-	void Reset(VkDescriptorPoolResetFlags flags);
+	void Reset();
 	void Destroy();
 
 	VkDescriptorSet AllocateSet(const VulkanDescriptorSetLayout& layout);

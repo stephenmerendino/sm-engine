@@ -15,7 +15,7 @@
 
 class Camera;
 
-struct RenderFrame
+struct VulkanRenderFrame
 {
 	U32					m_swapchainImageIndex = VulkanSwapchain::kInvalidSwapchainIndex;
 	VulkanSemaphore		m_swapchainImageIsReadySemaphore;
@@ -39,7 +39,11 @@ public:
 	virtual void Shutdown() final;
 	virtual void SetCamera(const Camera* pCamera) final;
 
+	void InitSwapchain();
 	void RefreshSwapchain();
+
+	void InitRenderFrames();
+	void DestroyRenderFrames();
 
 	void SetupNewFrame();
 	void PresentFinalImage();
@@ -62,7 +66,7 @@ public:
 
 	U32 m_currentFrame;
 
-	RenderFrame m_renderFrames[MAX_NUM_FRAMES_IN_FLIGHT];
+	VulkanRenderFrame m_renderFrames[MAX_NUM_FRAMES_IN_FLIGHT];
 
 	const Camera* m_pMainCamera;
 };

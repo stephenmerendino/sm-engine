@@ -59,9 +59,9 @@ void VulkanDescriptorPool::Init(U32 maxSets)
 	SM_VULKAN_ASSERT(vkCreateDescriptorPool(VulkanDevice::GetHandle(), &createInfo, nullptr, &m_poolHandle));
 }
 
-void VulkanDescriptorPool::Reset(VkDescriptorPoolResetFlags flags)
+void VulkanDescriptorPool::Reset()
 {
-	vkResetDescriptorPool(VulkanDevice::GetHandle(), m_poolHandle, flags);
+	vkResetDescriptorPool(VulkanDevice::GetHandle(), m_poolHandle, 0);
 }
 
 void VulkanDescriptorPool::Destroy()
