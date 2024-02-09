@@ -9,6 +9,7 @@
 #include "Engine/Render/Vulkan/VulkanFramebuffer.h"
 #include "Engine/Render/Vulkan/VulkanInclude.h"
 #include "Engine/Render/Vulkan/VulkanInstance.h"
+#include "Engine/Render/Vulkan/VulkanPipeline.h"
 #include "Engine/Render/Vulkan/VulkanRenderPass.h"
 #include "Engine/Render/Vulkan/VulkanSwapchain.h"
 #include <vector>
@@ -17,13 +18,18 @@ class Camera;
 
 struct VulkanRenderFrame
 {
+	// Swapchain
 	U32					m_swapchainImageIndex = VulkanSwapchain::kInvalidSwapchainIndex;
 	VulkanSemaphore		m_swapchainImageIsReadySemaphore;
+
+	// Frame level resources
 	VulkanFence			m_frameCompletedFence;
 	VulkanSemaphore		m_frameCompletedSemaphore;
 	VkDescriptorSet		m_frameDescriptorSet;
 	VulkanBuffer		m_frameDescriptorBuffer;
 	VkCommandBuffer		m_frameCommandBuffer;
+
+	// Main draw resources
 	VulkanFramebuffer	m_mainDrawFramebuffer;
 	VulkanTexture		m_mainDrawColorMultisampleTexture;
 	VulkanTexture		m_mainDrawDepthMultisampleTexture;
@@ -74,4 +80,15 @@ public:
 
 	F32 m_elapsedTimeSeconds;
 	F32 m_deltaTimeSeconds;
+
+	// Viking Room
+	Mesh* m_pVikingRoomMesh;
+	VulkanBuffer m_vikingRoomVertexBuffer;
+	VulkanBuffer m_vikingRoomIndexBuffer;
+
+	VulkanTexture m_vikingRoomDiffuseTexture;
+	VkDescriptorSet m_vikingRoomMaterialDS;
+
+	VkDescriptorSet m_vikingRoomInstanceDS;
+	VulkanPipeline m_vikingRoomPipeline;
 };

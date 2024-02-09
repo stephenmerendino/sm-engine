@@ -1,6 +1,8 @@
 #pragma once
 
+#include "Engine/Core/Color.h"
 #include "Engine/Core/Types.h"
+#include "Engine/Core/Macros.h"
 #include <vector>
 #include <string>
 
@@ -13,8 +15,11 @@ static const U32 MAX_NUM_FRAMES_IN_FLIGHT = 2;
 static const F32 FPS_CALC_TIME_INTERVAL_SECONDS = 0.1f;
 static const F32 MAX_FPS = 240.0f;
 
-static const std::string MODEL_PATH = "Models/viking_room.obj";
-static const std::string TEXTURE_PATH = "Textures/viking_room.png";
+static const char* SHADERS_PATH = "RuntimeAssets/CompiledShaders/";
+static const char* TEXTURES_PATH = "RuntimeAssets/Textures/";
+static const char* MODELS_PATH = "RuntimeAssets/Models/";
+
+static const ColorF32 CLEAR_COLOR = ColorF32(0.25f, 0.25f, 0.25f, 1.0f);
 
 #if defined(NDEBUG)
 	static const std::vector<const char*> INSTANCE_EXTENSIONS = {
