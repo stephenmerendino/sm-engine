@@ -1,4 +1,5 @@
 #include "Engine/Render/Vulkan/VulkanTexture.h"
+#include "Engine/Config.h"
 #include "Engine/Core/Assert.h"
 #include "Engine/Core/Debug.h"
 #include "Engine/Math/MathUtils.h"
@@ -12,6 +13,7 @@
 #pragma warning(pop)
 
 #include <cmath>
+#include <string>
 
 static VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, U32 numMips)
 {
@@ -83,7 +85,8 @@ void VulkanTexture::InitFromFile(const VulkanCommandPool& commandPool, const cha
 	VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
 
 	// load image pixels
-	stbi_uc* pixels = stbi_load(filepath, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+	std::string fullFilepath = std::string(TEXTURES_PATH) + filepath;
+	stbi_uc* pixels = stbi_load(fullFilepath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 
 	// calc num mips
 	m_numMips = (U32)(std::floor(std::log2(Max(texWidth, texHeight))) + 1);
@@ -106,11 +109,8 @@ void VulkanTexture::InitFromFile(const VulkanCommandPool& commandPool, const cha
 											  VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
 											  VK_ACCESS_NONE, VK_ACCESS_TRANSFER_WRITE_BIT);
 
-		// Copy pixel data from staging buffer to actual vulkan image
 		VulkanCommands::CopyBufferToImage(commandBuffer, stagingBuffer.m_bufferHandle, m_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, texWidth, texHeight);
 
-		// Transition image to shader read layout so it can be used in fragment shader
-		//command_generate_mip_maps(context, texture.handle, format, tex_width, tex_height, texture.num_mips);
 		VulkanCommands::GenerateMipMaps(commandBuffer, m_image, format, texWidth, texHeight, m_numMips);
 	commandPool.EndAndSubmitSingleTime(commandBuffer);
 

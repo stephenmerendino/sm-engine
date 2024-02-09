@@ -34,6 +34,9 @@ struct VulkanRenderFrame
 	VulkanTexture		m_mainDrawColorMultisampleTexture;
 	VulkanTexture		m_mainDrawDepthMultisampleTexture;
 	VulkanTexture		m_mainDrawColorResolveTexture;
+
+	// Mesh instance descriptors
+	VulkanDescriptorPool m_meshInstanceDescriptorPool;
 };
 
 class VulkanRenderer : public Renderer
@@ -81,6 +84,9 @@ public:
 	F32 m_elapsedTimeSeconds;
 	F32 m_deltaTimeSeconds;
 
+	VulkanDescriptorSetLayout m_materialDescriptorSetLayout;
+	VulkanDescriptorPool m_materialDescriptorPool;
+
 	// Viking Room
 	Mesh* m_pVikingRoomMesh;
 	VulkanBuffer m_vikingRoomVertexBuffer;
@@ -89,6 +95,10 @@ public:
 	VulkanTexture m_vikingRoomDiffuseTexture;
 	VkDescriptorSet m_vikingRoomMaterialDS;
 
-	VkDescriptorSet m_vikingRoomInstanceDS;
-	VulkanPipeline m_vikingRoomPipeline;
+	VkDescriptorSet m_vikingRoomMeshInstanceDS;
+	VulkanPipeline m_vikingRoomMainDrawPipeline;
+
+	VulkanBuffer m_vikingRoomMeshInstanceBuffer;
+
+	VulkanDescriptorSetLayout m_meshInstanceDescriptorSetLayout;
 };

@@ -1,9 +1,10 @@
 #include "Engine/Render/Vulkan/VulkanPipeline.h"
-#include "Engine/Render/Vulkan/VulkanDevice.h"
-#include "Engine/Render/Vulkan/VulkanFormats.h"
+#include "Engine/Config.h"
 #include "Engine/Core/Types.h"
 #include "Engine/Core/File.h"
 #include "Engine/Render/Mesh.h"
+#include "Engine/Render/Vulkan/VulkanDevice.h"
+#include "Engine/Render/Vulkan/VulkanFormats.h"
 
 VkShaderModule CreateShaderModule(const char* shaderFilepath)
 {
@@ -27,8 +28,11 @@ void VulkanShaderStages::Init(const ShaderInfo& vertexInfo, const ShaderInfo& fr
 
 void VulkanShaderStages::Init(const char* vertexFilepath, const char* vertexEntryName, const char* fragmentFilepath, const char* fragmentEntryName)
 {
-    VkShaderModule vertShader = CreateShaderModule(vertexFilepath);
-    VkShaderModule fragShader = CreateShaderModule(fragmentFilepath);
+    std::string vertexFullFilepath = std::string(SHADERS_PATH) + std::string(vertexFilepath);
+    std::string pipelineFullFilepath = std::string(SHADERS_PATH) + std::string(fragmentFilepath);
+
+    VkShaderModule vertShader = CreateShaderModule(vertexFullFilepath.c_str());
+    VkShaderModule fragShader = CreateShaderModule(pipelineFullFilepath.c_str());
 
     VkPipelineShaderStageCreateInfo vertShaderStageCreateInfo = {};
     vertShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -210,7 +214,7 @@ void VulkanPipelineState::InitDepthStencilState(bool depthTestEnable, bool depth
     m_depthStencilState.front = {};
     m_depthStencilState.back = {};
 
-    m_bDidInitDepthStencilState;
+    m_bDidInitDepthStencilState = true;
 }
 
 void VulkanPipelineState::InitColorBlendState(bool logicOpEnable, VkLogicOp logicOp, F32 blendConstant0, F32 blendConstant1, F32 blendConstant2, F32 blendConstant3)

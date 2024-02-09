@@ -1,4 +1,5 @@
 #include "Engine/Render/MeshBuilder.h"
+#include "Engine/Config.h"
 #include "Engine/Core/Color.h"
 
 #define TINYOBJLOADER_IMPLEMENTATION
@@ -407,7 +408,9 @@ void MeshBuilder::AddFromObj(const char* objFilepath)
 	std::vector<tinyobj::material_t> materials;
 	std::string warn, err;
 
-	bool loaded = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, objFilepath);
+	std::string fullFilepath = std::string(MODELS_PATH) + objFilepath;
+
+	bool loaded = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, fullFilepath.c_str());
 	SM_ASSERT(loaded);
 
 	for (const auto& shape : shapes)

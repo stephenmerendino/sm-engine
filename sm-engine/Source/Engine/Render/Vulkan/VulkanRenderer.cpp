@@ -4,6 +4,8 @@
 #include "Engine/Core/Assert.h"
 #include "Engine/Core/Debug.h"
 #include "Engine/Core/Macros.h"
+#include "Engine/Render/Camera.h"
+#include "Engine/Render/MeshBuilder.h"
 #include "Engine/Render/Mesh.h"
 #include "Engine/Render/Window.h"
 #include <set>
@@ -12,6 +14,11 @@ struct FrameRenderData
 {
 	F32 m_elapsedTimeSeconds;
 	F32 m_deltaTimeSeconds;
+};
+
+struct MeshInstanceRenderData
+{
+	Mat44 m_mvp;
 };
 
 VulkanRenderer::VulkanRenderer()
@@ -106,6 +113,59 @@ void VulkanRenderer::Init(Window* pWindow)
 	}
 
 	InitRenderFrames();
+
+	// Materials
+	m_materialDescriptorSetLayout.PreInitAddLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT);
+	m_materialDescriptorSetLayout.Init();
+
+	m_materialDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 20);
+	m_materialDescriptorPool.Init(20);
+
+	// Mesh instance
+	m_meshInstanceDescriptorSetLayout.PreInitAddLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL);
+	m_meshInstanceDescriptorSetLayout.Init();
+
+	// Viking Room
+	m_pVikingRoomMesh = MeshBuilder::BuildFromObj("viking_room.obj");
+
+	m_vikingRoomVertexBuffer.Init(VulkanBuffer::Type::kVertexBuffer, m_pVikingRoomMesh->CalcVertexBufferSize());
+	m_vikingRoomVertexBuffer.Init(VulkanBuffer::Type::kIndexBuffer, m_pVikingRoomMesh->CalcIndexBufferSize());
+
+	m_vikingRoomDiffuseTexture.InitFromFile(m_graphicsCommandPool, "viking-room.png");
+
+	m_vikingRoomMaterialDS = m_materialDescriptorPool.AllocateSet(m_materialDescriptorSetLayout);
+
+	VulkanDescriptorSetWriter dsWriter;
+	dsWriter.AddSampledImageWrite(m_vikingRoomMaterialDS, m_vikingRoomDiffuseTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 0, 1);
+	dsWriter.PerformWrites();
+
+	m_vikingRoomMeshInstanceBuffer.Init(VulkanBuffer::Type::kUniformBuffer, sizeof(MeshInstanceRenderData));
+
+	// Viking Room Pipeline
+	VulkanShaderStages shaderStages;
+	shaderStages.Init("simple-diffuse.vert.spv", "main", "simple-diffuse.frag.spv", "main");
+
+	std::vector<VkDescriptorSetLayout> pipelineDescriptorSetLayouts = {
+		m_globalDescriptorSetLayout.m_layoutHandle,
+		m_frameDescriptorSetLayout.m_layoutHandle,
+		m_materialDescriptorSetLayout.m_layoutHandle,
+		m_meshInstanceDescriptorSetLayout.m_layoutHandle
+	};
+
+	VulkanPipelineLayout pipelineLayout;
+	pipelineLayout.Init(pipelineDescriptorSetLayouts);
+
+	VulkanMeshPipelineInputInfo pipelineMeshInputInfo;
+	pipelineMeshInputInfo.Init(m_pVikingRoomMesh, false);
+
+	VulkanPipelineState pipelineState;
+	pipelineState.InitRasterState(VK_POLYGON_MODE_FILL, VK_FRONT_FACE_COUNTER_CLOCKWISE, VK_CULL_MODE_BACK_BIT);
+	pipelineState.InitViewportState(0, 0, (F32)m_swapchain.m_extent.width, (F32)m_swapchain.m_extent.height);
+	pipelineState.InitMultisampleState(VulkanDevice::Get()->m_maxNumMsaaSamples);
+	pipelineState.InitDepthStencilState(true, true, VK_COMPARE_OP_LESS);
+	pipelineState.InitColorBlendState(false);
+
+	m_vikingRoomMainDrawPipeline.Init(shaderStages, pipelineLayout, pipelineMeshInputInfo, pipelineState, m_mainDrawRenderPass);
 }
 
 void VulkanRenderer::Update(F32 ds)
@@ -124,7 +184,7 @@ void VulkanRenderer::Render()
 	DONE 3: Update Frame Descriptor Set
 	DONE 4: Begin Main Draw Render Pass
 		4a: For each mesh
-			Update Mesh Descriptor Set with mvp
+			DONE Update Mesh Descriptor Set with mvp
 			Bind Pipeline
 			Bind Descriptor Sets
 				Global
@@ -159,7 +219,26 @@ void VulkanRenderer::Render()
 		VkExtent2D mainDrawExtent = m_swapchain.m_extent;
 
 		VulkanCommands::BeginRenderPass(curRenderFrame.m_frameCommandBuffer, m_mainDrawRenderPass.m_renderPassHandle, curRenderFrame.m_mainDrawFramebuffer.m_framebufferHandle, mainDrawOffset, mainDrawExtent, mainDrawClearValues);
-			// Draw meshes here
+
+            Mat44 model = Mat44::IDENTITY;
+			Mat44 view = m_pMainCamera->GetViewTransform();
+			Mat44 projection = Mat44::CreatePerspectiveProjection(45.0f, 0.01f, 100.0f, (F32)m_swapchain.m_extent.width / (F32)m_swapchain.m_extent.height);
+
+            MeshInstanceRenderData meshInstanceRenderData;
+			meshInstanceRenderData.m_mvp = model * view * projection;
+            m_vikingRoomMeshInstanceBuffer.Update(m_graphicsCommandPool, nullptr, 0);
+
+			// Mesh instance descriptor set
+            VkDescriptorSet meshInstanceDescriptorSet = curRenderFrame.m_meshInstanceDescriptorPool.AllocateSet(m_meshInstanceDescriptorSetLayout);
+			VulkanDescriptorSetWriter meshInstanceDescriptorWriter;
+			meshInstanceDescriptorWriter.AddUniformBufferWrite(meshInstanceDescriptorSet, m_vikingRoomMeshInstanceBuffer, 0, 0, 0, 1);
+			meshInstanceDescriptorWriter.PerformWrites();
+
+			// Bind vertex buffer
+			// Bind index buffer
+			// Bind pipeline
+			// Draw command
+
 		VulkanCommands::EndRenderPass(curRenderFrame.m_frameCommandBuffer);
 
 	}
@@ -229,6 +308,9 @@ void VulkanRenderer::SetupNewFrame()
 	VulkanDescriptorSetWriter descriptorWriter;
 	descriptorWriter.AddUniformBufferWrite(curRenderFrame.m_frameDescriptorSet, curRenderFrame.m_frameDescriptorBuffer, 0, 0, 0, 1);
 	descriptorWriter.PerformWrites();
+
+	// Mesh instance reset
+	curRenderFrame.m_meshInstanceDescriptorPool.Reset();
 }
 
 void VulkanRenderer::PresentFinalImage()
@@ -295,6 +377,7 @@ void VulkanRenderer::InitSwapchain()
 
 void VulkanRenderer::RefreshSwapchain()
 {
+	vkQueueWaitIdle(VulkanDevice::Get()->m_graphicsQueue);
 	m_swapchain.Destroy();
 	InitSwapchain();
 	DestroyRenderFrames();
@@ -329,6 +412,9 @@ void VulkanRenderer::InitRenderFrames()
 		};
 
 		frame.m_mainDrawFramebuffer.Init(m_mainDrawRenderPass, mainDrawAttachments, m_swapchain.m_extent.width, m_swapchain.m_extent.height, 1);
+
+		frame.m_meshInstanceDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 100);
+		frame.m_meshInstanceDescriptorPool.Init(100);
 	}
 }
 
@@ -337,6 +423,7 @@ void VulkanRenderer::DestroyRenderFrames()
 	for (int i = 0; i < MAX_NUM_FRAMES_IN_FLIGHT; i++)
 	{
 		VulkanRenderFrame& frame = m_renderFrames[i];
+		frame.m_meshInstanceDescriptorPool.Destroy();
 		frame.m_frameCompletedFence.Destroy();
 		frame.m_frameCompletedSemaphore.Destroy();
 		frame.m_frameDescriptorBuffer.Destroy();

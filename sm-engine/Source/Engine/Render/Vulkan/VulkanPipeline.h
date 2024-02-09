@@ -63,26 +63,26 @@ public:
 	void InitRasterState(VkPolygonMode polygonMode,
 						 VkFrontFace frontFace,
 						 VkCullModeFlags cullMode,
-						 bool rasterDiscardEnable,
-						 bool depthClampEnable,
-						 bool depthBiasEnable,
-						 F32 depthBiasConstant,
-						 F32 depthBiasClamp,
-						 F32 depthBiasSlope,
-						 F32 lineWidth);
+						 bool rasterDiscardEnable = false,
+						 bool depthClampEnable = false,
+						 bool depthBiasEnable = false,
+						 F32 depthBiasConstant = 0.0f,
+						 F32 depthBiasClamp = 0.0f,
+						 F32 depthBiasSlope = 0.0f,
+						 F32 lineWidth = 1.0f);
 
 	void InitViewportState(F32 x, F32 y,
 						   F32 w, F32 h,
-						   F32 minDepth, F32 maxDepth,
-						   I32 scissorOffsetX, I32 scissorOffsetY,
-						   U32 scissorExtentX, U32 scissorExtentY);
+						   F32 minDepth = 0.0f, F32 maxDepth = 1.0f,
+						   I32 scissorOffsetX = 0, I32 scissorOffsetY = 0,
+						   U32 scissorExtentX = 0, U32 scissorExtentY = 0);
 
-    void InitMultisampleState(VkSampleCountFlagBits sampleCount, bool sampleShadingEnable, F32 minSampleShading);
+    void InitMultisampleState(VkSampleCountFlagBits sampleCount, bool sampleShadingEnable = false, F32 minSampleShading = 0.0f);
 
     void InitDepthStencilState(bool depthTestEnable, bool depthWriteEnable, VkCompareOp depthCompareOp, 
-                               bool depthBoundsTestEnable, F32 minDepthBounds, F32 maxDepthBounds);
+                               bool depthBoundsTestEnable = false, F32 minDepthBounds = 0.0f, F32 maxDepthBounds = 1.0f);
 
-    void InitColorBlendState(bool logicOpEnable, VkLogicOp logicOp, F32 blendConstant0, F32 blendConstant1, F32 blendConstant2, F32 blendConstant3);
+    void InitColorBlendState(bool logicOpEnable, VkLogicOp logicOp = VK_LOGIC_OP_CLEAR, F32 blendConstant0 = 0.0f, F32 blendConstant1 = 0.0f, F32 blendConstant2 = 0.0f, F32 blendConstant3 = 0.0f);
     
     bool IsFullyInitialized() const;
 
