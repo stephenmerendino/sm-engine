@@ -22,6 +22,7 @@ struct VulkanRenderFrame
 	VulkanFence			m_frameCompletedFence;
 	VulkanSemaphore		m_frameCompletedSemaphore;
 	VkDescriptorSet		m_frameDescriptorSet;
+	VulkanBuffer		m_frameDescriptorBuffer;
 	VkCommandBuffer		m_frameCommandBuffer;
 	VulkanFramebuffer	m_mainDrawFramebuffer;
 	VulkanTexture		m_mainDrawColorMultisampleTexture;
@@ -35,6 +36,7 @@ public:
 	VulkanRenderer();
 
 	virtual void Init(Window* pWindow) final;
+	virtual void Update(F32 ds) final;
 	virtual void Render() final;
 	virtual void Shutdown() final;
 	virtual void SetCamera(const Camera* pCamera) final;
@@ -69,4 +71,7 @@ public:
 	VulkanRenderFrame m_renderFrames[MAX_NUM_FRAMES_IN_FLIGHT];
 
 	const Camera* m_pMainCamera;
+
+	F32 m_elapsedTimeSeconds;
+	F32 m_deltaTimeSeconds;
 };

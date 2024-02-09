@@ -8,12 +8,20 @@
 #include "Engine/Render/Window.h"
 #include <set>
 
+struct FrameRenderData
+{
+	F32 m_elapsedTimeSeconds;
+	F32 m_deltaTimeSeconds;
+};
+
 VulkanRenderer::VulkanRenderer()
 	:m_pWindow(nullptr)
 	,m_pMainCamera(nullptr)
 	,m_surface(VK_NULL_HANDLE)
 	,m_currentFrame(0)
 	,m_globalDescriptorSet(VK_NULL_HANDLE)
+	,m_elapsedTimeSeconds(0.0f)
+	,m_deltaTimeSeconds(0.0f)
 {
 }
 
@@ -100,15 +108,21 @@ void VulkanRenderer::Init(Window* pWindow)
 	InitRenderFrames();
 }
 
+void VulkanRenderer::Update(F32 ds)
+{
+	m_elapsedTimeSeconds += ds;
+	m_deltaTimeSeconds = ds;
+}
+
 void VulkanRenderer::Render()
 {
 	/*
 	Basic High Level Frame Flow
 
-	1: Acquire a swapchain image to present at end of frame
-	2: Transition resolve buffers from transfer src to color/depth output
-	3: Update Frame Descriptor Set
-	4: Begin Main Draw Render Pass
+	DONE 1: Acquire a swapchain image to present at end of frame
+	DONE 2: Transition resolve buffers from transfer src to color/depth output
+	DONE 3: Update Frame Descriptor Set
+	DONE 4: Begin Main Draw Render Pass
 		4a: For each mesh
 			Update Mesh Descriptor Set with mvp
 			Bind Pipeline
@@ -120,11 +134,11 @@ void VulkanRenderer::Render()
 			Bind Vertex Buffer
 			Bind Index Buffer
 			Draw Command
-	5: Transition Color Resolve to Transfer Src
-	6: Transition Swapchain Image to Transfer Dst
-	7: Copy Color Resolve to Swapchain Image
-	8: Transition Swapchain Image to Present
-	9: Present Swapchain Image
+	DONE 5: Transition Color Resolve to Transfer Src
+	DONE 6: Transition Swapchain Image to Transfer Dst
+	DONE 7: Copy Color Resolve to Swapchain Image
+	DONE 8: Transition Swapchain Image to Present
+	DONE 9: Present Swapchain Image
 	*/
 
 	SetupNewFrame();
@@ -190,19 +204,31 @@ void VulkanRenderer::SetupNewFrame()
 	m_currentFrame = (m_currentFrame + 1) % MAX_NUM_FRAMES_IN_FLIGHT;
 	VulkanRenderFrame& curRenderFrame = m_renderFrames[m_currentFrame];
 
+	// Make sure frame has finished from last use before using it for new frame
 	curRenderFrame.m_frameCompletedFence.Wait();
 	curRenderFrame.m_frameCompletedFence.Reset();
 
+	vkResetCommandBuffer(curRenderFrame.m_frameCommandBuffer, 0);
+
+	// Acquire swapchain image to render to
 	U32 swapchainImageIndex = VulkanSwapchain::kInvalidSwapchainIndex;
 	VkResult result = m_swapchain.AcquireNextImage(&curRenderFrame.m_swapchainImageIsReadySemaphore, nullptr, &swapchainImageIndex);
 	if (m_swapchain.NeedsRefresh(result))
 	{
 		RefreshSwapchain();
 	}
-	
 	curRenderFrame.m_swapchainImageIndex = swapchainImageIndex;
 
-	vkResetCommandBuffer(curRenderFrame.m_frameCommandBuffer, 0);
+	// Update frame descriptor
+	FrameRenderData frameRenderData;
+	frameRenderData.m_elapsedTimeSeconds = m_elapsedTimeSeconds;
+	frameRenderData.m_deltaTimeSeconds = m_deltaTimeSeconds;
+
+	curRenderFrame.m_frameDescriptorBuffer.Update(m_graphicsCommandPool, &frameRenderData, 0);
+
+	VulkanDescriptorSetWriter descriptorWriter;
+	descriptorWriter.AddUniformBufferWrite(curRenderFrame.m_frameDescriptorSet, curRenderFrame.m_frameDescriptorBuffer, 0, 0, 0, 1);
+	descriptorWriter.PerformWrites();
 }
 
 void VulkanRenderer::PresentFinalImage()
@@ -285,6 +311,7 @@ void VulkanRenderer::InitRenderFrames()
 		frame.m_frameCompletedFence.Init();
 		frame.m_frameCommandBuffer = m_graphicsCommandPool.AllocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 		frame.m_frameDescriptorSet = m_frameDescriptorPool.AllocateSet(m_frameDescriptorSetLayout);
+		frame.m_frameDescriptorBuffer.Init(VulkanBuffer::Type::kUniformBuffer, sizeof(FrameRenderData));
 
 		frame.m_mainDrawColorMultisampleTexture.InitColorTarget(VulkanFormats::GetMainColorFormat(), m_swapchain.m_extent.width, m_swapchain.m_extent.height, 
 										 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VulkanDevice::Get()->m_maxNumMsaaSamples);
@@ -312,6 +339,7 @@ void VulkanRenderer::DestroyRenderFrames()
 		VulkanRenderFrame& frame = m_renderFrames[i];
 		frame.m_frameCompletedFence.Destroy();
 		frame.m_frameCompletedSemaphore.Destroy();
+		frame.m_frameDescriptorBuffer.Destroy();
 		frame.m_swapchainImageIsReadySemaphore.Destroy();
 		frame.m_mainDrawFramebuffer.Destroy();
 		frame.m_mainDrawColorMultisampleTexture.Destroy();
