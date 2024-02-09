@@ -56,7 +56,7 @@ void Camera::Update(F32 ds)
 	m_worldPos += movement;
 
 	// Rotation
-	const F32 rotateSpeed = 5000.0f;
+	const F32 rotateSpeed = 10000.0f;
 	Vec2 mouseMovement = g_inputSystem.GetMouseMovement();
 	if (mouseMovement.x != 0.0f)
 	{

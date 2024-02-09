@@ -179,31 +179,6 @@ void VulkanRenderer::Update(F32 ds)
 
 void VulkanRenderer::Render()
 {
-	/*
-	Basic High Level Frame Flow
-
-	DONE 1: Acquire a swapchain image to present at end of frame
-	DONE 2: Transition resolve buffers from transfer src to color/depth output
-	DONE 3: Update Frame Descriptor Set
-	DONE 4: Begin Main Draw Render Pass
-		4a: For each mesh
-			DONE Update Mesh Descriptor Set with mvp
-			Bind Pipeline
-			Bind Descriptor Sets
-				Global
-				Frame
-				Material
-				Mesh
-			Bind Vertex Buffer
-			Bind Index Buffer
-			Draw Command
-	DONE 5: Transition Color Resolve to Transfer Src
-	DONE 6: Transition Swapchain Image to Transfer Dst
-	DONE 7: Copy Color Resolve to Swapchain Image
-	DONE 8: Transition Swapchain Image to Present
-	DONE 9: Present Swapchain Image
-	*/
-
 	SetupNewFrame();
 	VulkanRenderFrame& curRenderFrame = m_renderFrames[m_currentFrame];
 
@@ -270,9 +245,8 @@ void VulkanRenderer::Render()
 											  VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
 											  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT);
 
-		VulkanCommands::CopyImage(curRenderFrame.m_frameCommandBuffer, curRenderFrame.m_mainDrawColorResolveTexture.m_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-								  m_swapchain.m_images[curRenderFrame.m_swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-								  m_swapchain.m_extent.width, m_swapchain.m_extent.height, 1);
+		VulkanCommands::BlitColorImage(curRenderFrame.m_frameCommandBuffer, curRenderFrame.m_mainDrawColorResolveTexture.m_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, m_swapchain.m_extent.width, m_swapchain.m_extent.height, 1, 0,
+                                                                            m_swapchain.m_images[curRenderFrame.m_swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, m_swapchain.m_extent.width, m_swapchain.m_extent.height, 1, 0);
 
 		VulkanCommands::TransitionImageLayout(curRenderFrame.m_frameCommandBuffer, m_swapchain.m_images[curRenderFrame.m_swapchainImageIndex], 1,
 											  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,

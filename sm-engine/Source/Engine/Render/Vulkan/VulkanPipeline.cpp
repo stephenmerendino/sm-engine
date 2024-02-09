@@ -174,14 +174,20 @@ void VulkanPipelineState::InitViewportState(F32 x, F32 y,
 	m_viewport.height = h;
 	m_viewport.minDepth = minDepth;
 	m_viewport.maxDepth = maxDepth;
-	m_scissor.offset = { scissorOffsetX, scissorOffsetY };
-	m_scissor.extent = { scissorExtentX, scissorExtentY };
 
 	m_viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 	m_viewportState.pViewports = &m_viewport;
 	m_viewportState.viewportCount = 1;
-	m_viewportState.pScissors = &m_scissor;
-	m_viewportState.scissorCount = 1;
+	m_viewportState.pScissors = nullptr;
+	m_viewportState.scissorCount = 0;
+
+    if (scissorExtentX > 0 && scissorExtentY > 0)
+    {
+        m_scissor.offset = { scissorOffsetX, scissorOffsetY };
+        m_scissor.extent = { scissorExtentX, scissorExtentY };
+        m_viewportState.pScissors = &m_scissor;
+        m_viewportState.scissorCount = 1;
+    }
 
     m_bDidInitViewportState = true;
 }
