@@ -1,5 +1,6 @@
 #include "Engine/Render/Camera.h"
 #include "Engine/Input/InputSystem.h"
+#include "Engine/Render/Renderer.h"
 
 Camera::Camera()
 	:m_worldPos(Vec3::ZERO)
@@ -56,7 +57,7 @@ void Camera::Update(F32 ds)
 	m_worldPos += movement;
 
 	// Rotation
-	const F32 rotateSpeed = 10000.0f;
+	const F32 rotateSpeed = 15000.0f;
 	Vec2 mouseMovement = g_inputSystem.GetMouseMovement();
 	if (mouseMovement.x != 0.0f)
 	{

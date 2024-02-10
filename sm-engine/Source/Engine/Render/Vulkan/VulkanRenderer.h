@@ -49,12 +49,15 @@ public:
 	virtual void Render() final;
 	virtual void Shutdown() final;
 	virtual void SetCamera(const Camera* pCamera) final;
+	virtual F32 GetAspectRatio() const final;
 
 	void InitSwapchain();
 	void RefreshSwapchain();
 
 	void InitRenderFrames();
 	void DestroyRenderFrames();
+
+	void InitImgui();
 
 	void SetupNewFrame();
 	void PresentFinalImage();
@@ -74,6 +77,10 @@ public:
 
 	VulkanDescriptorSetLayout m_frameDescriptorSetLayout;
 	VulkanDescriptorPool m_frameDescriptorPool;
+
+	// ImGui
+	VulkanDescriptorPool m_imguiDescriptorPool;
+	VulkanRenderPass m_imguiRenderPass;
 
 	U32 m_currentFrame;
 

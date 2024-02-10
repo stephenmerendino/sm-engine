@@ -13,6 +13,7 @@ public:
 	virtual void Render() = 0;
 	virtual void Shutdown() = 0;
 	virtual void SetCamera(const Camera* camera) = 0;
+	virtual F32 GetAspectRatio() const = 0;
 };
 
 extern Renderer* g_renderer;

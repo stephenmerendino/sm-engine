@@ -360,6 +360,16 @@ void VulkanRenderer::SetCamera(const Camera* pCamera)
 	m_pMainCamera = pCamera;
 }
 
+F32 VulkanRenderer::GetAspectRatio() const
+{
+	if (m_swapchain.m_swapchainHandle == VK_NULL_HANDLE)
+	{
+		return 0.0f;
+	}
+
+	return (F32)m_swapchain.m_extent.width / (F32)m_swapchain.m_extent.height;
+}
+
 void VulkanRenderer::InitSwapchain()
 {
 	m_swapchain.Init(m_pWindow, m_surface);
@@ -410,6 +420,11 @@ void VulkanRenderer::InitRenderFrames()
 		frame.m_meshInstanceDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 100);
 		frame.m_meshInstanceDescriptorPool.Init(100);
 	}
+}
+
+void VulkanRenderer::InitImgui()
+{
+
 }
 
 void VulkanRenderer::DestroyRenderFrames()
