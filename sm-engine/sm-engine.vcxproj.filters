@@ -58,6 +58,9 @@
     <Filter Include="Source\Render\DX12">
       <UniqueIdentifier>{f1154325-1b76-44a6-8235-11fda0ec1abe}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Render\UI">
+      <UniqueIdentifier>{0e4ec2cd-113b-40cf-9abe-f1b4ea064349}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Engine\Core\Assert.cpp">
@@ -212,6 +215,9 @@
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanPipeline.cpp">
       <Filter>Source\Render\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Render\UI\UI.cpp">
+      <Filter>Source\Render\UI</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -538,6 +544,9 @@
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanPipeline.h">
       <Filter>Source\Render\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\UI\UI.h">
+      <Filter>Source\Render\UI</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

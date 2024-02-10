@@ -8,6 +8,11 @@
 #include "Engine/Render/MeshBuilder.h"
 #include "Engine/Render/Mesh.h"
 #include "Engine/Render/Window.h"
+#include "Engine/Render/UI/UI.h"
+#include "Engine/ThirdParty/imgui/imgui.h"
+#include "Engine/ThirdParty/imgui/backends/imgui_impl_win32.h"
+#include "Engine/ThirdParty/imgui/imgui.h"
+#include "Engine/ThirdParty/imgui/backends/imgui_impl_vulkan.h"
 #include <set>
 
 struct FrameRenderData
@@ -55,6 +60,7 @@ void VulkanRenderer::Init(Window* pWindow)
 	m_graphicsCommandPool.Init(VK_QUEUE_GRAPHICS_BIT, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
 	InitSwapchain();
+	InitImgui();
 
 	// Main draw render pass
 	{
@@ -69,13 +75,13 @@ void VulkanRenderer::Init(Window* pWindow)
 													  VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 0);
 
 		m_mainDrawRenderPass.PreInitAddAttachmentDesc(VulkanFormats::GetMainColorFormat(), VK_SAMPLE_COUNT_1_BIT,
-													  VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+													  VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 													  VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE, 
 													  VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE, 0);
 
 		m_mainDrawRenderPass.PreInitAddSubpassAttachmentReference(0, VulkanSubpass::COLOR, 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 		m_mainDrawRenderPass.PreInitAddSubpassAttachmentReference(0, VulkanSubpass::DEPTH, 1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-		m_mainDrawRenderPass.PreInitAddSubpassAttachmentReference(0, VulkanSubpass::COLOR_RESOLVE, 2, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+		m_mainDrawRenderPass.PreInitAddSubpassAttachmentReference(0, VulkanSubpass::COLOR_RESOLVE, 2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
 		m_mainDrawRenderPass.PreInitAddSubpassDependency(VK_SUBPASS_EXTERNAL, 0,
 														 VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
@@ -162,7 +168,7 @@ void VulkanRenderer::Init(Window* pWindow)
 
 	VulkanPipelineState pipelineState;
 	pipelineState.InitRasterState(VK_POLYGON_MODE_FILL, VK_FRONT_FACE_COUNTER_CLOCKWISE, VK_CULL_MODE_BACK_BIT);
-	pipelineState.InitViewportState(0, 0, (F32)m_swapchain.m_extent.width, (F32)m_swapchain.m_extent.height);
+	pipelineState.InitViewportState(0, 0, (F32)m_swapchain.m_extent.width, (F32)m_swapchain.m_extent.height, 0.0f, 1.0f, 0, 0, m_swapchain.m_extent.width, m_swapchain.m_extent.height);
 	pipelineState.InitMultisampleState(VulkanDevice::Get()->m_maxNumMsaaSamples);
 	pipelineState.InitDepthStencilState(true, true, VK_COMPARE_OP_LESS);
 	pipelineState.PreInitAddColorBlendAttachment(false);
@@ -175,6 +181,10 @@ void VulkanRenderer::Update(F32 ds)
 {
 	m_elapsedTimeSeconds += ds;
 	m_deltaTimeSeconds = ds;
+
+    ImGui_ImplWin32_NewFrame();
+    ImGui_ImplVulkan_NewFrame();
+    ImGui::NewFrame();
 }
 
 void VulkanRenderer::Render()
@@ -236,6 +246,17 @@ void VulkanRenderer::Render()
 
 		VulkanCommands::EndRenderPass(curRenderFrame.m_frameCommandBuffer);
 
+	}
+
+	// ImGui
+	{
+		UI::Render();
+		VkOffset2D offset = { 0, 0 };
+		VulkanCommands::BeginRenderPass(curRenderFrame.m_frameCommandBuffer, m_imguiRenderPass.m_renderPassHandle, curRenderFrame.m_imguiFramebuffer.m_framebufferHandle, offset, m_swapchain.m_extent);
+            ::ImGui::Render();
+            ::ImDrawData* drawData = ::ImGui::GetDrawData();
+            ImGui_ImplVulkan_RenderDrawData(drawData, curRenderFrame.m_frameCommandBuffer);
+        VulkanCommands::EndRenderPass(curRenderFrame.m_frameCommandBuffer);
 	}
 
 	// Copy from main draw target to swapchain
@@ -419,12 +440,88 @@ void VulkanRenderer::InitRenderFrames()
 
 		frame.m_meshInstanceDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 100);
 		frame.m_meshInstanceDescriptorPool.Init(100);
+
+        std::vector<VkImageView> imguiAttachments = { frame.m_mainDrawColorResolveTexture.m_imageView };
+		frame.m_imguiFramebuffer.Init(m_imguiRenderPass, imguiAttachments, m_swapchain.m_extent.width, m_swapchain.m_extent.height, 1);
 	}
+}
+
+static void CheckImGuiVulkanResult(VkResult result)
+{
+    SM_VULKAN_ASSERT(result);
+}
+
+static PFN_vkVoidFunction ImGuiVulkanFuncLoader(const char* functionName, void* userData)
+{
+    UNUSED(userData);
+    return vkGetInstanceProcAddr(VulkanInstance::GetHandle(), functionName);
 }
 
 void VulkanRenderer::InitImgui()
 {
+    const I32 MAX_SETS = 1000;
+    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_SAMPLER, MAX_SETS);
+    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_SETS);
+    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, MAX_SETS);
+    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, MAX_SETS);
+    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, MAX_SETS);
+    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, MAX_SETS);
+    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_SETS);
+    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_SETS);
+    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, MAX_SETS);
+    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, MAX_SETS);
+    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, MAX_SETS);
+	m_imguiDescriptorPool.Init(MAX_SETS);
 
+	m_imguiRenderPass.PreInitAddAttachmentDesc(VulkanFormats::GetMainColorFormat(), VK_SAMPLE_COUNT_1_BIT,
+		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
+		VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+		0);
+
+    m_imguiRenderPass.PreInitAddSubpassAttachmentReference(0, VulkanSubpass::COLOR, 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+	m_imguiRenderPass.PreInitAddSubpassDependency(VK_SUBPASS_EXTERNAL, 0, 
+												  VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 
+												  0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+
+	m_imguiRenderPass.Init();
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+    
+	ImGui::StyleColorsDark();
+
+    ImGui_ImplWin32_Init(m_pWindow->m_hwnd);
+    ImGui_ImplVulkan_LoadFunctions(ImGuiVulkanFuncLoader);
+    ImGui_ImplVulkan_InitInfo init_info = {};
+    init_info.Instance = VulkanInstance::GetHandle();
+    init_info.PhysicalDevice = VulkanDevice::GetPhysDeviceHandle();
+    init_info.Device = VulkanDevice::GetHandle();
+    init_info.QueueFamily = VulkanDevice::Get()->m_queueFamilies.m_graphicsFamilyIndex;
+    init_info.Queue = VulkanDevice::Get()->m_graphicsQueue;
+    init_info.PipelineCache = VK_NULL_HANDLE;
+    init_info.DescriptorPool = m_imguiDescriptorPool.m_poolHandle;
+    init_info.Subpass = 0;
+    init_info.MinImageCount = m_swapchain.m_numImages; 
+    init_info.ImageCount = m_swapchain.m_numImages;
+    init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+    init_info.Allocator = VK_NULL_HANDLE;
+    init_info.CheckVkResultFn = CheckImGuiVulkanResult;
+    ImGui_ImplVulkan_Init(&init_info, m_imguiRenderPass.m_renderPassHandle);
+    
+    io.Fonts->AddFontDefault();
+
+    // Upload Fonts
+    {
+        VkCommandBuffer commandBuffer = m_graphicsCommandPool.BeginSingleTime();
+        ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
+		m_graphicsCommandPool.EndAndSubmitSingleTime(commandBuffer);
+        ImGui_ImplVulkan_DestroyFontUploadObjects();
+    }
 }
 
 void VulkanRenderer::DestroyRenderFrames()

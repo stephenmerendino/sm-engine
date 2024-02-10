@@ -270,6 +270,20 @@ void InputSystem::BeginFrame()
 
 void InputSystem::Update()
 {
+	// If imgui isn't being used then we check for right mouse hiding directly here, otherwise its in the imgui handler
+	if (!ImGui::GetCurrentContext())
+	{
+		if (!IsKeyDown(KeyCode::MOUSE_RBUTTON) && !g_inputSystem.m_bMouseIsShown)
+		{
+			g_inputSystem.m_bUnhideMouse = true;
+		}
+
+		if (IsKeyDown(KeyCode::MOUSE_RBUTTON) && g_inputSystem.m_bMouseIsShown)
+		{
+			g_inputSystem.m_bHideMouse = true;
+		}
+	}
+
 	// Mouse movement update
 	if (m_bUnhideMouse)
 	{

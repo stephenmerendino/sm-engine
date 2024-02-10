@@ -37,6 +37,9 @@ struct VulkanRenderFrame
 
 	// Mesh instance descriptors
 	VulkanDescriptorPool m_meshInstanceDescriptorPool;
+
+	// ImGui
+	VulkanFramebuffer m_imguiFramebuffer;
 };
 
 class VulkanRenderer : public Renderer
