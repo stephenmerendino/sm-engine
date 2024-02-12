@@ -174,7 +174,7 @@ void UI::Render()
 void UI::LogMsg(UI::MsgType msgType, const char* msg)
 {
     ImGuiTextBuffer& textBuffer = (msgType == UI::MsgType::kPersistent) ? s_persistentTextBuffer : s_frameTextBuffer;
-    ImVector<int>& lineOffsets = (msgType == UI::MsgType::kFrame) ? s_persistentLineOffsets : s_frameLineOffsets;
+    ImVector<int>& lineOffsets = (msgType == UI::MsgType::kPersistent) ? s_persistentLineOffsets : s_frameLineOffsets;
 
 	int oldSize = textBuffer.size();
 	textBuffer.append(msg);
@@ -190,7 +190,7 @@ void UI::LogMsg(UI::MsgType msgType, const char* msg)
 void UI::LogMsgFmt(UI::MsgType msgType, const char* fmt, ...)
 {
     ImGuiTextBuffer& textBuffer = (msgType == UI::MsgType::kPersistent) ? s_persistentTextBuffer : s_frameTextBuffer;
-    ImVector<int>& lineOffsets = (msgType == UI::MsgType::kFrame) ? s_persistentLineOffsets : s_frameLineOffsets;
+    ImVector<int>& lineOffsets = (msgType == UI::MsgType::kPersistent) ? s_persistentLineOffsets : s_frameLineOffsets;
 
 	va_list args;
 	va_start(args, fmt);
