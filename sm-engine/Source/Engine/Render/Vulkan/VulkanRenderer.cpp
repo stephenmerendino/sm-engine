@@ -177,6 +177,11 @@ void VulkanRenderer::Init(Window* pWindow)
 	m_vikingRoomMainDrawPipeline.Init(shaderStages, m_vikingRoomMainDrawPipelineLayout, pipelineMeshInputInfo, pipelineState, m_mainDrawRenderPass);
 }
 
+void VulkanRenderer::BeginFrame()
+{
+	UI::BeginFrame();
+}
+
 void VulkanRenderer::Update(F32 ds)
 {
 	m_elapsedTimeSeconds += ds;

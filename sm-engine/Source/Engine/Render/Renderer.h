@@ -9,6 +9,7 @@ class Renderer
 {
 public:
 	virtual void Init(Window* pWindow) = 0;
+	virtual void BeginFrame() = 0;
 	virtual void Update(F32 ds) = 0;
 	virtual void Render() = 0;
 	virtual void Shutdown() = 0;

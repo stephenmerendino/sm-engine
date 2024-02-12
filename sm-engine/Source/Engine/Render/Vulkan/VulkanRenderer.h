@@ -48,6 +48,7 @@ public:
 	VulkanRenderer();
 
 	virtual void Init(Window* pWindow) final;
+	virtual void BeginFrame() final;
 	virtual void Update(F32 ds) final;
 	virtual void Render() final;
 	virtual void Shutdown() final;

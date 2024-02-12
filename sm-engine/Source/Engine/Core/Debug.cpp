@@ -1,7 +1,7 @@
 #include "Engine/Core/Debug.h"
 #include "Engine/Core/Assert.h"
 #include "Engine/Platform/WindowsInclude.h"
-//#include "Engine/Render/ui/ui.h"
+#include "Engine/Render/UI/UI.h"
 
 #include <cstdio>
 
@@ -16,6 +16,5 @@ void DebugPrintf(const char* format, ...)
 
 	OutputDebugStringA(formattedMsg);
 
-	// TODO: Reenable this when we get imgui hooked back up
-	// ui_log_msg_persistent(formattedMsg);
+	UI::LogMsg(UI::MsgType::kPersistent, formattedMsg);
 }
