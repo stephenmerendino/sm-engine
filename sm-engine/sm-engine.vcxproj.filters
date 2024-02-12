@@ -4,9 +4,6 @@
     <Filter Include="Source">
       <UniqueIdentifier>{757d1f75-259d-4cc3-8477-b37b9220d625}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\Core">
-      <UniqueIdentifier>{650bde54-f1ba-4cd4-8621-111f3ca52081}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source\Platform">
       <UniqueIdentifier>{5f70d8be-46eb-43b5-b22e-742dc59aa462}</UniqueIdentifier>
     </Filter>
@@ -60,6 +57,9 @@
     </Filter>
     <Filter Include="Source\Render\UI">
       <UniqueIdentifier>{0e4ec2cd-113b-40cf-9abe-f1b4ea064349}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Core">
+      <UniqueIdentifier>{650bde54-f1ba-4cd4-8621-111f3ca52081}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

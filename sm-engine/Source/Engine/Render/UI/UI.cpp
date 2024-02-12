@@ -5,13 +5,13 @@ static bool s_showDemoWindow = false;
 static bool s_showLog = false;
 
 // Logging
-static ImGuiTextBuffer s_persistent_text_buffer;
-static ImGuiTextFilter s_persistent_text_filter;
-static ImVector<int>   s_persistent_line_offsets;
-static bool            s_persistent_auto_scroll = true;
-static ImGuiTextBuffer s_frame_text_buffer;
-static ImGuiTextFilter s_frame_text_filter;
-static ImVector<int>   s_frame_line_offsets;
+static ImGuiTextBuffer s_persistentTextBuffer;
+static ImGuiTextFilter s_persistentTextFilter;
+static ImVector<int>   s_persistentLineOffsets;
+static bool            s_persistentAutoScroll = true;
+static ImGuiTextBuffer s_frameTextBuffer;
+static ImGuiTextFilter s_frameTextFilter;
+static ImVector<int>   s_frameLineOffsets;
 
 static void DrawMainMenuBar()
 {
@@ -39,19 +39,19 @@ static void DrawLog(bool* open)
     }
 
     ImGui::SeparatorText("Frame Log");
-    if (ImGui::BeginChild("frame_log", ImVec2(0, 150), false, ImGuiWindowFlags_HorizontalScrollbar))
+    if (ImGui::BeginChild("FrameLog", ImVec2(0, 150), false, ImGuiWindowFlags_HorizontalScrollbar))
     {
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-        const char* buf = s_frame_text_buffer.begin();
-        const char* buf_end = s_frame_text_buffer.end();
+        const char* buf = s_frameTextBuffer.begin();
+        const char* buf_end = s_frameTextBuffer.end();
         ImGuiListClipper clipper;
-        clipper.Begin(s_frame_line_offsets.Size);
+        clipper.Begin(s_frameLineOffsets.Size);
         while (clipper.Step())
         {
             for (int line_no = clipper.DisplayStart; line_no < clipper.DisplayEnd; line_no++)
             {
-                const char* line_start = buf + s_frame_line_offsets[line_no];
-                const char* line_end = (line_no + 1 < s_frame_line_offsets.Size) ? (buf + s_frame_line_offsets[line_no + 1] - 1) : buf_end;
+                const char* line_start = buf + s_frameLineOffsets[line_no];
+                const char* line_end = (line_no + 1 < s_frameLineOffsets.Size) ? (buf + s_frameLineOffsets[line_no + 1] - 1) : buf_end;
                 ImGui::TextUnformatted(line_start, line_end);
             }
         }
@@ -63,7 +63,7 @@ static void DrawLog(bool* open)
     ImGui::SeparatorText("Persistent Log");
     if (ImGui::BeginPopup("Options"))
     {
-        ImGui::Checkbox("Auto-scroll", &s_persistent_auto_scroll);
+        ImGui::Checkbox("Auto-scroll", &s_persistentAutoScroll);
         ImGui::EndPopup();
     }
 
@@ -73,34 +73,34 @@ static void DrawLog(bool* open)
     }
 
     ImGui::SameLine();
-    bool do_clear = ImGui::Button("Clear");
+    bool doClear = ImGui::Button("Clear");
     ImGui::SameLine();
-    bool do_copy = ImGui::Button("Copy");
+    bool doCopy = ImGui::Button("Copy");
     ImGui::SameLine();
-    s_persistent_text_filter.Draw("Filter", -100.0f);
+    s_persistentTextFilter.Draw("Filter", -100.0f);
 
 
-    if (ImGui::BeginChild("persistent_log", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar))
+    if (ImGui::BeginChild("PersistentLog", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar))
     {
-        if (do_clear)
+        if (doClear)
             UI::ClearMsgLog(UI::kPersistent);
-        if (do_copy)
+        if (doCopy)
             ImGui::LogToClipboard();
 
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-        const char* buf = s_persistent_text_buffer.begin();
-        const char* buf_end = s_persistent_text_buffer.end();
-        if (s_persistent_text_filter.IsActive())
+        const char* bufBegin = s_persistentTextBuffer.begin();
+        const char* bufEnd = s_persistentTextBuffer.end();
+        if (s_persistentTextFilter.IsActive())
         {
             // In this example we don't use the clipper when Filter is enabled.
             // This is because we don't have random access to the result of our filter.
             // A real application processing logs with ten of thousands of entries may want to store the result of
             // search/filter.. especially if the filtering function is not trivial (e.g. reg-exp).
-            for (int line_no = 0; line_no < s_persistent_line_offsets.Size; line_no++)
+            for (int line_no = 0; line_no < s_persistentLineOffsets.Size; line_no++)
             {
-                const char* line_start = buf + s_persistent_line_offsets[line_no];
-                const char* line_end = (line_no + 1 < s_persistent_line_offsets.Size) ? (buf + s_persistent_line_offsets[line_no + 1] - 1) : buf_end;
-                if (s_persistent_text_filter.PassFilter(line_start, line_end))
+                const char* line_start = bufBegin + s_persistentLineOffsets[line_no];
+                const char* line_end = (line_no + 1 < s_persistentLineOffsets.Size) ? (bufBegin + s_persistentLineOffsets[line_no + 1] - 1) : bufEnd;
+                if (s_persistentTextFilter.PassFilter(line_start, line_end))
                     ImGui::TextUnformatted(line_start, line_end);
             }
         }
@@ -120,14 +120,14 @@ static void DrawLog(bool* open)
             // anymore, which is why we don't use the clipper. Storing or skimming through the search result would make
             // it possible (and would be recommended if you want to search through tens of thousands of entries).
             ImGuiListClipper clipper;
-            clipper.Begin(s_persistent_line_offsets.Size);
+            clipper.Begin(s_persistentLineOffsets.Size);
             while (clipper.Step())
             {
                 for (int line_no = clipper.DisplayStart; line_no < clipper.DisplayEnd; line_no++)
                 {
-                    const char* line_start = buf + s_persistent_line_offsets[line_no];
-                    const char* line_end = (line_no + 1 < s_persistent_line_offsets.Size) ? (buf + s_persistent_line_offsets[line_no + 1] - 1) : buf_end;
-                    ImGui::TextUnformatted(line_start, line_end);
+                    const char* lineStart = bufBegin + s_persistentLineOffsets[line_no];
+                    const char* lineEnd = (line_no + 1 < s_persistentLineOffsets.Size) ? (bufBegin + s_persistentLineOffsets[line_no + 1] - 1) : bufEnd;
+                    ImGui::TextUnformatted(lineStart, lineEnd);
                 }
             }
             clipper.End();
@@ -136,7 +136,7 @@ static void DrawLog(bool* open)
 
         // Keep up at the bottom of the scroll region if we were already at the bottom at the beginning of the frame.
         // Using a scrollbar or mouse-wheel will take away from the bottom edge.
-        if (s_persistent_auto_scroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+        if (s_persistentAutoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
         {
             ImGui::SetScrollHereY(1.0f);
         }
@@ -173,79 +173,51 @@ void UI::Render()
 
 void UI::LogMsg(UI::MsgType msgType, const char* msg)
 {
-    if (msgType == UI::kPersistent)
-    {
-        int old_size = s_persistent_text_buffer.size();
-        s_persistent_text_buffer.append(msg);
-        for (int new_size = s_persistent_text_buffer.size(); old_size < new_size; old_size++)
-        {
-            if (s_persistent_text_buffer[old_size] == '\n')
-            {
-                s_persistent_line_offsets.push_back(old_size + 1);
-            }
-        }
-    }
-    else if (msgType == UI::kFrame)
-    {
-        int old_size = s_frame_text_buffer.size();
-        s_frame_text_buffer.append(msg);
-        for (int new_size = s_frame_text_buffer.size(); old_size < new_size; old_size++)
-        {
-            if (s_frame_text_buffer[old_size] == '\n')
-            {
-                s_frame_line_offsets.push_back(old_size + 1);
-            }
-        }
-    }
+    ImGuiTextBuffer& textBuffer = (msgType == UI::MsgType::kPersistent) ? s_persistentTextBuffer : s_frameTextBuffer;
+    ImVector<int>& lineOffsets = (msgType == UI::MsgType::kFrame) ? s_persistentLineOffsets : s_frameLineOffsets;
+
+	int oldSize = textBuffer.size();
+	textBuffer.append(msg);
+	for (int newSize = textBuffer.size(); oldSize < newSize; oldSize++)
+	{
+		if (textBuffer[oldSize] == '\n')
+		{
+			lineOffsets.push_back(oldSize + 1);
+		}
+	}
 }
 
 void UI::LogMsgFmt(UI::MsgType msgType, const char* fmt, ...)
 {
-    if (msgType == UI::kPersistent)
-    {
-        va_list args;
-        va_start(args, fmt);
-        int old_size = s_persistent_text_buffer.size();
-        s_persistent_text_buffer.appendfv(fmt, args);
-        for (int new_size = s_persistent_text_buffer.size(); old_size < new_size; old_size++)
-        {
-            if (s_persistent_text_buffer[old_size] == '\n')
-            {
-                s_persistent_line_offsets.push_back(old_size + 1);
-            }
-        }
-        va_end(args);
-    }
-    else if (msgType == UI::kFrame)
-    {
-        va_list args;
-        va_start(args, fmt);
-        int old_size = s_frame_text_buffer.size();
-        s_frame_text_buffer.appendfv(fmt, args);
-        for (int new_size = s_frame_text_buffer.size(); old_size < new_size; old_size++)
-        {
-            if (s_frame_text_buffer[old_size] == '\n')
-            {
-                s_frame_line_offsets.push_back(old_size + 1);
-            }
-        }
-        va_end(args);
-    }
+    ImGuiTextBuffer& textBuffer = (msgType == UI::MsgType::kPersistent) ? s_persistentTextBuffer : s_frameTextBuffer;
+    ImVector<int>& lineOffsets = (msgType == UI::MsgType::kFrame) ? s_persistentLineOffsets : s_frameLineOffsets;
+
+	va_list args;
+	va_start(args, fmt);
+	int oldSize = textBuffer.size();
+	textBuffer.appendfv(fmt, args);
+	for (int newSize = textBuffer.size(); oldSize < newSize; oldSize++)
+	{
+		if (textBuffer[oldSize] == '\n')
+		{
+			lineOffsets.push_back(oldSize + 1);
+		}
+	}
+	va_end(args);
 }
 
 void UI::ClearMsgLog(UI::MsgType msgType)
 {
-
     if (msgType == UI::kPersistent)
     {
-        s_persistent_text_buffer.clear();
-        s_persistent_line_offsets.clear();
-        s_persistent_line_offsets.push_back(0);
+        s_persistentTextBuffer.clear();
+        s_persistentLineOffsets.clear();
+        s_persistentLineOffsets.push_back(0);
     }
     else if (msgType == UI::kFrame)
     {
-        s_frame_text_buffer.clear();
-        s_frame_line_offsets.clear();
-        s_frame_line_offsets.push_back(0);
+        s_frameTextBuffer.clear();
+        s_frameLineOffsets.clear();
+        s_frameLineOffsets.push_back(0);
     }
 }
