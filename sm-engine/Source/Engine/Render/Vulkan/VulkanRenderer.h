@@ -66,6 +66,10 @@ public:
 	void SetupNewFrame();
 	void PresentFinalImage();
 
+	const Camera* m_pMainCamera;
+	F32 m_elapsedTimeSeconds;
+	F32 m_deltaTimeSeconds;
+
 	Window* m_pWindow;
 	VkSurfaceKHR m_surface;
 	VulkanSwapchain m_swapchain;
@@ -82,19 +86,14 @@ public:
 	VulkanDescriptorSetLayout m_frameDescriptorSetLayout;
 	VulkanDescriptorPool m_frameDescriptorPool;
 
+	U32 m_currentFrame;
+	VulkanRenderFrame m_renderFrames[MAX_NUM_FRAMES_IN_FLIGHT];
+
 	// ImGui
 	VulkanDescriptorPool m_imguiDescriptorPool;
 	VulkanRenderPass m_imguiRenderPass;
 
-	U32 m_currentFrame;
-
-	VulkanRenderFrame m_renderFrames[MAX_NUM_FRAMES_IN_FLIGHT];
-
-	const Camera* m_pMainCamera;
-
-	F32 m_elapsedTimeSeconds;
-	F32 m_deltaTimeSeconds;
-
+	// Materials
 	VulkanDescriptorSetLayout m_materialDescriptorSetLayout;
 	VulkanDescriptorPool m_materialDescriptorPool;
 
