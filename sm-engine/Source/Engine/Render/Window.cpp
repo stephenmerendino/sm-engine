@@ -92,6 +92,8 @@ static void UpdateWindowPosition(Window* pWindow)
 
 void Window::Init(const char* name, U32 width, U32 height, bool bResizable)
 {
+	SetProcessDPIAware(); // make sure window is created with scaling handled
+
 	WNDCLASSEX wc = {};
 	wc.cbSize = sizeof(wc);
 	wc.style = CS_OWNDC | CS_DBLCLKS;
@@ -109,15 +111,15 @@ void Window::Init(const char* name, U32 width, U32 height, bool bResizable)
 	}
 
 	// calculate how big to create the window to ensure the "client area" (renderable surface) is actually sized to requested width & height
-	RECT full_size;
-	full_size.left = 0;
-	full_size.top = 0;
-	full_size.right = width;
-	full_size.bottom = height;
+	RECT fullSize;
+	fullSize.left = 0;
+	fullSize.top = 0;
+	fullSize.right = width;
+	fullSize.bottom = height;
 
-	::AdjustWindowRectEx(&full_size, style, FALSE, NULL);
-	I32 create_width = full_size.right - full_size.left;
-	I32 create_height = full_size.bottom - full_size.top;
+	::AdjustWindowRectEx(&fullSize, style, FALSE, NULL);
+	I32 createWidth = fullSize.right - fullSize.left;
+	I32 createHeight = fullSize.bottom - fullSize.top;
 
 	m_name = name;
 	m_bWasResized = false;
@@ -133,8 +135,8 @@ void Window::Init(const char* name, U32 width, U32 height, bool bResizable)
 						    style,
 						    CW_USEDEFAULT,
 						    CW_USEDEFAULT,
-						    create_width,
-						    create_height,
+						    createWidth,
+						    createHeight,
 						    NULL, NULL,
 						    GetModuleHandle(NULL),
 						    this);

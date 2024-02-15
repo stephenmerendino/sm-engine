@@ -497,28 +497,35 @@ void VulkanRenderer::InitImgui()
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-    
+
 	ImGui::StyleColorsDark();
 
     ImGui_ImplWin32_Init(m_pWindow->m_hwnd);
     ImGui_ImplVulkan_LoadFunctions(ImGuiVulkanFuncLoader);
-    ImGui_ImplVulkan_InitInfo init_info = {};
-    init_info.Instance = VulkanInstance::GetHandle();
-    init_info.PhysicalDevice = VulkanDevice::GetPhysDeviceHandle();
-    init_info.Device = VulkanDevice::GetHandle();
-    init_info.QueueFamily = VulkanDevice::Get()->m_queueFamilies.m_graphicsFamilyIndex;
-    init_info.Queue = VulkanDevice::Get()->m_graphicsQueue;
-    init_info.PipelineCache = VK_NULL_HANDLE;
-    init_info.DescriptorPool = m_imguiDescriptorPool.m_poolHandle;
-    init_info.Subpass = 0;
-    init_info.MinImageCount = m_swapchain.m_numImages; 
-    init_info.ImageCount = m_swapchain.m_numImages;
-    init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-    init_info.Allocator = VK_NULL_HANDLE;
-    init_info.CheckVkResultFn = CheckImGuiVulkanResult;
-    ImGui_ImplVulkan_Init(&init_info, m_imguiRenderPass.m_renderPassHandle);
+    ImGui_ImplVulkan_InitInfo initInfo = {};
+    initInfo.Instance = VulkanInstance::GetHandle();
+    initInfo.PhysicalDevice = VulkanDevice::GetPhysDeviceHandle();
+    initInfo.Device = VulkanDevice::GetHandle();
+    initInfo.QueueFamily = VulkanDevice::Get()->m_queueFamilies.m_graphicsFamilyIndex;
+    initInfo.Queue = VulkanDevice::Get()->m_graphicsQueue;
+    initInfo.PipelineCache = VK_NULL_HANDLE;
+    initInfo.DescriptorPool = m_imguiDescriptorPool.m_poolHandle;
+    initInfo.Subpass = 0;
+    initInfo.MinImageCount = m_swapchain.m_numImages; 
+    initInfo.ImageCount = m_swapchain.m_numImages;
+    initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+    initInfo.Allocator = VK_NULL_HANDLE;
+    initInfo.CheckVkResultFn = CheckImGuiVulkanResult;
+    ImGui_ImplVulkan_Init(&initInfo, m_imguiRenderPass.m_renderPassHandle);
+
+	F32 dpiScale = ImGui_ImplWin32_GetDpiScaleForHwnd(m_pWindow->m_hwnd);
+	DebugPrintf("Setting ImGui DPI Scale to %f\n", dpiScale);
+
+    ImFontConfig fontCfg;
+	fontCfg.SizePixels = floor(13.0f * dpiScale);
+	io.Fonts->AddFontDefault(&fontCfg);
     
-    io.Fonts->AddFontDefault();
+	ImGui::GetStyle().ScaleAllSizes(dpiScale);
 
     // Upload Fonts
     {
