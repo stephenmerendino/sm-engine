@@ -96,10 +96,10 @@ static void DrawLog(bool* open)
             // This is because we don't have random access to the result of our filter.
             // A real application processing logs with ten of thousands of entries may want to store the result of
             // search/filter.. especially if the filtering function is not trivial (e.g. reg-exp).
-            for (int line_no = 0; line_no < s_persistentLineOffsets.Size; line_no++)
+            for (int lineNo = 0; lineNo < s_persistentLineOffsets.Size; lineNo++)
             {
-                const char* line_start = bufBegin + s_persistentLineOffsets[line_no];
-                const char* line_end = (line_no + 1 < s_persistentLineOffsets.Size) ? (bufBegin + s_persistentLineOffsets[line_no + 1] - 1) : bufEnd;
+                const char* line_start = bufBegin + s_persistentLineOffsets[lineNo];
+                const char* line_end = (lineNo + 1 < s_persistentLineOffsets.Size) ? (bufBegin + s_persistentLineOffsets[lineNo + 1] - 1) : bufEnd;
                 if (s_persistentTextFilter.PassFilter(line_start, line_end))
                     ImGui::TextUnformatted(line_start, line_end);
             }

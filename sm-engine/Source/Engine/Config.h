@@ -19,7 +19,7 @@ static const char* SHADERS_PATH = "RuntimeAssets/CompiledShaders/";
 static const char* TEXTURES_PATH = "RuntimeAssets/Textures/";
 static const char* MODELS_PATH = "RuntimeAssets/Models/";
 
-static const ColorF32 CLEAR_COLOR = ColorF32(0.25f, 0.25f, 0.25f, 1.0f);
+static const ColorF32 CLEAR_COLOR = ColorF32(0.20f, 0.20f, 0.20f, 1.0f);
 
 #if defined(NDEBUG)
 	static const std::vector<const char*> INSTANCE_EXTENSIONS = {
