@@ -132,49 +132,53 @@ void VulkanRenderer::Init(Window* pWindow)
 	m_meshInstanceDescriptorSetLayout.Init();
 
 	// Viking Room
-	m_pVikingRoomMesh = MeshBuilder::BuildFromObj("viking_room.obj");
+	{
+		m_pVikingRoomMesh = MeshBuilder::BuildFromObj("viking_room.obj");
 
-	m_vikingRoomVertexBuffer.Init(VulkanBuffer::Type::kVertexBuffer, m_pVikingRoomMesh->CalcVertexBufferSize());
-	m_vikingRoomVertexBuffer.Update(m_graphicsCommandPool, m_pVikingRoomMesh->m_vertices.data(), 0);
+		m_vikingRoomVertexBuffer.Init(VulkanBuffer::Type::kVertexBuffer, m_pVikingRoomMesh->CalcVertexBufferSize());
+		m_vikingRoomVertexBuffer.Update(m_graphicsCommandPool, m_pVikingRoomMesh->m_vertices.data(), 0);
 
-	m_vikingRoomIndexBuffer.Init(VulkanBuffer::Type::kIndexBuffer, m_pVikingRoomMesh->CalcIndexBufferSize());
-	m_vikingRoomIndexBuffer.Update(m_graphicsCommandPool, m_pVikingRoomMesh->m_indices.data(), 0);
+		m_vikingRoomIndexBuffer.Init(VulkanBuffer::Type::kIndexBuffer, m_pVikingRoomMesh->CalcIndexBufferSize());
+		m_vikingRoomIndexBuffer.Update(m_graphicsCommandPool, m_pVikingRoomMesh->m_indices.data(), 0);
 
-	m_vikingRoomDiffuseTexture.InitFromFile(m_graphicsCommandPool, "viking-room.png");
+		m_vikingRoomDiffuseTexture.InitFromFile(m_graphicsCommandPool, "viking-room.png");
 
-	m_vikingRoomMaterialDS = m_materialDescriptorPool.AllocateSet(m_materialDescriptorSetLayout);
+		m_vikingRoomMaterialDS = m_materialDescriptorPool.AllocateSet(m_materialDescriptorSetLayout);
 
-	VulkanDescriptorSetWriter dsWriter;
-	dsWriter.AddSampledImageWrite(m_vikingRoomMaterialDS, m_vikingRoomDiffuseTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 0, 1);
-	dsWriter.PerformWrites();
+		VulkanDescriptorSetWriter dsWriter;
+		dsWriter.AddSampledImageWrite(m_vikingRoomMaterialDS, m_vikingRoomDiffuseTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 0, 1);
+		dsWriter.PerformWrites();
 
-	m_vikingRoomMeshInstanceBuffer.Init(VulkanBuffer::Type::kUniformBuffer, sizeof(MeshInstanceRenderData));
+		m_vikingRoomMeshInstanceBuffer.Init(VulkanBuffer::Type::kUniformBuffer, sizeof(MeshInstanceRenderData));
 
-	// Viking Room Pipeline
-	VulkanShaderStages shaderStages;
-	shaderStages.Init("simple-diffuse.vert.spv", "main", "simple-diffuse.frag.spv", "main");
+		// Viking Room Pipeline
+		VulkanShaderStages shaderStages;
+		shaderStages.Init("simple-diffuse.vert.spv", "main", "simple-diffuse.frag.spv", "main");
 
-	std::vector<VkDescriptorSetLayout> pipelineDescriptorSetLayouts = {
-		m_globalDescriptorSetLayout.m_layoutHandle,
-		m_frameDescriptorSetLayout.m_layoutHandle,
-		m_materialDescriptorSetLayout.m_layoutHandle,
-		m_meshInstanceDescriptorSetLayout.m_layoutHandle
-	};
+		std::vector<VkDescriptorSetLayout> pipelineDescriptorSetLayouts = {
+			m_globalDescriptorSetLayout.m_layoutHandle,
+			m_frameDescriptorSetLayout.m_layoutHandle,
+			m_materialDescriptorSetLayout.m_layoutHandle,
+			m_meshInstanceDescriptorSetLayout.m_layoutHandle
+		};
 
-	m_vikingRoomMainDrawPipelineLayout.Init(pipelineDescriptorSetLayouts);
+		m_vikingRoomMainDrawPipelineLayout.Init(pipelineDescriptorSetLayouts);
 
-	VulkanMeshPipelineInputInfo pipelineMeshInputInfo;
-	pipelineMeshInputInfo.Init(m_pVikingRoomMesh, false);
+		VulkanMeshPipelineInputInfo pipelineMeshInputInfo;
+		pipelineMeshInputInfo.Init(m_pVikingRoomMesh, false);
 
-	VulkanPipelineState pipelineState;
-	pipelineState.InitRasterState(VK_POLYGON_MODE_FILL, VK_FRONT_FACE_COUNTER_CLOCKWISE, VK_CULL_MODE_BACK_BIT);
-	pipelineState.InitViewportState(0, 0, (F32)m_swapchain.m_extent.width, (F32)m_swapchain.m_extent.height, 0.0f, 1.0f, 0, 0, m_swapchain.m_extent.width, m_swapchain.m_extent.height);
-	pipelineState.InitMultisampleState(VulkanDevice::Get()->m_maxNumMsaaSamples);
-	pipelineState.InitDepthStencilState(true, true, VK_COMPARE_OP_LESS);
-	pipelineState.PreInitAddColorBlendAttachment(false);
-	pipelineState.InitColorBlendState(false);
+		VulkanPipelineState pipelineState;
+		pipelineState.InitRasterState(VK_POLYGON_MODE_FILL, VK_FRONT_FACE_COUNTER_CLOCKWISE, VK_CULL_MODE_BACK_BIT);
+		pipelineState.InitViewportState(0, 0, (F32)m_swapchain.m_extent.width, (F32)m_swapchain.m_extent.height, 0.0f, 1.0f, 0, 0, m_swapchain.m_extent.width, m_swapchain.m_extent.height);
+		pipelineState.InitMultisampleState(VulkanDevice::Get()->m_maxNumMsaaSamples);
+		pipelineState.InitDepthStencilState(true, true, VK_COMPARE_OP_LESS);
+		pipelineState.PreInitAddColorBlendAttachment(false);
+		pipelineState.InitColorBlendState(false);
 
-	m_vikingRoomMainDrawPipeline.Init(shaderStages, m_vikingRoomMainDrawPipelineLayout, pipelineMeshInputInfo, pipelineState, m_mainDrawRenderPass);
+		m_vikingRoomMainDrawPipeline.Init(shaderStages, m_vikingRoomMainDrawPipelineLayout, pipelineMeshInputInfo, pipelineState, m_mainDrawRenderPass);
+
+		shaderStages.Destroy();
+	}
 }
 
 void VulkanRenderer::BeginFrame()
@@ -364,7 +368,24 @@ void VulkanRenderer::Shutdown()
 {
 	vkQueueWaitIdle(VulkanDevice::Get()->m_graphicsQueue);
 
+	ImGui_ImplVulkan_Shutdown();
+
+	m_vikingRoomVertexBuffer.Destroy();
+	m_vikingRoomIndexBuffer.Destroy();
+	m_vikingRoomDiffuseTexture.Destroy();
+	m_vikingRoomMainDrawPipelineLayout.Destroy();
+	m_vikingRoomMainDrawPipeline.Destroy();
+	m_vikingRoomMeshInstanceBuffer.Destroy();
+
 	DestroyRenderFrames();
+
+	m_imguiDescriptorPool.Destroy();
+	m_imguiRenderPass.Destroy();
+
+	m_meshInstanceDescriptorSetLayout.Destroy();
+
+	m_materialDescriptorSetLayout.Destroy();
+	m_materialDescriptorPool.Destroy();
 
 	m_frameDescriptorPool.Destroy();
 	m_frameDescriptorSetLayout.Destroy();
@@ -541,6 +562,7 @@ void VulkanRenderer::DestroyRenderFrames()
 	for (int i = 0; i < MAX_NUM_FRAMES_IN_FLIGHT; i++)
 	{
 		VulkanRenderFrame& frame = m_renderFrames[i];
+		frame.m_imguiFramebuffer.Destroy();
 		frame.m_meshInstanceDescriptorPool.Destroy();
 		frame.m_frameCompletedFence.Destroy();
 		frame.m_frameCompletedSemaphore.Destroy();

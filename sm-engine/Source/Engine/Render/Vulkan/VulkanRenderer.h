@@ -39,7 +39,7 @@ struct VulkanRenderFrame
 	VulkanDescriptorPool m_meshInstanceDescriptorPool;
 
 	// ImGui
-	VulkanFramebuffer m_imguiFramebuffer;
+	VulkanFramebuffer	m_imguiFramebuffer;
 };
 
 class VulkanRenderer : public Renderer
@@ -96,6 +96,10 @@ public:
 	// Materials
 	VulkanDescriptorSetLayout m_materialDescriptorSetLayout;
 	VulkanDescriptorPool m_materialDescriptorPool;
+
+	// Infinite Grid
+	VulkanPipeline m_infiniteGridPipelineLayout;
+	VulkanPipeline m_infiniteGridPipeline;
 
 	// Viking Room
 	Mesh* m_pVikingRoomMesh;
