@@ -40,7 +40,7 @@ class VulkanMeshPipelineInputInfo
 public:
     VulkanMeshPipelineInputInfo();
 
-    void Init(const Mesh* pMesh, bool primitiveRestartEnabled);
+    void Init(const Mesh* pMesh, bool primitiveRestartEnabled = false);
 
     // input assembly state
     VkPipelineInputAssemblyStateCreateInfo m_inputAssemblyInfo;

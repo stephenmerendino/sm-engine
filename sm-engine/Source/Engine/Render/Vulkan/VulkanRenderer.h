@@ -40,6 +40,10 @@ struct VulkanRenderFrame
 
 	// ImGui
 	VulkanFramebuffer	m_imguiFramebuffer;
+
+	// Infinite Grid
+	VulkanBuffer		m_infiniteGridDataBuffer;
+	VkDescriptorSet		m_infiniteGridDescriptorSet;
 };
 
 class VulkanRenderer : public Renderer
@@ -98,7 +102,8 @@ public:
 	VulkanDescriptorPool m_materialDescriptorPool;
 
 	// Infinite Grid
-	VulkanPipeline m_infiniteGridPipelineLayout;
+	VulkanDescriptorSetLayout m_infiniteGridDescriptorSetLayout;
+	VulkanPipelineLayout m_infiniteGridPipelineLayout;
 	VulkanPipeline m_infiniteGridPipeline;
 
 	// Viking Room

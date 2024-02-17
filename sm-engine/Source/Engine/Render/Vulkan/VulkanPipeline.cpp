@@ -90,19 +90,22 @@ VulkanMeshPipelineInputInfo::VulkanMeshPipelineInputInfo()
 
 void VulkanMeshPipelineInputInfo::Init(const Mesh* pMesh, bool primitiveRestartEnabled)
 {
-    SM_ASSERT(pMesh != nullptr);
-
 	m_inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    switch (pMesh->m_topology)
-    {
-		case PrimitiveTopology::kPointList: m_inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
-		case PrimitiveTopology::kLineList: m_inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-		case PrimitiveTopology::kTriangleList: m_inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    }
 	m_inputAssemblyInfo.primitiveRestartEnable = primitiveRestartEnabled;
+    m_inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; // default to triangle list in case nullptr mesh is passed in (no vertex buffer draw)
 
-    m_vertexInputBindingDescs = VulkanFormats::GetVertexInputBindingDescs(VertexType::kPCT);
-    m_vertexInputAttrDescs = VulkanFormats::GetVertexInputAttrDescs(VertexType::kPCT);
+    if (pMesh)
+    {
+        switch (pMesh->m_topology)
+        {
+            case PrimitiveTopology::kPointList: m_inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+            case PrimitiveTopology::kLineList: m_inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+            case PrimitiveTopology::kTriangleList: m_inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        }
+
+        m_vertexInputBindingDescs = VulkanFormats::GetVertexInputBindingDescs(VertexType::kPCT);
+        m_vertexInputAttrDescs = VulkanFormats::GetVertexInputAttrDescs(VertexType::kPCT);
+    }
 
 	m_vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	m_vertexInputInfo.vertexBindingDescriptionCount = (U32)m_vertexInputBindingDescs.size();

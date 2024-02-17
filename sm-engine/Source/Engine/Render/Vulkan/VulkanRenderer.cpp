@@ -21,6 +21,12 @@ struct FrameRenderData
 	F32 m_deltaTimeSeconds;
 };
 
+struct InfiniteGridData
+{
+	Mat44 m_viewProjection;
+	Mat44 m_inverseViewProjection;
+};
+
 struct MeshInstanceRenderData
 {
 	Mat44 m_mvp;
@@ -114,8 +120,39 @@ void VulkanRenderer::Init(Window* pWindow)
 		m_frameDescriptorSetLayout.PreInitAddLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL);
 		m_frameDescriptorSetLayout.Init();
 
-		m_frameDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_NUM_FRAMES_IN_FLIGHT);
-		m_frameDescriptorPool.Init(MAX_NUM_FRAMES_IN_FLIGHT);
+		// FrameRenderData + InfiniteGridData
+		U32 numUniformBuffersPerFrame = 2;
+		U32 numSetsPerFrame = 2;
+
+		m_frameDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_NUM_FRAMES_IN_FLIGHT * numUniformBuffersPerFrame);
+		m_frameDescriptorPool.Init(MAX_NUM_FRAMES_IN_FLIGHT * numSetsPerFrame);
+	}
+
+	// Infinite grid
+	{
+        m_infiniteGridDescriptorSetLayout.PreInitAddLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
+        m_infiniteGridDescriptorSetLayout.Init();
+
+        std::vector<VkDescriptorSetLayout> infiniteGridDescriptorSetLayouts = { m_infiniteGridDescriptorSetLayout.m_layoutHandle };
+        m_infiniteGridPipelineLayout.Init(infiniteGridDescriptorSetLayouts);
+
+        VulkanShaderStages shaderStages;
+        shaderStages.Init("infinite-grid.vert.spv", "main", "infinite-grid.frag.spv", "main");
+
+        VulkanMeshPipelineInputInfo pipelineMeshInputInfo;
+        pipelineMeshInputInfo.Init(nullptr);
+
+        VulkanPipelineState pipelineState;
+        pipelineState.InitRasterState(VK_POLYGON_MODE_FILL, VK_FRONT_FACE_COUNTER_CLOCKWISE, VK_CULL_MODE_NONE);
+        pipelineState.InitViewportState(0, 0, (F32)m_swapchain.m_extent.width, (F32)m_swapchain.m_extent.height, 0.0f, 1.0f, 0, 0, m_swapchain.m_extent.width, m_swapchain.m_extent.height);
+        pipelineState.InitMultisampleState(VulkanDevice::Get()->m_maxNumMsaaSamples);
+        pipelineState.InitDepthStencilState(true, true, VK_COMPARE_OP_LESS);
+        pipelineState.PreInitAddColorBlendAttachment(false);
+        pipelineState.InitColorBlendState(false);
+
+        m_infiniteGridPipeline.Init(shaderStages, m_infiniteGridPipelineLayout, pipelineMeshInputInfo, pipelineState, m_mainDrawRenderPass);
+
+        shaderStages.Destroy();
 	}
 
 	InitRenderFrames();
@@ -216,43 +253,68 @@ void VulkanRenderer::Render()
 		VkExtent2D mainDrawExtent = m_swapchain.m_extent;
 
 		VulkanCommands::BeginRenderPass(curRenderFrame.m_frameCommandBuffer, m_mainDrawRenderPass.m_renderPassHandle, curRenderFrame.m_mainDrawFramebuffer.m_framebufferHandle, mainDrawOffset, mainDrawExtent, mainDrawClearValues);
+            Mat44 view = m_pMainCamera->GetViewTransform();
+            Mat44 projection = Mat44::CreatePerspectiveProjection(45.0f, 0.01f, 100.0f, (F32)m_swapchain.m_extent.width / (F32)m_swapchain.m_extent.height);
 
-            Mat44 model = Mat44::IDENTITY;
-			Mat44 view = m_pMainCamera->GetViewTransform();
-			Mat44 projection = Mat44::CreatePerspectiveProjection(45.0f, 0.01f, 100.0f, (F32)m_swapchain.m_extent.width / (F32)m_swapchain.m_extent.height);
+			// Viking Room
+            {
+                Mat44 model = Mat44::IDENTITY;
 
-            MeshInstanceRenderData meshInstanceRenderData;
-			meshInstanceRenderData.m_mvp = model * view * projection;
-            m_vikingRoomMeshInstanceBuffer.Update(m_graphicsCommandPool, &meshInstanceRenderData, 0);
+                MeshInstanceRenderData meshInstanceRenderData;
+                meshInstanceRenderData.m_mvp = model * view * projection;
+                m_vikingRoomMeshInstanceBuffer.Update(m_graphicsCommandPool, &meshInstanceRenderData, 0);
 
-			// Mesh instance descriptor set
-            VkDescriptorSet meshInstanceDescriptorSet = curRenderFrame.m_meshInstanceDescriptorPool.AllocateSet(m_meshInstanceDescriptorSetLayout);
-			VulkanDescriptorSetWriter meshInstanceDescriptorWriter;
-			meshInstanceDescriptorWriter.AddUniformBufferWrite(meshInstanceDescriptorSet, m_vikingRoomMeshInstanceBuffer, 0, 0, 0, 1);
-			meshInstanceDescriptorWriter.PerformWrites();
+                // Mesh instance descriptor set
+                VkDescriptorSet meshInstanceDescriptorSet = curRenderFrame.m_meshInstanceDescriptorPool.AllocateSet(m_meshInstanceDescriptorSetLayout);
+                VulkanDescriptorSetWriter meshInstanceDescriptorWriter;
+                meshInstanceDescriptorWriter.AddUniformBufferWrite(meshInstanceDescriptorSet, m_vikingRoomMeshInstanceBuffer, 0, 0, 0, 1);
+                meshInstanceDescriptorWriter.PerformWrites();
 
-			// Bind vertex buffer
-			VkBuffer vertexBuffer[] = { m_vikingRoomVertexBuffer.m_bufferHandle };
-			VkDeviceSize offsets[] = { 0 };
-			vkCmdBindVertexBuffers(curRenderFrame.m_frameCommandBuffer, 0, 1, vertexBuffer, offsets);
+                // Bind vertex buffer
+                VkBuffer vertexBuffer[] = { m_vikingRoomVertexBuffer.m_bufferHandle };
+                VkDeviceSize offsets[] = { 0 };
+                vkCmdBindVertexBuffers(curRenderFrame.m_frameCommandBuffer, 0, 1, vertexBuffer, offsets);
 
-			// Bind index buffer
-			vkCmdBindIndexBuffer(curRenderFrame.m_frameCommandBuffer, m_vikingRoomIndexBuffer.m_bufferHandle, 0, VK_INDEX_TYPE_UINT32);
+                // Bind index buffer
+                vkCmdBindIndexBuffer(curRenderFrame.m_frameCommandBuffer, m_vikingRoomIndexBuffer.m_bufferHandle, 0, VK_INDEX_TYPE_UINT32);
 
-			// Bind pipeline
-			vkCmdBindPipeline(curRenderFrame.m_frameCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_vikingRoomMainDrawPipeline.m_pipelineHandle);
+                // Bind pipeline
+                vkCmdBindPipeline(curRenderFrame.m_frameCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_vikingRoomMainDrawPipeline.m_pipelineHandle);
 
-			std::vector<VkDescriptorSet> mainDrawDescriptorSets = {
-				m_globalDescriptorSet,
-				curRenderFrame.m_frameDescriptorSet,
-				m_vikingRoomMaterialDS,
-				meshInstanceDescriptorSet	
-			};
-			vkCmdBindDescriptorSets(curRenderFrame.m_frameCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_vikingRoomMainDrawPipelineLayout.m_layoutHandle, 0, (U32)mainDrawDescriptorSets.size(), mainDrawDescriptorSets.data(), 0, nullptr);
+                std::vector<VkDescriptorSet> mainDrawDescriptorSets = {
+                    m_globalDescriptorSet,
+                    curRenderFrame.m_frameDescriptorSet,
+                    m_vikingRoomMaterialDS,
+                    meshInstanceDescriptorSet	
+                };
+                vkCmdBindDescriptorSets(curRenderFrame.m_frameCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_vikingRoomMainDrawPipelineLayout.m_layoutHandle, 0, (U32)mainDrawDescriptorSets.size(), mainDrawDescriptorSets.data(), 0, nullptr);
 
-			// Draw command
-			vkCmdDrawIndexed(curRenderFrame.m_frameCommandBuffer, (U32)m_pVikingRoomMesh->m_indices.size(), 1, 0, 0, 0);
+                // Draw command
+                vkCmdDrawIndexed(curRenderFrame.m_frameCommandBuffer, (U32)m_pVikingRoomMesh->m_indices.size(), 1, 0, 0, 0);
+            }
 
+			// Infinite grid
+			{
+				InfiniteGridData gridData;
+				gridData.m_viewProjection = view * projection;
+				gridData.m_inverseViewProjection = projection.Inversed() * view.Inversed();
+
+				curRenderFrame.m_infiniteGridDataBuffer.Update(m_graphicsCommandPool, &gridData, 0);
+
+				VulkanDescriptorSetWriter writer;
+				writer.AddUniformBufferWrite(curRenderFrame.m_infiniteGridDescriptorSet, curRenderFrame.m_infiniteGridDataBuffer, 0, 0, 0, 1);
+				writer.PerformWrites();
+
+				vkCmdBindPipeline(curRenderFrame.m_frameCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_infiniteGridPipeline.m_pipelineHandle);
+
+                std::vector<VkDescriptorSet> infiniteGridDescriptorSets = {
+					curRenderFrame.m_infiniteGridDescriptorSet
+                };
+                vkCmdBindDescriptorSets(curRenderFrame.m_frameCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_infiniteGridPipelineLayout.m_layoutHandle, 0, (U32)infiniteGridDescriptorSets.size(), infiniteGridDescriptorSets.data(), 0, nullptr);
+
+                // Draw command
+                vkCmdDraw(curRenderFrame.m_frameCommandBuffer, 6, 1, 0, 0);
+			}
 		VulkanCommands::EndRenderPass(curRenderFrame.m_frameCommandBuffer);
 
 	}
@@ -368,6 +430,10 @@ void VulkanRenderer::Shutdown()
 {
 	vkQueueWaitIdle(VulkanDevice::Get()->m_graphicsQueue);
 
+    m_infiniteGridPipeline.Destroy();
+	m_infiniteGridPipelineLayout.Destroy();
+	m_infiniteGridDescriptorSetLayout.Destroy();
+
 	ImGui_ImplVulkan_Shutdown();
 
 	m_vikingRoomVertexBuffer.Destroy();
@@ -469,6 +535,9 @@ void VulkanRenderer::InitRenderFrames()
 
         std::vector<VkImageView> imguiAttachments = { frame.m_mainDrawColorResolveTexture.m_imageView };
 		frame.m_imguiFramebuffer.Init(m_imguiRenderPass, imguiAttachments, m_swapchain.m_extent.width, m_swapchain.m_extent.height, 1);
+
+		frame.m_infiniteGridDescriptorSet = m_frameDescriptorPool.AllocateSet(m_infiniteGridDescriptorSetLayout);
+		frame.m_infiniteGridDataBuffer.Init(VulkanBuffer::Type::kUniformBuffer, sizeof(InfiniteGridData));
 	}
 }
 
@@ -562,6 +631,7 @@ void VulkanRenderer::DestroyRenderFrames()
 	for (int i = 0; i < MAX_NUM_FRAMES_IN_FLIGHT; i++)
 	{
 		VulkanRenderFrame& frame = m_renderFrames[i];
+		frame.m_infiniteGridDataBuffer.Destroy();
 		frame.m_imguiFramebuffer.Destroy();
 		frame.m_meshInstanceDescriptorPool.Destroy();
 		frame.m_frameCompletedFence.Destroy();

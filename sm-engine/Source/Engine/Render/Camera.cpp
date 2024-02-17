@@ -109,11 +109,11 @@ Mat44 Camera::GetViewTransform() const
 	Mat44 worldToCamera = cameraToWorld.Transposed();
 
 	Vec3 worldTranslation = m_worldPos;
-	Vec3 worldToCamera_translation = -1.0f * worldToCamera.TransformPoint(worldTranslation);
+	Vec3 worldToCameraTranslation = -1.0f * worldToCamera.TransformPoint(worldTranslation);
 
 	Mat44 viewTransform = worldToCamera * changeOfBasis;
-	Vec3 view_translation = changeOfBasis.TransformPoint(worldToCamera_translation);
-	viewTransform.t.xyz = view_translation;
+	Vec3 viewTranslation = changeOfBasis.TransformPoint(worldToCameraTranslation);
+	viewTransform.t.xyz = viewTranslation;
 
 	return viewTransform;
 }
