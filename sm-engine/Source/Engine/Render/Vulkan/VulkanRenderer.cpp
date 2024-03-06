@@ -147,8 +147,8 @@ void VulkanRenderer::Init(Window* pWindow)
         pipelineState.InitViewportState(0, 0, (F32)m_swapchain.m_extent.width, (F32)m_swapchain.m_extent.height, 0.0f, 1.0f, 0, 0, m_swapchain.m_extent.width, m_swapchain.m_extent.height);
         pipelineState.InitMultisampleState(VulkanDevice::Get()->m_maxNumMsaaSamples);
         pipelineState.InitDepthStencilState(true, true, VK_COMPARE_OP_LESS);
-        pipelineState.PreInitAddColorBlendAttachment(false);
-        pipelineState.InitColorBlendState(false);
+        pipelineState.PreInitAddColorBlendAttachment(true, VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD);
+		pipelineState.InitColorBlendState(false);
 
         m_infiniteGridPipeline.Init(shaderStages, m_infiniteGridPipelineLayout, pipelineMeshInputInfo, pipelineState, m_mainDrawRenderPass);
 
