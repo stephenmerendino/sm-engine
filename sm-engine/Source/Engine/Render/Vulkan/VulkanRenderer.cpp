@@ -130,7 +130,7 @@ void VulkanRenderer::Init(Window* pWindow)
 
 	// Infinite grid
 	{
-        m_infiniteGridDescriptorSetLayout.PreInitAddLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
+        m_infiniteGridDescriptorSetLayout.PreInitAddLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
         m_infiniteGridDescriptorSetLayout.Init();
 
         std::vector<VkDescriptorSetLayout> infiniteGridDescriptorSetLayouts = { m_infiniteGridDescriptorSetLayout.m_layoutHandle };
@@ -259,6 +259,7 @@ void VulkanRenderer::Render()
 			// Viking Room
             {
                 Mat44 model = Mat44::IDENTITY;
+				model.t.z = 1.0f;
 
                 MeshInstanceRenderData meshInstanceRenderData;
                 meshInstanceRenderData.m_mvp = model * view * projection;

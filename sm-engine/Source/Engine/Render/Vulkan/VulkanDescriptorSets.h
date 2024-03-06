@@ -12,7 +12,7 @@ class VulkanDescriptorSetLayout
 public:
 	VulkanDescriptorSetLayout();
 
-	void PreInitAddLayoutBinding(U32 bindingIndex, U32 descriptorCount, VkDescriptorType descriptorType, VkShaderStageFlagBits shaderStages);
+	void PreInitAddLayoutBinding(U32 bindingIndex, U32 descriptorCount, VkDescriptorType descriptorType, VkShaderStageFlags shaderStages);
 	void Init();
 	void Destroy();
 

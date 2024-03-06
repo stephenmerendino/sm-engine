@@ -6,7 +6,7 @@ VulkanDescriptorSetLayout::VulkanDescriptorSetLayout()
 {
 }
 
-void VulkanDescriptorSetLayout::PreInitAddLayoutBinding(U32 bindingIndex, U32 descriptorCount, VkDescriptorType descriptorType, VkShaderStageFlagBits shaderStages)
+void VulkanDescriptorSetLayout::PreInitAddLayoutBinding(U32 bindingIndex, U32 descriptorCount, VkDescriptorType descriptorType, VkShaderStageFlags shaderStages)
 {
 	VkDescriptorSetLayoutBinding newBinding = {};
 	newBinding.binding = bindingIndex;
