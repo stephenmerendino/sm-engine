@@ -259,7 +259,6 @@ void VulkanRenderer::Render()
 			// Viking Room
             {
                 Mat44 model = Mat44::IDENTITY;
-				model.t.z = 1.0f;
 
                 MeshInstanceRenderData meshInstanceRenderData;
                 meshInstanceRenderData.m_mvp = model * view * projection;
