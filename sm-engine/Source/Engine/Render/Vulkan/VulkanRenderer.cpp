@@ -241,6 +241,7 @@ void VulkanRenderer::Render()
 	VulkanCommands::Begin(curRenderFrame.m_frameCommandBuffer, 0);
 
 	// Main Draw
+	VulkanCommands::BeginDebugLabel(curRenderFrame.m_frameCommandBuffer, "Main Draw", ColorF32(1.0f, 0.0f, 1.0f, 0.0f));
 	{
 		VkClearValue colorClear = {};
 		colorClear.color = { CLEAR_COLOR.r, CLEAR_COLOR.g, CLEAR_COLOR.b, CLEAR_COLOR.a };
@@ -318,6 +319,7 @@ void VulkanRenderer::Render()
 		VulkanCommands::EndRenderPass(curRenderFrame.m_frameCommandBuffer);
 
 	}
+	VulkanCommands::EndDebugLabel(curRenderFrame.m_frameCommandBuffer);
 
 	// ImGui
 	{
@@ -438,7 +440,7 @@ void VulkanRenderer::Shutdown()
 
 	m_vikingRoomVertexBuffer.Destroy();
 	m_vikingRoomIndexBuffer.Destroy();
-	m_vikingRoomDiffuseTexture.Destroy();
+	//m_vikingRoomDiffuseTexture.Destroy();
 	m_vikingRoomMainDrawPipelineLayout.Destroy();
 	m_vikingRoomMainDrawPipeline.Destroy();
 	m_vikingRoomMeshInstanceBuffer.Destroy();

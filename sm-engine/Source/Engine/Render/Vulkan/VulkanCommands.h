@@ -2,6 +2,7 @@
 
 #include "Engine/Render/Vulkan/VulkanBuffer.h"
 #include "Engine/Render/Vulkan/VulkanInclude.h"
+#include "Engine/Core/Color.h"
 #include "Engine/Core/Types.h"
 
 namespace VulkanCommands
@@ -40,4 +41,7 @@ namespace VulkanCommands
 	void BeginRenderPass(VkCommandBuffer commandBuffer, VkRenderPass renderPass, VkFramebuffer framebuffer, VkOffset2D offset, VkExtent2D extent);
 
 	void EndRenderPass(VkCommandBuffer commandBuffer);
+
+	void BeginDebugLabel(VkCommandBuffer commandBuffer, const char* labelName, const ColorF32& labelColor);
+	void EndDebugLabel(VkCommandBuffer commandBuffer);
 }

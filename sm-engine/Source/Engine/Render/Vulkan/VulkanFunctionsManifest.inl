@@ -121,6 +121,7 @@ VK_DEVICE_FUNCTION(vkCmdBlitImage);
 VK_DEVICE_FUNCTION(vkSetDebugUtilsObjectNameEXT)
 VK_DEVICE_FUNCTION(vkQueueBeginDebugUtilsLabelEXT)
 VK_DEVICE_FUNCTION(vkQueueEndDebugUtilsLabelEXT)
+VK_DEVICE_FUNCTION(vkQueueInsertDebugUtilsLabelEXT)
 VK_DEVICE_FUNCTION(vkCmdBeginDebugUtilsLabelEXT)
 VK_DEVICE_FUNCTION(vkCmdEndDebugUtilsLabelEXT)
 VK_DEVICE_FUNCTION(vkCmdInsertDebugUtilsLabelEXT)

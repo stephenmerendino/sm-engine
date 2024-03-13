@@ -14,6 +14,8 @@ public:
 	void InitColorTarget(VkFormat format, U32 width, U32 height, VkImageUsageFlags usage, VkSampleCountFlagBits numSamples);
 	void InitDepthTarget(VkFormat format, U32 width, U32 height, VkImageUsageFlags usage, VkSampleCountFlagBits numSamples);
 
+	void SetDebugName(const char* debugName);
+
 	void Destroy();
 
 	VkImage m_image;

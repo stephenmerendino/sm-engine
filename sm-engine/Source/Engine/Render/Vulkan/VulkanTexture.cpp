@@ -114,18 +114,7 @@ void VulkanTexture::InitFromFile(const VulkanCommandPool& commandPool, const cha
 		VulkanCommands::GenerateMipMaps(commandBuffer, m_image, format, texWidth, texHeight, m_numMips);
 	commandPool.EndAndSubmitSingleTime(commandBuffer);
 
-	// Set user friendly debug name
-	if (IsDebug())
-	{
-		VkDebugUtilsObjectNameInfoEXT debugNameInfo = {};
-		debugNameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
-		debugNameInfo.objectType = VK_OBJECT_TYPE_IMAGE;
-		debugNameInfo.objectHandle = (U64)m_image;
-		debugNameInfo.pObjectName = filepath;
-		debugNameInfo.pNext = nullptr;
-
-		vkSetDebugUtilsObjectNameEXT(VulkanDevice::GetHandle(), &debugNameInfo);
-	}
+	SetDebugName(filepath);
 
 	stagingBuffer.Destroy();
 
@@ -160,6 +149,20 @@ void VulkanTexture::InitDepthTarget(VkFormat format, U32 width, U32 height, VkIm
 				&m_image,
 				&m_deviceMemory);
 	m_imageView = CreateImageView(m_image, format, VK_IMAGE_ASPECT_DEPTH_BIT, m_numMips);
+}
+
+void VulkanTexture::SetDebugName(const char* debugName)
+{
+	if (!IsDebug()) return;
+
+	VkDebugUtilsObjectNameInfoEXT imageNameInfo = {};
+    imageNameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+    imageNameInfo.pNext = NULL,
+    imageNameInfo.objectType = VK_OBJECT_TYPE_IMAGE,
+    imageNameInfo.objectHandle = (uint64_t)m_image,
+    imageNameInfo.pObjectName = debugName,
+
+    vkSetDebugUtilsObjectNameEXT(VulkanDevice::GetHandle(), &imageNameInfo);
 }
 
 void VulkanTexture::Destroy()
