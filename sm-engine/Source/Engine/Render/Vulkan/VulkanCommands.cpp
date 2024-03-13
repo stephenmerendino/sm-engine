@@ -257,6 +257,21 @@ namespace VulkanCommands
 		vkCmdBeginDebugUtilsLabelEXT(commandBuffer, &renderLabel);
 	}
 
+	void InsertDebugLabel(VkCommandBuffer commandBuffer, const char* labelName, const ColorF32& labelColor)
+	{
+		if (!IsDebug()) return;
+
+		VkDebugUtilsLabelEXT renderLabel = {};
+		renderLabel.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+		renderLabel.pNext = nullptr;
+		renderLabel.pLabelName = labelName;
+		renderLabel.color[0] = labelColor.r;
+		renderLabel.color[1] = labelColor.g;
+		renderLabel.color[2] = labelColor.b;
+		renderLabel.color[3] = labelColor.a;
+		vkCmdInsertDebugUtilsLabelEXT(commandBuffer, &renderLabel);
+	}
+
 	void EndDebugLabel(VkCommandBuffer commandBuffer)
 	{
 		if (!IsDebug()) return;

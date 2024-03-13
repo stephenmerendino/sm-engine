@@ -241,7 +241,7 @@ void VulkanRenderer::Render()
 	VulkanCommands::Begin(curRenderFrame.m_frameCommandBuffer, 0);
 
 	// Main Draw
-	VulkanCommands::BeginDebugLabel(curRenderFrame.m_frameCommandBuffer, "Main Draw", ColorF32(1.0f, 0.0f, 1.0f, 0.0f));
+	VulkanCommands::BeginDebugLabel(curRenderFrame.m_frameCommandBuffer, "Main Draw", ColorF32(1.0f, 0.0f, 1.0f, 1.0f));
 	{
 		VkClearValue colorClear = {};
 		colorClear.color = { CLEAR_COLOR.r, CLEAR_COLOR.g, CLEAR_COLOR.b, CLEAR_COLOR.a };
@@ -258,6 +258,7 @@ void VulkanRenderer::Render()
             Mat44 projection = Mat44::CreatePerspectiveProjection(45.0f, 0.01f, 100.0f, (F32)m_swapchain.m_extent.width / (F32)m_swapchain.m_extent.height);
 
 			// Viking Room
+			VulkanCommands::InsertDebugLabel(curRenderFrame.m_frameCommandBuffer, "Viking Room", ColorF32(1.0f, 0.0f, 1.0f, 1.0f));
             {
                 Mat44 model = Mat44::IDENTITY;
 
@@ -295,6 +296,7 @@ void VulkanRenderer::Render()
             }
 
 			// Infinite grid
+			VulkanCommands::InsertDebugLabel(curRenderFrame.m_frameCommandBuffer, "Infinite Grid", ColorF32(1.0f, 0.0f, 1.0f, 1.0f));
 			{
 				InfiniteGridData gridData;
 				gridData.m_viewProjection = view * projection;
@@ -322,6 +324,7 @@ void VulkanRenderer::Render()
 	VulkanCommands::EndDebugLabel(curRenderFrame.m_frameCommandBuffer);
 
 	// ImGui
+	VulkanCommands::BeginDebugLabel(curRenderFrame.m_frameCommandBuffer, "ImGui", ColorF32(1.0f, 0.0f, 0.0f, 1.0f));
 	{
 		UI::Render();
 		VkOffset2D offset = { 0, 0 };
@@ -331,8 +334,10 @@ void VulkanRenderer::Render()
             ImGui_ImplVulkan_RenderDrawData(drawData, curRenderFrame.m_frameCommandBuffer);
         VulkanCommands::EndRenderPass(curRenderFrame.m_frameCommandBuffer);
 	}
+	VulkanCommands::EndDebugLabel(curRenderFrame.m_frameCommandBuffer);
 
 	// Copy from main draw target to swapchain
+	VulkanCommands::BeginDebugLabel(curRenderFrame.m_frameCommandBuffer, "Copy to Swap Chain", ColorF32(0.0f, 1.0f, 0.0f, 1.0f));
 	{
 		VulkanCommands::TransitionImageLayout(curRenderFrame.m_frameCommandBuffer, m_swapchain.m_images[curRenderFrame.m_swapchainImageIndex], 1,
 											  VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -347,8 +352,23 @@ void VulkanRenderer::Render()
 											  VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_NONE,
 											  VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_NONE);
 	}
+	VulkanCommands::EndDebugLabel(curRenderFrame.m_frameCommandBuffer);
 
 	VulkanCommands::End(curRenderFrame.m_frameCommandBuffer);
+
+	if (IsDebug())
+	{
+		VkDebugUtilsLabelEXT queueLabel = {};
+		queueLabel.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+		queueLabel.pNext = nullptr;
+		queueLabel.pLabelName = "Graphics Queue";
+		queueLabel.color[0] = 1.0f;
+		queueLabel.color[1] = 1.0f;
+		queueLabel.color[2] = 0.0f;
+		queueLabel.color[3] = 1.0f;
+
+		vkQueueBeginDebugUtilsLabelEXT(VulkanDevice::Get()->m_graphicsQueue, &queueLabel);
+	}
 
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -362,6 +382,11 @@ void VulkanRenderer::Render()
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = &curRenderFrame.m_frameCompletedSemaphore.m_semaphoreHandle;
 	vkQueueSubmit(VulkanDevice::Get()->m_graphicsQueue, 1, &submitInfo, curRenderFrame.m_frameCompletedFence.m_fenceHandle);
+
+	if (IsDebug())
+	{
+		vkQueueEndDebugUtilsLabelEXT(VulkanDevice::Get()->m_graphicsQueue);
+	}
 
 	PresentFinalImage();
 }
