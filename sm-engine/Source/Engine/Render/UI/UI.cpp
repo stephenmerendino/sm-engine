@@ -187,6 +187,9 @@ static void DrawInfoOverlay(bool* pOpen)
 
         IVec2 currentRes = g_renderer->GetCurrentResolution();
 		ImGui::Text("Resolution (%i, %i)", currentRes.x, currentRes.y);
+
+        ImGui::Separator();
+        ImGui::CollapsingHeader("Render Settings");
     }
     ImGui::End();
 }
