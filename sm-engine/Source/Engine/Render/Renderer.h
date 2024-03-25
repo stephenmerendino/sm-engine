@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Engine/Core/Types.h"
+#include "Engine/Math/IVec2.h"
 
 class Camera;
 class Window;
@@ -14,6 +15,8 @@ public:
 	virtual void Render() = 0;
 	virtual void Shutdown() = 0;
 	virtual void SetCamera(const Camera* camera) = 0;
+	virtual const Camera* GetCamera() = 0;
+	virtual IVec2 GetCurrentResolution() = 0;
 	virtual F32 GetAspectRatio() const = 0;
 };
 

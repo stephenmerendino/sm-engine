@@ -1,8 +1,11 @@
 #include "Engine/Render/UI/UI.h"
 #include "Engine/ThirdParty/imgui/imgui.h"
+#include "Engine/Render/Renderer.h"
+#include "Engine/Render/Camera.h"
 
 static bool s_showDemoWindow = false;
 static bool s_showLog = false;
+static bool s_showInfoOverlay = true;
 
 // Logging
 static ImGuiTextBuffer s_persistentTextBuffer;
@@ -145,6 +148,52 @@ static void DrawLog(bool* open)
     ImGui::End();
 }
 
+// Demonstrate creating a simple static window with no decoration
+// + a context-menu to choose which corner of the screen to use.
+static void DrawInfoOverlay(bool* pOpen)
+{
+    static int location = 0;
+    ImGuiIO& io = ImGui::GetIO();
+    ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+    if (location >= 0)
+    {
+        const float PAD = 10.0f;
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
+        ImVec2 work_size = viewport->WorkSize;
+        ImVec2 window_pos, window_pos_pivot;
+        window_pos.x = work_pos.x + PAD;
+        window_pos.y = work_pos.y + PAD;
+        window_pos_pivot.x = 0.0f;
+        window_pos_pivot.y = 0.0f;
+        ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
+        window_flags |= ImGuiWindowFlags_NoMove;
+    }
+    else if (location == -2)
+    {
+        // Center window
+        ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+        window_flags |= ImGuiWindowFlags_NoMove;
+    }
+    ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
+    if (ImGui::Begin("SM Engine", pOpen, window_flags))
+    {
+        ImGui::Text("SM Engine\n");
+        ImGui::Separator();
+
+        const Camera* pCamera = g_renderer->GetCamera();
+        Vec3 camPos = pCamera->m_worldPos;
+		ImGui::Text("Camera Position (%.2f, %.2f, %.2f)", camPos.x, camPos.y, camPos.z);
+
+        IVec2 currentRes = g_renderer->GetCurrentResolution();
+		ImGui::Text("Resolution (%i, %i)", currentRes.x, currentRes.y);
+
+        ImGui::Separator();
+        ImGui::CollapsingHeader("Render Settings");
+    }
+    ImGui::End();
+}
+
 void UI::Init()
 {
     ClearMsgLog(kPersistent);
@@ -168,6 +217,11 @@ void UI::Render()
     if (s_showLog)
     {
         DrawLog(&s_showLog);
+    }
+
+    if (s_showInfoOverlay)
+    {
+        DrawInfoOverlay(&s_showInfoOverlay);
     }
 }
 

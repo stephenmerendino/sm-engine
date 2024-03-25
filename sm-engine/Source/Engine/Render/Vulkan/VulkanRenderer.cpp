@@ -465,7 +465,7 @@ void VulkanRenderer::Shutdown()
 
 	m_vikingRoomVertexBuffer.Destroy();
 	m_vikingRoomIndexBuffer.Destroy();
-	//m_vikingRoomDiffuseTexture.Destroy();
+	m_vikingRoomDiffuseTexture.Destroy();
 	m_vikingRoomMainDrawPipelineLayout.Destroy();
 	m_vikingRoomMainDrawPipeline.Destroy();
 	m_vikingRoomMeshInstanceBuffer.Destroy();
@@ -498,6 +498,16 @@ void VulkanRenderer::Shutdown()
 void VulkanRenderer::SetCamera(const Camera* pCamera)
 {
 	m_pMainCamera = pCamera;
+}
+
+const Camera* VulkanRenderer::GetCamera()
+{
+	return m_pMainCamera;
+}
+
+IVec2 VulkanRenderer::GetCurrentResolution()
+{
+	return IVec2(m_swapchain.m_extent.width, m_swapchain.m_extent.height);
 }
 
 F32 VulkanRenderer::GetAspectRatio() const

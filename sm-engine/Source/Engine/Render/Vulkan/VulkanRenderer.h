@@ -57,6 +57,8 @@ public:
 	virtual void Render() final;
 	virtual void Shutdown() final;
 	virtual void SetCamera(const Camera* pCamera) final;
+	virtual const Camera* GetCamera() final;
+	virtual IVec2 GetCurrentResolution() final;
 	virtual F32 GetAspectRatio() const final;
 
 	void InitSwapchain();
