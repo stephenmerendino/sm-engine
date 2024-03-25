@@ -356,19 +356,19 @@ void VulkanRenderer::Render()
 
 	VulkanCommands::End(curRenderFrame.m_frameCommandBuffer);
 
-	if (IsDebug())
-	{
-		VkDebugUtilsLabelEXT queueLabel = {};
-		queueLabel.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
-		queueLabel.pNext = nullptr;
-		queueLabel.pLabelName = "Graphics Queue";
-		queueLabel.color[0] = 1.0f;
-		queueLabel.color[1] = 1.0f;
-		queueLabel.color[2] = 0.0f;
-		queueLabel.color[3] = 1.0f;
+	//if (IsDebug())
+	//{
+	//	VkDebugUtilsLabelEXT queueLabel = {};
+	//	queueLabel.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+	//	queueLabel.pNext = nullptr;
+	//	queueLabel.pLabelName = "Graphics Queue";
+	//	queueLabel.color[0] = 1.0f;
+	//	queueLabel.color[1] = 1.0f;
+	//	queueLabel.color[2] = 0.0f;
+	//	queueLabel.color[3] = 1.0f;
 
-		vkQueueBeginDebugUtilsLabelEXT(VulkanDevice::Get()->m_graphicsQueue, &queueLabel);
-	}
+	//	vkQueueBeginDebugUtilsLabelEXT(VulkanDevice::Get()->m_graphicsQueue, &queueLabel);
+	//}
 
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -383,10 +383,10 @@ void VulkanRenderer::Render()
     submitInfo.pSignalSemaphores = &curRenderFrame.m_frameCompletedSemaphore.m_semaphoreHandle;
 	vkQueueSubmit(VulkanDevice::Get()->m_graphicsQueue, 1, &submitInfo, curRenderFrame.m_frameCompletedFence.m_fenceHandle);
 
-	if (IsDebug())
-	{
-		vkQueueEndDebugUtilsLabelEXT(VulkanDevice::Get()->m_graphicsQueue);
-	}
+	//if (IsDebug())
+	//{
+	//	vkQueueEndDebugUtilsLabelEXT(VulkanDevice::Get()->m_graphicsQueue);
+	//}
 
 	PresentFinalImage();
 }
