@@ -15,6 +15,7 @@
 #include <vector>
 
 class Camera;
+class RenderSettings;
 
 struct VulkanRenderFrame
 {
@@ -57,9 +58,11 @@ public:
 	virtual void Render() final;
 	virtual void Shutdown() final;
 	virtual void SetCamera(const Camera* pCamera) final;
-	virtual const Camera* GetCamera() final;
+	virtual const Camera* GetCamera() final { return m_pMainCamera; };
 	virtual IVec2 GetCurrentResolution() final;
 	virtual F32 GetAspectRatio() const final;
+	virtual RenderSettings* GetRenderSettings() final { return m_pRenderSettings; };
+	virtual const RenderSettings* GetRenderSettings() const final { return m_pRenderSettings; };
 
 	void InitSwapchain();
 	void RefreshSwapchain();
@@ -123,4 +126,6 @@ public:
 	VulkanBuffer m_vikingRoomMeshInstanceBuffer;
 
 	VulkanDescriptorSetLayout m_meshInstanceDescriptorSetLayout;
+
+	RenderSettings* m_pRenderSettings;
 };

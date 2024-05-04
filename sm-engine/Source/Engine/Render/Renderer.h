@@ -2,6 +2,7 @@
 
 #include "Engine/Core/Types.h"
 #include "Engine/Math/IVec2.h"
+#include "Engine/Render/RenderSettings.h"
 
 class Camera;
 class Window;
@@ -18,6 +19,8 @@ public:
 	virtual const Camera* GetCamera() = 0;
 	virtual IVec2 GetCurrentResolution() = 0;
 	virtual F32 GetAspectRatio() const = 0;
+	virtual RenderSettings* GetRenderSettings() = 0;
+	virtual const RenderSettings* GetRenderSettings() const = 0;
 };
 
 extern Renderer* g_renderer;

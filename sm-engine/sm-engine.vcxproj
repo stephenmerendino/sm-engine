@@ -41,6 +41,7 @@
     <ClCompile Include="Source\Engine\Render\Mesh.cpp" />
     <ClCompile Include="Source\Engine\Render\MeshBuilder.cpp" />
     <ClCompile Include="Source\Engine\Render\Renderer.cpp" />
+    <ClCompile Include="Source\Engine\Render\RenderSettings.cpp" />
     <ClCompile Include="Source\Engine\Render\UI\UI.cpp" />
     <ClCompile Include="Source\Engine\Render\Vertex.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanBuffer.cpp" />
@@ -102,6 +103,7 @@
     <ClInclude Include="Source\Engine\Render\Mesh.h" />
     <ClInclude Include="Source\Engine\Render\MeshBuilder.h" />
     <ClInclude Include="Source\Engine\Render\Renderer.h" />
+    <ClInclude Include="Source\Engine\Render\RenderSettings.h" />
     <ClInclude Include="Source\Engine\Render\UI\UI.h" />
     <ClInclude Include="Source\Engine\Render\Vertex.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanBuffer.h" />

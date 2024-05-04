@@ -189,7 +189,11 @@ static void DrawInfoOverlay(bool* pOpen)
 		ImGui::Text("Resolution (%i, %i)", currentRes.x, currentRes.y);
 
         ImGui::Separator();
-        ImGui::CollapsingHeader("Render Settings");
+        //ImGui::CollapsingHeader("Render Settings");
+        if (ImGui::CollapsingHeader("Render Settings", ImGuiTreeNodeFlags_Framed))
+        {
+			ImGui::Checkbox("Display debug world grid", &g_renderer->GetRenderSettings()->m_bDrawDebugWorldGrid);
+        }
     }
     ImGui::End();
 }

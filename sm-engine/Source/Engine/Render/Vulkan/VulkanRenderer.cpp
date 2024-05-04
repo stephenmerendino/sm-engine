@@ -34,6 +34,7 @@ struct MeshInstanceRenderData
 
 VulkanRenderer::VulkanRenderer()
 	:m_pWindow(nullptr)
+	,m_pRenderSettings(nullptr)
 	,m_pMainCamera(nullptr)
 	,m_surface(VK_NULL_HANDLE)
 	,m_currentFrame(0)
@@ -47,6 +48,8 @@ void VulkanRenderer::Init(Window* pWindow)
 {
 	SM_ASSERT(pWindow != nullptr);
 	m_pWindow = pWindow;
+
+	m_pRenderSettings = new RenderSettings();
 
 	Mesh::InitPrimitives();
 
@@ -296,27 +299,30 @@ void VulkanRenderer::Render()
             }
 
 			// Infinite grid
-			VulkanCommands::InsertDebugLabel(curRenderFrame.m_frameCommandBuffer, "Infinite Grid", ColorF32(1.0f, 0.0f, 1.0f, 1.0f));
+			if (GetRenderSettings()->m_bDrawDebugWorldGrid)
 			{
-				InfiniteGridData gridData;
-				gridData.m_viewProjection = view * projection;
-				gridData.m_inverseViewProjection = projection.Inversed() * view.Inversed();
+				VulkanCommands::InsertDebugLabel(curRenderFrame.m_frameCommandBuffer, "Infinite Grid", ColorF32(1.0f, 0.0f, 1.0f, 1.0f));
+				{
+					InfiniteGridData gridData;
+					gridData.m_viewProjection = view * projection;
+					gridData.m_inverseViewProjection = projection.Inversed() * view.Inversed();
 
-				curRenderFrame.m_infiniteGridDataBuffer.Update(m_graphicsCommandPool, &gridData, 0);
+					curRenderFrame.m_infiniteGridDataBuffer.Update(m_graphicsCommandPool, &gridData, 0);
 
-				VulkanDescriptorSetWriter writer;
-				writer.AddUniformBufferWrite(curRenderFrame.m_infiniteGridDescriptorSet, curRenderFrame.m_infiniteGridDataBuffer, 0, 0, 0, 1);
-				writer.PerformWrites();
+					VulkanDescriptorSetWriter writer;
+					writer.AddUniformBufferWrite(curRenderFrame.m_infiniteGridDescriptorSet, curRenderFrame.m_infiniteGridDataBuffer, 0, 0, 0, 1);
+					writer.PerformWrites();
 
-				vkCmdBindPipeline(curRenderFrame.m_frameCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_infiniteGridPipeline.m_pipelineHandle);
+					vkCmdBindPipeline(curRenderFrame.m_frameCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_infiniteGridPipeline.m_pipelineHandle);
 
-                std::vector<VkDescriptorSet> infiniteGridDescriptorSets = {
-					curRenderFrame.m_infiniteGridDescriptorSet
-                };
-                vkCmdBindDescriptorSets(curRenderFrame.m_frameCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_infiniteGridPipelineLayout.m_layoutHandle, 0, (U32)infiniteGridDescriptorSets.size(), infiniteGridDescriptorSets.data(), 0, nullptr);
+					std::vector<VkDescriptorSet> infiniteGridDescriptorSets = {
+						curRenderFrame.m_infiniteGridDescriptorSet
+					};
+					vkCmdBindDescriptorSets(curRenderFrame.m_frameCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_infiniteGridPipelineLayout.m_layoutHandle, 0, (U32)infiniteGridDescriptorSets.size(), infiniteGridDescriptorSets.data(), 0, nullptr);
 
-                // Draw command
-                vkCmdDraw(curRenderFrame.m_frameCommandBuffer, 6, 1, 0, 0);
+					// Draw command
+					vkCmdDraw(curRenderFrame.m_frameCommandBuffer, 6, 1, 0, 0);
+				}
 			}
 		VulkanCommands::EndRenderPass(curRenderFrame.m_frameCommandBuffer);
 
@@ -493,16 +499,13 @@ void VulkanRenderer::Shutdown()
 	VulkanDevice::Destroy();
 	vkDestroySurfaceKHR(VulkanInstance::GetHandle(), m_surface, nullptr);
 	VulkanInstance::Destroy();
+
+	delete m_pRenderSettings;
 }
 
 void VulkanRenderer::SetCamera(const Camera* pCamera)
 {
 	m_pMainCamera = pCamera;
-}
-
-const Camera* VulkanRenderer::GetCamera()
-{
-	return m_pMainCamera;
 }
 
 IVec2 VulkanRenderer::GetCurrentResolution()

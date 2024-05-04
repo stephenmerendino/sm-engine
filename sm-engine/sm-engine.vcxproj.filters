@@ -219,6 +219,9 @@
     <ClCompile Include="Source\Engine\Render\UI\UI.cpp">
       <Filter>Source\Render\UI</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Render\RenderSettings.cpp">
+      <Filter>Source\Render</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Engine\Core\Assert.h">
@@ -547,6 +550,9 @@
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\UI\UI.h">
       <Filter>Source\Render\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\RenderSettings.h">
+      <Filter>Source\Render</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
