@@ -3,6 +3,7 @@
 #include "Engine/Render/Renderer.h"
 #include "Engine/Render/Camera.h"
 
+static bool s_showUI = true;
 static bool s_showDemoWindow = false;
 static bool s_showLog = false;
 static bool s_showInfoOverlay = true;
@@ -27,6 +28,10 @@ static void DrawMainMenuBar()
         if (ImGui::MenuItem("Log"))
         {
             s_showLog = true;
+        }
+        if (ImGui::MenuItem("Toggle UI"))
+        {
+            s_showUI = !s_showUI;
         }
         ImGui::EndMainMenuBar();
     }
@@ -219,6 +224,8 @@ void UI::BeginFrame()
 void UI::Render()
 {
     DrawMainMenuBar();
+
+    if (!s_showUI) return;
     
     if(s_showDemoWindow)
     {
