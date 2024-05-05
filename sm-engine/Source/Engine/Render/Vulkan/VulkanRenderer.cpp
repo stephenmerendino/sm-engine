@@ -25,6 +25,9 @@ struct InfiniteGridData
 {
 	Mat44 m_viewProjection;
 	Mat44 m_inverseViewProjection;
+	F32 m_fadeDistance;
+	F32 m_majorLineThickness;
+	F32 m_minorLineThickness;
 };
 
 struct MeshInstanceRenderData
@@ -306,6 +309,9 @@ void VulkanRenderer::Render()
 					InfiniteGridData gridData;
 					gridData.m_viewProjection = view * projection;
 					gridData.m_inverseViewProjection = projection.Inversed() * view.Inversed();
+					gridData.m_fadeDistance = GetRenderSettings()->m_debugGridFadeDistance;
+					gridData.m_majorLineThickness = GetRenderSettings()->m_debugGridMajorLineThickness;
+					gridData.m_minorLineThickness = GetRenderSettings()->m_debugGridMinorLineThickness;
 
 					curRenderFrame.m_infiniteGridDataBuffer.Update(m_graphicsCommandPool, &gridData, 0);
 

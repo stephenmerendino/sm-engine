@@ -153,7 +153,7 @@ static void DrawLog(bool* open)
 static void DrawInfoOverlay(bool* pOpen)
 {
     static int location = 0;
-    ImGuiIO& io = ImGui::GetIO();
+
     ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
     if (location >= 0)
     {
@@ -192,7 +192,14 @@ static void DrawInfoOverlay(bool* pOpen)
         //ImGui::CollapsingHeader("Render Settings");
         if (ImGui::CollapsingHeader("Render Settings", ImGuiTreeNodeFlags_Framed))
         {
-			ImGui::Checkbox("Display debug world grid", &g_renderer->GetRenderSettings()->m_bDrawDebugWorldGrid);
+            if (ImGui::TreeNode("World Grid"))
+            {
+                ImGui::Checkbox("Draw", &g_renderer->GetRenderSettings()->m_bDrawDebugWorldGrid);
+                ImGui::DragFloat("Fade Distance", &g_renderer->GetRenderSettings()->m_debugGridFadeDistance, 0.0001f, 0.0f, 1.0f, "%.4f");
+                ImGui::DragFloat("Major Line Thickness", &g_renderer->GetRenderSettings()->m_debugGridMajorLineThickness, 0.0001f, 0.0f, 1.0f);
+                ImGui::DragFloat("Minor Line Thickness", &g_renderer->GetRenderSettings()->m_debugGridMinorLineThickness, 0.0001f, 0.0f, 1.0f);
+                ImGui::TreePop();
+            }
         }
     }
     ImGui::End();
