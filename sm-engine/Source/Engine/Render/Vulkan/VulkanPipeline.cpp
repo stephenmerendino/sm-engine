@@ -21,9 +21,9 @@ VkShaderModule CreateShaderModule(const char* shaderFilepath)
 	return shaderModule;
 }
 
-void VulkanShaderStages::Init(const ShaderInfo& vertexInfo, const ShaderInfo& fragmentInfo)
+void VulkanShaderStages::Init(const Shader& vertexShader, const Shader& fragmentShader)
 {
-	Init(vertexInfo.m_filepath, vertexInfo.m_entryName, fragmentInfo.m_filepath, fragmentInfo.m_entryName);
+	//Init(vertexInfo.m_filepath, vertexInfo.m_entryName, fragmentInfo.m_filepath, fragmentInfo.m_entryName);
 }
 
 void VulkanShaderStages::Init(const char* vertexFilepath, const char* vertexEntryName, const char* fragmentFilepath, const char* fragmentEntryName)

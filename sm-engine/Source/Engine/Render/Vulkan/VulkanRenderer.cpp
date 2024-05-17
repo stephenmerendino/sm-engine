@@ -7,6 +7,7 @@
 #include "Engine/Render/Camera.h"
 #include "Engine/Render/MeshBuilder.h"
 #include "Engine/Render/Mesh.h"
+#include "Engine/Render/ShaderCompiler.h"
 #include "Engine/Render/Window.h"
 #include "Engine/Render/UI/UI.h"
 #include "Engine/ThirdParty/imgui/imgui.h"
@@ -53,6 +54,8 @@ void VulkanRenderer::Init(Window* pWindow)
 	m_pWindow = pWindow;
 
 	m_pRenderSettings = new RenderSettings();
+
+	InitShaderCompiler();
 
 	Mesh::InitPrimitives();
 

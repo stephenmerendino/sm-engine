@@ -61,6 +61,9 @@
     <Filter Include="Source\Core">
       <UniqueIdentifier>{650bde54-f1ba-4cd4-8621-111f3ca52081}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\ThirdParty\dxc">
+      <UniqueIdentifier>{ef4c1142-8cd3-4847-ad0b-6f55bb15566e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Engine\Core\Assert.cpp">
@@ -220,6 +223,9 @@
       <Filter>Source\Render\UI</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\RenderSettings.cpp">
+      <Filter>Source\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Render\ShaderCompiler.cpp">
       <Filter>Source\Render</Filter>
     </ClCompile>
   </ItemGroup>
@@ -552,6 +558,15 @@
       <Filter>Source\Render\UI</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\RenderSettings.h">
+      <Filter>Source\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\ThirdParty\dxc\dxcapi.h">
+      <Filter>Source\ThirdParty\dxc</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\ThirdParty\dxc\WinAdapter.h">
+      <Filter>Source\ThirdParty\dxc</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Render\ShaderCompiler.h">
       <Filter>Source\Render</Filter>
     </ClInclude>
   </ItemGroup>

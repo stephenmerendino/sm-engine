@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Engine/Render/ShaderCompiler.h"
 #include "Engine/Render/Vulkan/VulkanInclude.h"
 #include "Engine/Render/Vulkan/VulkanRenderPass.h"
 #include <vector>
@@ -10,13 +11,7 @@ class Mesh;
 class VulkanShaderStages
 {
 public:
-    struct ShaderInfo
-    {
-        const char* m_filepath;
-        const char* m_entryName;
-    };
-
-    void Init(const ShaderInfo& vertexInfo, const ShaderInfo& fragmentInfo);
+    void Init(const Shader& vertexShader, const Shader& fragmentShader);
     void Init(const char* vertexFilepath, const char* vertexEntryName, const char* fragmentFilepath, const char* fragmentEntryName);
     void Destroy();
 
