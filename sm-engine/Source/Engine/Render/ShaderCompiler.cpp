@@ -5,17 +5,33 @@
 
 #include <atlbase.h>
 
+CComPtr<IDxcLibrary> g_library;
+CComPtr<IDxcCompiler3> g_compiler;
+CComPtr<IDxcUtils> g_utils;
+
 void InitShaderCompiler()
 {
-	HRESULT hres;
-
 	// Initialize DXC library
-	CComPtr<IDxcLibrary> library;
-	hres = DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(&library));
-	SM_ASSERT(SUCCEEDED(hres));
+	SM_ASSERT(SUCCEEDED(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(&g_library))));
+
+	// Initialize DXC compiler
+	SM_ASSERT(SUCCEEDED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&g_compiler))));
+
+	// Initialize DXC utility
+	SM_ASSERT(SUCCEEDED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&g_utils))));
 }
 
 bool CompileShader(ShaderType type, const char* filepath, const char* entry, Shader* pOutShader)
 {
+	HRESULT hres;
+
+	// need to convert filepath from const char * to LPCWSTR
+
+	// Load the HLSL text shader from disk
+	uint32_t codePage = DXC_CP_ACP;
+	CComPtr<IDxcBlobEncoding> sourceBlob;
+	hres = g_utils->LoadFile(filepath, &codePage, &sourceBlob);
+	SM_ASSERT(SUCCEEDED(hres));
+
 	return false;
 }
