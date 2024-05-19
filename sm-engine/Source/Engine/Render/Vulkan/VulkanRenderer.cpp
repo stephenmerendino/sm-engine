@@ -146,7 +146,7 @@ void VulkanRenderer::Init(Window* pWindow)
         m_infiniteGridPipelineLayout.Init(infiniteGridDescriptorSetLayouts);
 
         VulkanShaderStages shaderStages;
-        shaderStages.Init("infinite-grid.vert.spv", "main", "infinite-grid.frag.spv", "main");
+        shaderStages.Init("infinite-grid.vert.spv", "Main", "infinite-grid.frag.spv", "Main");
 
         VulkanMeshPipelineInputInfo pipelineMeshInputInfo;
         pipelineMeshInputInfo.Init(nullptr);
@@ -199,7 +199,7 @@ void VulkanRenderer::Init(Window* pWindow)
 
 		// Viking Room Pipeline
 		VulkanShaderStages shaderStages;
-		shaderStages.Init("simple-diffuse.vert.spv", "main", "simple-diffuse.frag.spv", "main");
+		shaderStages.Init("simple-diffuse.vert.spv", "Main", "simple-diffuse.frag.spv", "Main");
 
 		std::vector<VkDescriptorSetLayout> pipelineDescriptorSetLayouts = {
 			m_globalDescriptorSetLayout.m_layoutHandle,
@@ -273,6 +273,7 @@ void VulkanRenderer::Render()
 
                 MeshInstanceRenderData meshInstanceRenderData;
                 meshInstanceRenderData.m_mvp = model * view * projection;
+				//meshInstanceRenderData.m_mvp.Transpose();
                 m_vikingRoomMeshInstanceBuffer.Update(m_graphicsCommandPool, &meshInstanceRenderData, 0);
 
                 // Mesh instance descriptor set

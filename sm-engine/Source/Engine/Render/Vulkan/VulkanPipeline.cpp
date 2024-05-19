@@ -218,7 +218,7 @@ void VulkanPipelineState::InitDepthStencilState(bool depthTestEnable, bool depth
     m_depthStencilState.depthBoundsTestEnable = depthBoundsTestEnable;
     m_depthStencilState.minDepthBounds = minDepthBounds;
     m_depthStencilState.maxDepthBounds = maxDepthBounds;
-    //TODO(smerendino): Allow stencil to be passed in and set
+    //TODO Allow stencil to be passed in and set
     m_depthStencilState.stencilTestEnable = VK_FALSE;
     m_depthStencilState.front = {};
     m_depthStencilState.back = {};

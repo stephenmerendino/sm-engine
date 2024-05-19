@@ -30,8 +30,8 @@ bool CompileShader(ShaderType type, const char* filepath, const char* entry, Sha
 	// Load the HLSL text shader from disk
 	uint32_t codePage = DXC_CP_ACP;
 	CComPtr<IDxcBlobEncoding> sourceBlob;
-	hres = g_utils->LoadFile(filepath, &codePage, &sourceBlob);
-	SM_ASSERT(SUCCEEDED(hres));
+	//hres = g_utils->LoadFile(filepath, &codePage, &sourceBlob);
+	//SM_ASSERT(SUCCEEDED(hres));
 
 	return false;
 }
