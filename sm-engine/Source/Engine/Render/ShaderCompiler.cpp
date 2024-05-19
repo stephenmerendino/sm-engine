@@ -1,6 +1,7 @@
 #include "Engine/Render/ShaderCompiler.h"
 #include "Engine/Core/Assert.h"
 #include "Engine/Platform/WindowsInclude.h"
+#include "Engine/Platform/WindowsUtils.h"
 #include "Engine/ThirdParty/dxc/dxcapi.h"
 
 #include <atlbase.h>
@@ -26,12 +27,14 @@ bool CompileShader(ShaderType type, const char* filepath, const char* entry, Sha
 	HRESULT hres;
 
 	// need to convert filepath from const char * to LPCWSTR
+	wchar_t* filepathW = AllocAndConvertUnicodeStr(filepath);
 
 	// Load the HLSL text shader from disk
 	uint32_t codePage = DXC_CP_ACP;
 	CComPtr<IDxcBlobEncoding> sourceBlob;
-	//hres = g_utils->LoadFile(filepath, &codePage, &sourceBlob);
-	//SM_ASSERT(SUCCEEDED(hres));
+	hres = g_utils->LoadFile(filepathW, &codePage, &sourceBlob);
+	SM_ASSERT(SUCCEEDED(hres));
 
+	delete filepathW;
 	return false;
 }

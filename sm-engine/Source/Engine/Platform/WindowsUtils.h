@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <cstring>
 
+inline 
 wchar_t* AllocAndConvertUnicodeStr(const char* str)
 {
 	size_t strLen = strlen(str);
