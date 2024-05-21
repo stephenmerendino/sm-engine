@@ -26,10 +26,10 @@ void VulkanShaderStages::Init(const Shader& vertexShader, const Shader& fragment
 	//Init(vertexInfo.m_filepath, vertexInfo.m_entryName, fragmentInfo.m_filepath, fragmentInfo.m_entryName);
 }
 
-void VulkanShaderStages::Init(const char* vertexFilepath, const char* vertexEntryName, const char* fragmentFilepath, const char* fragmentEntryName)
+void VulkanShaderStages::Init(const char* vertexFilename, const char* vertexEntryName, const char* fragmentFilename, const char* fragmentEntryName)
 {
-    std::string vertexFullFilepath = std::string(SHADERS_PATH) + std::string(vertexFilepath);
-    std::string pipelineFullFilepath = std::string(SHADERS_PATH) + std::string(fragmentFilepath);
+    std::string vertexFullFilepath = std::string(SHADERS_PATH) + std::string(vertexFilename);
+    std::string pipelineFullFilepath = std::string(SHADERS_PATH) + std::string(fragmentFilename);
 
     VkShaderModule vertShader = CreateShaderModule(vertexFullFilepath.c_str());
     VkShaderModule fragShader = CreateShaderModule(pipelineFullFilepath.c_str());

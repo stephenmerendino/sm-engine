@@ -201,6 +201,15 @@ void VulkanRenderer::Init(Window* pWindow)
 		VulkanShaderStages shaderStages;
 		shaderStages.Init("simple-diffuse.vert.spv", "Main", "simple-diffuse.frag.spv", "Main");
 
+		// TESTING
+		{
+            Shader vertexTest;
+            bool didCompile = CompileShader(ShaderType::kVs, "simple-diffuse.vert", "Main", &vertexTest);
+            
+            Shader fragmentTest;
+            didCompile = CompileShader(ShaderType::kPs, "simple-diffuse.frag", "Main", &fragmentTest);
+		}
+
 		std::vector<VkDescriptorSetLayout> pipelineDescriptorSetLayouts = {
 			m_globalDescriptorSetLayout.m_layoutHandle,
 			m_frameDescriptorSetLayout.m_layoutHandle,
