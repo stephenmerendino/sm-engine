@@ -146,7 +146,15 @@ void VulkanRenderer::Init(Window* pWindow)
         m_infiniteGridPipelineLayout.Init(infiniteGridDescriptorSetLayouts);
 
         VulkanShaderStages shaderStages;
-        shaderStages.Init("infinite-grid.vert.spv", "Main", "infinite-grid.frag.spv", "Main");
+		{
+            Shader vertShader;
+			CompileShader(ShaderType::kVs, "infinite-grid.vert", "Main", &vertShader);
+
+            Shader pixelShader;
+			CompileShader(ShaderType::kPs, "infinite-grid.frag", "Main", &pixelShader);
+
+            shaderStages.Init(vertShader, pixelShader);
+		}
 
         VulkanMeshPipelineInputInfo pipelineMeshInputInfo;
         pipelineMeshInputInfo.Init(nullptr);
@@ -199,15 +207,14 @@ void VulkanRenderer::Init(Window* pWindow)
 
 		// Viking Room Pipeline
 		VulkanShaderStages shaderStages;
-		shaderStages.Init("simple-diffuse.vert.spv", "Main", "simple-diffuse.frag.spv", "Main");
-
-		// TESTING
 		{
-            Shader vertexTest;
-            bool didCompile = CompileShader(ShaderType::kVs, "simple-diffuse.vert", "Main", &vertexTest);
-            
-            Shader fragmentTest;
-            didCompile = CompileShader(ShaderType::kPs, "simple-diffuse.frag", "Main", &fragmentTest);
+            Shader vertShader;
+			CompileShader(ShaderType::kVs, "simple-diffuse.vert", "Main", &vertShader);
+
+            Shader pixelShader;
+			CompileShader(ShaderType::kPs, "simple-diffuse.frag", "Main", &pixelShader);
+
+            shaderStages.Init(vertShader, pixelShader);
 		}
 
 		std::vector<VkDescriptorSetLayout> pipelineDescriptorSetLayouts = {

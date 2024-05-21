@@ -92,15 +92,14 @@ bool CompileShader(ShaderType type, const char* filename, const char* entry, Sha
 	CComPtr<IDxcBlob> code;
 	result->GetResult(&code);
 
-	// Create a Vulkan shader module from the compilation result
-	//VkShaderModuleCreateInfo shaderModuleCI{};
-	//shaderModuleCI.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	//shaderModuleCI.codeSize = code->GetBufferSize();
-	//shaderModuleCI.pCode = (uint32_t*)code->GetBufferPointer();
-	//VkShaderModule shaderModule;
-	//vkCreateShaderModule(device, &shaderModuleCI, nullptr, &shaderModule);
+	pOutShader->m_filename = filename;
+	pOutShader->m_entryName = entry;
+	pOutShader->m_type = type;
 
-	delete entry;
+	pOutShader->m_bytecode.resize(code->GetBufferSize());
+	memcpy(pOutShader->m_bytecode.data(), code->GetBufferPointer(), code->GetBufferSize());
+
+	delete entryW;
 	delete filepathW;
-	return false;
+	return true;
 }

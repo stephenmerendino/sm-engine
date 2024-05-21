@@ -6,14 +6,12 @@
 #include "Engine/Render/Vulkan/VulkanDevice.h"
 #include "Engine/Render/Vulkan/VulkanFormats.h"
 
-VkShaderModule CreateShaderModule(const char* shaderFilepath)
+VkShaderModule CreateShaderModule(const Shader& shader)
 {
-	std::vector<Byte> rawShaderCode = ReadBinaryFile(shaderFilepath);
-
 	VkShaderModuleCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	createInfo.codeSize = rawShaderCode.size();
-	createInfo.pCode = (const U32*)rawShaderCode.data();
+	createInfo.codeSize = shader.m_bytecode.size();
+	createInfo.pCode = (const U32*)shader.m_bytecode.data();
 
 	VkShaderModule shaderModule = VK_NULL_HANDLE;
 	SM_VULKAN_ASSERT(vkCreateShaderModule(VulkanDevice::GetHandle(), &createInfo, nullptr, &shaderModule));
@@ -21,30 +19,22 @@ VkShaderModule CreateShaderModule(const char* shaderFilepath)
 	return shaderModule;
 }
 
-void VulkanShaderStages::Init(const Shader& vertexShader, const Shader& fragmentShader)
+void VulkanShaderStages::Init(const Shader& vertexShader, const Shader& pixelShader)
 {
-	//Init(vertexInfo.m_filepath, vertexInfo.m_entryName, fragmentInfo.m_filepath, fragmentInfo.m_entryName);
-}
-
-void VulkanShaderStages::Init(const char* vertexFilename, const char* vertexEntryName, const char* fragmentFilename, const char* fragmentEntryName)
-{
-    std::string vertexFullFilepath = std::string(SHADERS_PATH) + std::string(vertexFilename);
-    std::string pipelineFullFilepath = std::string(SHADERS_PATH) + std::string(fragmentFilename);
-
-    VkShaderModule vertShader = CreateShaderModule(vertexFullFilepath.c_str());
-    VkShaderModule fragShader = CreateShaderModule(pipelineFullFilepath.c_str());
+    VkShaderModule vertShader = CreateShaderModule(vertexShader);
+    VkShaderModule fragShader = CreateShaderModule(pixelShader);
 
     VkPipelineShaderStageCreateInfo vertShaderStageCreateInfo = {};
     vertShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     vertShaderStageCreateInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
     vertShaderStageCreateInfo.module = vertShader;
-    vertShaderStageCreateInfo.pName = vertexEntryName;
+    vertShaderStageCreateInfo.pName = vertexShader.m_entryName;
 
     VkPipelineShaderStageCreateInfo fragShaderStageCreateInfo = {};
     fragShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     fragShaderStageCreateInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
     fragShaderStageCreateInfo.module = fragShader;
-    fragShaderStageCreateInfo.pName = fragmentEntryName;
+    fragShaderStageCreateInfo.pName = pixelShader.m_entryName;
 
     m_shaders.push_back(vertShader);
     m_shaders.push_back(fragShader);

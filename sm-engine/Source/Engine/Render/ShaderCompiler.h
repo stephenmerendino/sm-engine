@@ -15,7 +15,7 @@ enum class ShaderType : U8
 struct Shader
 {
 	std::vector<Byte> m_bytecode;
-	const char* m_filepath;
+	const char* m_filename;
 	const char* m_entryName;
 	ShaderType m_type;
 };
