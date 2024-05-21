@@ -1,6 +1,7 @@
 #include "Engine/Render/ShaderCompiler.h"
 #include "Engine/Config.h"
 #include "Engine/Core/Assert.h"
+#include "Engine/Core/Debug.h"
 #include "Engine/Platform/WindowsInclude.h"
 #include "Engine/Platform/WindowsUtils.h"
 #include "Engine/ThirdParty/dxc/dxcapi.h"
@@ -74,6 +75,30 @@ bool CompileShader(ShaderType type, const char* filename, const char* entry, Sha
 	if (SUCCEEDED(hres)) {
 		result->GetStatus(&hres);
 	}
+
+	// Output error if compilation failed
+	if (FAILED(hres) && (result)) {
+		CComPtr<IDxcBlobEncoding> errorBlob;
+		hres = result->GetErrorBuffer(&errorBlob);
+		if (SUCCEEDED(hres) && errorBlob) {
+			DebugPrintf("Shader compilation failed for %s\n%s\n", filename, (const char*)errorBlob->GetBufferPointer());
+            delete entry;
+            delete filepathW;
+			return false;
+		}
+	}
+
+	// Get compilation result
+	CComPtr<IDxcBlob> code;
+	result->GetResult(&code);
+
+	// Create a Vulkan shader module from the compilation result
+	//VkShaderModuleCreateInfo shaderModuleCI{};
+	//shaderModuleCI.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	//shaderModuleCI.codeSize = code->GetBufferSize();
+	//shaderModuleCI.pCode = (uint32_t*)code->GetBufferPointer();
+	//VkShaderModule shaderModule;
+	//vkCreateShaderModule(device, &shaderModuleCI, nullptr, &shaderModule);
 
 	delete entry;
 	delete filepathW;
