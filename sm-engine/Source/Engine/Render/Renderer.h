@@ -21,6 +21,7 @@ public:
 	virtual F32 GetAspectRatio() const = 0;
 	virtual RenderSettings* GetRenderSettings() = 0;
 	virtual const RenderSettings* GetRenderSettings() const = 0;
+	virtual void ReloadShaders() = 0;
 };
 
 extern Renderer* g_renderer;

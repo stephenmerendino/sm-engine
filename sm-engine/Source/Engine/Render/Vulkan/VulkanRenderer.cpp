@@ -45,6 +45,7 @@ VulkanRenderer::VulkanRenderer()
 	,m_globalDescriptorSet(VK_NULL_HANDLE)
 	,m_elapsedTimeSeconds(0.0f)
 	,m_deltaTimeSeconds(0.0f)
+	,m_bReloadShadersRequested(false)
 {
 }
 
@@ -144,32 +145,6 @@ void VulkanRenderer::Init(Window* pWindow)
 
         std::vector<VkDescriptorSetLayout> infiniteGridDescriptorSetLayouts = { m_infiniteGridDescriptorSetLayout.m_layoutHandle };
         m_infiniteGridPipelineLayout.Init(infiniteGridDescriptorSetLayouts);
-
-        VulkanShaderStages shaderStages;
-		{
-            Shader vertShader;
-			CompileShader(ShaderType::kVs, "infinite-grid.vert", "Main", &vertShader);
-
-            Shader pixelShader;
-			CompileShader(ShaderType::kPs, "infinite-grid.frag", "Main", &pixelShader);
-
-            shaderStages.Init(vertShader, pixelShader);
-		}
-
-        VulkanMeshPipelineInputInfo pipelineMeshInputInfo;
-        pipelineMeshInputInfo.Init(nullptr);
-
-        VulkanPipelineState pipelineState;
-        pipelineState.InitRasterState(VK_POLYGON_MODE_FILL, VK_FRONT_FACE_COUNTER_CLOCKWISE, VK_CULL_MODE_NONE);
-        pipelineState.InitViewportState(0, 0, (F32)m_swapchain.m_extent.width, (F32)m_swapchain.m_extent.height, 0.0f, 1.0f, 0, 0, m_swapchain.m_extent.width, m_swapchain.m_extent.height);
-        pipelineState.InitMultisampleState(VulkanDevice::Get()->m_maxNumMsaaSamples);
-        pipelineState.InitDepthStencilState(true, true, VK_COMPARE_OP_LESS);
-        pipelineState.PreInitAddColorBlendAttachment(true, VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD);
-		pipelineState.InitColorBlendState(false);
-
-        m_infiniteGridPipeline.Init(shaderStages, m_infiniteGridPipelineLayout, pipelineMeshInputInfo, pipelineState, m_mainDrawRenderPass);
-
-        shaderStages.Destroy();
 	}
 
 	InitRenderFrames();
@@ -205,18 +180,6 @@ void VulkanRenderer::Init(Window* pWindow)
 
 		m_vikingRoomMeshInstanceBuffer.Init(VulkanBuffer::Type::kUniformBuffer, sizeof(MeshInstanceRenderData));
 
-		// Viking Room Pipeline
-		VulkanShaderStages shaderStages;
-		{
-            Shader vertShader;
-			CompileShader(ShaderType::kVs, "simple-diffuse.vert", "Main", &vertShader);
-
-            Shader pixelShader;
-			CompileShader(ShaderType::kPs, "simple-diffuse.frag", "Main", &pixelShader);
-
-            shaderStages.Init(vertShader, pixelShader);
-		}
-
 		std::vector<VkDescriptorSetLayout> pipelineDescriptorSetLayouts = {
 			m_globalDescriptorSetLayout.m_layoutHandle,
 			m_frameDescriptorSetLayout.m_layoutHandle,
@@ -225,22 +188,9 @@ void VulkanRenderer::Init(Window* pWindow)
 		};
 
 		m_vikingRoomMainDrawPipelineLayout.Init(pipelineDescriptorSetLayouts);
-
-		VulkanMeshPipelineInputInfo pipelineMeshInputInfo;
-		pipelineMeshInputInfo.Init(m_pVikingRoomMesh, false);
-
-		VulkanPipelineState pipelineState;
-		pipelineState.InitRasterState(VK_POLYGON_MODE_FILL, VK_FRONT_FACE_COUNTER_CLOCKWISE, VK_CULL_MODE_BACK_BIT);
-		pipelineState.InitViewportState(0, 0, (F32)m_swapchain.m_extent.width, (F32)m_swapchain.m_extent.height, 0.0f, 1.0f, 0, 0, m_swapchain.m_extent.width, m_swapchain.m_extent.height);
-		pipelineState.InitMultisampleState(VulkanDevice::Get()->m_maxNumMsaaSamples);
-		pipelineState.InitDepthStencilState(true, true, VK_COMPARE_OP_LESS);
-		pipelineState.PreInitAddColorBlendAttachment(false);
-		pipelineState.InitColorBlendState(false);
-
-		m_vikingRoomMainDrawPipeline.Init(shaderStages, m_vikingRoomMainDrawPipelineLayout, pipelineMeshInputInfo, pipelineState, m_mainDrawRenderPass);
-
-		shaderStages.Destroy();
 	}
+
+	InitPipelines();
 }
 
 void VulkanRenderer::BeginFrame()
@@ -260,6 +210,13 @@ void VulkanRenderer::Update(F32 ds)
 
 void VulkanRenderer::Render()
 {
+	if (m_bReloadShadersRequested)
+	{
+		m_bReloadShadersRequested = false;
+		VulkanDevice::Get()->FlushPipe();
+		InitPipelines();
+	}
+
 	SetupNewFrame();
 	VulkanRenderFrame& curRenderFrame = m_renderFrames[m_currentFrame];
 
@@ -485,6 +442,70 @@ void VulkanRenderer::PresentFinalImage()
 	}
 }
 
+void VulkanRenderer::InitPipelines()
+{
+    m_vikingRoomMainDrawPipeline.Destroy();
+    m_infiniteGridPipeline.Destroy();
+
+	{
+        // Viking Room Pipeline
+        VulkanShaderStages shaderStages;
+        {
+            Shader vertShader;
+            CompileShader(ShaderType::kVs, "simple-diffuse.vert", "Main", &vertShader);
+
+            Shader pixelShader;
+            CompileShader(ShaderType::kPs, "simple-diffuse.frag", "Main", &pixelShader);
+
+            shaderStages.Init(vertShader, pixelShader);
+        }
+
+        VulkanMeshPipelineInputInfo pipelineMeshInputInfo;
+        pipelineMeshInputInfo.Init(m_pVikingRoomMesh, false);
+
+        VulkanPipelineState pipelineState;
+        pipelineState.InitRasterState(VK_POLYGON_MODE_FILL, VK_FRONT_FACE_COUNTER_CLOCKWISE, VK_CULL_MODE_BACK_BIT);
+        pipelineState.InitViewportState(0, 0, (F32)m_swapchain.m_extent.width, (F32)m_swapchain.m_extent.height, 0.0f, 1.0f, 0, 0, m_swapchain.m_extent.width, m_swapchain.m_extent.height);
+        pipelineState.InitMultisampleState(VulkanDevice::Get()->m_maxNumMsaaSamples);
+        pipelineState.InitDepthStencilState(true, true, VK_COMPARE_OP_LESS);
+        pipelineState.PreInitAddColorBlendAttachment(false);
+        pipelineState.InitColorBlendState(false);
+
+        m_vikingRoomMainDrawPipeline.Init(shaderStages, m_vikingRoomMainDrawPipelineLayout, pipelineMeshInputInfo, pipelineState, m_mainDrawRenderPass);
+
+        shaderStages.Destroy();
+	}
+
+	// Infinite grid
+	{
+        VulkanShaderStages shaderStages;
+		{
+            Shader vertShader;
+			CompileShader(ShaderType::kVs, "infinite-grid.vert", "Main", &vertShader);
+
+            Shader pixelShader;
+			CompileShader(ShaderType::kPs, "infinite-grid.frag", "Main", &pixelShader);
+
+            shaderStages.Init(vertShader, pixelShader);
+		}
+
+        VulkanMeshPipelineInputInfo pipelineMeshInputInfo;
+        pipelineMeshInputInfo.Init(nullptr);
+
+        VulkanPipelineState pipelineState;
+        pipelineState.InitRasterState(VK_POLYGON_MODE_FILL, VK_FRONT_FACE_COUNTER_CLOCKWISE, VK_CULL_MODE_NONE);
+        pipelineState.InitViewportState(0, 0, (F32)m_swapchain.m_extent.width, (F32)m_swapchain.m_extent.height, 0.0f, 1.0f, 0, 0, m_swapchain.m_extent.width, m_swapchain.m_extent.height);
+        pipelineState.InitMultisampleState(VulkanDevice::Get()->m_maxNumMsaaSamples);
+        pipelineState.InitDepthStencilState(true, true, VK_COMPARE_OP_LESS);
+        pipelineState.PreInitAddColorBlendAttachment(true, VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD);
+		pipelineState.InitColorBlendState(false);
+
+        m_infiniteGridPipeline.Init(shaderStages, m_infiniteGridPipelineLayout, pipelineMeshInputInfo, pipelineState, m_mainDrawRenderPass);
+
+        shaderStages.Destroy();
+	}
+}
+
 void VulkanRenderer::Shutdown()
 {
 	vkQueueWaitIdle(VulkanDevice::Get()->m_graphicsQueue);
@@ -547,6 +568,11 @@ F32 VulkanRenderer::GetAspectRatio() const
 	}
 
 	return (F32)m_swapchain.m_extent.width / (F32)m_swapchain.m_extent.height;
+}
+
+void VulkanRenderer::ReloadShaders()
+{
+	m_bReloadShadersRequested = true;
 }
 
 void VulkanRenderer::InitSwapchain()

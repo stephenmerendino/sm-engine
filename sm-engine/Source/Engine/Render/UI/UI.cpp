@@ -1,4 +1,5 @@
 #include "Engine/Render/UI/UI.h"
+#include "Engine/Core/Debug.h"
 #include "Engine/ThirdParty/imgui/imgui.h"
 #include "Engine/Render/Renderer.h"
 #include "Engine/Render/Camera.h"
@@ -192,6 +193,11 @@ static void DrawInfoOverlay(bool* pOpen)
 
         IVec2 currentRes = g_renderer->GetCurrentResolution();
 		ImGui::Text("Resolution (%i, %i)", currentRes.x, currentRes.y);
+
+        if (ImGui::Button("Reload Shaders"))
+        {
+            g_renderer->ReloadShaders();
+        }
 
         ImGui::Separator();
         //ImGui::CollapsingHeader("Render Settings");

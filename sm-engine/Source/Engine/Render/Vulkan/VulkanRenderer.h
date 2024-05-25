@@ -63,6 +63,7 @@ public:
 	virtual F32 GetAspectRatio() const final;
 	virtual RenderSettings* GetRenderSettings() final { return m_pRenderSettings; };
 	virtual const RenderSettings* GetRenderSettings() const final { return m_pRenderSettings; };
+	virtual void ReloadShaders() final;
 
 	void InitSwapchain();
 	void RefreshSwapchain();
@@ -74,6 +75,8 @@ public:
 
 	void SetupNewFrame();
 	void PresentFinalImage();
+
+	void InitPipelines();
 
 	const Camera* m_pMainCamera;
 	F32 m_elapsedTimeSeconds;
@@ -128,4 +131,6 @@ public:
 	VulkanDescriptorSetLayout m_meshInstanceDescriptorSetLayout;
 
 	RenderSettings* m_pRenderSettings;
+
+	bool m_bReloadShadersRequested;
 };

@@ -228,6 +228,11 @@ VkPhysicalDevice VulkanDevice::GetPhysDeviceHandle()
 	return s_device->m_physicalDeviceHandle;
 }
 
+void VulkanDevice::FlushPipe()
+{
+	vkDeviceWaitIdle(m_deviceHandle);
+}
+
 VkFormat VulkanDevice::FindSupportedDepthFormat() const
 {
 	VkFormat depthFormat = FindSupportedFormat({ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },

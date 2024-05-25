@@ -15,9 +15,9 @@ static const U32 MAX_NUM_FRAMES_IN_FLIGHT = 2;
 static const F32 FPS_CALC_TIME_INTERVAL_SECONDS = 0.1f;
 static const F32 MAX_FPS = 240.0f;
 
-static const char* SHADERS_PATH = "RuntimeAssets/CompiledShaders/";
-static const char* TEXTURES_PATH = "RuntimeAssets/Textures/";
-static const char* MODELS_PATH = "RuntimeAssets/Models/";
+static const char* SHADERS_PATH = "../../Assets/Shaders/";
+static const char* TEXTURES_PATH = "../../Assets/Textures/";
+static const char* MODELS_PATH = "../../Assets/Models/";
 
 static const ColorF32 CLEAR_COLOR = ColorF32(0.20f, 0.20f, 0.20f, 1.0f);
 

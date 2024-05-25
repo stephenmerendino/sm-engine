@@ -13,6 +13,7 @@ public:
 	static VkDevice GetHandle();
 	static VkPhysicalDevice GetPhysDeviceHandle();
 
+	void FlushPipe();
 	VkFormat FindSupportedDepthFormat() const;
 	VkFormat FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
 	U32 FindSupportedMemoryType(U32 typeFilter, VkMemoryPropertyFlags properties) const;

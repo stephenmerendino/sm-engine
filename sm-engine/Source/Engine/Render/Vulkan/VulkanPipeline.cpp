@@ -277,5 +277,8 @@ void VulkanPipeline::Init(const VulkanShaderStages& shaderStages,
 
 void VulkanPipeline::Destroy()
 {
-	vkDestroyPipeline(VulkanDevice::GetHandle(), m_pipelineHandle, nullptr);
+    if (m_pipelineHandle != VK_NULL_HANDLE)
+    {
+        vkDestroyPipeline(VulkanDevice::GetHandle(), m_pipelineHandle, nullptr);
+    }
 }
