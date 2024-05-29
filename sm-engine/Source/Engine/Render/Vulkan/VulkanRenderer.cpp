@@ -452,10 +452,10 @@ void VulkanRenderer::InitPipelines()
         VulkanShaderStages shaderStages;
         {
             Shader vertShader;
-            CompileShader(ShaderType::kVs, "simple-diffuse.vert", "Main", &vertShader);
+            CompileShader(ShaderType::kVs, "simple-diffuse.vs.hlsl", "Main", &vertShader);
 
             Shader pixelShader;
-            CompileShader(ShaderType::kPs, "simple-diffuse.frag", "Main", &pixelShader);
+            CompileShader(ShaderType::kPs, "simple-diffuse.ps.hlsl", "Main", &pixelShader);
 
             shaderStages.Init(vertShader, pixelShader);
         }
@@ -481,10 +481,10 @@ void VulkanRenderer::InitPipelines()
         VulkanShaderStages shaderStages;
 		{
             Shader vertShader;
-			CompileShader(ShaderType::kVs, "infinite-grid.vert", "Main", &vertShader);
+			CompileShader(ShaderType::kVs, "infinite-grid.vs.hlsl", "Main", &vertShader);
 
             Shader pixelShader;
-			CompileShader(ShaderType::kPs, "infinite-grid.frag", "Main", &pixelShader);
+			CompileShader(ShaderType::kPs, "infinite-grid.ps.hlsl", "Main", &pixelShader);
 
             shaderStages.Init(vertShader, pixelShader);
 		}
