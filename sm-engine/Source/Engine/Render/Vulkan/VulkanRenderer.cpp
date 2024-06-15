@@ -142,9 +142,6 @@ void VulkanRenderer::Init(Window* pWindow)
 	{
         m_infiniteGridDescriptorSetLayout.PreInitAddLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
         m_infiniteGridDescriptorSetLayout.Init();
-
-        std::vector<VkDescriptorSetLayout> infiniteGridDescriptorSetLayouts = { m_infiniteGridDescriptorSetLayout.m_layoutHandle };
-        m_infiniteGridPipelineLayout.Init(infiniteGridDescriptorSetLayouts);
 	}
 
 	InitRenderFrames();
@@ -179,15 +176,6 @@ void VulkanRenderer::Init(Window* pWindow)
 		dsWriter.PerformWrites();
 
 		m_vikingRoomMeshInstanceBuffer.Init(VulkanBuffer::Type::kUniformBuffer, sizeof(MeshInstanceRenderData));
-
-		std::vector<VkDescriptorSetLayout> pipelineDescriptorSetLayouts = {
-			m_globalDescriptorSetLayout.m_layoutHandle,
-			m_frameDescriptorSetLayout.m_layoutHandle,
-			m_materialDescriptorSetLayout.m_layoutHandle,
-			m_meshInstanceDescriptorSetLayout.m_layoutHandle
-		};
-
-		m_vikingRoomMainDrawPipelineLayout.Init(pipelineDescriptorSetLayouts);
 	}
 
 	InitPipelines();
@@ -444,11 +432,17 @@ void VulkanRenderer::PresentFinalImage()
 
 void VulkanRenderer::InitPipelines()
 {
-    m_vikingRoomMainDrawPipeline.Destroy();
-    m_infiniteGridPipeline.Destroy();
-
     // Viking Room Pipeline
 	{
+		std::vector<VkDescriptorSetLayout> pipelineDescriptorSetLayouts = {
+			m_globalDescriptorSetLayout.m_layoutHandle,
+			m_frameDescriptorSetLayout.m_layoutHandle,
+			m_materialDescriptorSetLayout.m_layoutHandle,
+			m_meshInstanceDescriptorSetLayout.m_layoutHandle
+		};
+
+		m_vikingRoomMainDrawPipelineLayout.Init(pipelineDescriptorSetLayouts);
+
         VulkanShaderStages shaderStages;
         {
             Shader vertShader;
@@ -478,6 +472,9 @@ void VulkanRenderer::InitPipelines()
 
 	// Infinite grid
 	{
+        std::vector<VkDescriptorSetLayout> infiniteGridDescriptorSetLayouts = { m_infiniteGridDescriptorSetLayout.m_layoutHandle };
+        m_infiniteGridPipelineLayout.Init(infiniteGridDescriptorSetLayouts);
+
         VulkanShaderStages shaderStages;
 		{
             Shader vertShader;
@@ -518,21 +515,27 @@ void VulkanRenderer::InitPipelines()
 	}
 }
 
+void VulkanRenderer::DestroyPipelines()
+{
+    m_infiniteGridPipeline.Destroy();
+	m_infiniteGridPipelineLayout.Destroy();
+
+	m_vikingRoomMainDrawPipelineLayout.Destroy();
+	m_vikingRoomMainDrawPipeline.Destroy();
+}
+
 void VulkanRenderer::Shutdown()
 {
 	vkQueueWaitIdle(VulkanDevice::Get()->m_graphicsQueue);
 
-    m_infiniteGridPipeline.Destroy();
-	m_infiniteGridPipelineLayout.Destroy();
-	m_infiniteGridDescriptorSetLayout.Destroy();
-
 	ImGui_ImplVulkan_Shutdown();
+	DestroyPipelines();
+
+	m_infiniteGridDescriptorSetLayout.Destroy();
 
 	m_vikingRoomVertexBuffer.Destroy();
 	m_vikingRoomIndexBuffer.Destroy();
 	m_vikingRoomDiffuseTexture.Destroy();
-	m_vikingRoomMainDrawPipelineLayout.Destroy();
-	m_vikingRoomMainDrawPipeline.Destroy();
 	m_vikingRoomMeshInstanceBuffer.Destroy();
 
 	DestroyRenderFrames();
@@ -602,10 +605,15 @@ void VulkanRenderer::InitSwapchain()
 void VulkanRenderer::RefreshSwapchain()
 {
 	vkQueueWaitIdle(VulkanDevice::Get()->m_graphicsQueue);
+
 	m_swapchain.Destroy();
 	InitSwapchain();
+
 	DestroyRenderFrames();
 	InitRenderFrames();
+
+	DestroyPipelines();
+	InitPipelines();
 }
 
 void VulkanRenderer::InitRenderFrames()
@@ -650,11 +658,12 @@ void VulkanRenderer::InitRenderFrames()
                                                            VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 
 														   VK_SAMPLE_COUNT_1_BIT);
 
-		std::vector<VkImageView> postProcessingAttachments = 
-		{
-			frame.m_postProcessingRenderTarget.m_imageView
-		};
-		frame.m_postProcessingFramebuffer.Init(m_postProcessingRenderPass, postProcessingAttachments, m_swapchain.m_extent.width, m_swapchain.m_extent.height, 1);
+		// This is commented out because creating the frame buffer with a null VkRenderPass is crashing render doc
+		//std::vector<VkImageView> postProcessingAttachments = 
+		//{
+		//	frame.m_postProcessingRenderTarget.m_imageView
+		//};
+		//frame.m_postProcessingFramebuffer.Init(m_postProcessingRenderPass, postProcessingAttachments, m_swapchain.m_extent.width, m_swapchain.m_extent.height, 1);
 	}
 }
 

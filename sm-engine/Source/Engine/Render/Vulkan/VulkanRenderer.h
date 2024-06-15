@@ -81,6 +81,7 @@ public:
 	void PresentFinalImage();
 
 	void InitPipelines();
+	void DestroyPipelines();
 
 	const Camera* m_pMainCamera;
 	F32 m_elapsedTimeSeconds;
