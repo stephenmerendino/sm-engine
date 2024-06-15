@@ -128,9 +128,9 @@ void VulkanSwapchain::Init(Window* pWindow, const VkSurfaceKHR& surface)
 	createInfo.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
 	const VulkanQueueFamilies& queueFamilies = VulkanDevice::Get()->m_queueFamilies;
-	U32 queueFamilyIndices[] = { (U32)queueFamilies.m_graphicsFamilyIndex, (U32)queueFamilies.m_presentFamilyIndex};
+	U32 queueFamilyIndices[] = { (U32)queueFamilies.m_graphicsAndComputeFamilyIndex, (U32)queueFamilies.m_presentationFamilyIndex};
 
-	if (queueFamilies.m_graphicsFamilyIndex != queueFamilies.m_presentFamilyIndex)
+	if (queueFamilies.m_graphicsAndComputeFamilyIndex != queueFamilies.m_presentationFamilyIndex)
 	{
 		createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 		createInfo.queueFamilyIndexCount = 2;

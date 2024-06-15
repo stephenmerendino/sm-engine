@@ -145,7 +145,7 @@ void VulkanDevice::Init(VkSurfaceKHR surface)
 	VkDevice logicalDevice = VK_NULL_HANDLE;
 	{
 		std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-		std::set<I32> uniqueQueueFamilies = { queueFamilies.m_graphicsFamilyIndex, queueFamilies.m_presentFamilyIndex };
+		std::set<I32> uniqueQueueFamilies = { queueFamilies.m_graphicsAndComputeFamilyIndex, queueFamilies.m_presentationFamilyIndex };
 
 		F32 queuePriority = 1.0f;
 		for (I32 queueFamily : uniqueQueueFamilies)
@@ -192,8 +192,8 @@ void VulkanDevice::Init(VkSurfaceKHR surface)
 	VkQueue graphicsQueue = VK_NULL_HANDLE;
 	VkQueue presentQueue = VK_NULL_HANDLE;
 	{
-		vkGetDeviceQueue(logicalDevice, queueFamilies.m_graphicsFamilyIndex, 0, &graphicsQueue);
-		vkGetDeviceQueue(logicalDevice, queueFamilies.m_presentFamilyIndex, 0, &presentQueue);
+		vkGetDeviceQueue(logicalDevice, queueFamilies.m_graphicsAndComputeFamilyIndex, 0, &graphicsQueue);
+		vkGetDeviceQueue(logicalDevice, queueFamilies.m_presentationFamilyIndex, 0, &presentQueue);
 	}
 
 	s_device = new VulkanDevice();

@@ -2,8 +2,9 @@
 #include <vector>
 
 VulkanQueueFamilies::VulkanQueueFamilies()
-	:m_graphicsFamilyIndex(kInvalidFamilyIndex)
-	,m_presentFamilyIndex(kInvalidFamilyIndex)
+	:m_graphicsAndComputeFamilyIndex(kInvalidFamilyIndex)
+	,m_presentationFamilyIndex(kInvalidFamilyIndex)
+	,m_asyncComputeFamilyIndex(kInvalidFamilyIndex)
 {
 }
 
@@ -18,28 +19,47 @@ void VulkanQueueFamilies::Init(VkPhysicalDevice device, VkSurfaceKHR surface)
 	for (int i = 0; i < (int)queueFamilyProps.size(); i++)
 	{
 		const VkQueueFamilyProperties& props = queueFamilyProps[i];
-		if (props.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+		if (m_graphicsAndComputeFamilyIndex == kInvalidFamilyIndex && 
+			(props.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)) == (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT))
 		{
-			m_graphicsFamilyIndex = i;
+			m_graphicsAndComputeFamilyIndex = i;
+		}
+
+		if (m_asyncComputeFamilyIndex == kInvalidFamilyIndex && 
+			(props.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)) == VK_QUEUE_COMPUTE_BIT)
+		{
+			m_asyncComputeFamilyIndex = i;
 		}
 
 		// query for presentation support on this queue
-		VkBool32 presentSupport = false;
-		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
-		if (presentSupport)
+		VkBool32 isPresentationSupported = false;
+		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &isPresentationSupported);
+		if (m_presentationFamilyIndex == kInvalidFamilyIndex && isPresentationSupported)
 		{
-			m_presentFamilyIndex = i;
+			m_presentationFamilyIndex = i;
 		}
 
 		// has required families
-		if (HasRequiredFamilies())
+		if (HasAllFamilies())
 		{
 			break;
 		}
 	}
 }
 
+bool VulkanQueueFamilies::HasAllFamilies()
+{
+	return m_graphicsAndComputeFamilyIndex != kInvalidFamilyIndex && 
+		   m_presentationFamilyIndex != kInvalidFamilyIndex &&
+		   m_asyncComputeFamilyIndex != kInvalidFamilyIndex;
+}
+
 bool VulkanQueueFamilies::HasRequiredFamilies()
 {
-	return m_graphicsFamilyIndex != kInvalidFamilyIndex && m_presentFamilyIndex != kInvalidFamilyIndex;
+	return m_graphicsAndComputeFamilyIndex != kInvalidFamilyIndex && m_presentationFamilyIndex != kInvalidFamilyIndex;
+}
+
+bool VulkanQueueFamilies::HasAsyncComputeFamily()
+{
+	return m_asyncComputeFamilyIndex != kInvalidFamilyIndex;
 }

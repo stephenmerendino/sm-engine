@@ -48,6 +48,7 @@ bool CompileShader(ShaderType type, const char* filename, const char* entry, Sha
 	{
         case ShaderType::kVs: targetProfile = L"vs_6_6"; break;
         case ShaderType::kPs: targetProfile = L"ps_6_6"; break;
+		case ShaderType::kCs: targetProfile = L"cs_6_6"; break;
         default: targetProfile = L"unknown"; break;
 	}
 

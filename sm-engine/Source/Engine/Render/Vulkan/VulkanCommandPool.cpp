@@ -17,9 +17,16 @@ void VulkanCommandPool::Init(VkQueueFlags requestedQueueFamilies, VkCommandPoolC
 	createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	createInfo.flags = createFlags;
 
+	// Graphics + Compute requested (normal queue)
 	if (requestedQueueFamilies & VK_QUEUE_GRAPHICS_BIT)
 	{
-		createInfo.queueFamilyIndex = VulkanDevice::Get()->m_queueFamilies.m_graphicsFamilyIndex;
+		createInfo.queueFamilyIndex = VulkanDevice::Get()->m_queueFamilies.m_graphicsAndComputeFamilyIndex;
+	}
+
+	// Only Compute requested (async compute)
+	if ((requestedQueueFamilies & (VK_QUEUE_COMPUTE_BIT | VK_QUEUE_GRAPHICS_BIT)) == VK_QUEUE_COMPUTE_BIT)
+	{
+		createInfo.queueFamilyIndex = VulkanDevice::Get()->m_queueFamilies.m_asyncComputeFamilyIndex;
 	}
 
 	SM_VULKAN_ASSERT(vkCreateCommandPool(VulkanDevice::GetHandle(), &createInfo, nullptr, &m_commandPoolHandle));

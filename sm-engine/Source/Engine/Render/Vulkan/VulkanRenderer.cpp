@@ -447,8 +447,8 @@ void VulkanRenderer::InitPipelines()
     m_vikingRoomMainDrawPipeline.Destroy();
     m_infiniteGridPipeline.Destroy();
 
+    // Viking Room Pipeline
 	{
-        // Viking Room Pipeline
         VulkanShaderStages shaderStages;
         {
             Shader vertShader;
@@ -457,7 +457,7 @@ void VulkanRenderer::InitPipelines()
             Shader pixelShader;
             CompileShader(ShaderType::kPs, "simple-diffuse.ps.hlsl", "Main", &pixelShader);
 
-            shaderStages.Init(vertShader, pixelShader);
+            shaderStages.InitVsPs(vertShader, pixelShader);
         }
 
         VulkanMeshPipelineInputInfo pipelineMeshInputInfo;
@@ -486,7 +486,7 @@ void VulkanRenderer::InitPipelines()
             Shader pixelShader;
 			CompileShader(ShaderType::kPs, "infinite-grid.ps.hlsl", "Main", &pixelShader);
 
-            shaderStages.Init(vertShader, pixelShader);
+            shaderStages.InitVsPs(vertShader, pixelShader);
 		}
 
         VulkanMeshPipelineInputInfo pipelineMeshInputInfo;
@@ -503,6 +503,18 @@ void VulkanRenderer::InitPipelines()
         m_infiniteGridPipeline.Init(shaderStages, m_infiniteGridPipelineLayout, pipelineMeshInputInfo, pipelineState, m_mainDrawRenderPass);
 
         shaderStages.Destroy();
+	}
+
+	// Post Processing
+	{
+        VulkanShaderStages shaderStages;
+		{
+            Shader computeShader;
+			CompileShader(ShaderType::kCs, "post-processing.cs.hlsl", "Main", &computeShader);
+
+            shaderStages.InitCs(computeShader);
+		}
+
 	}
 }
 
@@ -525,6 +537,8 @@ void VulkanRenderer::Shutdown()
 
 	DestroyRenderFrames();
 
+	m_postProcessingRenderPass.Destroy();
+
 	m_imguiDescriptorPool.Destroy();
 	m_imguiRenderPass.Destroy();
 
@@ -541,6 +555,7 @@ void VulkanRenderer::Shutdown()
 	m_globalDescriptorSetLayout.Destroy();
 
 	m_mainDrawRenderPass.Destroy();
+
 	m_swapchain.Destroy();
 	m_graphicsCommandPool.Destroy();
 	VulkanDevice::Destroy();
@@ -630,6 +645,16 @@ void VulkanRenderer::InitRenderFrames()
 
 		frame.m_infiniteGridDescriptorSet = m_frameDescriptorPool.AllocateSet(m_infiniteGridDescriptorSetLayout);
 		frame.m_infiniteGridDataBuffer.Init(VulkanBuffer::Type::kUniformBuffer, sizeof(InfiniteGridData));
+
+		frame.m_postProcessingRenderTarget.InitColorTarget(VulkanFormats::GetMainColorFormat(), m_swapchain.m_extent.width, m_swapchain.m_extent.height,
+                                                           VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 
+														   VK_SAMPLE_COUNT_1_BIT);
+
+		std::vector<VkImageView> postProcessingAttachments = 
+		{
+			frame.m_postProcessingRenderTarget.m_imageView
+		};
+		frame.m_postProcessingFramebuffer.Init(m_postProcessingRenderPass, postProcessingAttachments, m_swapchain.m_extent.width, m_swapchain.m_extent.height, 1);
 	}
 }
 
@@ -688,7 +713,7 @@ void VulkanRenderer::InitImgui()
     initInfo.Instance = VulkanInstance::GetHandle();
     initInfo.PhysicalDevice = VulkanDevice::GetPhysDeviceHandle();
     initInfo.Device = VulkanDevice::GetHandle();
-    initInfo.QueueFamily = VulkanDevice::Get()->m_queueFamilies.m_graphicsFamilyIndex;
+    initInfo.QueueFamily = VulkanDevice::Get()->m_queueFamilies.m_graphicsAndComputeFamilyIndex;
     initInfo.Queue = VulkanDevice::Get()->m_graphicsQueue;
     initInfo.PipelineCache = VK_NULL_HANDLE;
     initInfo.DescriptorPool = m_imguiDescriptorPool.m_poolHandle;
@@ -734,6 +759,8 @@ void VulkanRenderer::DestroyRenderFrames()
 		frame.m_mainDrawColorMultisampleTexture.Destroy();
 		frame.m_mainDrawDepthMultisampleTexture.Destroy();
 		frame.m_mainDrawColorResolveTexture.Destroy();
+		frame.m_postProcessingFramebuffer.Destroy();
+		frame.m_postProcessingRenderTarget.Destroy();
 	}
 	m_frameDescriptorPool.Reset();
 }

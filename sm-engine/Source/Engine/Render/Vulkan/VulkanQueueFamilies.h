@@ -9,10 +9,13 @@ public:
 	VulkanQueueFamilies();
 
 	void Init(VkPhysicalDevice device, VkSurfaceKHR surface);
+	bool HasAllFamilies();
 	bool HasRequiredFamilies();
+	bool HasAsyncComputeFamily();
 
-	I32 m_graphicsFamilyIndex;
-	I32 m_presentFamilyIndex;
+	I32 m_graphicsAndComputeFamilyIndex;
+	I32 m_asyncComputeFamilyIndex;
+	I32 m_presentationFamilyIndex;
 
 	enum
 	{

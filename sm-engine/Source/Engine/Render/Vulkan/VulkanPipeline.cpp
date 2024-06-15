@@ -19,28 +19,43 @@ VkShaderModule CreateShaderModule(const Shader& shader)
 	return shaderModule;
 }
 
-void VulkanShaderStages::Init(const Shader& vertexShader, const Shader& pixelShader)
+void VulkanShaderStages::InitVsPs(const Shader& vertexShader, const Shader& pixelShader)
 {
-    VkShaderModule vertShader = CreateShaderModule(vertexShader);
-    VkShaderModule fragShader = CreateShaderModule(pixelShader);
+    VkShaderModule vertexShaderModule = CreateShaderModule(vertexShader);
+    VkShaderModule pixelShaderModule = CreateShaderModule(pixelShader);
 
     VkPipelineShaderStageCreateInfo vertShaderStageCreateInfo = {};
     vertShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     vertShaderStageCreateInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vertShaderStageCreateInfo.module = vertShader;
+    vertShaderStageCreateInfo.module = vertexShaderModule;
     vertShaderStageCreateInfo.pName = vertexShader.m_entryName;
 
     VkPipelineShaderStageCreateInfo fragShaderStageCreateInfo = {};
     fragShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     fragShaderStageCreateInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fragShaderStageCreateInfo.module = fragShader;
+    fragShaderStageCreateInfo.module = pixelShaderModule;
     fragShaderStageCreateInfo.pName = pixelShader.m_entryName;
 
-    m_shaders.push_back(vertShader);
-    m_shaders.push_back(fragShader);
+    m_shaders.push_back(vertexShaderModule);
+    m_shaders.push_back(pixelShaderModule);
     m_shaderStageInfos.push_back(vertShaderStageCreateInfo);
     m_shaderStageInfos.push_back(fragShaderStageCreateInfo);
 }
+
+void VulkanShaderStages::InitCs(const Shader& computeShader)
+{
+    VkShaderModule computeShaderModule = CreateShaderModule(computeShader);
+
+    VkPipelineShaderStageCreateInfo computeShaderStageCreateInfo = {};
+    computeShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    computeShaderStageCreateInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+    computeShaderStageCreateInfo.module = computeShaderModule;
+    computeShaderStageCreateInfo.pName = computeShader.m_entryName;
+
+    m_shaders.push_back(computeShaderModule);
+    m_shaderStageInfos.push_back(computeShaderStageCreateInfo);
+}
+
 
 void VulkanShaderStages::Destroy()
 {

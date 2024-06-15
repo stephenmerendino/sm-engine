@@ -31,13 +31,17 @@ struct VulkanRenderFrame
 	VkCommandBuffer		m_frameCommandBuffer;
 
 	// Main draw resources
-	VulkanFramebuffer	m_mainDrawFramebuffer;
 	VulkanTexture		m_mainDrawColorMultisampleTexture;
 	VulkanTexture		m_mainDrawDepthMultisampleTexture;
 	VulkanTexture		m_mainDrawColorResolveTexture;
+	VulkanFramebuffer	m_mainDrawFramebuffer;
 
 	// Mesh instance descriptors
 	VulkanDescriptorPool m_meshInstanceDescriptorPool;
+
+	// Post processing
+	VulkanTexture		m_postProcessingRenderTarget;
+	VulkanFramebuffer	m_postProcessingFramebuffer;
 
 	// ImGui
 	VulkanFramebuffer	m_imguiFramebuffer;
@@ -100,6 +104,9 @@ public:
 
 	U32 m_currentFrame;
 	VulkanRenderFrame m_renderFrames[MAX_NUM_FRAMES_IN_FLIGHT];
+
+	// Post Processing
+	VulkanRenderPass m_postProcessingRenderPass;
 
 	// ImGui
 	VulkanDescriptorPool m_imguiDescriptorPool;

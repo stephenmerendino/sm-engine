@@ -11,7 +11,8 @@ class Mesh;
 class VulkanShaderStages
 {
 public:
-    void Init(const Shader& vertexShader, const Shader& pixelShader);
+    void InitVsPs(const Shader& vertexShader, const Shader& pixelShader);
+    void InitCs(const Shader& computeShader);
     void Destroy();
 
     std::vector<VkShaderModule> m_shaders;
