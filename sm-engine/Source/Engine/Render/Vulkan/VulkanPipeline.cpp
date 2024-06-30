@@ -260,13 +260,14 @@ VulkanPipeline::VulkanPipeline()
 {
 }
 
-void VulkanPipeline::Init(const VulkanShaderStages& shaderStages,
+void VulkanPipeline::InitGraphics(const VulkanShaderStages& shaderStages,
                           const VulkanPipelineLayout& layout,
                           const VulkanMeshPipelineInputInfo& meshPipelineInputInfo,
                           const VulkanPipelineState& pipelineState,
                           const VulkanRenderPass& renderPass)
 {
     SM_ASSERT(pipelineState.IsFullyInitialized());
+    SM_ASSERT(shaderStages.m_shaderStageInfos.size() == 2); // compute shader should only have 1 stage setup
 
     VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
     pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -288,6 +289,22 @@ void VulkanPipeline::Init(const VulkanShaderStages& shaderStages,
     pipelineCreateInfo.basePipelineIndex = -1;
 
     SM_VULKAN_ASSERT(vkCreateGraphicsPipelines(VulkanDevice::GetHandle(), VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &m_pipelineHandle));
+}
+
+void VulkanPipeline::InitCompute(const VulkanShaderStages& shaderStage, const VulkanPipelineLayout& layout)
+{
+    SM_ASSERT(shaderStage.m_shaderStageInfos.size() == 1); // compute shader should only have 1 stage setup
+
+    VkComputePipelineCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    createInfo.basePipelineHandle = VK_NULL_HANDLE;
+    createInfo.basePipelineIndex = -1;
+    createInfo.flags = 0;
+    createInfo.layout = layout.m_layoutHandle;
+    createInfo.stage = shaderStage.m_shaderStageInfos[0];
+    createInfo.pNext = nullptr;
+
+    SM_VULKAN_ASSERT(vkCreateComputePipelines(VulkanDevice::GetHandle(), VK_NULL_HANDLE, 1, &createInfo, nullptr, &m_pipelineHandle));
 }
 
 void VulkanPipeline::Destroy()

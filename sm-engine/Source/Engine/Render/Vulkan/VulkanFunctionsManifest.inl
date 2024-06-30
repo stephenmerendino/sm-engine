@@ -63,6 +63,7 @@ VK_DEVICE_FUNCTION(vkCreateRenderPass);
 VK_DEVICE_FUNCTION(vkCreateRenderPass2);
 VK_DEVICE_FUNCTION(vkDestroyRenderPass);
 VK_DEVICE_FUNCTION(vkCreateGraphicsPipelines);
+VK_DEVICE_FUNCTION(vkCreateComputePipelines);
 VK_DEVICE_FUNCTION(vkDestroyPipeline);
 VK_DEVICE_FUNCTION(vkCreateFramebuffer);
 VK_DEVICE_FUNCTION(vkDestroyFramebuffer);

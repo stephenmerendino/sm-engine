@@ -465,7 +465,7 @@ void VulkanRenderer::InitPipelines()
         pipelineState.PreInitAddColorBlendAttachment(false);
         pipelineState.InitColorBlendState(false);
 
-        m_vikingRoomMainDrawPipeline.Init(shaderStages, m_vikingRoomMainDrawPipelineLayout, pipelineMeshInputInfo, pipelineState, m_mainDrawRenderPass);
+        m_vikingRoomMainDrawPipeline.InitGraphics(shaderStages, m_vikingRoomMainDrawPipelineLayout, pipelineMeshInputInfo, pipelineState, m_mainDrawRenderPass);
 
         shaderStages.Destroy();
 	}
@@ -497,21 +497,31 @@ void VulkanRenderer::InitPipelines()
         pipelineState.PreInitAddColorBlendAttachment(true, VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD);
 		pipelineState.InitColorBlendState(false);
 
-        m_infiniteGridPipeline.Init(shaderStages, m_infiniteGridPipelineLayout, pipelineMeshInputInfo, pipelineState, m_mainDrawRenderPass);
+        m_infiniteGridPipeline.InitGraphics(shaderStages, m_infiniteGridPipelineLayout, pipelineMeshInputInfo, pipelineState, m_mainDrawRenderPass);
 
         shaderStages.Destroy();
 	}
 
 	// Post Processing
 	{
-        VulkanShaderStages shaderStages;
+        VulkanShaderStages shaderStage;
 		{
             Shader computeShader;
 			CompileShader(ShaderType::kCs, "post-processing.cs.hlsl", "Main", &computeShader);
 
-            shaderStages.InitCs(computeShader);
+            shaderStage.InitCs(computeShader);
 		}
 
+		m_postProcessingDescriptorSetLayout.PreInitAddLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
+		m_postProcessingDescriptorSetLayout.PreInitAddLayoutBinding(1, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
+		m_postProcessingDescriptorSetLayout.Init();
+
+		std::vector<VkDescriptorSetLayout> layouts = { m_postProcessingDescriptorSetLayout.m_layoutHandle };
+		m_postProcessingPipelineLayout.Init(layouts);
+
+		m_postProcessingPipeline.InitCompute(shaderStage, m_postProcessingPipelineLayout);
+
+		shaderStage.Destroy();
 	}
 }
 

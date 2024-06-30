@@ -107,7 +107,10 @@ public:
 	VulkanRenderFrame m_renderFrames[MAX_NUM_FRAMES_IN_FLIGHT];
 
 	// Post Processing
+	VulkanDescriptorSetLayout m_postProcessingDescriptorSetLayout;
 	VulkanRenderPass m_postProcessingRenderPass;
+	VulkanPipelineLayout m_postProcessingPipelineLayout;
+	VulkanPipeline m_postProcessingPipeline;
 
 	// ImGui
 	VulkanDescriptorPool m_imguiDescriptorPool;

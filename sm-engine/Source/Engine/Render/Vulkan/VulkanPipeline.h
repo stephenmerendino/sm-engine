@@ -106,12 +106,13 @@ class VulkanPipeline
 public:
 	VulkanPipeline();
 
-    void Init(const VulkanShaderStages& shaderStages,
-              const VulkanPipelineLayout& layout,
-              const VulkanMeshPipelineInputInfo& meshPipelineInputInfo,
-              const VulkanPipelineState& pipelineState,
-              const VulkanRenderPass& renderPass);
-
+    void InitGraphics(const VulkanShaderStages& shaderStages,
+                      const VulkanPipelineLayout& layout,
+                      const VulkanMeshPipelineInputInfo& meshPipelineInputInfo,
+                      const VulkanPipelineState& pipelineState,
+                      const VulkanRenderPass& renderPass);
+    void InitCompute(const VulkanShaderStages& shaderStage,
+                     const VulkanPipelineLayout& layout);
     void Destroy();
 
     VkPipeline m_pipelineHandle;
