@@ -73,16 +73,28 @@ public:
 	void InitSwapchain();
 	void RefreshSwapchain();
 
+	void InitImgui();
+
+	void InitDescriptorPools();
+	void DestroyDescriptorPools();
+
+	void InitDescriptorSetLayouts();
+	void DestroyDescriptorSetLayouts();
+
+	void InitRenderPasses();
+	void DestroyRenderPasses();
+
 	void InitRenderFrames();
 	void DestroyRenderFrames();
 
-	void InitImgui();
-
-	void SetupNewFrame();
-	void PresentFinalImage();
+	void InitResources();
+	void DestroyResources();
 
 	void InitPipelines();
 	void DestroyPipelines();
+
+	void SetupNewFrame();
+	void PresentFinalImage();
 
 	const Camera* m_pMainCamera;
 	F32 m_elapsedTimeSeconds;

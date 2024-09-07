@@ -63,24 +63,102 @@ static void InitSurface(Window* pWindow, VkSurfaceKHR& outSurface)
 	SM_VULKAN_ASSERT(vkCreateWin32SurfaceKHR(VulkanInstance::GetHandle(), &createInfo, nullptr, &outSurface));
 }
 
-void VulkanRenderer::Init(Window* pWindow)
+void VulkanRenderer::InitDescriptorSetLayouts()
 {
-	SM_ASSERT(pWindow != nullptr);
-	m_pWindow = pWindow;
+	// Global data descriptors
+	{
+		m_globalDescriptorSetLayout.PreInitAddLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_SAMPLER, VK_SHADER_STAGE_ALL);
+		m_globalDescriptorSetLayout.Init();
+	}
 
-	m_pRenderSettings = new RenderSettings();
+	// Frame data descriptors
+	{
+		m_frameDescriptorSetLayout.PreInitAddLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL);
+		m_frameDescriptorSetLayout.Init();
+	}
 
-	InitShaderCompiler();
-	Mesh::InitPrimitives();
+	// Infinite grid
+	{
+        m_infiniteGridDescriptorSetLayout.PreInitAddLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+        m_infiniteGridDescriptorSetLayout.Init();
+	}
 
-	VulkanInstance::Init();
-	InitSurface(m_pWindow, m_surface);
-	VulkanDevice::Init(m_surface);
-	VulkanFormats::Init();
-	m_graphicsCommandPool.Init(VK_QUEUE_GRAPHICS_BIT, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-	InitSwapchain();
-	InitImgui();
+	// Post Processing
+	{
+		m_postProcessingDescriptorSetLayout.PreInitAddLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
+		m_postProcessingDescriptorSetLayout.PreInitAddLayoutBinding(1, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
+		m_postProcessingDescriptorSetLayout.Init();
+	}
 
+	// Materials
+	{
+        m_materialDescriptorSetLayout.PreInitAddLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT);
+        m_materialDescriptorSetLayout.Init();
+	}
+
+	// Mesh instances
+	{
+        m_meshInstanceDescriptorSetLayout.PreInitAddLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL);
+        m_meshInstanceDescriptorSetLayout.Init();
+	}
+}
+
+void VulkanRenderer::InitDescriptorPools()
+{
+	// Global Data
+    m_globalDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_SAMPLER, 1);
+    m_globalDescriptorPool.Init(1);
+
+	// Frame Render Data, Infinite Grid, Post Processing
+    U32 numUniformBuffersPerFrame = 2;
+    U32 numStorageImagesPerFrame = 2; // Post Processing input + output
+    U32 numSetsPerFrame = 3;
+
+    m_frameDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_NUM_FRAMES_IN_FLIGHT * numUniformBuffersPerFrame);
+    m_frameDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, MAX_NUM_FRAMES_IN_FLIGHT * numStorageImagesPerFrame); // Post processing pass each frame needs 2 storage imagess for input/output
+    m_frameDescriptorPool.Init(MAX_NUM_FRAMES_IN_FLIGHT * numSetsPerFrame);
+
+	// Material
+    m_materialDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 20);
+    m_materialDescriptorPool.Init(20);
+
+	// Imgui
+    const I32 IMGUI_MAX_SETS = 1000;
+    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_SAMPLER, IMGUI_MAX_SETS);
+    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, IMGUI_MAX_SETS);
+    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, IMGUI_MAX_SETS);
+    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, IMGUI_MAX_SETS);
+    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, IMGUI_MAX_SETS);
+    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, IMGUI_MAX_SETS);
+    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, IMGUI_MAX_SETS);
+    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, IMGUI_MAX_SETS);
+    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, IMGUI_MAX_SETS);
+    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, IMGUI_MAX_SETS);
+    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, IMGUI_MAX_SETS);
+	m_imguiDescriptorPool.Init(IMGUI_MAX_SETS);
+
+}
+
+void VulkanRenderer::DestroyDescriptorPools()
+{
+	m_materialDescriptorPool.Destroy();
+	m_frameDescriptorPool.Destroy();
+	m_globalDescriptorPool.Destroy();
+	m_imguiDescriptorPool.Destroy();
+}
+
+void VulkanRenderer::DestroyDescriptorSetLayouts()
+{
+	m_globalDescriptorSetLayout.Destroy();
+	m_frameDescriptorSetLayout.Destroy();
+	m_infiniteGridDescriptorSetLayout.Destroy();
+	m_postProcessingDescriptorSetLayout.Destroy();
+	m_materialDescriptorSetLayout.Destroy();
+	m_meshInstanceDescriptorSetLayout.Destroy();
+}
+
+void VulkanRenderer::InitRenderPasses()
+{
 	// Main draw render pass
 	{
 		m_mainDrawRenderPass.PreInitAddAttachmentDesc(VulkanFormats::GetMainColorFormat(), VulkanDevice::Get()->m_maxNumMsaaSamples,
@@ -111,63 +189,42 @@ void VulkanRenderer::Init(Window* pWindow)
 		m_mainDrawRenderPass.Init();
 	}
 
-	// Global data descriptors
+	// Imgui
 	{
-		m_globalDescriptorSetLayout.PreInitAddLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_SAMPLER, VK_SHADER_STAGE_ALL);
-		m_globalDescriptorSetLayout.Init();
+        m_imguiRenderPass.PreInitAddAttachmentDesc(VulkanFormats::GetMainColorFormat(), VK_SAMPLE_COUNT_1_BIT,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
+            VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            0);
 
-		m_globalDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_SAMPLER, 1);
-		m_globalDescriptorPool.Init(1);
+        m_imguiRenderPass.PreInitAddSubpassAttachmentReference(0, VulkanSubpass::COLOR, 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-		m_globalDescriptorSet = m_globalDescriptorPool.AllocateSet(m_globalDescriptorSetLayout);
+        m_imguiRenderPass.PreInitAddSubpassDependency(VK_SUBPASS_EXTERNAL, 0, 
+                                                      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 
+                                                      0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
 
-		m_globalLinearSampler.Init(10);
-
-		VulkanDescriptorSetWriter globalDescriptorSetWriter;
-		globalDescriptorSetWriter.AddSamplerWrite(m_globalDescriptorSet, m_globalLinearSampler, 0, 0, 1);
-		globalDescriptorSetWriter.PerformWrites();
+        m_imguiRenderPass.Init();
 	}
+}
 
-	// Frame data descriptors
+void VulkanRenderer::DestroyRenderPasses()
+{
+	m_mainDrawRenderPass.Destroy();
+	m_imguiRenderPass.Destroy();
+}
+
+void VulkanRenderer::InitResources()
+{
+	// Global descriptor set
 	{
-		m_frameDescriptorSetLayout.PreInitAddLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL);
-		m_frameDescriptorSetLayout.Init();
+        m_globalDescriptorSet = m_globalDescriptorPool.AllocateSet(m_globalDescriptorSetLayout);
 
-		// FrameRenderData + InfiniteGridData
-		U32 numUniformBuffersPerFrame = 2;
-		U32 numStorageImagesPerFrame = 2; // Post Processing input + output
-		U32 numSetsPerFrame = 3;
+        m_globalLinearSampler.Init(10);
 
-		m_frameDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_NUM_FRAMES_IN_FLIGHT * numUniformBuffersPerFrame);
-		m_frameDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, MAX_NUM_FRAMES_IN_FLIGHT * numStorageImagesPerFrame); // Post processing pass each frame needs 2 storage imagess for input/output
-		m_frameDescriptorPool.Init(MAX_NUM_FRAMES_IN_FLIGHT * numSetsPerFrame);
+        VulkanDescriptorSetWriter globalDescriptorSetWriter;
+        globalDescriptorSetWriter.AddSamplerWrite(m_globalDescriptorSet, m_globalLinearSampler, 0, 0, 1);
+        globalDescriptorSetWriter.PerformWrites();
 	}
-
-	// Infinite grid
-	{
-        m_infiniteGridDescriptorSetLayout.PreInitAddLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-        m_infiniteGridDescriptorSetLayout.Init();
-	}
-
-	// Post Processing
-	{
-		m_postProcessingDescriptorSetLayout.PreInitAddLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
-		m_postProcessingDescriptorSetLayout.PreInitAddLayoutBinding(1, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
-		m_postProcessingDescriptorSetLayout.Init();
-	}
-
-	InitRenderFrames();
-
-	// Materials
-	m_materialDescriptorSetLayout.PreInitAddLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT);
-	m_materialDescriptorSetLayout.Init();
-
-	m_materialDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 20);
-	m_materialDescriptorPool.Init(20);
-
-	// Mesh instance
-	m_meshInstanceDescriptorSetLayout.PreInitAddLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL);
-	m_meshInstanceDescriptorSetLayout.Init();
 
 	// Viking Room
 	{
@@ -189,7 +246,40 @@ void VulkanRenderer::Init(Window* pWindow)
 
 		m_vikingRoomMeshInstanceBuffer.Init(VulkanBuffer::Type::kUniformBuffer, sizeof(MeshInstanceRenderData));
 	}
+}
 
+void VulkanRenderer::DestroyResources()
+{
+	m_vikingRoomVertexBuffer.Destroy();
+	m_vikingRoomIndexBuffer.Destroy();
+	m_vikingRoomDiffuseTexture.Destroy();
+	m_vikingRoomMeshInstanceBuffer.Destroy();
+	delete m_pVikingRoomMesh;
+}
+
+void VulkanRenderer::Init(Window* pWindow)
+{
+	SM_ASSERT(pWindow != nullptr);
+
+	m_pWindow = pWindow;
+	m_pRenderSettings = new RenderSettings();
+
+	InitShaderCompiler();
+	Mesh::InitPrimitives();
+
+	VulkanInstance::Init();
+	InitSurface(m_pWindow, m_surface);
+	VulkanDevice::Init(m_surface);
+	m_graphicsCommandPool.Init(VK_QUEUE_GRAPHICS_BIT, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+	VulkanFormats::Init();
+
+	InitSwapchain();
+	InitDescriptorPools();
+	InitDescriptorSetLayouts();
+	InitRenderPasses();
+	InitImgui();
+	InitRenderFrames();
+	InitResources();
 	InitPipelines();
 }
 
@@ -548,35 +638,13 @@ void VulkanRenderer::Shutdown()
 
 	ImGui_ImplVulkan_Shutdown();
 	DestroyPipelines();
-
-	m_infiniteGridDescriptorSetLayout.Destroy();
-
-	m_vikingRoomVertexBuffer.Destroy();
-	m_vikingRoomIndexBuffer.Destroy();
-	m_vikingRoomDiffuseTexture.Destroy();
-	m_vikingRoomMeshInstanceBuffer.Destroy();
-
+	DestroyResources();
 	DestroyRenderFrames();
-
-	m_postProcessingRenderPass.Destroy();
-
-	m_imguiDescriptorPool.Destroy();
-	m_imguiRenderPass.Destroy();
-
-	m_meshInstanceDescriptorSetLayout.Destroy();
-
-	m_materialDescriptorSetLayout.Destroy();
-	m_materialDescriptorPool.Destroy();
-
-	m_frameDescriptorPool.Destroy();
-	m_frameDescriptorSetLayout.Destroy();
-	m_postProcessingDescriptorSetLayout.Destroy();
+	DestroyRenderPasses();
+	DestroyDescriptorPools();
+	DestroyDescriptorSetLayouts();
 
 	m_globalLinearSampler.Destroy();
-	m_globalDescriptorPool.Destroy();
-	m_globalDescriptorSetLayout.Destroy();
-
-	m_mainDrawRenderPass.Destroy();
 
 	m_swapchain.Destroy();
 	m_graphicsCommandPool.Destroy();
@@ -700,34 +768,6 @@ static PFN_vkVoidFunction ImGuiVulkanFuncLoader(const char* functionName, void* 
 
 void VulkanRenderer::InitImgui()
 {
-    const I32 MAX_SETS = 1000;
-    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_SAMPLER, MAX_SETS);
-    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_SETS);
-    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, MAX_SETS);
-    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, MAX_SETS);
-    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, MAX_SETS);
-    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, MAX_SETS);
-    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_SETS);
-    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_SETS);
-    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, MAX_SETS);
-    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, MAX_SETS);
-    m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, MAX_SETS);
-	m_imguiDescriptorPool.Init(MAX_SETS);
-
-	m_imguiRenderPass.PreInitAddAttachmentDesc(VulkanFormats::GetMainColorFormat(), VK_SAMPLE_COUNT_1_BIT,
-		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-		VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
-		VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
-		0);
-
-    m_imguiRenderPass.PreInitAddSubpassAttachmentReference(0, VulkanSubpass::COLOR, 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
-	m_imguiRenderPass.PreInitAddSubpassDependency(VK_SUBPASS_EXTERNAL, 0, 
-												  VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 
-												  0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
-
-	m_imguiRenderPass.Init();
-
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
