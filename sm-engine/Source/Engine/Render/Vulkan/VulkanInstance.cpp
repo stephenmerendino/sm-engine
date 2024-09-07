@@ -146,6 +146,9 @@ VulkanInstance::VulkanInstance()
 
 void VulkanInstance::Init()
 {
+	static bool bIsInitialized = false;
+	if (bIsInitialized) return;
+
 	LoadVulkanGlobalFuncs();
 
 	PrintInstanceInfo();
@@ -201,6 +204,8 @@ void VulkanInstance::Init()
 		VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = SetupDebugMessengerCreateInfo(VulkanDebugFunc);
 		SM_VULKAN_ASSERT(vkCreateDebugUtilsMessengerEXT(s_instance->m_instanceHandle, &debugMessengerCreateInfo, nullptr, &s_instance->m_debugMessengerHandle));
 	}
+
+	bIsInitialized = true;
 }
 
 void VulkanInstance::Destroy()

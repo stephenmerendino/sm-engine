@@ -46,7 +46,21 @@ VulkanRenderer::VulkanRenderer()
 	,m_elapsedTimeSeconds(0.0f)
 	,m_deltaTimeSeconds(0.0f)
 	,m_bReloadShadersRequested(false)
+	,m_pVikingRoomMesh(nullptr)
+	,m_vikingRoomMaterialDS(VK_NULL_HANDLE)
+	,m_vikingRoomMeshInstanceDS(VK_NULL_HANDLE)
 {
+}
+
+static void InitSurface(Window* pWindow, VkSurfaceKHR& outSurface)
+{
+	// Create surface to render to in the window
+	VkWin32SurfaceCreateInfoKHR createInfo = {};
+	createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+	createInfo.pNext = nullptr;
+	createInfo.hwnd = pWindow->m_hwnd;
+	createInfo.hinstance = GetModuleHandle(nullptr);
+	SM_VULKAN_ASSERT(vkCreateWin32SurfaceKHR(VulkanInstance::GetHandle(), &createInfo, nullptr, &outSurface));
 }
 
 void VulkanRenderer::Init(Window* pWindow)
@@ -57,24 +71,13 @@ void VulkanRenderer::Init(Window* pWindow)
 	m_pRenderSettings = new RenderSettings();
 
 	InitShaderCompiler();
-
 	Mesh::InitPrimitives();
 
 	VulkanInstance::Init();
-
-	// Create surface to render to in the window
-	VkWin32SurfaceCreateInfoKHR createInfo = {};
-	createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-	createInfo.pNext = nullptr;
-	createInfo.hwnd = pWindow->m_hwnd;
-	createInfo.hinstance = GetModuleHandle(nullptr);
-	SM_VULKAN_ASSERT(vkCreateWin32SurfaceKHR(VulkanInstance::GetHandle(), &createInfo, nullptr, &m_surface));
-
+	InitSurface(m_pWindow, m_surface);
 	VulkanDevice::Init(m_surface);
 	VulkanFormats::Init();
-
 	m_graphicsCommandPool.Init(VK_QUEUE_GRAPHICS_BIT, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-
 	InitSwapchain();
 	InitImgui();
 
@@ -132,9 +135,11 @@ void VulkanRenderer::Init(Window* pWindow)
 
 		// FrameRenderData + InfiniteGridData
 		U32 numUniformBuffersPerFrame = 2;
-		U32 numSetsPerFrame = 2;
+		U32 numStorageImagesPerFrame = 2; // Post Processing input + output
+		U32 numSetsPerFrame = 3;
 
 		m_frameDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_NUM_FRAMES_IN_FLIGHT * numUniformBuffersPerFrame);
+		m_frameDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, MAX_NUM_FRAMES_IN_FLIGHT * numStorageImagesPerFrame); // Post processing pass each frame needs 2 storage imagess for input/output
 		m_frameDescriptorPool.Init(MAX_NUM_FRAMES_IN_FLIGHT * numSetsPerFrame);
 	}
 
@@ -142,6 +147,13 @@ void VulkanRenderer::Init(Window* pWindow)
 	{
         m_infiniteGridDescriptorSetLayout.PreInitAddLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
         m_infiniteGridDescriptorSetLayout.Init();
+	}
+
+	// Post Processing
+	{
+		m_postProcessingDescriptorSetLayout.PreInitAddLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
+		m_postProcessingDescriptorSetLayout.PreInitAddLayoutBinding(1, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
+		m_postProcessingDescriptorSetLayout.Init();
 	}
 
 	InitRenderFrames();
@@ -512,10 +524,6 @@ void VulkanRenderer::InitPipelines()
             shaderStage.InitCs(computeShader);
 		}
 
-		m_postProcessingDescriptorSetLayout.PreInitAddLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
-		m_postProcessingDescriptorSetLayout.PreInitAddLayoutBinding(1, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
-		m_postProcessingDescriptorSetLayout.Init();
-
 		std::vector<VkDescriptorSetLayout> layouts = { m_postProcessingDescriptorSetLayout.m_layoutHandle };
 		m_postProcessingPipelineLayout.Init(layouts);
 
@@ -562,6 +570,7 @@ void VulkanRenderer::Shutdown()
 
 	m_frameDescriptorPool.Destroy();
 	m_frameDescriptorSetLayout.Destroy();
+	m_postProcessingDescriptorSetLayout.Destroy();
 
 	m_globalLinearSampler.Destroy();
 	m_globalDescriptorPool.Destroy();
@@ -664,6 +673,7 @@ void VulkanRenderer::InitRenderFrames()
 		frame.m_infiniteGridDescriptorSet = m_frameDescriptorPool.AllocateSet(m_infiniteGridDescriptorSetLayout);
 		frame.m_infiniteGridDataBuffer.Init(VulkanBuffer::Type::kUniformBuffer, sizeof(InfiniteGridData));
 
+		frame.m_postProcessingDescriptorSet = m_frameDescriptorPool.AllocateSet(m_postProcessingDescriptorSetLayout);
 		frame.m_postProcessingRenderTarget.InitColorTarget(VulkanFormats::GetMainColorFormat(), m_swapchain.m_extent.width, m_swapchain.m_extent.height,
                                                            VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 
 														   VK_SAMPLE_COUNT_1_BIT);

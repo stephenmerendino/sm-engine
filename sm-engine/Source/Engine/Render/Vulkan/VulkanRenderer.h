@@ -42,6 +42,7 @@ struct VulkanRenderFrame
 	// Post processing
 	VulkanTexture		m_postProcessingRenderTarget;
 	VulkanFramebuffer	m_postProcessingFramebuffer;
+	VkDescriptorSet		m_postProcessingDescriptorSet;
 
 	// ImGui
 	VulkanFramebuffer	m_imguiFramebuffer;
