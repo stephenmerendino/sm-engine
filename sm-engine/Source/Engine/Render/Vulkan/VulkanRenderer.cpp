@@ -280,6 +280,7 @@ void VulkanRenderer::Init(Window* pWindow)
 	InitImgui();
 	InitRenderFrames();
 	InitResources();
+	InitPipelineLayouts();
 	InitPipelines();
 }
 
@@ -402,6 +403,13 @@ void VulkanRenderer::Render()
 	}
 	VulkanCommands::EndDebugLabel(curRenderFrame.m_frameCommandBuffer);
 
+	// Post Processing
+	VulkanCommands::BeginDebugLabel(curRenderFrame.m_frameCommandBuffer, "Post Processing", ColorF32(1.0f, 0.5f, 0.0f, 1.0f));
+	{
+
+	}
+	VulkanCommands::EndDebugLabel(curRenderFrame.m_frameCommandBuffer);
+
 	// ImGui
 	VulkanCommands::BeginDebugLabel(curRenderFrame.m_frameCommandBuffer, "ImGui", ColorF32(1.0f, 0.0f, 0.0f, 1.0f));
 	{
@@ -472,12 +480,12 @@ void VulkanRenderer::Render()
 
 void VulkanRenderer::SetupNewFrame()
 {
+	// Advance frame number
 	m_currentFrame = (m_currentFrame + 1) % MAX_NUM_FRAMES_IN_FLIGHT;
 	VulkanRenderFrame& curRenderFrame = m_renderFrames[m_currentFrame];
 
 	// Make sure frame has finished from last use before using it for new frame
-	curRenderFrame.m_frameCompletedFence.Wait();
-	curRenderFrame.m_frameCompletedFence.Reset();
+	curRenderFrame.m_frameCompletedFence.WaitAndReset();
 
 	vkResetCommandBuffer(curRenderFrame.m_frameCommandBuffer, 0);
 
@@ -532,19 +540,38 @@ void VulkanRenderer::PresentFinalImage()
 	}
 }
 
+void VulkanRenderer::InitPipelineLayouts()
+{
+	// Viking Room
+    std::vector<VkDescriptorSetLayout> pipelineDescriptorSetLayouts = {
+        m_globalDescriptorSetLayout.m_layoutHandle,
+        m_frameDescriptorSetLayout.m_layoutHandle,
+        m_materialDescriptorSetLayout.m_layoutHandle,
+        m_meshInstanceDescriptorSetLayout.m_layoutHandle
+    };
+
+    m_vikingRoomMainDrawPipelineLayout.Init(pipelineDescriptorSetLayouts);
+
+	// Infinite Grid
+    std::vector<VkDescriptorSetLayout> infiniteGridDescriptorSetLayouts = { m_infiniteGridDescriptorSetLayout.m_layoutHandle };
+    m_infiniteGridPipelineLayout.Init(infiniteGridDescriptorSetLayouts);
+
+	// Post Processing
+    std::vector<VkDescriptorSetLayout> layouts = { m_postProcessingDescriptorSetLayout.m_layoutHandle };
+    m_postProcessingPipelineLayout.Init(layouts);
+}
+
+void VulkanRenderer::DestroyPipelineLayouts()
+{
+	m_postProcessingPipelineLayout.Destroy();
+	m_infiniteGridPipelineLayout.Destroy();
+	m_vikingRoomMainDrawPipelineLayout.Destroy();
+}
+
 void VulkanRenderer::InitPipelines()
 {
     // Viking Room Pipeline
 	{
-		std::vector<VkDescriptorSetLayout> pipelineDescriptorSetLayouts = {
-			m_globalDescriptorSetLayout.m_layoutHandle,
-			m_frameDescriptorSetLayout.m_layoutHandle,
-			m_materialDescriptorSetLayout.m_layoutHandle,
-			m_meshInstanceDescriptorSetLayout.m_layoutHandle
-		};
-
-		m_vikingRoomMainDrawPipelineLayout.Init(pipelineDescriptorSetLayouts);
-
         VulkanShaderStages shaderStages;
         {
             Shader vertShader;
@@ -574,9 +601,6 @@ void VulkanRenderer::InitPipelines()
 
 	// Infinite grid
 	{
-        std::vector<VkDescriptorSetLayout> infiniteGridDescriptorSetLayouts = { m_infiniteGridDescriptorSetLayout.m_layoutHandle };
-        m_infiniteGridPipelineLayout.Init(infiniteGridDescriptorSetLayouts);
-
         VulkanShaderStages shaderStages;
 		{
             Shader vertShader;
@@ -614,9 +638,6 @@ void VulkanRenderer::InitPipelines()
             shaderStage.InitCs(computeShader);
 		}
 
-		std::vector<VkDescriptorSetLayout> layouts = { m_postProcessingDescriptorSetLayout.m_layoutHandle };
-		m_postProcessingPipelineLayout.Init(layouts);
-
 		m_postProcessingPipeline.InitCompute(shaderStage, m_postProcessingPipelineLayout);
 
 		shaderStage.Destroy();
@@ -625,11 +646,14 @@ void VulkanRenderer::InitPipelines()
 
 void VulkanRenderer::DestroyPipelines()
 {
+	m_postProcessingPipeline.Destroy();
+	m_postProcessingPipelineLayout.Destroy();
+
     m_infiniteGridPipeline.Destroy();
 	m_infiniteGridPipelineLayout.Destroy();
 
-	m_vikingRoomMainDrawPipelineLayout.Destroy();
 	m_vikingRoomMainDrawPipeline.Destroy();
+	m_vikingRoomMainDrawPipelineLayout.Destroy();
 }
 
 void VulkanRenderer::Shutdown()
@@ -722,7 +746,7 @@ void VulkanRenderer::InitRenderFrames()
 										 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VulkanDevice::Get()->m_maxNumMsaaSamples);
 
 		frame.m_mainDrawColorResolveTexture.InitColorTarget(VulkanFormats::GetMainColorFormat(), m_swapchain.m_extent.width, m_swapchain.m_extent.height, 
-										 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_SAMPLE_COUNT_1_BIT);
+										 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_SAMPLE_COUNT_1_BIT);
 
 		std::vector<VkImageView> mainDrawAttachments = {
 			frame.m_mainDrawColorMultisampleTexture.m_imageView,

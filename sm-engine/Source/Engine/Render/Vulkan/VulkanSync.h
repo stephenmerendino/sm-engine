@@ -24,6 +24,7 @@ public:
 	void Init();
 	void Reset();
 	void Wait(U64 timeout = UINT64_MAX);
+	void WaitAndReset(U64 timeout = UINT64_MAX);
 	void Destroy();
 
 	VkFence m_fenceHandle;

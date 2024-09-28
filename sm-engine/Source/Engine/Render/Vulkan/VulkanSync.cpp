@@ -43,6 +43,12 @@ void VulkanFence::Wait(U64 timeout)
 	vkWaitForFences(VulkanDevice::GetHandle(), 1, &m_fenceHandle, VK_TRUE, timeout);
 }
 
+void VulkanFence::WaitAndReset(U64 timeout)
+{
+	Wait(timeout);
+	Reset();
+}
+
 void VulkanFence::Destroy()
 {
 	vkDestroyFence(VulkanDevice::GetHandle(), m_fenceHandle, nullptr);

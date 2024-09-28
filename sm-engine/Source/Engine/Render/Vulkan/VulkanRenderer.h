@@ -90,6 +90,9 @@ public:
 	void InitResources();
 	void DestroyResources();
 
+	void InitPipelineLayouts();
+	void DestroyPipelineLayouts();
+
 	void InitPipelines();
 	void DestroyPipelines();
 
