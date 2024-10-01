@@ -406,7 +406,10 @@ void VulkanRenderer::Render()
 	// Post Processing
 	VulkanCommands::BeginDebugLabel(curRenderFrame.m_frameCommandBuffer, "Post Processing", ColorF32(1.0f, 0.5f, 0.0f, 1.0f));
 	{
-
+        // Write descriptor set
+        // Bind Descriptor set
+		// Bind Pipeline
+        // Execute
 	}
 	VulkanCommands::EndDebugLabel(curRenderFrame.m_frameCommandBuffer);
 

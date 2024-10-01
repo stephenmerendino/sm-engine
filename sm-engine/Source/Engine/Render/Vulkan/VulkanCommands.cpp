@@ -242,6 +242,11 @@ namespace VulkanCommands
 		vkCmdEndRenderPass(commandBuffer);
 	}
 
+	void BindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint bindPoint, VkPipeline pipeline)
+	{
+		vkCmdBindPipeline(commandBuffer, bindPoint, pipeline);
+	}
+
 	void BeginDebugLabel(VkCommandBuffer commandBuffer, const char* labelName, const ColorF32& labelColor)
 	{
 		if (!IsDebug()) return;
