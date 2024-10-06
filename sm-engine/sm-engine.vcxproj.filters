@@ -64,6 +64,9 @@
     <Filter Include="Source\ThirdParty\dxc">
       <UniqueIdentifier>{ef4c1142-8cd3-4847-ad0b-6f55bb15566e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{77874e8c-c70d-4d13-a203-2f127fea4874}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Engine\Core\Assert.cpp">
