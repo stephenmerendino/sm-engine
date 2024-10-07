@@ -13,33 +13,6 @@
     <Filter Include="Source\Math">
       <UniqueIdentifier>{834321c2-d008-4ea8-a159-9d1ac414de42}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\ThirdParty">
-      <UniqueIdentifier>{f1eda7e2-8970-4aa8-8be6-cac42d08baf4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\ThirdParty\stb">
-      <UniqueIdentifier>{eddde43a-8c6d-40d9-97c2-1b82c887d957}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\ThirdParty\tinyobjloader">
-      <UniqueIdentifier>{7a2be397-6036-4b19-a6ad-013c6c90cc30}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\ThirdParty\imgui">
-      <UniqueIdentifier>{06147a53-945f-45d7-9c0f-ada13097891b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\ThirdParty\imgui\backends">
-      <UniqueIdentifier>{b7222b48-3905-4967-af18-1b32464fe320}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\ThirdParty\imgui\vulkan">
-      <UniqueIdentifier>{bdc4b7a1-8428-4eea-827a-645c777ed6db}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\ThirdParty\vulkan">
-      <UniqueIdentifier>{8ba815ff-bdf5-4ccf-ad75-63fd7336f5f1}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\ThirdParty\vulkan\utility">
-      <UniqueIdentifier>{edd33ed8-0b1b-4f85-93e3-f2a7d05dc699}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\ThirdParty\vulkan\vk_video">
-      <UniqueIdentifier>{f3085c67-3346-4c12-97d0-962e6edb275a}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source\Render\Vulkan">
       <UniqueIdentifier>{b5ba5c69-001b-45d6-ade0-5d109820a3ba}</UniqueIdentifier>
     </Filter>
@@ -61,15 +34,63 @@
     <Filter Include="Source\Core">
       <UniqueIdentifier>{650bde54-f1ba-4cd4-8621-111f3ca52081}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\ThirdParty\dxc">
-      <UniqueIdentifier>{ef4c1142-8cd3-4847-ad0b-6f55bb15566e}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src">
       <UniqueIdentifier>{77874e8c-c70d-4d13-a203-2f127fea4874}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\sm">
+      <UniqueIdentifier>{d04ee074-f760-4b1d-8113-ca66840e1a99}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\third_party">
+      <UniqueIdentifier>{b26b8149-cdd3-45ea-8641-afd66beb4ad5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\third_party\dxc">
+      <UniqueIdentifier>{36fd5a47-4556-4f1c-b8ab-4ed98ba166b3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\third_party\imgui">
+      <UniqueIdentifier>{ae367a66-6561-41de-ab67-123515b95c26}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\third_party\stb">
+      <UniqueIdentifier>{5f6ed036-993a-4ec6-a438-bbf460b7c3cc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\third_party\tinyobjloader">
+      <UniqueIdentifier>{85da2269-abb4-4760-8726-ad23b0113caa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\third_party\vulkan">
+      <UniqueIdentifier>{fa6ac280-b750-49a3-8af4-422ab590ac83}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\third_party\imgui\vulkan">
+      <UniqueIdentifier>{67899d9e-31c4-49c2-b5f7-d7263b031cba}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\third_party\imgui\backends">
+      <UniqueIdentifier>{cf60dc9e-72ad-49fe-830a-fe87ed0d3128}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\third_party\vulkan\utility">
+      <UniqueIdentifier>{6ba4ee89-8f85-452d-a452-f2b7250484fd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\third_party\vulkan\vk_video">
+      <UniqueIdentifier>{6c59264a-3bbb-4197-9dd0-5a359d546e02}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\sm\core">
+      <UniqueIdentifier>{116306c3-4584-43c9-80bf-76ad390c7d6d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\sm\memory">
+      <UniqueIdentifier>{44feb134-ed71-4451-bdcd-9c22e7c0ffd3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\sm\containers">
+      <UniqueIdentifier>{90151cef-842d-4e66-a8b1-6428d414b673}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\sm\render">
+      <UniqueIdentifier>{340cb731-5beb-4d55-9de7-02fc25190aa0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\sm\io">
+      <UniqueIdentifier>{13ba735c-f627-4c74-8b31-b6258c37a57a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\sm\math">
+      <UniqueIdentifier>{27a4c66f-1286-462a-8ec0-4170ca72e56b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Source\Engine\Core\Assert.cpp">
+    <ClCompile Include="Source\Engine\Core\Assert_Old.cpp">
       <Filter>Source\Core</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\Window.cpp">
@@ -77,27 +98,6 @@
     </ClCompile>
     <ClCompile Include="Source\Engine\Math\MathUtils.cpp">
       <Filter>Source\Math</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\ThirdParty\imgui\imgui.cpp">
-      <Filter>Source\ThirdParty\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\ThirdParty\imgui\imgui_demo.cpp">
-      <Filter>Source\ThirdParty\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\ThirdParty\imgui\imgui_draw.cpp">
-      <Filter>Source\ThirdParty\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\ThirdParty\imgui\imgui_tables.cpp">
-      <Filter>Source\ThirdParty\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\ThirdParty\imgui\imgui_widgets.cpp">
-      <Filter>Source\ThirdParty\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\ThirdParty\imgui\backends\imgui_impl_vulkan.cpp">
-      <Filter>Source\ThirdParty\imgui\backends</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\ThirdParty\imgui\backends\imgui_impl_win32.cpp">
-      <Filter>Source\ThirdParty\imgui\backends</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanFunctions.cpp">
       <Filter>Source\Render\Vulkan</Filter>
@@ -231,6 +231,33 @@
     <ClCompile Include="Source\Engine\Render\ShaderCompiler.cpp">
       <Filter>Source\Render</Filter>
     </ClCompile>
+    <ClCompile Include="src\third_party\imgui\imgui.cpp">
+      <Filter>src\third_party\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\third_party\imgui\imgui_demo.cpp">
+      <Filter>src\third_party\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\third_party\imgui\imgui_draw.cpp">
+      <Filter>src\third_party\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\third_party\imgui\imgui_tables.cpp">
+      <Filter>src\third_party\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\third_party\imgui\imgui_widgets.cpp">
+      <Filter>src\third_party\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\third_party\imgui\backends\imgui_impl_vulkan.cpp">
+      <Filter>src\third_party\imgui\backends</Filter>
+    </ClCompile>
+    <ClCompile Include="src\third_party\imgui\backends\imgui_impl_win32.cpp">
+      <Filter>src\third_party\imgui\backends</Filter>
+    </ClCompile>
+    <ClCompile Include="src\sm\core\assert.cpp">
+      <Filter>src\sm\core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\sm\memory\arena.cpp">
+      <Filter>src\sm\memory</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Engine\Core\Assert.h">
@@ -268,168 +295,6 @@
     </ClInclude>
     <ClInclude Include="Source\Engine\Math\Mat33.h">
       <Filter>Source\Math</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\imgui\imconfig.h">
-      <Filter>Source\ThirdParty\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\imgui\imgui.h">
-      <Filter>Source\ThirdParty\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\imgui\imgui_internal.h">
-      <Filter>Source\ThirdParty\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\imgui\imstb_rectpack.h">
-      <Filter>Source\ThirdParty\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\imgui\imstb_textedit.h">
-      <Filter>Source\ThirdParty\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\imgui\imstb_truetype.h">
-      <Filter>Source\ThirdParty\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\imgui\backends\imgui_impl_vulkan.h">
-      <Filter>Source\ThirdParty\imgui\backends</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\imgui\backends\imgui_impl_win32.h">
-      <Filter>Source\ThirdParty\imgui\backends</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\tinyobjloader\tiny_obj_loader.h">
-      <Filter>Source\ThirdParty\tinyobjloader</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\stb\stb_image.h">
-      <Filter>Source\ThirdParty\stb</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vk_enum_string_helper.h">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vk_icd.h">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vk_layer.h">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vk_platform.h">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan.h">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan.hpp">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_android.h">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_beta.h">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_core.h">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_directfb.h">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_enums.hpp">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_extension_inspection.hpp">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_format_traits.hpp">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_fuchsia.h">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_funcs.hpp">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_ggp.h">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_handles.hpp">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_hash.hpp">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_hpp_macros.hpp">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_ios.h">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_macos.h">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_metal.h">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_profiles.hpp">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_raii.hpp">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_screen.h">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_shared.hpp">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_static_assertions.hpp">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_structs.hpp">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_to_string.hpp">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_vi.h">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_video.hpp">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_wayland.h">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_win32.h">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_xcb.h">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_xlib.h">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_xlib_xrandr.h">
-      <Filter>Source\ThirdParty\vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\utility\vk_format_utils.h">
-      <Filter>Source\ThirdParty\vulkan\utility</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vk_video\vulkan_video_codec_h264std.h">
-      <Filter>Source\ThirdParty\vulkan\vk_video</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vk_video\vulkan_video_codec_h264std_decode.h">
-      <Filter>Source\ThirdParty\vulkan\vk_video</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vk_video\vulkan_video_codec_h264std_encode.h">
-      <Filter>Source\ThirdParty\vulkan\vk_video</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vk_video\vulkan_video_codec_h265std.h">
-      <Filter>Source\ThirdParty\vulkan\vk_video</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vk_video\vulkan_video_codec_h265std_decode.h">
-      <Filter>Source\ThirdParty\vulkan\vk_video</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vk_video\vulkan_video_codec_h265std_encode.h">
-      <Filter>Source\ThirdParty\vulkan\vk_video</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vk_video\vulkan_video_codecs_common.h">
-      <Filter>Source\ThirdParty\vulkan\vk_video</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanInclude.h">
       <Filter>Source\Render\Vulkan</Filter>
@@ -563,28 +428,202 @@
     <ClInclude Include="Source\Engine\Render\RenderSettings.h">
       <Filter>Source\Render</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\dxc\dxcapi.h">
-      <Filter>Source\ThirdParty\dxc</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\ThirdParty\dxc\WinAdapter.h">
-      <Filter>Source\ThirdParty\dxc</Filter>
-    </ClInclude>
     <ClInclude Include="Source\Engine\Render\ShaderCompiler.h">
       <Filter>Source\Render</Filter>
     </ClInclude>
+    <ClInclude Include="src\third_party\dxc\dxcapi.h">
+      <Filter>src\third_party\dxc</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\dxc\WinAdapter.h">
+      <Filter>src\third_party\dxc</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\imgui\imconfig.h">
+      <Filter>src\third_party\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\imgui\imgui.h">
+      <Filter>src\third_party\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\imgui\imgui_internal.h">
+      <Filter>src\third_party\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\imgui\imstb_rectpack.h">
+      <Filter>src\third_party\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\imgui\imstb_textedit.h">
+      <Filter>src\third_party\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\imgui\imstb_truetype.h">
+      <Filter>src\third_party\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\imgui\backends\imgui_impl_vulkan.h">
+      <Filter>src\third_party\imgui\backends</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\imgui\backends\imgui_impl_win32.h">
+      <Filter>src\third_party\imgui\backends</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vk_enum_string_helper.h">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vk_icd.h">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vk_layer.h">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vk_platform.h">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan.h">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan.hpp">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_android.h">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_beta.h">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_core.h">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_directfb.h">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_enums.hpp">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_extension_inspection.hpp">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_format_traits.hpp">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_fuchsia.h">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_funcs.hpp">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_ggp.h">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_handles.hpp">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_hash.hpp">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_hpp_macros.hpp">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_ios.h">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_macos.h">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_metal.h">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_profiles.hpp">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_raii.hpp">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_screen.h">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_shared.hpp">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_static_assertions.hpp">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_structs.hpp">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_to_string.hpp">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_vi.h">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_video.hpp">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_wayland.h">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_win32.h">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_xcb.h">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_xlib.h">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vulkan_xlib_xrandr.h">
+      <Filter>src\third_party\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\utility\vk_format_utils.h">
+      <Filter>src\third_party\vulkan\utility</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vk_video\vulkan_video_codec_h264std.h">
+      <Filter>src\third_party\vulkan\vk_video</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vk_video\vulkan_video_codec_h264std_decode.h">
+      <Filter>src\third_party\vulkan\vk_video</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vk_video\vulkan_video_codec_h264std_encode.h">
+      <Filter>src\third_party\vulkan\vk_video</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vk_video\vulkan_video_codec_h265std.h">
+      <Filter>src\third_party\vulkan\vk_video</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vk_video\vulkan_video_codec_h265std_decode.h">
+      <Filter>src\third_party\vulkan\vk_video</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vk_video\vulkan_video_codec_h265std_encode.h">
+      <Filter>src\third_party\vulkan\vk_video</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\vulkan\vk_video\vulkan_video_codecs_common.h">
+      <Filter>src\third_party\vulkan\vk_video</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\tinyobjloader\tiny_obj_loader.h">
+      <Filter>src\third_party\tinyobjloader</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\stb\stb_image.h">
+      <Filter>src\third_party\stb</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\core\types.h">
+      <Filter>src\sm\core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\core\assert.h">
+      <Filter>src\sm\core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\memory\arena.h">
+      <Filter>src\sm\memory</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Source\Engine\ThirdParty\imgui\vulkan\generate_spv.sh">
-      <Filter>Source\ThirdParty\imgui\vulkan</Filter>
-    </None>
-    <None Include="Source\Engine\ThirdParty\imgui\vulkan\glsl_shader.frag">
-      <Filter>Source\ThirdParty\imgui\vulkan</Filter>
-    </None>
-    <None Include="Source\Engine\ThirdParty\imgui\vulkan\glsl_shader.vert">
-      <Filter>Source\ThirdParty\imgui\vulkan</Filter>
-    </None>
     <None Include="Source\Engine\Render\Vulkan\VulkanFunctionsManifest.inl">
       <Filter>Source\Render\Vulkan</Filter>
+    </None>
+    <None Include="src\third_party\imgui\vulkan\generate_spv.sh">
+      <Filter>src\third_party\imgui\vulkan</Filter>
+    </None>
+    <None Include="src\third_party\imgui\vulkan\glsl_shader.frag">
+      <Filter>src\third_party\imgui\vulkan</Filter>
+    </None>
+    <None Include="src\third_party\imgui\vulkan\glsl_shader.vert">
+      <Filter>src\third_party\imgui\vulkan</Filter>
+    </None>
+    <None Include="src\third_party\vulkan\vulkan.cppm">
+      <Filter>src\third_party\vulkan</Filter>
     </None>
   </ItemGroup>
 </Project>

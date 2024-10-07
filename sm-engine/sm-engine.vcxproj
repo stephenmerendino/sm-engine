@@ -19,7 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Source\Engine\Core\Assert.cpp" />
+    <ClCompile Include="Source\Engine\Core\Assert_Old.cpp" />
     <ClCompile Include="Source\Engine\Core\Color.cpp" />
     <ClCompile Include="Source\Engine\Core\Debug.cpp" />
     <ClCompile Include="Source\Engine\Core\File.cpp" />
@@ -63,16 +63,21 @@
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanSync.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanTexture.cpp" />
     <ClCompile Include="Source\Engine\Render\Window.cpp" />
-    <ClCompile Include="Source\Engine\ThirdParty\imgui\backends\imgui_impl_vulkan.cpp" />
-    <ClCompile Include="Source\Engine\ThirdParty\imgui\backends\imgui_impl_win32.cpp" />
-    <ClCompile Include="Source\Engine\ThirdParty\imgui\imgui.cpp" />
-    <ClCompile Include="Source\Engine\ThirdParty\imgui\imgui_demo.cpp" />
-    <ClCompile Include="Source\Engine\ThirdParty\imgui\imgui_draw.cpp" />
-    <ClCompile Include="Source\Engine\ThirdParty\imgui\imgui_tables.cpp" />
-    <ClCompile Include="Source\Engine\ThirdParty\imgui\imgui_widgets.cpp" />
     <ClCompile Include="Source\Engine\Thread\CriticalSection.cpp" />
     <ClCompile Include="Source\Engine\Thread\Event.cpp" />
     <ClCompile Include="Source\Engine\Thread\Thread.cpp" />
+    <ClCompile Include="src\sm\core\assert.cpp" />
+    <ClCompile Include="src\sm\memory\arena.cpp" />
+    <ClCompile Include="src\third_party\imgui\backends\imgui_impl_vulkan.cpp" />
+    <ClCompile Include="src\third_party\imgui\backends\imgui_impl_win32.cpp" />
+    <ClCompile Include="src\third_party\imgui\imgui.cpp" />
+    <ClCompile Include="src\third_party\imgui\imgui_demo.cpp" />
+    <ClCompile Include="src\third_party\imgui\imgui_draw.cpp" />
+    <ClCompile Include="src\third_party\imgui\imgui_tables.cpp" />
+    <ClCompile Include="src\third_party\imgui\imgui_widgets.cpp" />
+    <None Include="src\third_party\vulkan\vulkan.cppm">
+      <FileType>Document</FileType>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Engine\Config.h" />
@@ -127,73 +132,85 @@
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanSync.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanTexture.h" />
     <ClInclude Include="Source\Engine\Render\Window.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\dxc\dxcapi.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\dxc\WinAdapter.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\imgui\backends\imgui_impl_vulkan.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\imgui\backends\imgui_impl_win32.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\imgui\imconfig.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\imgui\imgui.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\imgui\imgui_internal.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\imgui\imstb_rectpack.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\imgui\imstb_textedit.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\imgui\imstb_truetype.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\stb\stb_image.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\tinyobjloader\tiny_obj_loader.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\utility\vk_format_utils.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vk_enum_string_helper.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vk_icd.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vk_layer.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vk_platform.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vk_video\vulkan_video_codecs_common.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vk_video\vulkan_video_codec_h264std.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vk_video\vulkan_video_codec_h264std_decode.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vk_video\vulkan_video_codec_h264std_encode.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vk_video\vulkan_video_codec_h265std.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vk_video\vulkan_video_codec_h265std_decode.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vk_video\vulkan_video_codec_h265std_encode.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan.hpp" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_android.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_beta.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_core.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_directfb.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_enums.hpp" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_extension_inspection.hpp" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_format_traits.hpp" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_fuchsia.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_funcs.hpp" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_ggp.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_handles.hpp" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_hash.hpp" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_hpp_macros.hpp" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_ios.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_macos.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_metal.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_profiles.hpp" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_raii.hpp" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_screen.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_shared.hpp" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_static_assertions.hpp" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_structs.hpp" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_to_string.hpp" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_vi.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_video.hpp" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_wayland.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_win32.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_xcb.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_xlib.h" />
-    <ClInclude Include="Source\Engine\ThirdParty\vulkan\vulkan_xlib_xrandr.h" />
     <ClInclude Include="Source\Engine\Thread\AtomicUtil.h" />
     <ClInclude Include="Source\Engine\Thread\CriticalSection.h" />
     <ClInclude Include="Source\Engine\Thread\Event.h" />
     <ClInclude Include="Source\Engine\Thread\Thread.h" />
     <ClInclude Include="Source\Engine\Thread\ThreadSafeQueue.h" />
+    <ClInclude Include="src\sm\core\assert.h" />
+    <ClInclude Include="src\sm\core\types.h" />
+    <ClInclude Include="src\sm\memory\arena.h" />
+    <ClInclude Include="src\third_party\dxc\dxcapi.h" />
+    <ClInclude Include="src\third_party\dxc\WinAdapter.h" />
+    <ClInclude Include="src\third_party\imgui\backends\imgui_impl_vulkan.h" />
+    <ClInclude Include="src\third_party\imgui\backends\imgui_impl_win32.h" />
+    <ClInclude Include="src\third_party\imgui\imconfig.h" />
+    <ClInclude Include="src\third_party\imgui\imgui.h" />
+    <ClInclude Include="src\third_party\imgui\imgui_internal.h" />
+    <ClInclude Include="src\third_party\imgui\imstb_rectpack.h" />
+    <ClInclude Include="src\third_party\imgui\imstb_textedit.h" />
+    <ClInclude Include="src\third_party\imgui\imstb_truetype.h" />
+    <ClInclude Include="src\third_party\stb\stb_image.h" />
+    <ClInclude Include="src\third_party\tinyobjloader\tiny_obj_loader.h" />
+    <ClInclude Include="src\third_party\vulkan\utility\vk_format_utils.h" />
+    <ClInclude Include="src\third_party\vulkan\vk_enum_string_helper.h" />
+    <ClInclude Include="src\third_party\vulkan\vk_icd.h" />
+    <ClInclude Include="src\third_party\vulkan\vk_layer.h" />
+    <ClInclude Include="src\third_party\vulkan\vk_platform.h" />
+    <ClInclude Include="src\third_party\vulkan\vk_video\vulkan_video_codecs_common.h" />
+    <ClInclude Include="src\third_party\vulkan\vk_video\vulkan_video_codec_h264std.h" />
+    <ClInclude Include="src\third_party\vulkan\vk_video\vulkan_video_codec_h264std_decode.h" />
+    <ClInclude Include="src\third_party\vulkan\vk_video\vulkan_video_codec_h264std_encode.h" />
+    <ClInclude Include="src\third_party\vulkan\vk_video\vulkan_video_codec_h265std.h" />
+    <ClInclude Include="src\third_party\vulkan\vk_video\vulkan_video_codec_h265std_decode.h" />
+    <ClInclude Include="src\third_party\vulkan\vk_video\vulkan_video_codec_h265std_encode.h" />
+    <ClInclude Include="src\third_party\vulkan\vulkan.h" />
+    <ClInclude Include="src\third_party\vulkan\vulkan.hpp" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_android.h" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_beta.h" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_core.h" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_directfb.h" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_enums.hpp" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_extension_inspection.hpp" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_format_traits.hpp" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_fuchsia.h" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_funcs.hpp" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_ggp.h" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_handles.hpp" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_hash.hpp" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_hpp_macros.hpp" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_ios.h" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_macos.h" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_metal.h" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_profiles.hpp" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_raii.hpp" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_screen.h" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_shared.hpp" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_static_assertions.hpp" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_structs.hpp" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_to_string.hpp" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_vi.h" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_video.hpp" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_wayland.h" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_win32.h" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_xcb.h" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_xlib.h" />
+    <ClInclude Include="src\third_party\vulkan\vulkan_xlib_xrandr.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Source\Engine\Render\Vulkan\VulkanFunctionsManifest.inl" />
-    <None Include="Source\Engine\ThirdParty\imgui\vulkan\generate_spv.sh" />
-    <None Include="Source\Engine\ThirdParty\imgui\vulkan\glsl_shader.frag" />
-    <None Include="Source\Engine\ThirdParty\imgui\vulkan\glsl_shader.vert" />
+    <None Include="src\third_party\imgui\vulkan\generate_spv.sh" />
+    <None Include="src\third_party\imgui\vulkan\glsl_shader.frag">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </ExcludedFromBuild>
+    </None>
+    <None Include="src\third_party\imgui\vulkan\glsl_shader.vert" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
