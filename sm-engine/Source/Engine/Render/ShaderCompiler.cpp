@@ -1,7 +1,7 @@
 #include "Engine/Render/ShaderCompiler.h"
 #include "Engine/Config.h"
 #include "Engine/Core/Assert.h"
-#include "Engine/Core/Debug.h"
+#include "Engine/Core/Debug_Old.h"
 #include "Engine/Platform/WindowsInclude.h"
 #include "Engine/Platform/WindowsUtils.h"
 #include "Engine/ThirdParty/dxc/dxcapi.h"

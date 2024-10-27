@@ -76,9 +76,6 @@
     <Filter Include="src\sm\memory">
       <UniqueIdentifier>{44feb134-ed71-4451-bdcd-9c22e7c0ffd3}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\sm\containers">
-      <UniqueIdentifier>{90151cef-842d-4e66-a8b1-6428d414b673}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\sm\render">
       <UniqueIdentifier>{340cb731-5beb-4d55-9de7-02fc25190aa0}</UniqueIdentifier>
     </Filter>
@@ -87,6 +84,15 @@
     </Filter>
     <Filter Include="src\sm\math">
       <UniqueIdentifier>{27a4c66f-1286-462a-8ec0-4170ca72e56b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\sm\platform">
+      <UniqueIdentifier>{4e23b6d2-0d7f-43e8-ba19-9ded377d74fd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\sm\platform\win32">
+      <UniqueIdentifier>{88985001-04b0-4425-8cc8-5e2a4d804e6a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\sm\platform\win32\core">
+      <UniqueIdentifier>{506c06d5-53de-403a-84b9-1456db3a7f57}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -108,7 +114,7 @@
     <ClCompile Include="Source\Engine\Core\Time.cpp">
       <Filter>Source\Core</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Core\Debug.cpp">
+    <ClCompile Include="Source\Engine\Core\Debug_Old.cpp">
       <Filter>Source\Core</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Core\Color.cpp">
@@ -252,11 +258,14 @@
     <ClCompile Include="src\third_party\imgui\backends\imgui_impl_win32.cpp">
       <Filter>src\third_party\imgui\backends</Filter>
     </ClCompile>
-    <ClCompile Include="src\sm\core\assert.cpp">
-      <Filter>src\sm\core</Filter>
-    </ClCompile>
     <ClCompile Include="src\sm\memory\arena.cpp">
       <Filter>src\sm\memory</Filter>
+    </ClCompile>
+    <ClCompile Include="src\sm\platform\win32\core\win32_assert.cpp">
+      <Filter>src\sm\platform\win32\core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\sm\platform\win32\core\win32_debug.cpp">
+      <Filter>src\sm\platform\win32\core</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -314,7 +323,7 @@
     <ClInclude Include="Source\Engine\Core\BitFlags.h">
       <Filter>Source\Core</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Core\Debug.h">
+    <ClInclude Include="Source\Engine\Core\Debug_Old.h">
       <Filter>Source\Core</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Core\Color.h">
@@ -607,6 +616,18 @@
     </ClInclude>
     <ClInclude Include="src\sm\memory\arena.h">
       <Filter>src\sm\memory</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\core\debug.h">
+      <Filter>src\sm\core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\core\bits.h">
+      <Filter>src\sm\core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\platform\win32\win32_include.h">
+      <Filter>src\sm\platform\win32</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\core\static_array.h">
+      <Filter>src\sm\core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -4,7 +4,7 @@
 #include "Engine/Render/Vulkan/VulkanSwapchain.h"
 #include "Engine/Config.h"
 #include "Engine/Core/Assert.h"
-#include "Engine/Core/Debug.h"
+#include "Engine/Core/Debug_Old.h"
 #include <vector>
 #include <set>
 

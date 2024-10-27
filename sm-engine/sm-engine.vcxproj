@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -21,7 +21,7 @@
   <ItemGroup>
     <ClCompile Include="Source\Engine\Core\Assert_Old.cpp" />
     <ClCompile Include="Source\Engine\Core\Color.cpp" />
-    <ClCompile Include="Source\Engine\Core\Debug.cpp" />
+    <ClCompile Include="Source\Engine\Core\Debug_Old.cpp" />
     <ClCompile Include="Source\Engine\Core\File.cpp" />
     <ClCompile Include="Source\Engine\Core\Hash.cpp" />
     <ClCompile Include="Source\Engine\Core\Macros.cpp" />
@@ -66,8 +66,18 @@
     <ClCompile Include="Source\Engine\Thread\CriticalSection.cpp" />
     <ClCompile Include="Source\Engine\Thread\Event.cpp" />
     <ClCompile Include="Source\Engine\Thread\Thread.cpp" />
-    <ClCompile Include="src\sm\core\assert.cpp" />
     <ClCompile Include="src\sm\memory\arena.cpp" />
+    <ClCompile Include="src\sm\platform\win32\core\win32_assert.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="src\sm\platform\win32\core\win32_debug.cpp" />
     <ClCompile Include="src\third_party\imgui\backends\imgui_impl_vulkan.cpp" />
     <ClCompile Include="src\third_party\imgui\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="src\third_party\imgui\imgui.cpp" />
@@ -84,7 +94,7 @@
     <ClInclude Include="Source\Engine\Core\Assert.h" />
     <ClInclude Include="Source\Engine\Core\BitFlags.h" />
     <ClInclude Include="Source\Engine\Core\Color.h" />
-    <ClInclude Include="Source\Engine\Core\Debug.h" />
+    <ClInclude Include="Source\Engine\Core\Debug_Old.h" />
     <ClInclude Include="Source\Engine\Core\File.h" />
     <ClInclude Include="Source\Engine\Core\Guid.h" />
     <ClInclude Include="Source\Engine\Core\Hash.h" />
@@ -138,8 +148,12 @@
     <ClInclude Include="Source\Engine\Thread\Thread.h" />
     <ClInclude Include="Source\Engine\Thread\ThreadSafeQueue.h" />
     <ClInclude Include="src\sm\core\assert.h" />
+    <ClInclude Include="src\sm\core\bits.h" />
+    <ClInclude Include="src\sm\core\debug.h" />
+    <ClInclude Include="src\sm\core\static_array.h" />
     <ClInclude Include="src\sm\core\types.h" />
     <ClInclude Include="src\sm\memory\arena.h" />
+    <ClInclude Include="src\sm\platform\win32\win32_include.h" />
     <ClInclude Include="src\third_party\dxc\dxcapi.h" />
     <ClInclude Include="src\third_party\dxc\WinAdapter.h" />
     <ClInclude Include="src\third_party\imgui\backends\imgui_impl_vulkan.h" />

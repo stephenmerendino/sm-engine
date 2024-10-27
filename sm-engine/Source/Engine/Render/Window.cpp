@@ -1,6 +1,6 @@
 #include "Engine/Render/Window.h"
 #include "Engine/Core/Assert.h"
-#include "Engine/Core/Debug.h"
+#include "Engine/Core/Debug_Old.h"
 #include "Engine/Core/Macros.h"
 #include "Engine/Platform/WindowsUtils.h"
 #include <cstdlib>
