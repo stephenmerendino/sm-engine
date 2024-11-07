@@ -1,8 +1,8 @@
 #pragma once
 
-namespace sm
+namespace sm::debug
 {
-    inline constexpr bool is_debug()
+    inline constexpr bool is_enabled()
     {
     #if defined(NDEBUG)
         return false;
@@ -11,5 +11,5 @@ namespace sm
     #endif
     }
 
-    void debug_printf(const char* format, ...);
+    void printf(const char* format, ...);
 }

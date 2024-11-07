@@ -5,33 +5,33 @@
 #include <cstdlib>
 #include <cstring>
 
-using namespace sm;
+using namespace sm::memory;
 
-memory_arena_t* sm::arena_init(size_t num_bytes)
+sm::memory::arena_t* sm::memory::init_arena(size_t num_bytes)
 {
-    memory_arena_t* arena = new memory_arena_t;
-    arena->memory = malloc(num_bytes);
+    arena_t* arena = new arena_t;
+    arena->memory = ::malloc(num_bytes);
     SM_ASSERT(arena->memory);
     arena->size_bytes = num_bytes;
     arena->head_offset_bytes = 0;
     return arena;
 }
 
-void sm::arena_destroy(memory_arena_t* arena)
+void sm::memory::destroy_arena(arena_t* arena)
 {
     SM_ASSERT(arena);
     SM_ASSERT(arena->memory);
-    free(arena->memory);
+    ::free(arena->memory);
     delete arena;
 }
 
-void sm::arena_reset(memory_arena_t* arena)
+void sm::memory::reset_arena(arena_t* arena)
 {
     SM_ASSERT(arena);
     arena->head_offset_bytes = 0;
 }
 
-void* sm::arena_alloc(memory_arena_t* arena, size_t num_bytes)
+void* sm::memory::alloc(arena_t* arena, size_t num_bytes)
 {
     SM_ASSERT(arena);
     SM_ASSERT(arena->head_offset_bytes + num_bytes <= arena->size_bytes);
@@ -40,7 +40,7 @@ void* sm::arena_alloc(memory_arena_t* arena, size_t num_bytes)
     return allocated_mem;
 }
 
-void* sm::arena_alloc_zero(memory_arena_t* arena, size_t num_bytes)
+void* sm::memory::alloc_zero(arena_t* arena, size_t num_bytes)
 {
     SM_ASSERT(arena);
     SM_ASSERT(arena->head_offset_bytes + num_bytes <= arena->size_bytes);
@@ -50,7 +50,7 @@ void* sm::arena_alloc_zero(memory_arena_t* arena, size_t num_bytes)
     return allocated_mem;
 }
 
-void sm::arena_free(memory_arena_t* arena, size_t num_bytes)
+void sm::memory::free(arena_t* arena, size_t num_bytes)
 {
     SM_ASSERT(arena);
     SM_ASSERT(arena->head_offset_bytes >= num_bytes);

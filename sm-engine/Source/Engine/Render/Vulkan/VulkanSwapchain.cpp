@@ -3,7 +3,7 @@
 #include "Engine/Core/Debug_Old.h"
 #include "Engine/Math/MathUtils.h"
 #include "Engine/Render/Vulkan/VulkanCommands.h"
-#include "Engine/Render/Window.h"
+#include "Engine/Render/Window_old.h"
 
 static VkSurfaceFormatKHR ChooseSurfaceFormat(std::vector<VkSurfaceFormatKHR> formats)
 {

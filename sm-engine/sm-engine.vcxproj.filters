@@ -94,12 +94,15 @@
     <Filter Include="src\sm\platform\win32\core">
       <UniqueIdentifier>{506c06d5-53de-403a-84b9-1456db3a7f57}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\sm\platform\win32\render">
+      <UniqueIdentifier>{ecbe822e-e576-410b-aba9-85d1c34607bd}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Engine\Core\Assert_Old.cpp">
       <Filter>Source\Core</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Render\Window.cpp">
+    <ClCompile Include="Source\Engine\Render\Window_old.cpp">
       <Filter>Source\Render</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Math\MathUtils.cpp">
@@ -267,6 +270,12 @@
     <ClCompile Include="src\sm\platform\win32\core\win32_debug.cpp">
       <Filter>src\sm\platform\win32\core</Filter>
     </ClCompile>
+    <ClCompile Include="src\sm\core\string.cpp">
+      <Filter>src\sm\core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\sm\platform\render\win32_window.cpp">
+      <Filter>src\sm\platform\win32\render</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Engine\Core\Assert.h">
@@ -278,7 +287,7 @@
     <ClInclude Include="Source\Engine\Platform\WindowsInclude.h">
       <Filter>Source\Platform</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Render\Window.h">
+    <ClInclude Include="Source\Engine\Render\Window_old.h">
       <Filter>Source\Render</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Core\Types.h">
@@ -626,8 +635,17 @@
     <ClInclude Include="src\sm\platform\win32\win32_include.h">
       <Filter>src\sm\platform\win32</Filter>
     </ClInclude>
-    <ClInclude Include="src\sm\core\static_array.h">
+    <ClInclude Include="src\sm\core\array.h">
       <Filter>src\sm\core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\core\string.h">
+      <Filter>src\sm\core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\render\window.h">
+      <Filter>src\sm\render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\platform\platform_handle.h">
+      <Filter>src\sm\platform</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
