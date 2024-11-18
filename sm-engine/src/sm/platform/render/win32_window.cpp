@@ -4,7 +4,7 @@
 #include "sm/memory/arena.h"
 #include "sm/platform/win32/win32_include.h"
 
-using namespace sm::render;
+using namespace sm;
 
 static const wchar_t* WINDOW_CLASS_NAME = L"Window Class Name";
 
@@ -60,7 +60,7 @@ static void update_window_position(window_t* window)
 	window->y = pos.top;
 }
 
-window_t* sm::render::init_window(sm::memory::arena_t* arena, const char* name, u32 width, u32 height, bool resizable)
+window_t* sm::init_window(sm::arena_t* arena, const char* name, u32 width, u32 height, bool resizable)
 {
 	SetProcessDPIAware(); // make sure window is created with scaling handled
 
@@ -90,14 +90,14 @@ window_t* sm::render::init_window(sm::memory::arena_t* arena, const char* name, 
 	i32 create_width = full_size.right - full_size.left;
 	i32 create_height = full_size.bottom - full_size.top;
 
-	window_t* window = (window_t*)sm::memory::alloc_zero(arena, sizeof(window_t));
+	window_t* window = (window_t*)sm::alloc_zero(arena, sizeof(window_t));
 	window->name = name;
 	window->was_resized = false;
 	window->was_closed = false;
 	window->is_minimized = false;
 	window->is_moving = false;
 
-    wchar_t* unicode_name = sm::to_wchar_string(arena, name);
+	wchar_t* unicode_name = sm::to_wchar_string(arena, name);
 
 	HWND hwnd = CreateWindowEx(0,
 						    WINDOW_CLASS_NAME,
@@ -124,4 +124,8 @@ window_t* sm::render::init_window(sm::memory::arena_t* arena, const char* name, 
 	::ShowWindow(hwnd, SW_SHOW);
 
 	return window;
+}
+
+void sm::add_window_msg_cb(window_t& window, window_msg_cb cb, void* args)
+{
 }

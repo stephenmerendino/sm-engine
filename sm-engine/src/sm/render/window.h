@@ -4,12 +4,12 @@
 #include "sm/core/array.h"
 #include "sm/platform/platform_handle.h"
 
-namespace sm::memory
+namespace sm
 {
     struct arena_t;
 }
 
-namespace sm::render
+namespace sm
 {
     enum class window_msg_type_t
     {
@@ -40,5 +40,6 @@ namespace sm::render
         byte_t padding[4];
     };
 
-    window_t* init_window(sm::memory::arena_t* arena, const char* name, u32 width, u32 height, bool resizable);
+    window_t* init_window(sm::arena_t* arena, const char* name, u32 width, u32 height, bool resizable);
+    void add_window_msg_cb(window_t& window, window_msg_cb cb, void* args);
 }

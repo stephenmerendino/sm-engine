@@ -2,7 +2,7 @@
 
 #include "sm/core/types.h"
 
-namespace sm::memory
+namespace sm
 {
     struct arena_t
     {

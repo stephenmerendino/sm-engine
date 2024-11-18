@@ -1,6 +1,6 @@
 #pragma once
 
-namespace sm::debug
+namespace sm
 {
     inline constexpr bool is_enabled()
     {
