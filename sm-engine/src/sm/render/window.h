@@ -17,10 +17,10 @@ namespace sm
         KEY_DOWN
     };
 
-    typedef void (*window_msg_cb)(window_msg_type_t msg_type, u64 msg_data, void* user_args);
+    typedef void (*window_msg_cb_t)(window_msg_type_t msg_type, u64 msg_data, void* user_args);
     struct window_msg_cb_with_args_t 
     {
-        window_msg_cb cb	= nullptr;
+        window_msg_cb_t cb	= nullptr;
         void* args			= nullptr;
     };
 
@@ -37,9 +37,10 @@ namespace sm
         bool was_closed;
         bool is_moving;
         sm::static_array_t<window_msg_cb_with_args_t> msg_cbs;
-        byte_t padding[4];
+        u8 num_cbs;
+        byte_t padding[3];
     };
 
     window_t* init_window(sm::arena_t* arena, const char* name, u32 width, u32 height, bool resizable);
-    void add_window_msg_cb(window_t& window, window_msg_cb cb, void* args);
+    void add_window_msg_cb(window_t& window, window_msg_cb_t cb, void* args);
 }

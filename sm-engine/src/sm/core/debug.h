@@ -11,5 +11,5 @@ namespace sm
     #endif
     }
 
-    void printf(const char* format, ...);
+    void debug_printf(const char* format, ...);
 }
