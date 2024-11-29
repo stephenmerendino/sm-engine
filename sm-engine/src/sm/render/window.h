@@ -13,8 +13,10 @@ namespace sm
 {
     enum class window_msg_type_t
     {
+        UNKNOWN = -1,
         KEY_UP,
-        KEY_DOWN
+        KEY_DOWN,
+        CLOSE_WINDOW
     };
 
     typedef void (*window_msg_cb_t)(window_msg_type_t msg_type, u64 msg_data, void* user_args);
@@ -42,5 +44,7 @@ namespace sm
     };
 
     window_t* init_window(sm::arena_t* arena, const char* name, u32 width, u32 height, bool resizable);
-    void add_window_msg_cb(window_t& window, window_msg_cb_t cb, void* args);
+    void add_window_msg_cb(window_t* window, window_msg_cb_t cb, void* args);
+    void update_window(window_t* window);
+    void set_title(window_t* window, const char* new_title);
 }

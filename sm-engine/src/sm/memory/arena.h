@@ -12,6 +12,7 @@ namespace sm
     };
 
     arena_t* init_arena(size_t num_bytes);
+    arena_t* init_arena(void* arena_memory, size_t num_bytes);
     void     destroy_arena(arena_t* arena);
     void     reset_arena(arena_t* arena);
 

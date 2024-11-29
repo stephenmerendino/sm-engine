@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Engine/Core/Types.h"
-#include "Engine/Core/Color.h"
+#include "Engine/Core/Color_old.h"
 #include "Engine/Math/Mat44.h"
 #include "Engine/Render/Mesh.h"
 #include "Engine/Render/Vertex.h"

@@ -17,6 +17,16 @@ sm::arena_t* sm::init_arena(size_t num_bytes)
     return arena;
 }
 
+arena_t* sm::init_arena(void* arena_memory, size_t num_bytes)
+{
+    SM_ASSERT(arena_memory);
+    arena_t* arena = new arena_t;
+    arena->memory = arena_memory;
+    arena->size_bytes = num_bytes;
+    arena->head_offset_bytes = 0;
+    return arena;
+}
+
 void sm::destroy_arena(arena_t* arena)
 {
     SM_ASSERT(arena);

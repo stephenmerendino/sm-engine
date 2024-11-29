@@ -1,25 +1,26 @@
 #pragma once
 
-#include "Engine/Core/Color.h"
-#include "Engine/Core/Types.h"
-#include "Engine/Core/Macros.h"
+//#include "Engine/Core/Color.h"
+#include "sm/core/color.h"
+#include "sm/core/types.h"
+//#include "Engine/Core/Macros.h"
 #include <vector>
 #include <string>
 
-static const U32 WINDOW_WIDTH = 1920;
-static const U32 WINDOW_HEIGHT = 1080;
+static const sm::u32 WINDOW_WIDTH = 1920;
+static const sm::u32 WINDOW_HEIGHT = 1080;
 static const bool WINDOW_ALLOW_RESIZE = true;
 
-static const U32 MAX_NUM_FRAMES_IN_FLIGHT = 2;
+static const sm::u32 MAX_NUM_FRAMES_IN_FLIGHT = 2;
 
-static const F32 FPS_CALC_TIME_INTERVAL_SECONDS = 0.1f;
-static const F32 MAX_FPS = 240.0f;
+static const sm::f32 FPS_CALC_TIME_INTERVAL_SECONDS = 0.1f;
+static const sm::f32 MAX_FPS = 240.0f;
 
 static const char* SHADERS_PATH = "../../Assets/Shaders/";
 static const char* TEXTURES_PATH = "../../Assets/Textures/";
 static const char* MODELS_PATH = "../../Assets/Models/";
 
-static const ColorF32 CLEAR_COLOR = ColorF32(0.20f, 0.20f, 0.20f, 1.0f);
+static const sm::color_f32_t CLEAR_COLOR { .r = 0.20f, .g = 0.20f, .b = 0.20f, .a = 1.0f };
 
 #if defined(NDEBUG)
 	static const std::vector<const char*> INSTANCE_EXTENSIONS = {

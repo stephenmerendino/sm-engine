@@ -1,6 +1,6 @@
 #include "Engine/Thread/Thread.h"
 #include "Engine/Core/Assert.h"
-#include "Engine/Core/Time.h"
+#include "Engine/Core/Time_old.h"
 
 Thread::Thread()
 	:m_func(NULL)

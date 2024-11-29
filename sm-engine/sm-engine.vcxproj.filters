@@ -114,13 +114,13 @@
     <ClCompile Include="Source\Engine\Core\Macros.cpp">
       <Filter>Source\Core</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Core\Time.cpp">
+    <ClCompile Include="Source\Engine\Core\Time_old.cpp">
       <Filter>Source\Core</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Core\Debug_Old.cpp">
       <Filter>Source\Core</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Core\Color.cpp">
+    <ClCompile Include="Source\Engine\Core\Color_old.cpp">
       <Filter>Source\Core</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Core\File.cpp">
@@ -276,6 +276,9 @@
     <ClCompile Include="src\sm\platform\render\win32_window.cpp">
       <Filter>src\sm\platform\win32\render</Filter>
     </ClCompile>
+    <ClCompile Include="src\sm\platform\win32\core\time.cpp">
+      <Filter>src\sm\platform\win32\core</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Engine\Core\Assert.h">
@@ -293,7 +296,7 @@
     <ClInclude Include="Source\Engine\Core\Types.h">
       <Filter>Source\Core</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Config.h">
+    <ClInclude Include="Source\Engine\Config_old.h">
       <Filter>Source</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Math\Vec2.h">
@@ -326,7 +329,7 @@
     <ClInclude Include="Source\Engine\Math\IVec2.h">
       <Filter>Source\Math</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Core\Time.h">
+    <ClInclude Include="Source\Engine\Core\Time_old.h">
       <Filter>Source\Core</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Core\BitFlags.h">
@@ -335,7 +338,7 @@
     <ClInclude Include="Source\Engine\Core\Debug_Old.h">
       <Filter>Source\Core</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Core\Color.h">
+    <ClInclude Include="Source\Engine\Core\Color_old.h">
       <Filter>Source\Core</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Core\File.h">
@@ -646,6 +649,15 @@
     </ClInclude>
     <ClInclude Include="src\sm\platform\platform_handle.h">
       <Filter>src\sm\platform</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\core\time.h">
+      <Filter>src\sm\core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\config.h">
+      <Filter>src\sm</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\core\color.h">
+      <Filter>src\sm\core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

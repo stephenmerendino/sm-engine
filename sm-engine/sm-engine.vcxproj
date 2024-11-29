@@ -20,13 +20,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Engine\Core\Assert_Old.cpp" />
-    <ClCompile Include="Source\Engine\Core\Color.cpp" />
+    <ClCompile Include="Source\Engine\Core\Color_old.cpp" />
     <ClCompile Include="Source\Engine\Core\Debug_Old.cpp" />
     <ClCompile Include="Source\Engine\Core\File.cpp" />
     <ClCompile Include="Source\Engine\Core\Hash.cpp" />
     <ClCompile Include="Source\Engine\Core\Macros.cpp" />
     <ClCompile Include="Source\Engine\Core\Random.cpp" />
-    <ClCompile Include="Source\Engine\Core\Time.cpp" />
+    <ClCompile Include="Source\Engine\Core\Time_old.cpp" />
     <ClCompile Include="Source\Engine\Input\InputSystem.cpp" />
     <ClCompile Include="Source\Engine\Job\JobSystem.cpp" />
     <ClCompile Include="Source\Engine\Math\IVec2.cpp" />
@@ -69,6 +69,7 @@
     <ClCompile Include="src\sm\core\string.cpp" />
     <ClCompile Include="src\sm\memory\arena.cpp" />
     <ClCompile Include="src\sm\platform\render\win32_window.cpp" />
+    <ClCompile Include="src\sm\platform\win32\core\time.cpp" />
     <ClCompile Include="src\sm\platform\win32\core\win32_assert.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
       </ExcludedFromBuild>
@@ -92,17 +93,17 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Source\Engine\Config.h" />
+    <ClInclude Include="Source\Engine\Config_old.h" />
     <ClInclude Include="Source\Engine\Core\Assert.h" />
     <ClInclude Include="Source\Engine\Core\BitFlags.h" />
-    <ClInclude Include="Source\Engine\Core\Color.h" />
+    <ClInclude Include="Source\Engine\Core\Color_old.h" />
     <ClInclude Include="Source\Engine\Core\Debug_Old.h" />
     <ClInclude Include="Source\Engine\Core\File.h" />
     <ClInclude Include="Source\Engine\Core\Guid.h" />
     <ClInclude Include="Source\Engine\Core\Hash.h" />
     <ClInclude Include="Source\Engine\Core\Macros.h" />
     <ClInclude Include="Source\Engine\Core\Random.h" />
-    <ClInclude Include="Source\Engine\Core\Time.h" />
+    <ClInclude Include="Source\Engine\Core\Time_old.h" />
     <ClInclude Include="Source\Engine\Core\Types.h" />
     <ClInclude Include="Source\Engine\Core\Utils.h" />
     <ClInclude Include="Source\Engine\Input\InputSystem.h" />
@@ -149,11 +150,14 @@
     <ClInclude Include="Source\Engine\Thread\Event.h" />
     <ClInclude Include="Source\Engine\Thread\Thread.h" />
     <ClInclude Include="Source\Engine\Thread\ThreadSafeQueue.h" />
+    <ClInclude Include="src\sm\config.h" />
     <ClInclude Include="src\sm\core\assert.h" />
     <ClInclude Include="src\sm\core\bits.h" />
+    <ClInclude Include="src\sm\core\color.h" />
     <ClInclude Include="src\sm\core\debug.h" />
     <ClInclude Include="src\sm\core\array.h" />
     <ClInclude Include="src\sm\core\string.h" />
+    <ClInclude Include="src\sm\core\time.h" />
     <ClInclude Include="src\sm\core\types.h" />
     <ClInclude Include="src\sm\memory\arena.h" />
     <ClInclude Include="src\sm\platform\platform_handle.h" />

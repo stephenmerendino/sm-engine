@@ -1,6 +1,6 @@
 #include "Engine/Render/MeshBuilder.h"
-#include "Engine/Config.h"
-#include "Engine/Core/Color.h"
+#include "Engine/Config_old.h"
+#include "Engine/Core/Color_old.h"
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "Engine/ThirdParty/tinyobjloader/tiny_obj_loader.h"
