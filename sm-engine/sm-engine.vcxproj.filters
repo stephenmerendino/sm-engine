@@ -103,6 +103,9 @@
     <Filter Include="src\sm\platform\win32\thread">
       <UniqueIdentifier>{ba7f5ed3-de3c-40ba-9b8e-a12090b8f48b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\sm\platform\win32\io">
+      <UniqueIdentifier>{16c62011-f545-48da-89a1-d885dd1fe572}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Engine\Core\Assert_Old.cpp">
@@ -129,7 +132,7 @@
     <ClCompile Include="Source\Engine\Core\Color_old.cpp">
       <Filter>Source\Core</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Core\File.cpp">
+    <ClCompile Include="Source\Engine\Core\File_old.cpp">
       <Filter>Source\Core</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Core\Hash.cpp">
@@ -288,9 +291,12 @@
     <ClCompile Include="src\sm\platform\win32\render\win32_window.cpp">
       <Filter>src\sm\platform\win32\render</Filter>
     </ClCompile>
+    <ClCompile Include="src\sm\platform\win32\io\win32_file.cpp">
+      <Filter>src\sm\platform\win32\io</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Source\Engine\Core\Assert.h">
+    <ClInclude Include="Source\Engine\Core\Assert_old.h">
       <Filter>Source\Core</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Core\Macros.h">
@@ -341,7 +347,7 @@
     <ClInclude Include="Source\Engine\Core\Time_old.h">
       <Filter>Source\Core</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Core\BitFlags.h">
+    <ClInclude Include="Source\Engine\Core\BitFlags_old.h">
       <Filter>Source\Core</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Core\Debug_Old.h">
@@ -350,7 +356,7 @@
     <ClInclude Include="Source\Engine\Core\Color_old.h">
       <Filter>Source\Core</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Core\File.h">
+    <ClInclude Include="Source\Engine\Core\File_old.h">
       <Filter>Source\Core</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Core\Utils.h">
@@ -670,6 +676,9 @@
     </ClInclude>
     <ClInclude Include="src\sm\thread\thread.h">
       <Filter>src\sm\thread</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\io\file.h">
+      <Filter>src\sm\io</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

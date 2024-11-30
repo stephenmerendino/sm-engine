@@ -1,6 +1,6 @@
 #include "Engine/Render/Vulkan/VulkanTexture.h"
 #include "Engine/Config_old.h"
-#include "Engine/Core/Assert.h"
+#include "Engine/Core/Assert_old.h"
 #include "Engine/Core/Debug_Old.h"
 #include "Engine/Math/MathUtils.h"
 #include "Engine/Render/Vulkan/VulkanCommands.h"

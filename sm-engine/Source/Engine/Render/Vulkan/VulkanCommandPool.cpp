@@ -1,6 +1,6 @@
 #include "Engine/Render/Vulkan/VulkanCommandPool.h"
 #include "Engine/Render/Vulkan/VulkanCommands.h"
-#include "Engine/Core/Assert.h"
+#include "Engine/Core/Assert_old.h"
 
 VulkanCommandPool::VulkanCommandPool()
 	:m_commandPoolHandle(VK_NULL_HANDLE)

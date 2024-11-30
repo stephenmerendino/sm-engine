@@ -1,5 +1,5 @@
 #include "Engine/Render/Vulkan/VulkanFunctions.h"
-#include "Engine/Core/Assert.h"
+#include "Engine/Core/Assert_old.h"
 
 #define VK_EXPORTED_FUNCTION(func)	PFN_##func func = VK_NULL_HANDLE;
 #define VK_GLOBAL_FUNCTION(func)	PFN_##func func = VK_NULL_HANDLE;

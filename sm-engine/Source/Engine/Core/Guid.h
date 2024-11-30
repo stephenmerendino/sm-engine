@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Engine/Core/Assert.h"
+#include "Engine/Core/Assert_old.h"
 #include "Engine/Core/Types.h"
 #include "Engine/Platform/WindowsInclude.h"
 

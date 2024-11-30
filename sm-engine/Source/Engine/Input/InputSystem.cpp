@@ -1,5 +1,5 @@
 #include "Engine/Input/InputSystem.h"
-#include "Engine/Core/BitFlags.h"
+#include "Engine/Core/BitFlags_old.h"
 #include "Engine/Core/Macros.h"
 #include "Engine/Render/Window_old.h"
 #include "Engine/ThirdParty/imgui/imgui.h"

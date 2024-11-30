@@ -1,6 +1,6 @@
 #include "Engine/Render/Vulkan/VulkanRenderPass.h"
 #include "Engine/Render/Vulkan/VulkanDevice.h"
-#include "Engine/Core/Assert.h"
+#include "Engine/Core/Assert_old.h"
 
 VulkanRenderPass::VulkanRenderPass()
 	:m_renderPassHandle(VK_NULL_HANDLE)

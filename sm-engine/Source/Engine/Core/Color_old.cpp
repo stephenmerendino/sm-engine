@@ -1,5 +1,5 @@
 #include "Engine/Core/Color_old.h"
-#include "Engine/Core/Assert.h"
+#include "Engine/Core/Assert_old.h"
 
 ColorF32::ColorF32(F32 inR, F32 inG, F32 inB, F32 inA)
 	:r(inR)

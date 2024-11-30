@@ -3,7 +3,7 @@
 
 #include "Engine/Math/MathUtils.h"
 #include "Engine/Core/Types.h"
-#include "Engine/Core/Assert.h"
+#include "Engine/Core/Assert_old.h"
 
 #include <cmath>
 

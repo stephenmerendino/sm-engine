@@ -1,5 +1,5 @@
 #include "Engine/Thread/Event.h"
-#include "Engine/Core/Assert.h"
+#include "Engine/Core/Assert_old.h"
 #include <synchapi.h>
 
 Event::Event()

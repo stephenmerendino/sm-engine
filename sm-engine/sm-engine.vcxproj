@@ -22,7 +22,7 @@
     <ClCompile Include="Source\Engine\Core\Assert_Old.cpp" />
     <ClCompile Include="Source\Engine\Core\Color_old.cpp" />
     <ClCompile Include="Source\Engine\Core\Debug_Old.cpp" />
-    <ClCompile Include="Source\Engine\Core\File.cpp" />
+    <ClCompile Include="Source\Engine\Core\File_old.cpp" />
     <ClCompile Include="Source\Engine\Core\Hash.cpp" />
     <ClCompile Include="Source\Engine\Core\Macros.cpp" />
     <ClCompile Include="Source\Engine\Core\Random.cpp" />
@@ -80,6 +80,7 @@
       </ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="src\sm\platform\win32\core\win32_debug.cpp" />
+    <ClCompile Include="src\sm\platform\win32\io\win32_file.cpp" />
     <ClCompile Include="src\sm\platform\win32\render\win32_window.cpp" />
     <ClCompile Include="src\sm\platform\win32\thread\win32_thread.cpp" />
     <ClCompile Include="src\third_party\imgui\backends\imgui_impl_vulkan.cpp" />
@@ -95,11 +96,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Engine\Config_old.h" />
-    <ClInclude Include="Source\Engine\Core\Assert.h" />
-    <ClInclude Include="Source\Engine\Core\BitFlags.h" />
+    <ClInclude Include="Source\Engine\Core\Assert_old.h" />
+    <ClInclude Include="Source\Engine\Core\BitFlags_old.h" />
     <ClInclude Include="Source\Engine\Core\Color_old.h" />
     <ClInclude Include="Source\Engine\Core\Debug_Old.h" />
-    <ClInclude Include="Source\Engine\Core\File.h" />
+    <ClInclude Include="Source\Engine\Core\File_old.h" />
     <ClInclude Include="Source\Engine\Core\Guid.h" />
     <ClInclude Include="Source\Engine\Core\Hash.h" />
     <ClInclude Include="Source\Engine\Core\Macros.h" />
@@ -160,6 +161,7 @@
     <ClInclude Include="src\sm\core\string.h" />
     <ClInclude Include="src\sm\core\time.h" />
     <ClInclude Include="src\sm\core\types.h" />
+    <ClInclude Include="src\sm\io\file.h" />
     <ClInclude Include="src\sm\memory\arena.h" />
     <ClInclude Include="src\sm\platform\platform_handle.h" />
     <ClInclude Include="src\sm\platform\win32\win32_include.h" />
