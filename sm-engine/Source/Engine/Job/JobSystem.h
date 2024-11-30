@@ -3,7 +3,7 @@
 #include "Engine/Thread/AtomicUtil.h"
 #include "Engine/Thread/CriticalSection.h"
 #include "Engine/Thread/Event.h"
-#include "Engine/Thread/Thread.h"
+#include "Engine/Thread/Thread_old.h"
 #include "Engine/Thread/ThreadSafeQueue.h"
 
 typedef void (*JobFunc)(void* args);

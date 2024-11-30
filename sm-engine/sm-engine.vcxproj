@@ -65,11 +65,10 @@
     <ClCompile Include="Source\Engine\Render\Window_old.cpp" />
     <ClCompile Include="Source\Engine\Thread\CriticalSection.cpp" />
     <ClCompile Include="Source\Engine\Thread\Event.cpp" />
-    <ClCompile Include="Source\Engine\Thread\Thread.cpp" />
+    <ClCompile Include="Source\Engine\Thread\Thread_old.cpp" />
     <ClCompile Include="src\sm\core\string.cpp" />
     <ClCompile Include="src\sm\memory\arena.cpp" />
-    <ClCompile Include="src\sm\platform\render\win32_window.cpp" />
-    <ClCompile Include="src\sm\platform\win32\core\time.cpp" />
+    <ClCompile Include="src\sm\platform\win32\core\win32_time.cpp" />
     <ClCompile Include="src\sm\platform\win32\core\win32_assert.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
       </ExcludedFromBuild>
@@ -81,6 +80,8 @@
       </ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="src\sm\platform\win32\core\win32_debug.cpp" />
+    <ClCompile Include="src\sm\platform\win32\render\win32_window.cpp" />
+    <ClCompile Include="src\sm\platform\win32\thread\win32_thread.cpp" />
     <ClCompile Include="src\third_party\imgui\backends\imgui_impl_vulkan.cpp" />
     <ClCompile Include="src\third_party\imgui\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="src\third_party\imgui\imgui.cpp" />
@@ -148,7 +149,7 @@
     <ClInclude Include="Source\Engine\Thread\AtomicUtil.h" />
     <ClInclude Include="Source\Engine\Thread\CriticalSection.h" />
     <ClInclude Include="Source\Engine\Thread\Event.h" />
-    <ClInclude Include="Source\Engine\Thread\Thread.h" />
+    <ClInclude Include="Source\Engine\Thread\Thread_old.h" />
     <ClInclude Include="Source\Engine\Thread\ThreadSafeQueue.h" />
     <ClInclude Include="src\sm\config.h" />
     <ClInclude Include="src\sm\core\assert.h" />
@@ -163,6 +164,7 @@
     <ClInclude Include="src\sm\platform\platform_handle.h" />
     <ClInclude Include="src\sm\platform\win32\win32_include.h" />
     <ClInclude Include="src\sm\render\window.h" />
+    <ClInclude Include="src\sm\thread\thread.h" />
     <ClInclude Include="src\third_party\dxc\dxcapi.h" />
     <ClInclude Include="src\third_party\dxc\WinAdapter.h" />
     <ClInclude Include="src\third_party\imgui\backends\imgui_impl_vulkan.h" />

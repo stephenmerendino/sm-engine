@@ -97,6 +97,12 @@
     <Filter Include="src\sm\platform\win32\render">
       <UniqueIdentifier>{ecbe822e-e576-410b-aba9-85d1c34607bd}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\sm\thread">
+      <UniqueIdentifier>{52da17cb-dacd-4daa-9fd8-fd88c62eaae9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\sm\platform\win32\thread">
+      <UniqueIdentifier>{ba7f5ed3-de3c-40ba-9b8e-a12090b8f48b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Engine\Core\Assert_Old.cpp">
@@ -159,7 +165,7 @@
     <ClCompile Include="Source\Engine\Thread\Event.cpp">
       <Filter>Source\Thread</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Thread\Thread.cpp">
+    <ClCompile Include="Source\Engine\Thread\Thread_old.cpp">
       <Filter>Source\Thread</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Job\JobSystem.cpp">
@@ -273,11 +279,14 @@
     <ClCompile Include="src\sm\core\string.cpp">
       <Filter>src\sm\core</Filter>
     </ClCompile>
-    <ClCompile Include="src\sm\platform\render\win32_window.cpp">
-      <Filter>src\sm\platform\win32\render</Filter>
-    </ClCompile>
-    <ClCompile Include="src\sm\platform\win32\core\time.cpp">
+    <ClCompile Include="src\sm\platform\win32\core\win32_time.cpp">
       <Filter>src\sm\platform\win32\core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\sm\platform\win32\thread\win32_thread.cpp">
+      <Filter>src\sm\platform\win32\thread</Filter>
+    </ClCompile>
+    <ClCompile Include="src\sm\platform\win32\render\win32_window.cpp">
+      <Filter>src\sm\platform\win32\render</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -371,7 +380,7 @@
     <ClInclude Include="Source\Engine\Thread\ThreadSafeQueue.h">
       <Filter>Source\Thread</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Thread\Thread.h">
+    <ClInclude Include="Source\Engine\Thread\Thread_old.h">
       <Filter>Source\Thread</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Job\JobSystem.h">
@@ -658,6 +667,9 @@
     </ClInclude>
     <ClInclude Include="src\sm\core\color.h">
       <Filter>src\sm\core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\thread\thread.h">
+      <Filter>src\sm\thread</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
