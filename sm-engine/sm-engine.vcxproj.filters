@@ -135,10 +135,10 @@
     <ClCompile Include="Source\Engine\Core\File_old.cpp">
       <Filter>Source\Core</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Core\Hash.cpp">
+    <ClCompile Include="Source\Engine\Core\Hash_old.cpp">
       <Filter>Source\Core</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Core\Random.cpp">
+    <ClCompile Include="Source\Engine\Core\Random_old.cpp">
       <Filter>Source\Core</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Math\IVec2.cpp">
@@ -294,6 +294,12 @@
     <ClCompile Include="src\sm\platform\win32\io\win32_file.cpp">
       <Filter>src\sm\platform\win32\io</Filter>
     </ClCompile>
+    <ClCompile Include="src\sm\core\hash.cpp">
+      <Filter>src\sm\core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\sm\core\random.cpp">
+      <Filter>src\sm\core</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Engine\Core\Assert_old.h">
@@ -365,10 +371,10 @@
     <ClInclude Include="Source\Engine\Core\Guid.h">
       <Filter>Source\Core</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Core\Hash.h">
+    <ClInclude Include="Source\Engine\Core\Hash_old.h">
       <Filter>Source\Core</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Core\Random.h">
+    <ClInclude Include="Source\Engine\Core\Random_old.h">
       <Filter>Source\Core</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Input\InputSystem.h">
@@ -679,6 +685,12 @@
     </ClInclude>
     <ClInclude Include="src\sm\io\file.h">
       <Filter>src\sm\io</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\core\hash.h">
+      <Filter>src\sm\core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\core\random.h">
+      <Filter>src\sm\core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

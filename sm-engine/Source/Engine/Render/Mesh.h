@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Engine/Core/Hash.h"
+#include "Engine/Core/Hash_old.h"
 #include "Engine/Core/Types.h"
 #include "Engine/Math/Mat44.h"
 #include "Engine/Render/Vertex.h"
