@@ -33,7 +33,7 @@
     <ClCompile Include="Source\Engine\Math\Mat33.cpp" />
     <ClCompile Include="Source\Engine\Math\Mat44.cpp" />
     <ClCompile Include="Source\Engine\Math\MathUtils.cpp" />
-    <ClCompile Include="Source\Engine\Math\Vec2.cpp" />
+    <ClCompile Include="Source\Engine\Math\Vec2_old.cpp" />
     <ClCompile Include="Source\Engine\Math\Vec3.cpp" />
     <ClCompile Include="Source\Engine\Math\Vec4.cpp" />
     <ClCompile Include="Source\Engine\Render\Camera.cpp" />
@@ -66,11 +66,13 @@
     <ClCompile Include="Source\Engine\Thread\CriticalSection.cpp" />
     <ClCompile Include="Source\Engine\Thread\Event.cpp" />
     <ClCompile Include="Source\Engine\Thread\Thread_old.cpp" />
+    <ClCompile Include="src\sm\core\color.cpp" />
     <ClCompile Include="src\sm\core\hash.cpp" />
     <ClCompile Include="src\sm\core\random.cpp" />
     <ClCompile Include="src\sm\core\string.cpp" />
     <ClCompile Include="src\sm\io\device_input.cpp" />
     <ClCompile Include="src\sm\math\helpers.cpp" />
+    <ClCompile Include="src\sm\math\vec2.cpp" />
     <ClCompile Include="src\sm\memory\arena.cpp" />
     <ClCompile Include="src\sm\platform\win32\core\win32_time.cpp" />
     <ClCompile Include="src\sm\platform\win32\core\win32_assert.cpp">
@@ -118,7 +120,7 @@
     <ClInclude Include="Source\Engine\Math\Mat33.h" />
     <ClInclude Include="Source\Engine\Math\Mat44.h" />
     <ClInclude Include="Source\Engine\Math\MathUtils.h" />
-    <ClInclude Include="Source\Engine\Math\Vec2.h" />
+    <ClInclude Include="Source\Engine\Math\Vec2_old.h" />
     <ClInclude Include="Source\Engine\Math\Vec3.h" />
     <ClInclude Include="Source\Engine\Math\Vec4.h" />
     <ClInclude Include="Source\Engine\Platform\WindowsInclude.h" />

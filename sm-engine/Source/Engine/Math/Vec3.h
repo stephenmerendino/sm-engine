@@ -1,7 +1,7 @@
 #pragma once
 #pragma warning(disable:4201)
 
-#include <Engine/math/Vec2.h>
+#include <Engine/math/Vec2_old.h>
 
 class Vec3
 {

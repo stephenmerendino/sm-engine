@@ -23,6 +23,8 @@ namespace sm
     	inline vec2_t&  operator-=(const vec2_t& other);
     	inline vec2_t   operator-() const;
     	inline bool     operator==(const vec2_t& other) const;
+
+        static const vec2_t ZERO;
     };
 
     inline vec2_t vec2_t::operator*(f32 s) const
@@ -133,13 +135,13 @@ namespace sm
     	return calc_len_sq(a - b);
     }
     
-    inline vec2_t PolarToCartesianRads(f32 radians, f32 radius = 1.0f)
+    inline vec2_t polar_to_cartesian_rads(f32 radians, f32 radius = 1.0f)
     {
-        return radius * Vec2(cosf(radians), sinf(radians));
+        return radius * vec2_t(cosf(radians), sinf(radians));
     }
 
-    inline vec2_t PolarToCartesianDegs(F32 deg, F32 radius = 1.0f)
+    inline vec2_t polar_to_cartesian_degs(f32 deg, f32 radius = 1.0f)
     {
-        return radius * Vec2(CosDeg(deg), SinDeg(deg));
+        return radius * vec2_t(cos_deg(deg), sin_deg(deg));
     }
 }

@@ -2,7 +2,7 @@
 
 #include "Engine/Core/Types.h"
 #include "Engine/Math/IVec2.h"
-#include "Engine/Math/Vec2.h"
+#include "Engine/Math/Vec2_old.h"
 
 enum class KeyCode : U32
 {

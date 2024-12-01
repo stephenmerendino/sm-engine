@@ -52,7 +52,7 @@ static LRESULT win32_msg_handler(HWND window_handle, UINT msg, WPARAM w_param, L
             u64 engine_msg_data = translate_win32_msg_data(msg, w_param, l_param);
             for(int i = 0; i < window->num_cbs; i++)
             {
-                const window_msg_cb_with_args_t& cb = window->msg_cbs[0];
+                const window_msg_cb_with_args_t& cb = window->msg_cbs[i];
                 cb.cb(engine_msg, engine_msg_data, cb.args);
             }
 		}

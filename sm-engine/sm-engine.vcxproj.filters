@@ -144,7 +144,7 @@
     <ClCompile Include="Source\Engine\Math\IVec2.cpp">
       <Filter>Source\Math</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Math\Vec2.cpp">
+    <ClCompile Include="Source\Engine\Math\Vec2_old.cpp">
       <Filter>Source\Math</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Math\Vec3.cpp">
@@ -306,6 +306,12 @@
     <ClCompile Include="src\sm\math\helpers.cpp">
       <Filter>src\sm\math</Filter>
     </ClCompile>
+    <ClCompile Include="src\sm\core\color.cpp">
+      <Filter>src\sm\core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\sm\math\vec2.cpp">
+      <Filter>src\sm\math</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Engine\Core\Assert_old.h">
@@ -326,7 +332,7 @@
     <ClInclude Include="Source\Engine\Config_old.h">
       <Filter>Source</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Math\Vec2.h">
+    <ClInclude Include="Source\Engine\Math\Vec2_old.h">
       <Filter>Source\Math</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Math\Vec3.h">
