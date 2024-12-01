@@ -4,7 +4,7 @@
 #include "Engine/Core/Assert_old.h"
 #include "Engine/Core/Types.h"
 #include "Engine/Math/MathUtils.h"
-#include "Engine/Math/Vec3.h"
+#include "Engine/Math/Vec3_old.h"
 
 class Vec4
 {

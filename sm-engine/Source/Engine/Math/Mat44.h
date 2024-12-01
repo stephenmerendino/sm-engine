@@ -5,7 +5,7 @@
 #include "Engine/Core/Utils.h"
 #include "Engine/Math/Mat33.h"
 #include "Engine/Math/Vec4.h"
-#include "Engine/Math/Vec3.h"
+#include "Engine/Math/Vec3_old.h"
 
 #include <memory.h>
 

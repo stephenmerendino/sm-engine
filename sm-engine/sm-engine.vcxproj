@@ -34,7 +34,7 @@
     <ClCompile Include="Source\Engine\Math\Mat44.cpp" />
     <ClCompile Include="Source\Engine\Math\MathUtils.cpp" />
     <ClCompile Include="Source\Engine\Math\Vec2_old.cpp" />
-    <ClCompile Include="Source\Engine\Math\Vec3.cpp" />
+    <ClCompile Include="Source\Engine\Math\Vec3_old.cpp" />
     <ClCompile Include="Source\Engine\Math\Vec4.cpp" />
     <ClCompile Include="Source\Engine\Render\Camera.cpp" />
     <ClCompile Include="Source\Engine\Render\DX12\DX12Renderer.cpp" />
@@ -73,6 +73,7 @@
     <ClCompile Include="src\sm\io\device_input.cpp" />
     <ClCompile Include="src\sm\math\helpers.cpp" />
     <ClCompile Include="src\sm\math\vec2.cpp" />
+    <ClCompile Include="src\sm\math\vec3.cpp" />
     <ClCompile Include="src\sm\memory\arena.cpp" />
     <ClCompile Include="src\sm\platform\win32\core\win32_time.cpp" />
     <ClCompile Include="src\sm\platform\win32\core\win32_assert.cpp">
@@ -121,7 +122,7 @@
     <ClInclude Include="Source\Engine\Math\Mat44.h" />
     <ClInclude Include="Source\Engine\Math\MathUtils.h" />
     <ClInclude Include="Source\Engine\Math\Vec2_old.h" />
-    <ClInclude Include="Source\Engine\Math\Vec3.h" />
+    <ClInclude Include="Source\Engine\Math\Vec3_old.h" />
     <ClInclude Include="Source\Engine\Math\Vec4.h" />
     <ClInclude Include="Source\Engine\Platform\WindowsInclude.h" />
     <ClInclude Include="Source\Engine\Platform\WindowsUtils.h" />
@@ -174,6 +175,7 @@
     <ClInclude Include="src\sm\io\file.h" />
     <ClInclude Include="src\sm\math\helpers.h" />
     <ClInclude Include="src\sm\math\vec2.h" />
+    <ClInclude Include="src\sm\math\vec3.h" />
     <ClInclude Include="src\sm\memory\arena.h" />
     <ClInclude Include="src\sm\platform\platform_handle.h" />
     <ClInclude Include="src\sm\platform\win32\win32_include.h" />

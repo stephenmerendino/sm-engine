@@ -125,16 +125,6 @@ namespace sm
     	return (a.x * b.x) + (a.y * b.y);
     }
     
-    inline f32 dist(const vec2_t& a, const vec2_t& b)
-    {
-    	return calc_len(a - b);
-    }
-    
-    inline f32 dist_sq(const vec2_t& a, const vec2_t& b)
-    {
-    	return calc_len_sq(a - b);
-    }
-    
     inline vec2_t polar_to_cartesian_rads(f32 radians, f32 radius = 1.0f)
     {
         return radius * vec2_t(cosf(radians), sinf(radians));
