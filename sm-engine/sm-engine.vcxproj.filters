@@ -300,6 +300,12 @@
     <ClCompile Include="src\sm\core\random.cpp">
       <Filter>src\sm\core</Filter>
     </ClCompile>
+    <ClCompile Include="src\sm\io\device_input.cpp">
+      <Filter>src\sm\io</Filter>
+    </ClCompile>
+    <ClCompile Include="src\sm\math\helpers.cpp">
+      <Filter>src\sm\math</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Engine\Core\Assert_old.h">
@@ -694,6 +700,15 @@
     </ClInclude>
     <ClInclude Include="src\sm\core\helpers.h">
       <Filter>src\sm\core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\io\device_input.h">
+      <Filter>src\sm\io</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\math\vec2.h">
+      <Filter>src\sm\math</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\math\helpers.h">
+      <Filter>src\sm\math</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
