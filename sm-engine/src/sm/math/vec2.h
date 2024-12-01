@@ -3,6 +3,7 @@
 
 #include "sm/core/types.h"
 #include "sm/core/assert.h"
+#include "sm/math/helpers.h"
 #include <cmath>
 
 namespace sm
@@ -96,7 +97,7 @@ namespace sm
     {
         // prevent division by zero by checking for zero length and asserting
         f32 len_sq = calc_len_sq(v);
-        SM_ASSERT(!IsZero(lengthSq));
+        SM_ASSERT(!is_zero(len_sq));
 
         // do normalization now that we know length is not zero
         f32 len = sqrtf(len_sq);
@@ -105,40 +106,40 @@ namespace sm
         v *= inv_len;
     }
 
-//inline Vec2 Vec2::Normalized() const
-//{
-//	Vec2 copy = *this;
-//	copy.Normalize();
-//	return copy;
-//}
-//
-//inline Vec2 operator*(F32 s, const Vec2& v)
-//{
-//	return v * s;
-//}
-//
-//inline F32 Dot(const Vec2& a, const Vec2& b)
-//{
-//	return (a.x * b.x) + (a.y * b.y);
-//}
-//
-//inline F32 Distance(const Vec2& a, const Vec2& b)
-//{
-//	return (a - b).CalcLength();
-//}
-//
-//inline F32 DistanceSq(const Vec2& a, const Vec2& b)
-//{
-//	return (a - b).CalcLengthSq();
-//}
-//
-//inline Vec2 PolarToCartesianRads(F32 radians, F32 radius = 1.0f)
-//{
-//	return radius * Vec2(cosf(radians), sinf(radians));
-//}
-//
-//inline Vec2 PolarToCartesianDegs(F32 deg, F32 radius = 1.0f)
-//{
-//	return radius * Vec2(CosDeg(deg), SinDeg(deg));
-//}
+    inline vec2_t normalized(const vec2_t& v)
+    {
+    	vec2_t copy = v;
+        normalize(copy);
+    	return copy;
+    }
+    
+    inline vec2_t operator*(f32 s, const vec2_t& v)
+    {
+        return v * s;
+    }
+
+    inline f32 dot(const vec2_t& a, const vec2_t& b)
+    {
+    	return (a.x * b.x) + (a.y * b.y);
+    }
+    
+    inline f32 dist(const vec2_t& a, const vec2_t& b)
+    {
+    	return calc_len(a - b);
+    }
+    
+    inline f32 dist_sq(const vec2_t& a, const vec2_t& b)
+    {
+    	return calc_len_sq(a - b);
+    }
+    
+    inline vec2_t PolarToCartesianRads(f32 radians, f32 radius = 1.0f)
+    {
+        return radius * Vec2(cosf(radians), sinf(radians));
+    }
+
+    inline vec2_t PolarToCartesianDegs(F32 deg, F32 radius = 1.0f)
+    {
+        return radius * Vec2(CosDeg(deg), SinDeg(deg));
+    }
 }
