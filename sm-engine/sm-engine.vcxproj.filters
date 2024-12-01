@@ -692,6 +692,9 @@
     <ClInclude Include="src\sm\core\random.h">
       <Filter>src\sm\core</Filter>
     </ClInclude>
+    <ClInclude Include="src\sm\core\helpers.h">
+      <Filter>src\sm\core</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Source\Engine\Render\Vulkan\VulkanFunctionsManifest.inl">

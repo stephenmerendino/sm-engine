@@ -161,6 +161,7 @@
     <ClInclude Include="src\sm\core\debug.h" />
     <ClInclude Include="src\sm\core\array.h" />
     <ClInclude Include="src\sm\core\hash.h" />
+    <ClInclude Include="src\sm\core\helpers.h" />
     <ClInclude Include="src\sm\core\random.h" />
     <ClInclude Include="src\sm\core\string.h" />
     <ClInclude Include="src\sm\core\time.h" />
