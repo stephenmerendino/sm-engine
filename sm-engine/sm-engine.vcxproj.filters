@@ -315,6 +315,9 @@
     <ClCompile Include="src\sm\math\vec3.cpp">
       <Filter>src\sm\math</Filter>
     </ClCompile>
+    <ClCompile Include="src\sm\math\vec4.cpp">
+      <Filter>src\sm\math</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Engine\Core\Assert_old.h">
@@ -720,6 +723,9 @@
       <Filter>src\sm\math</Filter>
     </ClInclude>
     <ClInclude Include="src\sm\math\vec3.h">
+      <Filter>src\sm\math</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\math\vec4.h">
       <Filter>src\sm\math</Filter>
     </ClInclude>
   </ItemGroup>

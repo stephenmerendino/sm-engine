@@ -74,6 +74,7 @@
     <ClCompile Include="src\sm\math\helpers.cpp" />
     <ClCompile Include="src\sm\math\vec2.cpp" />
     <ClCompile Include="src\sm\math\vec3.cpp" />
+    <ClCompile Include="src\sm\math\vec4.cpp" />
     <ClCompile Include="src\sm\memory\arena.cpp" />
     <ClCompile Include="src\sm\platform\win32\core\win32_time.cpp" />
     <ClCompile Include="src\sm\platform\win32\core\win32_assert.cpp">
@@ -176,6 +177,7 @@
     <ClInclude Include="src\sm\math\helpers.h" />
     <ClInclude Include="src\sm\math\vec2.h" />
     <ClInclude Include="src\sm\math\vec3.h" />
+    <ClInclude Include="src\sm\math\vec4.h" />
     <ClInclude Include="src\sm\memory\arena.h" />
     <ClInclude Include="src\sm\platform\platform_handle.h" />
     <ClInclude Include="src\sm\platform\win32\win32_include.h" />
