@@ -35,7 +35,7 @@
     <ClCompile Include="Source\Engine\Math\MathUtils.cpp" />
     <ClCompile Include="Source\Engine\Math\Vec2_old.cpp" />
     <ClCompile Include="Source\Engine\Math\Vec3_old.cpp" />
-    <ClCompile Include="Source\Engine\Math\Vec4.cpp" />
+    <ClCompile Include="Source\Engine\Math\Vec4_old.cpp" />
     <ClCompile Include="Source\Engine\Render\Camera.cpp" />
     <ClCompile Include="Source\Engine\Render\DX12\DX12Renderer.cpp" />
     <ClCompile Include="Source\Engine\Render\Mesh.cpp" />
@@ -124,7 +124,7 @@
     <ClInclude Include="Source\Engine\Math\MathUtils.h" />
     <ClInclude Include="Source\Engine\Math\Vec2_old.h" />
     <ClInclude Include="Source\Engine\Math\Vec3_old.h" />
-    <ClInclude Include="Source\Engine\Math\Vec4.h" />
+    <ClInclude Include="Source\Engine\Math\Vec4_old.h" />
     <ClInclude Include="Source\Engine\Platform\WindowsInclude.h" />
     <ClInclude Include="Source\Engine\Platform\WindowsUtils.h" />
     <ClInclude Include="Source\Engine\Render\Camera.h" />

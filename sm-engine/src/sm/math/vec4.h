@@ -117,10 +117,10 @@ namespace sm
         v *= invLength;
     }
 
-    inline vec4_t vec4_t::GetNormalized() const
+    inline vec4_t normalized(const vec4_t& v)
     {
-        vec4_t copy = *this;
-        copy.Normalize();
+        vec4_t copy = v;
+        normalize(copy);
         return copy;
     }
 
@@ -129,7 +129,7 @@ namespace sm
         return v * s;
     }
 
-    inline f32 Dot(const vec4_t& a, const vec4_t& b)
+    inline f32 dot(const vec4_t& a, const vec4_t& b)
     {
         return (a.x * b.x) + (a.y * b.y) + (a.z * b.z) + (a.w * b.w);
     }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Engine/Core/Types.h"
-#include "Engine/Math/Vec4.h"
+#include "Engine/Math/Vec4_old.h"
 
 class ColorF32
 {

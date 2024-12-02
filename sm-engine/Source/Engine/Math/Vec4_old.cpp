@@ -1,4 +1,4 @@
-#include "Engine/Math/Vec4.h"
+#include "Engine/Math/Vec4_old.h"
 
 const Vec4 Vec4::ZERO		= Vec4(0.0f, 0.0f, 0.0f, 0.0f);
 const Vec4 Vec4::FORWARD	= Vec4(1.0f, 0.0f, 0.0f, 0.0f);
