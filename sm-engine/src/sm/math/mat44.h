@@ -158,6 +158,169 @@ namespace sm
                           t.x, t.y, t.z, 1.0f);
     }
 
+    inline mat44_t init_scale(f32 uniform_scale)
+    {
+        mat44_t m;
+        set_scale(m, uniform_scale);
+        return m;
+    }
+
+    inline mat44_t init_scale(f32 i, f32 j, f32 k)
+    {
+        mat44_t m;
+        set_scale(m, i, j, k);
+        return m;
+    }
+
+    inline mat44_t init_scale(const vec3_t& t)
+    {
+        mat44_t m;
+        set_scale(m, t);
+        return m;
+    }
+
+    inline mat44_t init_rotation_x_rads(f32 x_rads)
+    {
+        mat44_t m;
+        rotate_x_rads(m, x_rads);
+        return m;
+    }
+
+    inline mat44_t init_rotation_y_rads(f32 y_rads)
+    {
+        mat44_t m;
+        rotate_y_rads(m, y_rads);
+        return m;
+    }
+
+    inline mat44_t init_rotation_z_rads(f32 z_rads)
+    {
+        mat44_t m;
+        rotate_z_rads(m, z_rads);
+        return m;
+    }
+
+    inline mat44_t init_rotation_x_degs(f32 x_degs)
+    {
+        mat44_t m;
+        rotate_x_degs(m, x_degs);
+        return m;
+    }
+
+    inline mat44_t init_rotation_y_degs(f32 y_degs)
+    {
+        mat44_t m;
+        rotate_y_degs(m, y_degs);
+        return m;
+    }
+
+    inline mat44_t init_rotation_z_degs(f32 z_degs)
+    {
+        mat44_t m;
+        rotate_z_degs(m, z_degs);
+        return m;
+    }
+
+    inline mat44_t init_rotation_around_axis_rads(const vec3_t& axis, f32 rads)
+    {
+        mat44_t m;
+        rotate_around_axis_rads(m, axis, rads);
+        return m;
+    }
+
+    inline mat44_t init_rotation_around_axis_degs(const vec3_t& axis, f32 degs)
+    {
+        mat44_t m;
+        rotate_around_axis_degs(m, axis, degs);
+        return m;
+    }
+
+    inline mat44_t init_translation(f32 tx, f32 ty, f32 tz)
+    {
+        mat44_t m;
+        translate(m, tx, ty, tz);
+        return m;
+    }
+
+    inline mat44_t init_translation(const vec3_t& t)
+    {
+        mat44_t m;
+        translate(m, t);
+        return m;
+    }
+
+    inline mat44_t init_basis_from_i(const vec3_t& i)
+    {
+        vec3_t i_norm = normalized(i);
+
+        // account for i_norm pointing directly up or down when trying to build basis
+        vec3_t j_norm = vec3_t::ZERO;
+        f32 cos_angle_abs = abs(dot(i_norm, vec3_t::WORLD_UP));
+        if (almost_equals(cos_angle_abs, 1.0f))
+        {
+            j_norm = normalized(cross(i_norm, vec3_t::WORLD_FORWARD));
+        }
+        else
+        {
+            j_norm = normalized(cross(vec3_t::WORLD_UP, i_norm));
+        }
+
+        vec3_t k_norm = cross(i_norm, j_norm);
+
+        return init_mat44(i_norm, j_norm, k_norm);
+    }
+
+    inline mat44_t init_basis_from_j(const vec3_t& j)
+    {
+        vec3_t j_norm = normalized(j);
+
+        // account for j_norm pointing directly up or down when trying to build basis
+        vec3_t i_norm = vec3_t::ZERO;
+        f32 cos_angle_abs = abs(dot(j_norm, vec3_t::WORLD_UP));
+        if (almost_equals(cos_angle_abs, 1.0f))
+        {
+            i_norm = normalized(cross(vec3_t::WORLD_LEFT, j_norm));
+        }
+        else
+        {
+            i_norm = normalized(cross(j_norm, vec3_t::WORLD_UP));
+        }
+
+        vec3_t k_norm = cross(i_norm, j_norm);
+
+        return init_mat44(i_norm, j_norm, k_norm);
+    }
+
+    inline mat44_t init_basis_from_k(const vec3_t& k)
+    {
+        vec3_t k_norm = normalized(k);
+
+        // account for k_norm pointing directly up or down when trying to build basis
+        vec3_t i_norm = vec3_t::ZERO;
+        f32 cos_angle_abs = abs(dot(k_norm, vec3_t::WORLD_UP));
+        if (almost_equals(cos_angle_abs, 1.0f))
+        {
+            i_norm = normalized(cross(vec3_t::WORLD_FORWARD, k_norm));
+        }
+        else
+        {
+            i_norm = normalized(cross(k_norm, vec3_t::WORLD_UP));
+        }
+
+        vec3_t j_norm = cross(k_norm, i_norm);
+
+        return init_mat44(i_norm, j_norm, k_norm);
+    }
+
+	inline mat44_t init_perspective_proj(f32 vertical_fov_deg, f32 n, f32 f, f32 aspect)
+    {
+        f32 focal_len = 1.0f / tan_deg(vertical_fov_deg * 0.5f);
+        return init_mat44(focal_len / aspect, 0.0f, 0.0f, 0.0f,
+                          0.0f, -focal_len, 0.0f, 0.0f,
+                          0.0f, 0.0f, f / (f - n), 1.0f,
+                          0.0f, 0.0f, -n * f / (f - n), 0.0f);
+    }
+
     inline f32* mat44_t::operator[](u32 row)
     {
         SM_ASSERT(row >= 0 && row <= 3);
@@ -257,4 +420,43 @@ namespace sm
         m.tz = t.z;
         m.tw = t.w;
     }
+
+    //inline void     transpose(mat44_t& m);
+    //inline mat44_t  transposed(const mat44_t& m);
+    //inline f32      determinant(const mat44_t& m);
+    //inline void     inverse(mat44_t& m);
+    //inline mat44_t  inversed(const mat44_t& m);
+    //inline void     fast_ortho_inverse(mat44_t& m);
+    //inline mat44_t  fast_ortho_inversed(const mat44_t& m);
+
+	//inline void     scale(mat44_t& m, f32 uniform_scale);
+	//inline void     scale(mat44_t& m, f32 i, f32 j, f32 k);
+	//inline void     scale(mat44_t& m, const vec3_t& ijk);
+	//inline mat44_t  scaled(const mat44_t& m, f32 uniform_scale);
+	//inline mat44_t  scaled(const mat44_t& m, f32 i, f32 j, f32 k);
+	//inline mat44_t  scaled(const mat44_t& m, const vec3_t& ijk);
+	//inline void     set_scale(mat44_t& m, f32 uniform_scale);
+	//inline void     set_scale(mat44_t& m, f32 i, f32 j, f32 k);
+	//inline void     set_scale(mat44_t& m, const vec3_t& ijk);
+
+	//inline void     translate(mat44_t& m, f32 tx, f32 ty, f32 tz);
+	//inline void     translate(mat44_t& m, const vec3_t& t);
+	//inline mat44_t  translated(const mat44_t& m, f32 tx, f32 ty, f32 tz);
+	//inline mat44_t  translated(const mat44_t& m, const vec3_t& t);
+	//inline void     set_translation(mat44_t& m, f32 tx, f32 ty, f32 tz);
+	//inline void     set_translation(mat44_t& m, const vec3_t& t);
+
+	//inline void     rotate_x_rads(mat44_t& m, f32 x_rads);
+	//inline void     rotate_y_rads(mat44_t& m, f32 y_rads);
+	//inline void     rotate_z_rads(mat44_t& m, f32 z_rads);
+	//inline void     rotate_x_degs(mat44_t& m, f32 x_degs);
+	//inline void     rotate_y_degs(mat44_t& m, f32 y_degs);
+	//inline void     rotate_z_degs(mat44_t& m, f32 z_degs);
+	//inline void     rotate_around_axis_rads(mat44_t& m, const vec3_t& axis, f32 rads);
+	//inline void     rotate_around_axis_degs(mat44_t& m, const vec3_t& axis, f32 degs);
+    //inline mat44_t  get_rotation(const mat44_t& m);
+	//inline void     set_rotation(mat44_t& m, const mat44_t& rotation);
+
+	//inline vec3_t   transform_dir(const vec3_t& dir);
+	//inline vec3_t   transform_point(const vec3_t& p);
 }
