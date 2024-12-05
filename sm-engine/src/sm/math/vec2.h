@@ -29,12 +29,12 @@ namespace sm
 
     inline vec2_t vec2_t::operator*(f32 s) const
     {
-        return { .x = x * s, .y = y * s };
+        return vec2_t(x * s, y * s );
     }
     
     inline vec2_t vec2_t::operator/(f32 s) const
     {
-    	return vec2_t(x * s, y * s);
+        return vec2_t( x / s, y / s );
     }
     
     inline vec2_t& vec2_t::operator*=(f32 s)
@@ -46,8 +46,8 @@ namespace sm
     
     inline vec2_t& vec2_t::operator/=(f32 s)
     {
-    	x *= s;
-    	y *= s;
+    	x /= s;
+    	y /= s;
     	return *this;
     }
     
@@ -92,7 +92,7 @@ namespace sm
     
     inline f32 calc_len(const vec2_t& v)
     {
-        return sqrtf(calc_len_sq(v));
+        return ::sqrtf(calc_len_sq(v));
     }
 
     inline void normalize(vec2_t& v)
@@ -102,7 +102,7 @@ namespace sm
         SM_ASSERT(!is_zero(len_sq));
 
         // do normalization now that we know length is not zero
-        f32 len = sqrtf(len_sq);
+        f32 len = ::sqrtf(len_sq);
         f32 inv_len = 1.0f / len;
 
         v *= inv_len;

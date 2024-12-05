@@ -28,13 +28,13 @@ namespace sm
 
     inline vec4_t vec4_t::operator*(f32 s) const
     {
-        return { x * s, y * s, z * s, w * s };
+        return vec4_t(x * s, y * s, z * s, w * s);
     }
 
     inline vec4_t vec4_t::operator/(f32 s) const
     {
         f32 inv_s = 1.0f / s;
-        return { x * inv_s, y * inv_s, z * inv_s, w * inv_s };
+        return vec4_t(x * inv_s, y * inv_s, z * inv_s, w * inv_s);
     }
 
     inline vec4_t& vec4_t::operator*=(f32 s)
@@ -58,12 +58,12 @@ namespace sm
 
     inline vec4_t vec4_t::operator+(const vec4_t& other) const
     {
-        return { x + other.x, y + other.y, z + other.z, w + other.w };
+        return vec4_t(x + other.x, y + other.y, z + other.z, w + other.w);
     }
 
     inline vec4_t vec4_t::operator-(const vec4_t& other) const
     {
-        return { x - other.x, y - other.y, z - other.z, w - other.w };
+        return vec4_t(x - other.x, y - other.y, z - other.z, w - other.w);
     }
 
     inline vec4_t& vec4_t::operator+=(const vec4_t& other)
@@ -86,7 +86,7 @@ namespace sm
 
     inline vec4_t vec4_t::operator-() const
     {
-        return { -x, -y, -z, -w };
+        return vec4_t(-x, -y, -z, -w);
     }
 
     inline bool vec4_t::operator==(const vec4_t& other) const
@@ -111,7 +111,7 @@ namespace sm
         SM_ASSERT(!is_zero(len_sq));
 
         // do normalization now that we know length is not zero
-        f32 length = sqrtf(len_sq);
+        f32 length = ::sqrtf(len_sq);
         f32 invLength = 1.0f / length;
 
         v *= invLength;
