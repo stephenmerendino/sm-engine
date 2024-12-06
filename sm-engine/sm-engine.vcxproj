@@ -30,7 +30,7 @@
     <ClCompile Include="Source\Engine\Input\InputSystem.cpp" />
     <ClCompile Include="Source\Engine\Job\JobSystem.cpp" />
     <ClCompile Include="Source\Engine\Math\IVec2_old.cpp" />
-    <ClCompile Include="Source\Engine\Math\Mat33.cpp" />
+    <ClCompile Include="Source\Engine\Math\Mat33_old.cpp" />
     <ClCompile Include="Source\Engine\Math\Mat44_old.cpp" />
     <ClCompile Include="Source\Engine\Math\MathUtils.cpp" />
     <ClCompile Include="Source\Engine\Math\Vec2_old.cpp" />
@@ -73,6 +73,7 @@
     <ClCompile Include="src\sm\io\device_input.cpp" />
     <ClCompile Include="src\sm\math\helpers.cpp" />
     <ClCompile Include="src\sm\math\ivec2.cpp" />
+    <ClCompile Include="src\sm\math\mat33.cpp" />
     <ClCompile Include="src\sm\math\mat44.cpp" />
     <ClCompile Include="src\sm\math\vec2.cpp" />
     <ClCompile Include="src\sm\math\vec3.cpp" />
@@ -121,7 +122,7 @@
     <ClInclude Include="Source\Engine\Input\InputSystem.h" />
     <ClInclude Include="Source\Engine\Job\JobSystem.h" />
     <ClInclude Include="Source\Engine\Math\IVec2_old.h" />
-    <ClInclude Include="Source\Engine\Math\Mat33.h" />
+    <ClInclude Include="Source\Engine\Math\Mat33_old.h" />
     <ClInclude Include="Source\Engine\Math\Mat44_old.h" />
     <ClInclude Include="Source\Engine\Math\MathUtils.h" />
     <ClInclude Include="Source\Engine\Math\Vec2_old.h" />
@@ -178,6 +179,7 @@
     <ClInclude Include="src\sm\io\file.h" />
     <ClInclude Include="src\sm\math\helpers.h" />
     <ClInclude Include="src\sm\math\ivec2.h" />
+    <ClInclude Include="src\sm\math\mat33.h" />
     <ClInclude Include="src\sm\math\mat44.h" />
     <ClInclude Include="src\sm\math\vec2.h" />
     <ClInclude Include="src\sm\math\vec3.h" />

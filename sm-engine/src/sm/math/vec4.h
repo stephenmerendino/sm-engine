@@ -3,6 +3,7 @@
 #include "sm/core/assert.h"
 #include "sm/core/types.h"
 #include "sm/math/helpers.h"
+#include "sm/math/vec3.h"
 #include <cmath>
 
 namespace sm
@@ -25,6 +26,14 @@ namespace sm
         inline vec4_t   operator-() const;
         inline bool     operator==(const vec4_t& other) const;
 	};
+
+    inline vec4_t   init_vec4(const vec3_t& xyz, f32 w);
+    inline f32      calc_len_sq(const vec4_t& v);
+    inline f32      calc_len(const vec4_t& v);
+    inline void     normalize(vec4_t& v);
+    inline vec4_t   normalized(const vec4_t& v);
+    inline vec4_t   operator*(f32 s, const vec4_t& v);
+    inline f32      dot(const vec4_t& a, const vec4_t& b);
 
     inline vec4_t vec4_t::operator*(f32 s) const
     {
@@ -92,6 +101,11 @@ namespace sm
     inline bool vec4_t::operator==(const vec4_t& other) const
     {
         return (x == other.x) && (y == other.y) && (z == other.z) && (w == other.w);
+    }
+
+    inline vec4_t init_vec4(const vec3_t& xyz, f32 w)
+    {
+        return vec4_t(xyz.x, xyz.y, xyz.z, w);
     }
 
     inline f32 calc_len_sq(const vec4_t& v)

@@ -153,7 +153,7 @@
     <ClCompile Include="Source\Engine\Math\Vec4_old.cpp">
       <Filter>Source\Math</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Math\Mat33.cpp">
+    <ClCompile Include="Source\Engine\Math\Mat33_old.cpp">
       <Filter>Source\Math</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Math\Mat44_old.cpp">
@@ -324,6 +324,9 @@
     <ClCompile Include="src\sm\math\mat44.cpp">
       <Filter>src\sm\math</Filter>
     </ClCompile>
+    <ClCompile Include="src\sm\math\mat33.cpp">
+      <Filter>src\sm\math</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Engine\Core\Assert_old.h">
@@ -359,7 +362,7 @@
     <ClInclude Include="Source\Engine\Math\MathUtils.h">
       <Filter>Source\Math</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Math\Mat33.h">
+    <ClInclude Include="Source\Engine\Math\Mat33_old.h">
       <Filter>Source\Math</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanInclude.h">
@@ -738,6 +741,9 @@
       <Filter>src\sm\math</Filter>
     </ClInclude>
     <ClInclude Include="src\sm\math\mat44.h">
+      <Filter>src\sm\math</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\math\mat33.h">
       <Filter>src\sm\math</Filter>
     </ClInclude>
   </ItemGroup>
