@@ -2,6 +2,7 @@
 #include "sm/core/assert.h"
 #include "sm/core/debug.h"
 #include "sm/core/string.h"
+#include "sm/io/device_input.h"
 #include "sm/memory/arena.h"
 #include "sm/platform/win32/win32_include.h"
 
@@ -10,18 +11,137 @@ using namespace sm;
 static const wchar_t* WINDOW_CLASS_NAME = L"Window Class Name";
 static const u8 kMaxNumCbs = 8;
 
+static i32 win32_key_to_engine_key(u32 windows_key)
+{
+	// https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
+
+	// Numbers 0-9
+	// 0x30 = 0, 0x39 = 9
+	if (windows_key >= 0x30 && windows_key <= 0x39)
+	{
+		return (u32)key_code_t::KEY_0 + (windows_key - 0x30);
+	}
+
+	// Letters A-Z
+	// 0x41 = A, 0x5A = Z
+	if (windows_key >= 0x41 && windows_key <= 0x5A)
+	{
+		return (u32)key_code_t::KEY_A + (windows_key - 0x41);
+	}
+
+	// Numpad 0-9
+	if (windows_key >= VK_NUMPAD0 && windows_key <= VK_NUMPAD9)
+	{
+		return (u32)key_code_t::KEY_NUMPAD0 + (windows_key - VK_NUMPAD0);
+	}
+
+	// F1-F24
+	if (windows_key >= VK_F1 && windows_key <= VK_F24)
+	{
+		return (u32)key_code_t::KEY_F1 + (windows_key - VK_F1);
+	}
+
+	// Handle everything else directly
+	switch (windows_key)
+	{
+		case VK_LBUTTON:    return (u32)key_code_t::MOUSE_LBUTTON; 
+		case VK_RBUTTON:    return (u32)key_code_t::MOUSE_RBUTTON; 
+		case VK_MBUTTON:    return (u32)key_code_t::MOUSE_MBUTTON; 
+
+		case VK_BACK:       return (u32)key_code_t::KEY_BACKSPACE; 
+		case VK_TAB:        return (u32)key_code_t::KEY_TAB; 
+		case VK_CLEAR:      return (u32)key_code_t::KEY_CLEAR; 
+		case VK_RETURN:     return (u32)key_code_t::KEY_ENTER; 
+		case VK_SHIFT:      return (u32)key_code_t::KEY_SHIFT; 
+		case VK_CONTROL:    return (u32)key_code_t::KEY_CONTROL; 
+		case VK_MENU:       return (u32)key_code_t::KEY_ALT; 
+		case VK_PAUSE:      return (u32)key_code_t::KEY_PAUSE; 
+		case VK_CAPITAL:    return (u32)key_code_t::KEY_CAPSLOCK; 
+		case VK_ESCAPE:     return (u32)key_code_t::KEY_ESCAPE; 
+		case VK_SPACE:      return (u32)key_code_t::KEY_SPACE; 
+		case VK_PRIOR:      return (u32)key_code_t::KEY_PAGEUP; 
+		case VK_NEXT:       return (u32)key_code_t::KEY_PAGEDOWN; 
+		case VK_END:        return (u32)key_code_t::KEY_END; 
+		case VK_HOME:       return (u32)key_code_t::KEY_HOME; 
+		case VK_LEFT:       return (u32)key_code_t::KEY_LEFTARROW; 
+		case VK_UP:         return (u32)key_code_t::KEY_UPARROW; 
+		case VK_RIGHT:      return (u32)key_code_t::KEY_RIGHTARROW; 
+		case VK_DOWN:       return (u32)key_code_t::KEY_DOWNARROW; 
+		case VK_SELECT:     return (u32)key_code_t::KEY_SELECT; 
+		case VK_PRINT:      return (u32)key_code_t::KEY_PRINT; 
+		case VK_SNAPSHOT:   return (u32)key_code_t::KEY_PRINTSCREEN; 
+		case VK_INSERT:     return (u32)key_code_t::KEY_INSERT; 
+		case VK_DELETE:     return (u32)key_code_t::KEY_DELETE; 
+		case VK_HELP:       return (u32)key_code_t::KEY_HELP; 
+		case VK_SLEEP:      return (u32)key_code_t::KEY_SLEEP; 
+
+		case VK_MULTIPLY:   return (u32)key_code_t::KEY_MULTIPLY; 
+		case VK_ADD:        return (u32)key_code_t::KEY_ADD; 
+		case VK_SEPARATOR:  return (u32)key_code_t::KEY_SEPARATOR; 
+		case VK_SUBTRACT:   return (u32)key_code_t::KEY_SUBTRACT; 
+		case VK_DECIMAL:    return (u32)key_code_t::KEY_DECIMAL; 
+		case VK_DIVIDE:     return (u32)key_code_t::KEY_DIVIDE; 
+
+		case VK_NUMLOCK:    return (u32)key_code_t::KEY_NUMLOCK; 
+		case VK_SCROLL:     return (u32)key_code_t::KEY_SCROLLLOCK; 
+	}
+
+	return (u32)key_code_t::KEY_INVALID;
+}
+
 window_msg_type_t translate_win32_msg(UINT msg)
 {
 	switch(msg)
 	{
-		case WM_CLOSE:		return window_msg_type_t::CLOSE_WINDOW;
-		default:			return window_msg_type_t::UNKNOWN;
+		case WM_CLOSE: 
+			return window_msg_type_t::CLOSE_WINDOW;
+
+		case WM_KEYDOWN:
+        case WM_SYSKEYDOWN:
+        case WM_LBUTTONDOWN:
+        case WM_MBUTTONDOWN:
+        case WM_RBUTTONDOWN: 
+			return window_msg_type_t::KEY_DOWN;
+
+		case WM_KEYUP:
+        case WM_SYSKEYUP:
+        case WM_LBUTTONUP:
+        case WM_MBUTTONUP:
+        case WM_RBUTTONUP:	
+			return window_msg_type_t::KEY_UP;
+
+		default: 
+			return window_msg_type_t::UNKNOWN;
 	}
 }
 
 u64 translate_win32_msg_data(UINT msg, WPARAM w_param, LPARAM l_param)
 {
-	return 0;
+	switch(msg)
+	{
+		case WM_KEYDOWN:
+        case WM_SYSKEYDOWN:
+			return win32_key_to_engine_key((u32)w_param);
+        case WM_LBUTTONDOWN:
+			return win32_key_to_engine_key(VK_LBUTTON);
+        case WM_MBUTTONDOWN:
+			return win32_key_to_engine_key(VK_MBUTTON);
+        case WM_RBUTTONDOWN: 
+			return win32_key_to_engine_key(VK_RBUTTON);
+
+		case WM_KEYUP:
+        case WM_SYSKEYUP:
+			return win32_key_to_engine_key((u32)w_param);
+        case WM_LBUTTONUP:
+			return win32_key_to_engine_key(VK_LBUTTON);
+        case WM_MBUTTONUP:
+			return win32_key_to_engine_key(VK_MBUTTON);
+        case WM_RBUTTONUP: 
+			return win32_key_to_engine_key(VK_RBUTTON);
+
+		default: 
+			return 0;
+	}
 }
 
 // message cb for all subscribers
