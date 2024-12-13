@@ -1,9 +1,7 @@
 #pragma once
 
-//#include "Engine/Core/Color.h"
 #include "sm/core/color.h"
 #include "sm/core/types.h"
-//#include "Engine/Core/Macros.h"
 #include <vector>
 #include <string>
 
@@ -23,12 +21,12 @@ static const char* MODELS_PATH = "../../Assets/Models/";
 static const sm::color_f32_t CLEAR_COLOR { .r = 0.20f, .g = 0.20f, .b = 0.20f, .a = 1.0f };
 
 #if defined(NDEBUG)
-	static const std::vector<const char*> INSTANCE_EXTENSIONS = {
+	static const char* INSTANCE_EXTENSIONS[] = {
 		"VK_KHR_surface",
 		"VK_KHR_win32_surface"
 	};
 
-	static const std::vector<const char*> DEVICE_EXTENSIONS = {
+	static const char* DEVICE_EXTENSIONS[] = {
 		"VK_KHR_swapchain"
 	};
 
@@ -36,14 +34,14 @@ static const sm::color_f32_t CLEAR_COLOR { .r = 0.20f, .g = 0.20f, .b = 0.20f, .
 	static const bool ENABLE_VALIDATION_LAYERS = false;
 	static const bool ENABLE_VALIDATION_BEST_PRACTICES = false;
 #else
-	static const std::vector<const char*> INSTANCE_EXTENSIONS = {
+	static const char* INSTANCE_EXTENSIONS[] = {
 		"VK_KHR_surface",
 		"VK_KHR_win32_surface",
 		"VK_EXT_debug_utils",
-		"VK_EXT_validation_features"
+		"VK_EXT_validation_features",
 	};
 
-	static const std::vector<const char*> DEVICE_EXTENSIONS = {
+	static const char* DEVICE_EXTENSIONS[] = {
 		"VK_KHR_swapchain",
 	};
 
@@ -52,6 +50,6 @@ static const sm::color_f32_t CLEAR_COLOR { .r = 0.20f, .g = 0.20f, .b = 0.20f, .
 	static const bool ENABLE_VALIDATION_BEST_PRACTICES = false;
 #endif
 
-static const std::vector<const char*> VALIDATION_LAYERS = {
+static const char* VALIDATION_LAYERS[] = {
 	"VK_LAYER_KHRONOS_validation"
 };

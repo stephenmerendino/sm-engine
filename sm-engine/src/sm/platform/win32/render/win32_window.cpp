@@ -210,7 +210,7 @@ static void update_window_position(window_t* window)
 	window->y = pos.top;
 }
 
-window_t* sm::init_window(sm::arena_t* arena, const char* name, u32 width, u32 height, bool resizable)
+window_t* sm::init_window(sm::arena_t& arena, const char* name, u32 width, u32 height, bool resizable)
 {
 	SetProcessDPIAware(); // make sure window is created with scaling handled
 

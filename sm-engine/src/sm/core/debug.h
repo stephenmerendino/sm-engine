@@ -2,7 +2,7 @@
 
 namespace sm
 {
-    inline constexpr bool is_enabled()
+    inline constexpr bool is_debug()
     {
     #if defined(NDEBUG)
         return false;

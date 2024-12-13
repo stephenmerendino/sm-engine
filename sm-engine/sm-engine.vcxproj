@@ -40,7 +40,7 @@
     <ClCompile Include="Source\Engine\Render\DX12\DX12Renderer.cpp" />
     <ClCompile Include="Source\Engine\Render\Mesh.cpp" />
     <ClCompile Include="Source\Engine\Render\MeshBuilder.cpp" />
-    <ClCompile Include="Source\Engine\Render\Renderer.cpp" />
+    <ClCompile Include="Source\Engine\Render\RendererOld.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderSettings.cpp" />
     <ClCompile Include="Source\Engine\Render\ShaderCompiler.cpp" />
     <ClCompile Include="Source\Engine\Render\UI\UI.cpp" />
@@ -91,9 +91,12 @@
       </ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="src\sm\platform\win32\core\win32_debug.cpp" />
+    <ClCompile Include="src\sm\platform\win32\io\win32_device_input.cpp" />
     <ClCompile Include="src\sm\platform\win32\io\win32_file.cpp" />
+    <ClCompile Include="src\sm\platform\win32\render\win32_vk_functions.cpp" />
     <ClCompile Include="src\sm\platform\win32\render\win32_window.cpp" />
     <ClCompile Include="src\sm\platform\win32\thread\win32_thread.cpp" />
+    <ClCompile Include="src\sm\render\vk_renderer.cpp" />
     <ClCompile Include="src\third_party\imgui\backends\imgui_impl_vulkan.cpp" />
     <ClCompile Include="src\third_party\imgui\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="src\third_party\imgui\imgui.cpp" />
@@ -101,6 +104,7 @@
     <ClCompile Include="src\third_party\imgui\imgui_draw.cpp" />
     <ClCompile Include="src\third_party\imgui\imgui_tables.cpp" />
     <ClCompile Include="src\third_party\imgui\imgui_widgets.cpp" />
+    <None Include="src\sm\render\vk_functions_manifest.inl" />
     <None Include="src\third_party\vulkan\vulkan.cppm">
       <FileType>Document</FileType>
     </None>
@@ -134,7 +138,7 @@
     <ClInclude Include="Source\Engine\Render\DX12\DX12Renderer.h" />
     <ClInclude Include="Source\Engine\Render\Mesh.h" />
     <ClInclude Include="Source\Engine\Render\MeshBuilder.h" />
-    <ClInclude Include="Source\Engine\Render\Renderer.h" />
+    <ClInclude Include="Source\Engine\Render\Renderer_old.h" />
     <ClInclude Include="Source\Engine\Render\RenderSettings.h" />
     <ClInclude Include="Source\Engine\Render\ShaderCompiler.h" />
     <ClInclude Include="Source\Engine\Render\UI\UI.h" />
@@ -187,6 +191,10 @@
     <ClInclude Include="src\sm\memory\arena.h" />
     <ClInclude Include="src\sm\platform\platform_handle.h" />
     <ClInclude Include="src\sm\platform\win32\win32_include.h" />
+    <ClInclude Include="src\sm\render\vk_renderer.h" />
+    <ClInclude Include="src\sm\render\shader_compiler.h" />
+    <ClInclude Include="src\sm\render\vk_functions.h" />
+    <ClInclude Include="src\sm\render\vk_include.h" />
     <ClInclude Include="src\sm\render\window.h" />
     <ClInclude Include="src\sm\thread\thread.h" />
     <ClInclude Include="src\third_party\dxc\dxcapi.h" />

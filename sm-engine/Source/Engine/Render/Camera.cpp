@@ -1,6 +1,6 @@
 #include "Engine/Render/Camera.h"
 #include "Engine/Input/InputSystem.h"
-#include "Engine/Render/Renderer.h"
+#include "Engine/Render/Renderer_old.h"
 
 Camera::Camera()
 	:m_worldPos(Vec3::ZERO)

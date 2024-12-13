@@ -174,7 +174,7 @@
     <ClCompile Include="Source\Engine\Job\JobSystem.cpp">
       <Filter>Source\Job</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Render\Renderer.cpp">
+    <ClCompile Include="Source\Engine\Render\RendererOld.cpp">
       <Filter>Source\Render</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanRenderer.cpp">
@@ -327,6 +327,15 @@
     <ClCompile Include="src\sm\math\mat33.cpp">
       <Filter>src\sm\math</Filter>
     </ClCompile>
+    <ClCompile Include="src\sm\platform\win32\io\win32_device_input.cpp">
+      <Filter>src\sm\platform\win32\io</Filter>
+    </ClCompile>
+    <ClCompile Include="src\sm\render\vk_renderer.cpp">
+      <Filter>src\sm\render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\sm\platform\win32\render\win32_vk_functions.cpp">
+      <Filter>src\sm\platform\win32\render</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Engine\Core\Assert_old.h">
@@ -425,7 +434,7 @@
     <ClInclude Include="Source\Engine\Job\JobSystem.h">
       <Filter>Source\Job</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Render\Renderer.h">
+    <ClInclude Include="Source\Engine\Render\Renderer_old.h">
       <Filter>Source\Render</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanRenderer.h">
@@ -746,6 +755,18 @@
     <ClInclude Include="src\sm\math\mat33.h">
       <Filter>src\sm\math</Filter>
     </ClInclude>
+    <ClInclude Include="src\sm\render\shader_compiler.h">
+      <Filter>src\sm\render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\render\vk_renderer.h">
+      <Filter>src\sm\render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\render\vk_functions.h">
+      <Filter>src\sm\render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\render\vk_include.h">
+      <Filter>src\sm\render</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Source\Engine\Render\Vulkan\VulkanFunctionsManifest.inl">
@@ -762,6 +783,9 @@
     </None>
     <None Include="src\third_party\vulkan\vulkan.cppm">
       <Filter>src\third_party\vulkan</Filter>
+    </None>
+    <None Include="src\sm\render\vk_functions_manifest.inl">
+      <Filter>src\sm\render</Filter>
     </None>
   </ItemGroup>
 </Project>

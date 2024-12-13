@@ -44,12 +44,8 @@ namespace sm
         byte_t padding[3];
     };
 
-    window_t*   init_window(sm::arena_t* arena, const char* name, u32 width, u32 height, bool resizable);
+    window_t*   init_window(sm::arena_t& arena, const char* name, u32 width, u32 height, bool resizable);
     void        add_window_msg_cb(window_t* window, window_msg_cb_t cb, void* args);
     void        update_window(window_t* window);
     void        set_title(window_t* window, const char* new_title);
-    void        show_mouse();
-    void        hide_mouse();
-    ivec2_t     get_mouse_position();
-    void        set_mouse_position(const ivec2_t& pos);
 }

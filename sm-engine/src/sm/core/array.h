@@ -28,7 +28,7 @@ namespace sm
     };
 
     template<typename T>
-    static_array_t<T> init_static_array(sm::arena_t* arena, size_t size)
+    static_array_t<T> init_static_array(sm::arena_t& arena, size_t size)
     {
         static_array_t<T> arr;
         arr.data = (T*)sm::alloc_array_zero(arena, T, size);

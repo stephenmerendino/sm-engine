@@ -6,7 +6,7 @@
 
 using namespace sm;
 
-static_array_t<byte_t> sm::read_binary_file(arena_t* arena, const char* filename)
+static_array_t<byte_t> sm::read_binary_file(arena_t& arena, const char* filename)
 {
 	static_array_t<byte_t> data;
 
