@@ -136,7 +136,6 @@ void VulkanRenderer::InitDescriptorPools()
     m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, IMGUI_MAX_SETS);
     m_imguiDescriptorPool.PreInitAddPoolSize(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, IMGUI_MAX_SETS);
 	m_imguiDescriptorPool.Init(IMGUI_MAX_SETS);
-
 }
 
 void VulkanRenderer::DestroyDescriptorPools()
