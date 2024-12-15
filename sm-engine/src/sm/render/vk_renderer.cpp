@@ -6,6 +6,11 @@
 #include "sm/render/window.h"
 #include "sm/render/vk_include.h"
 
+#include "third_party/imgui/imgui.h"
+#include "third_party/imgui/backends/imgui_impl_win32.h"
+#include "third_party/imgui/imgui.h"
+#include "third_party/imgui/backends/imgui_impl_vulkan.h"
+
 using namespace sm;
 
 struct vk_queue_indices_t
@@ -61,6 +66,7 @@ VkDescriptorSetLayout s_material_descriptor_set_layout = VK_NULL_HANDLE;
 VkDescriptorSetLayout s_mesh_instance_descriptor_set_layout = VK_NULL_HANDLE;
 
 VkRenderPass s_main_draw_render_pass;
+VkRenderPass s_imgui_render_pass;
 
 static bool format_has_stencil(VkFormat format)
 {
@@ -519,7 +525,7 @@ void sm::init_renderer(window_t* window)
         SM_VULKAN_ASSERT(vkCreateWin32SurfaceKHR(s_instance, &create_info, nullptr, &s_surface));
 	}
 
-	// vk device
+	// vk devices
 	{
         // physical device
         VkPhysicalDevice selected_phy_device = VK_NULL_HANDLE;
@@ -1067,7 +1073,7 @@ void sm::init_renderer(window_t* window)
 			};
 
             subpass_desc.colorAttachmentCount = (u32)ARRAY_LEN(color_attachments);
-            subpass_desc.pColorAttachments = color_attachments;
+			subpass_desc.pColorAttachments = color_attachments;
 			subpass_desc.pDepthStencilAttachment = &depth_stencil_attachment_ref;
 			subpass_desc.pResolveAttachments = &color_resolve_attachment_ref;
 
@@ -1081,7 +1087,7 @@ void sm::init_renderer(window_t* window)
 			subpass_dependency.dstSubpass = 0;
 			subpass_dependency.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT;
 			subpass_dependency.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT;
-			subpass_dependency.srcAccessMask = 0;
+			subpass_dependency.srcAccessMask = VK_ACCESS_2_NONE;
 			subpass_dependency.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
 			subpass_dependency.dependencyFlags = 0;
 
@@ -1089,60 +1095,69 @@ void sm::init_renderer(window_t* window)
 				subpass_dependency
 			};
 
-            VkRenderPassCreateInfo2 create_info = {};
-            create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2;
-            create_info.attachmentCount = (u32)ARRAY_LEN(render_pass_attachments);
-            create_info.pAttachments = render_pass_attachments;
-            create_info.subpassCount = (u32)ARRAY_LEN(subpass_descs);
-            create_info.pSubpasses = subpass_descs;
-            create_info.dependencyCount = (u32)ARRAY_LEN(subpass_dependencies);
-            create_info.pDependencies = subpass_dependencies;
+			VkRenderPassCreateInfo2 create_info = {};
+			create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2;
+			create_info.attachmentCount = (u32)ARRAY_LEN(render_pass_attachments);
+			create_info.pAttachments = render_pass_attachments;
+			create_info.subpassCount = (u32)ARRAY_LEN(subpass_descs);
+			create_info.pSubpasses = subpass_descs;
+			create_info.dependencyCount = (u32)ARRAY_LEN(subpass_dependencies);
+			create_info.pDependencies = subpass_dependencies;
 
-            SM_VULKAN_ASSERT(vkCreateRenderPass2(s_device, &create_info, nullptr, &s_main_draw_render_pass));
+			SM_VULKAN_ASSERT(vkCreateRenderPass2(s_device, &create_info, nullptr, &s_main_draw_render_pass));
 		}
 
-        // imgui
-        {
-            //m_imguiRenderPass.PreInitAddSubpassAttachmentReference(0, VulkanSubpass::COLOR, 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
-            //m_imguiRenderPass.PreInitAddSubpassDependency(VK_SUBPASS_EXTERNAL, 0, 
-            //                                              VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 
-            //                                              0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
-
-            //m_imguiRenderPass.Init();
-
+		// imgui
+		{
 			VkAttachmentDescription2 color_attachment_desc{};
 			color_attachment_desc.sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2;
-            color_attachment_desc.flags = 0;
-            color_attachment_desc.format = s_main_color_format;
-            color_attachment_desc.samples = VK_SAMPLE_COUNT_1_BIT;
-            color_attachment_desc.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-            color_attachment_desc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-            color_attachment_desc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-            color_attachment_desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-            color_attachment_desc.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            color_attachment_desc.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			color_attachment_desc.flags = 0;
+			color_attachment_desc.format = s_main_color_format;
+			color_attachment_desc.samples = VK_SAMPLE_COUNT_1_BIT;
+			color_attachment_desc.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+			color_attachment_desc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+			color_attachment_desc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+			color_attachment_desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+			color_attachment_desc.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			color_attachment_desc.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 
 			VkAttachmentDescription2 attachments[] = {
-                color_attachment_desc
+				color_attachment_desc
+			};
+
+			VkAttachmentReference2 color_attachment_ref{};
+			color_attachment_ref.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2;
+			color_attachment_ref.attachment = 0;
+			color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			color_attachment_ref.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+
+			VkAttachmentReference2 color_attachment_refs[] = {
+				color_attachment_ref
 			};
 
 			VkSubpassDescription2 subpass_desc{};
 			subpass_desc.sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2;
 			subpass_desc.flags = 0;
 			subpass_desc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-            //uint32_t                         viewMask;
-            //uint32_t                         inputAttachmentCount;
-            //const VkAttachmentReference2*    pInputAttachments;
-            //uint32_t                         colorAttachmentCount;
-            //const VkAttachmentReference2*    pColorAttachments;
-            //const VkAttachmentReference2*    pResolveAttachments;
-            //const VkAttachmentReference2*    pDepthStencilAttachment;
-            //uint32_t                         preserveAttachmentCount;
-            //const uint32_t*                  pPreserveAttachments;
+			subpass_desc.pColorAttachments = color_attachment_refs;
+			subpass_desc.colorAttachmentCount = (u32)ARRAY_LEN(color_attachment_refs);
 
 			VkSubpassDescription2 subpass_descriptions[] = {
 				subpass_desc
+			};
+
+			VkSubpassDependency2 subpass_dependency{};
+			subpass_dependency.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2;
+			subpass_dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+			subpass_dependency.dstSubpass = 0;
+			subpass_dependency.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+			subpass_dependency.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+			subpass_dependency.srcAccessMask = VK_ACCESS_2_NONE;
+			subpass_dependency.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+			subpass_dependency.dependencyFlags = 0;
+
+			VkSubpassDependency2 subpass_dependencies[] = {
+				subpass_dependency
 			};
 
 			VkRenderPassCreateInfo2 create_info{};
@@ -1151,19 +1166,58 @@ void sm::init_renderer(window_t* window)
 			create_info.attachmentCount = (u32)ARRAY_LEN(attachments);
 			create_info.pSubpasses = subpass_descriptions;
 			create_info.subpassCount = (u32)ARRAY_LEN(subpass_descriptions);
+			create_info.pDependencies = subpass_dependencies;
+			create_info.dependencyCount = (u32)ARRAY_LEN(subpass_dependencies);
 
-            //VkStructureType                    sType;
-            //const void*                        pNext;
-            //VkRenderPassCreateFlags            flags;
-            //uint32_t                           attachmentCount;
-            //const VkAttachmentDescription2*    pAttachments;
-            //uint32_t                           subpassCount;
-            //const VkSubpassDescription2*       pSubpasses;
-            //uint32_t                           dependencyCount;
-            //const VkSubpassDependency2*        pDependencies;
-            //uint32_t                           correlatedViewMaskCount;
-            //const uint32_t*                    pCorrelatedViewMasks;
-        }
-
+			SM_VULKAN_ASSERT(vkCreateRenderPass2(s_device, &create_info, nullptr, &s_imgui_render_pass));
+		}
 	}
+
+	// imgui
+	{
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGuiIO& io = ImGui::GetIO();
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+        //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+        ImGui::StyleColorsDark();
+
+        ImGui_ImplWin32_Init(m_pWindow->m_hwnd);
+        ImGui_ImplVulkan_LoadFunctions(ImGuiVulkanFuncLoader);
+        ImGui_ImplVulkan_InitInfo initInfo{};
+        initInfo.Instance = s_instance;
+        initInfo.PhysicalDevice = s_phys_device;
+        initInfo.Device = s_device;
+        initInfo.QueueFamily = s_queue_indices.graphics_and_compute;
+        initInfo.Queue = s_graphics_queue;
+        initInfo.PipelineCache = VK_NULL_HANDLE;
+        initInfo.DescriptorPool = s_imgui_descriptor_pool;
+        initInfo.Subpass = 0;
+        initInfo.MinImageCount = m_swapchain.m_numImages; 
+        initInfo.ImageCount = m_swapchain.m_numImages;
+        initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+        initInfo.Allocator = VK_NULL_HANDLE;
+        initInfo.CheckVkResultFn = CheckImGuiVulkanResult;
+        ImGui_ImplVulkan_Init(&initInfo, s_imgui_render_pass);
+
+        f32 dpiScale = ImGui_ImplWin32_GetDpiScaleForHwnd(m_pWindow->m_hwnd);
+        DebugPrintf("Setting ImGui DPI Scale to %f\n", dpiScale);
+
+        ImFontConfig fontCfg;
+        fontCfg.SizePixels = floor(13.0f * dpiScale);
+        io.Fonts->AddFontDefault(&fontCfg);
+        
+        ImGui::GetStyle().ScaleAllSizes(dpiScale);
+
+        // Upload Fonts
+        {
+            VkCommandBuffer commandBuffer = m_graphicsCommandPool.BeginSingleTime();
+            ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
+            m_graphicsCommandPool.EndAndSubmitSingleTime(commandBuffer);
+            ImGui_ImplVulkan_DestroyFontUploadObjects();
+        }
+	}
+
+	debug_printf("Finished initializing vulkan renderer\n");
 }
