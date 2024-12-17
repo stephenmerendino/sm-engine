@@ -4,7 +4,7 @@
 #include "Engine/Core/Debug_Old.h"
 #include "Engine/Platform/WindowsInclude.h"
 #include "Engine/Platform/WindowsUtils.h"
-#include "Engine/ThirdParty/dxc/dxcapi.h"
+#include "third_party/dxc/dxcapi.h"
 
 #include <string>
 #include <atlbase.h>

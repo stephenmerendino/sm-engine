@@ -3,8 +3,8 @@
 #include "Engine/Platform/WindowsInclude.h"
 
 #define VK_NO_PROTOTYPES
-#include "Engine/ThirdParty/vulkan/vulkan.h"
-#include "Engine/ThirdParty/vulkan/vulkan_win32.h"
+#include "third_party/vulkan/vulkan.h"
+#include "third_party/vulkan/vulkan_win32.h"
 
 void LoadVulkanGlobalFuncs();
 void LoadVulkanInstanceFuncs(VkInstance instance);

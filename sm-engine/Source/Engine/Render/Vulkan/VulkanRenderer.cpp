@@ -10,10 +10,10 @@
 #include "Engine/Render/ShaderCompiler.h"
 #include "Engine/Render/Window_old.h"
 #include "Engine/Render/UI/UI.h"
-#include "Engine/ThirdParty/imgui/imgui.h"
-#include "Engine/ThirdParty/imgui/backends/imgui_impl_win32.h"
-#include "Engine/ThirdParty/imgui/imgui.h"
-#include "Engine/ThirdParty/imgui/backends/imgui_impl_vulkan.h"
+#include "third_party/imgui/imgui.h"
+#include "third_party/imgui/backends/imgui_impl_win32.h"
+#include "third_party/imgui/imgui.h"
+#include "third_party/imgui/backends/imgui_impl_vulkan.h"
 #include <set>
 
 struct FrameRenderData
@@ -277,6 +277,8 @@ void VulkanRenderer::Init(Window* pWindow)
 	InitDescriptorSetLayouts();
 	InitRenderPasses();
 	InitImgui();
+
+
 	InitRenderFrames();
 	InitResources();
 	InitPipelineLayouts();

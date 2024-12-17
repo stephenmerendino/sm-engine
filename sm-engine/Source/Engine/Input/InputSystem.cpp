@@ -2,7 +2,8 @@
 #include "Engine/Core/BitFlags_old.h"
 #include "Engine/Core/Macros.h"
 #include "Engine/Render/Window_old.h"
-#include "Engine/ThirdParty/imgui/imgui.h"
+
+#include "third_party/imgui/imgui.h"
 
 InputSystem g_inputSystem;
 

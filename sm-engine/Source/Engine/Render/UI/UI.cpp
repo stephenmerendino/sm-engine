@@ -1,6 +1,6 @@
 #include "Engine/Render/UI/UI.h"
 #include "Engine/Core/Debug_Old.h"
-#include "Engine/ThirdParty/imgui/imgui.h"
+#include "third_party/imgui/imgui.h"
 #include "Engine/Render/Renderer_old.h"
 #include "Engine/Render/Camera.h"
 

@@ -8,7 +8,6 @@
 
 #include "third_party/imgui/imgui.h"
 #include "third_party/imgui/backends/imgui_impl_win32.h"
-#include "third_party/imgui/imgui.h"
 #include "third_party/imgui/backends/imgui_impl_vulkan.h"
 
 using namespace sm;
@@ -27,6 +26,54 @@ struct vk_swapchain_info_t
 	VkSurfaceCapabilitiesKHR capabilities = { 0 };
 	static_array_t<VkSurfaceFormatKHR> formats;
 	static_array_t<VkPresentModeKHR> present_modes;
+};
+
+struct vulkan_render_frame_t 
+{
+	// swapchain
+	u32	swapchain_image_index = -1;
+	VkSemaphore swapchain_image_is_ready_semaphore;
+
+	// frame level resources
+	VkFence frame_completed_fence;
+	VkFence frame_completed_semaphore;
+	VkDescriptorSet frame_descriptor_set;
+	VkBuffer frame_descriptor_buffer;
+	VkCommandBuffer frame_command_buffer;
+
+	// main draw resources
+	VkImage main_draw_color_multisample_image;
+	VkImageView main_draw_color_multisample_image_view;
+	VkDeviceMemory main_draw_device_memory;
+	u32 main_draw_color_num_mips;
+
+	VkImage main_draw_depth_multisample_image;
+	VkImageView main_draw_depth_multisample_image_view;
+	VkDeviceMemory main_draw_device_memory;
+	u32 main_draw_depth_num_mips;
+
+	VkImage main_draw_color_resolve_multisample_image;
+	VkImageView main_draw_color_resolve_multisample_image_view;
+	VkDeviceMemory main_draw_device_memory;
+	u32 main_draw_color_resolve_num_mips;
+
+	VkFramebuffer m_framebuffer;
+
+	// mesh instance descriptors
+	//VulkanDescriptorPool m_meshInstanceDescriptorPool;
+	VkDescriptorPool mesh
+
+	//// Post processing
+	//VulkanTexture		m_postProcessingRenderTarget;
+	//VulkanFramebuffer	m_postProcessingFramebuffer;
+	//VkDescriptorSet		m_postProcessingDescriptorSet;
+
+	//// ImGui
+	//VulkanFramebuffer	m_imguiFramebuffer;
+
+	//// Infinite Grid
+	//VulkanBuffer		m_infiniteGridDataBuffer;
+	//VkDescriptorSet		m_infiniteGridDescriptorSet;
 };
 
 window_t* s_window = nullptr;
@@ -450,6 +497,16 @@ static bool is_physical_device_suitable(arena_t& arena, VkPhysicalDevice device,
 	return has_required_queues(queue_indices);
 }
 
+static void CheckImGuiVulkanResult(VkResult result)
+{
+    SM_VULKAN_ASSERT(result);
+}
+
+static PFN_vkVoidFunction imgui_vulkan_func_loader(const char* functionName, void* userData)
+{
+	VkInstance instance = *((VkInstance*)userData);
+    return vkGetInstanceProcAddr(instance, functionName);
+}
 
 void sm::init_renderer(window_t* window)
 {	
@@ -1176,45 +1233,69 @@ void sm::init_renderer(window_t* window)
 	// imgui
 	{
         IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
+		ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
         //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
         ImGui::StyleColorsDark();
 
-        ImGui_ImplWin32_Init(m_pWindow->m_hwnd);
-        ImGui_ImplVulkan_LoadFunctions(ImGuiVulkanFuncLoader);
-        ImGui_ImplVulkan_InitInfo initInfo{};
-        initInfo.Instance = s_instance;
-        initInfo.PhysicalDevice = s_phys_device;
-        initInfo.Device = s_device;
-        initInfo.QueueFamily = s_queue_indices.graphics_and_compute;
-        initInfo.Queue = s_graphics_queue;
-        initInfo.PipelineCache = VK_NULL_HANDLE;
-        initInfo.DescriptorPool = s_imgui_descriptor_pool;
-        initInfo.Subpass = 0;
-        initInfo.MinImageCount = m_swapchain.m_numImages; 
-        initInfo.ImageCount = m_swapchain.m_numImages;
-        initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-        initInfo.Allocator = VK_NULL_HANDLE;
-        initInfo.CheckVkResultFn = CheckImGuiVulkanResult;
-        ImGui_ImplVulkan_Init(&initInfo, s_imgui_render_pass);
+		HWND hwnd = get_handle<HWND>(s_window->handle);
 
-        f32 dpiScale = ImGui_ImplWin32_GetDpiScaleForHwnd(m_pWindow->m_hwnd);
-        DebugPrintf("Setting ImGui DPI Scale to %f\n", dpiScale);
+        ImGui_ImplWin32_Init(hwnd);
+        ImGui_ImplVulkan_LoadFunctions(imgui_vulkan_func_loader, &s_instance);
+        ImGui_ImplVulkan_InitInfo init_info{};
+        init_info.Instance = s_instance;
+        init_info.PhysicalDevice = s_phys_device;
+        init_info.Device = s_device;
+        init_info.QueueFamily = s_queue_indices.graphics_and_compute;
+        init_info.Queue = s_graphics_queue;
+        init_info.PipelineCache = VK_NULL_HANDLE;
+        init_info.DescriptorPool = s_imgui_descriptor_pool;
+        init_info.Subpass = 0;
+        init_info.MinImageCount = s_swapchain_images.size; 
+        init_info.ImageCount = s_swapchain_images.size;
+        init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+        init_info.Allocator = VK_NULL_HANDLE;
+        init_info.CheckVkResultFn = CheckImGuiVulkanResult;
+        ImGui_ImplVulkan_Init(&init_info, s_imgui_render_pass);
 
-        ImFontConfig fontCfg;
-        fontCfg.SizePixels = floor(13.0f * dpiScale);
-        io.Fonts->AddFontDefault(&fontCfg);
+        f32 dpi_scale = ImGui_ImplWin32_GetDpiScaleForHwnd(hwnd);
+        debug_printf("Setting ImGui DPI Scale to %f\n", dpi_scale);
+
+        ImFontConfig font_cfg;
+        font_cfg.SizePixels = floor(13.0f * dpi_scale);
+        io.Fonts->AddFontDefault(&font_cfg);
         
-        ImGui::GetStyle().ScaleAllSizes(dpiScale);
+        ImGui::GetStyle().ScaleAllSizes(dpi_scale);
 
         // Upload Fonts
         {
-            VkCommandBuffer commandBuffer = m_graphicsCommandPool.BeginSingleTime();
-            ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
-            m_graphicsCommandPool.EndAndSubmitSingleTime(commandBuffer);
+			VkCommandBuffer command_buffer = VK_NULL_HANDLE;
+
+			VkCommandBufferAllocateInfo alloc_info{};
+			alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            alloc_info.commandPool = s_graphics_command_pool;
+			alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+			alloc_info.commandBufferCount = 1;
+			
+			SM_VULKAN_ASSERT(vkAllocateCommandBuffers(s_device, &alloc_info, &command_buffer));
+
+			VkCommandBufferBeginInfo begin_info{};
+			begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+			vkBeginCommandBuffer(command_buffer, &begin_info);
+            ImGui_ImplVulkan_CreateFontsTexture(command_buffer);
+			vkEndCommandBuffer(command_buffer);
+
+            VkSubmitInfo submit_info{};
+            submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            submit_info.commandBufferCount = 1;
+            submit_info.pCommandBuffers = &command_buffer;
+            vkQueueSubmit(s_graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
+            vkQueueWaitIdle(s_graphics_queue);
+
+			vkFreeCommandBuffers(s_device, s_graphics_command_pool, 1, &command_buffer);
             ImGui_ImplVulkan_DestroyFontUploadObjects();
         }
 	}
