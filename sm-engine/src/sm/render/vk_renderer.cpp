@@ -28,7 +28,7 @@ struct vk_swapchain_info_t
 	static_array_t<VkPresentModeKHR> present_modes;
 };
 
-struct vulkan_render_frame_t 
+struct render_frame_t 
 {
 	// swapchain
 	u32	swapchain_image_index = -1;
@@ -36,7 +36,7 @@ struct vulkan_render_frame_t
 
 	// frame level resources
 	VkFence frame_completed_fence;
-	VkFence frame_completed_semaphore;
+	VkSemaphore frame_completed_semaphore;
 	VkDescriptorSet frame_descriptor_set;
 	VkBuffer frame_descriptor_buffer;
 	VkCommandBuffer frame_command_buffer;
@@ -57,23 +57,29 @@ struct vulkan_render_frame_t
 	VkDeviceMemory main_draw_device_memory;
 	u32 main_draw_color_resolve_num_mips;
 
-	VkFramebuffer m_framebuffer;
+	VkFramebuffer main_draw_framebuffer;
 
 	// mesh instance descriptors
-	//VulkanDescriptorPool m_meshInstanceDescriptorPool;
-	VkDescriptorPool mesh
+	VkDescriptorPool mesh_instance_descriptor_pool;
 
-	//// Post processing
-	//VulkanTexture		m_postProcessingRenderTarget;
-	//VulkanFramebuffer	m_postProcessingFramebuffer;
-	//VkDescriptorSet		m_postProcessingDescriptorSet;
+	// post processing
+	VkImage post_processing_color_resolve_multisample_image;
+	VkImageView post_processing_color_resolve_multisample_image_view;
+	VkDeviceMemory post_processing_device_memory;
+	u32 post_processing_color_resolve_num_mips;
+	VkFramebuffer post_processing_framebuffer;
+	VkDescriptorSet	post_processing_descriptor_set;
 
-	//// ImGui
-	//VulkanFramebuffer	m_imguiFramebuffer;
+	// imgui 
+	VkFramebuffer imgui_framebuffer;
 
-	//// Infinite Grid
-	//VulkanBuffer		m_infiniteGridDataBuffer;
-	//VkDescriptorSet		m_infiniteGridDescriptorSet;
+	// infinite grid
+	VkBuffer infinite_grid_data_buffer;
+	VkDeviceMemory infinite_grid_device_memory;
+	VkBufferUsageFlags infinite_grid_buffer_usage_flags;
+	VkDeviceSize infinite_grid_device_size;
+
+	VkDescriptorSet infinite_grid_descriptor_set;
 };
 
 window_t* s_window = nullptr;
@@ -114,6 +120,8 @@ VkDescriptorSetLayout s_mesh_instance_descriptor_set_layout = VK_NULL_HANDLE;
 
 VkRenderPass s_main_draw_render_pass;
 VkRenderPass s_imgui_render_pass;
+
+static_array_t<render_frame_t> s_render_frames;
 
 static bool format_has_stencil(VkFormat format)
 {
@@ -1298,6 +1306,107 @@ void sm::init_renderer(window_t* window)
 			vkFreeCommandBuffers(s_device, s_graphics_command_pool, 1, &command_buffer);
             ImGui_ImplVulkan_DestroyFontUploadObjects();
         }
+	}
+
+	// render frames
+	{
+		s_render_frames = init_static_array<render_frame_t>(*startup_arena, MAX_NUM_FRAMES_IN_FLIGHT);
+
+		for(size_t i = 0; i < s_render_frames.size; i++)
+		{
+			render_frame_t& frame = s_render_frames[i];
+
+			{
+				VkSemaphoreCreateInfo create_info{};
+				create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+				SM_VULKAN_ASSERT(vkCreateSemaphore(s_device, &create_info, nullptr, &frame.swapchain_image_is_ready_semaphore));
+			}
+
+			{
+				VkSemaphoreCreateInfo create_info{};
+				create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+				SM_VULKAN_ASSERT(vkCreateSemaphore(s_device, &create_info, nullptr, &frame.frame_completed_semaphore));
+			}
+
+			{
+				VkFenceCreateInfo create_info{};
+				create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+				create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+				SM_VULKAN_ASSERT(vkCreateFence(s_device, &create_info, nullptr, &frame.frame_completed_fence));
+			}
+
+			{
+				VkCommandBufferAllocateInfo alloc_info{};
+				alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+				alloc_info.commandBufferCount = 1;
+				alloc_info.commandPool = s_graphics_command_pool;
+				alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+				SM_VULKAN_ASSERT(vkAllocateCommandBuffers(s_device, &alloc_info, &frame.frame_command_buffer));
+			}
+
+			{
+				VkDescriptorSetAllocateInfo alloc_info{};
+				alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+				alloc_info.descriptorPool = s_frame_descriptor_pool;
+				VkDescriptorSetLayout layouts[] = {
+                    s_frame_descriptor_set_layout
+				};
+				alloc_info.pSetLayouts = layouts;
+				alloc_info.descriptorSetCount = ARRAY_LEN(layouts);
+				vkAllocateDescriptorSets(s_device, &alloc_info, &frame.frame_descriptor_set);
+			}
+
+			{
+				VkBufferCreateInfo create_info{};
+				create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+				//create_info.
+			}
+
+            //VkBuffer frame_descriptor_buffer;
+            //VkCommandBuffer frame_command_buffer;
+
+            //// main draw resources
+            //VkImage main_draw_color_multisample_image;
+            //VkImageView main_draw_color_multisample_image_view;
+            //VkDeviceMemory main_draw_device_memory;
+            //u32 main_draw_color_num_mips;
+
+            //VkImage main_draw_depth_multisample_image;
+            //VkImageView main_draw_depth_multisample_image_view;
+            //VkDeviceMemory main_draw_device_memory;
+            //u32 main_draw_depth_num_mips;
+
+            //VkImage main_draw_color_resolve_multisample_image;
+            //VkImageView main_draw_color_resolve_multisample_image_view;
+            //VkDeviceMemory main_draw_device_memory;
+            //u32 main_draw_color_resolve_num_mips;
+
+            //VkFramebuffer main_draw_framebuffer;
+
+            //// mesh instance descriptors
+            //VkDescriptorPool mesh_instance_descriptor_pool;
+
+            //// post processing
+            //VkImage post_processing_color_resolve_multisample_image;
+            //VkImageView post_processing_color_resolve_multisample_image_view;
+            //VkDeviceMemory post_processing_device_memory;
+            //u32 post_processing_color_resolve_num_mips;
+            //VkFramebuffer post_processing_framebuffer;
+            //VkDescriptorSet	post_processing_descriptor_set;
+
+            //// imgui 
+            //VkFramebuffer imgui_framebuffer;
+
+            //// infinite grid
+            //VkBuffer infinite_grid_data_buffer;
+            //VkDeviceMemory infinite_grid_device_memory;
+            //VkBufferUsageFlags infinite_grid_buffer_usage_flags;
+            //VkDeviceSize infinite_grid_device_size;
+
+            //VkDescriptorSet infinite_grid_descriptor_set;
+
+
+		}
 	}
 
 	debug_printf("Finished initializing vulkan renderer\n");
