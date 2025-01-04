@@ -164,6 +164,22 @@ static VkFormat find_supported_depth_format(VkPhysicalDevice phys_device)
 	return depthFormat;
 }
 
+static u32 find_supported_memory_type(VkPhysicalDeviceMemoryProperties device_mem_props, u32 type_filter, VkMemoryPropertyFlags requested_flags)
+{
+	u32 found_mem_type = UINT_MAX;
+	for (u32 i = 0; i < device_mem_props.memoryTypeCount; i++)
+	{
+		if (type_filter & (1 << i) && (device_mem_props.memoryTypes[i].propertyFlags & requested_flags) == requested_flags)
+		{
+			found_mem_type = i;
+			break;
+		}
+	}
+
+	SM_ASSERT(found_mem_type != UINT_MAX);
+	return found_mem_type;
+}
+
 static VkCommandPool init_command_pool(VkDevice device, const vk_queue_indices_t& queue_indices, VkQueueFlags requested_queues, VkCommandPoolCreateFlags create_flags)
 {
 	VkCommandPoolCreateInfo create_info{};
@@ -1357,9 +1373,27 @@ void sm::init_renderer(window_t* window)
 			}
 
 			{
-				VkBufferCreateInfo create_info{};
-				create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-				//create_info.
+                VkBufferCreateInfo createInfo = {};
+                createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+                createInfo.size = sizeof(f32) * 16;
+                createInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+                createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+				VkBuffer buffer;
+                SM_VULKAN_ASSERT(vkCreateBuffer(s_device, &createInfo, nullptr, &buffer));
+
+                VkMemoryRequirements mem_requirements;
+                vkGetBufferMemoryRequirements(s_device, buffer, &mem_requirements);
+
+                VkMemoryAllocateInfo allocInfo = {};
+                allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+                allocInfo.allocationSize = mem_requirements.size;
+                allocInfo.memoryTypeIndex = find_supported_memory_type(s_physical_device_mem_properties, mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+				VkDeviceMemory buffer_mem;
+                SM_VULKAN_ASSERT(vkAllocateMemory(s_device, &allocInfo, nullptr, &buffer_mem));
+
+                vkBindBufferMemory(s_device, buffer, buffer_mem, 0);
 			}
 
             //VkBuffer frame_descriptor_buffer;
