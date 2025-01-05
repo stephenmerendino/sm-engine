@@ -95,11 +95,9 @@ struct render_frame_t
 	VkFramebuffer imgui_framebuffer;
 
 	// infinite grid
-	VkBuffer infinite_grid_data_buffer;
-	VkDeviceMemory infinite_grid_device_memory;
-	VkBufferUsageFlags infinite_grid_buffer_usage_flags;
-	VkDeviceSize infinite_grid_device_size;
-
+    VkBuffer infinite_grid_data_buffer;
+    VkDeviceMemory infinite_grid_buffer_device_memory;
+    VkDeviceSize infinite_grid_buffer_device_size;
 	VkDescriptorSet infinite_grid_descriptor_set;
 };
 
@@ -1678,12 +1676,13 @@ void sm::init_renderer(window_t* window)
                 SM_VULKAN_ASSERT(vkCreateFramebuffer(s_device, &create_info, nullptr, &frame.imgui_framebuffer));
             }
 
-            //// infinite grid
-            //VkBuffer infinite_grid_data_buffer;
-            //VkDeviceMemory infinite_grid_device_memory;
-            //VkBufferUsageFlags infinite_grid_buffer_usage_flags;
-            //VkDeviceSize infinite_grid_device_size;
+            // infinite grid
+			{
 
+			}
+            //VkBuffer infinite_grid_data_buffer;
+            //VkDeviceMemory infinite_grid_buffer_device_memory;
+            //VkDeviceSize infinite_grid_buffer_device_size;
             //VkDescriptorSet infinite_grid_descriptor_set;
 		}
 	}
