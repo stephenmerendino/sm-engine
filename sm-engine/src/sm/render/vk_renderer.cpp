@@ -3,6 +3,7 @@
 #include "sm/core/debug.h"
 #include "sm/core/helpers.h"
 #include "sm/math/helpers.h"
+#include "sm/math/mat44.h"
 #include "sm/render/window.h"
 #include "sm/render/vk_include.h"
 
@@ -11,6 +12,26 @@
 #include "third_party/imgui/backends/imgui_impl_vulkan.h"
 
 using namespace sm;
+
+struct frame_render_data_t
+{
+	f32 elapsed_time_seconds;
+	f32 delta_time_seconds;
+};
+
+struct infinite_grid_data_t
+{
+	mat44_t view_projection;
+	mat44_t inverse_view_projection;
+	f32 fade_distance;
+	f32 major_line_thickness;
+	f32 minor_line_thickness;
+};
+
+struct mesh_instance_render_data_t
+{
+	mat44_t mvp;
+};
 
 struct vk_queue_indices_t
 {
@@ -31,7 +52,7 @@ struct vk_swapchain_info_t
 struct render_frame_t 
 {
 	// swapchain
-	u32	swapchain_image_index = -1;
+	i32	swapchain_image_index = -1;
 	VkSemaphore swapchain_image_is_ready_semaphore;
 
 	// frame level resources
@@ -39,22 +60,23 @@ struct render_frame_t
 	VkSemaphore frame_completed_semaphore;
 	VkDescriptorSet frame_descriptor_set;
 	VkBuffer frame_descriptor_buffer;
+	VkDeviceMemory frame_descriptor_buffer_memory;
 	VkCommandBuffer frame_command_buffer;
 
 	// main draw resources
 	VkImage main_draw_color_multisample_image;
 	VkImageView main_draw_color_multisample_image_view;
-	VkDeviceMemory main_draw_device_memory;
-	u32 main_draw_color_num_mips;
+	VkDeviceMemory main_draw_color_multisample_device_memory;
+	u32 main_draw_color_multisample_num_mips;
 
 	VkImage main_draw_depth_multisample_image;
 	VkImageView main_draw_depth_multisample_image_view;
-	VkDeviceMemory main_draw_device_memory;
-	u32 main_draw_depth_num_mips;
+	VkDeviceMemory main_draw_depth_multisample_device_memory;
+	u32 main_draw_depth_multisample_num_mips;
 
-	VkImage main_draw_color_resolve_multisample_image;
-	VkImageView main_draw_color_resolve_multisample_image_view;
-	VkDeviceMemory main_draw_device_memory;
+	VkImage main_draw_color_resolve_image;
+	VkImageView main_draw_color_resolve_image_view;
+	VkDeviceMemory main_draw_color_resolve_device_memory;
 	u32 main_draw_color_resolve_num_mips;
 
 	VkFramebuffer main_draw_framebuffer;
@@ -63,11 +85,10 @@ struct render_frame_t
 	VkDescriptorPool mesh_instance_descriptor_pool;
 
 	// post processing
-	VkImage post_processing_color_resolve_multisample_image;
-	VkImageView post_processing_color_resolve_multisample_image_view;
-	VkDeviceMemory post_processing_device_memory;
-	u32 post_processing_color_resolve_num_mips;
-	VkFramebuffer post_processing_framebuffer;
+	VkImage post_processing_color_image;
+	VkImageView post_processing_color_image_view;
+	VkDeviceMemory post_processing_color_device_memory;
+	u32 post_processing_color_num_mips;
 	VkDescriptorSet	post_processing_descriptor_set;
 
 	// imgui 
@@ -1277,8 +1298,8 @@ void sm::init_renderer(window_t* window)
         init_info.PipelineCache = VK_NULL_HANDLE;
         init_info.DescriptorPool = s_imgui_descriptor_pool;
         init_info.Subpass = 0;
-        init_info.MinImageCount = s_swapchain_images.size; 
-        init_info.ImageCount = s_swapchain_images.size;
+        init_info.MinImageCount = (u32)s_swapchain_images.size; 
+        init_info.ImageCount = (u32)s_swapchain_images.size;
         init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
         init_info.Allocator = VK_NULL_HANDLE;
         init_info.CheckVkResultFn = CheckImGuiVulkanResult;
@@ -1373,63 +1394,289 @@ void sm::init_renderer(window_t* window)
 			}
 
 			{
-                VkBufferCreateInfo createInfo = {};
-                createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-                createInfo.size = sizeof(f32) * 16;
-                createInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-                createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+                VkBufferCreateInfo create_info = {};
+                create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+                create_info.size = sizeof(frame_render_data_t);
+                create_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+                create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-				VkBuffer buffer;
-                SM_VULKAN_ASSERT(vkCreateBuffer(s_device, &createInfo, nullptr, &buffer));
+                SM_VULKAN_ASSERT(vkCreateBuffer(s_device, &create_info, nullptr, &frame.frame_descriptor_buffer));
 
                 VkMemoryRequirements mem_requirements;
-                vkGetBufferMemoryRequirements(s_device, buffer, &mem_requirements);
+                vkGetBufferMemoryRequirements(s_device, frame.frame_descriptor_buffer, &mem_requirements);
 
-                VkMemoryAllocateInfo allocInfo = {};
-                allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-                allocInfo.allocationSize = mem_requirements.size;
-                allocInfo.memoryTypeIndex = find_supported_memory_type(s_physical_device_mem_properties, mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                VkMemoryAllocateInfo alloc_info{};
+                alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+                alloc_info.allocationSize = mem_requirements.size;
+                alloc_info.memoryTypeIndex = find_supported_memory_type(s_phys_device_mem_props, mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-				VkDeviceMemory buffer_mem;
-                SM_VULKAN_ASSERT(vkAllocateMemory(s_device, &allocInfo, nullptr, &buffer_mem));
+                SM_VULKAN_ASSERT(vkAllocateMemory(s_device, &alloc_info, nullptr, &frame.frame_descriptor_buffer_memory));
 
-                vkBindBufferMemory(s_device, buffer, buffer_mem, 0);
+                vkBindBufferMemory(s_device, frame.frame_descriptor_buffer, frame.frame_descriptor_buffer_memory, 0);
 			}
 
-            //VkBuffer frame_descriptor_buffer;
             //VkCommandBuffer frame_command_buffer;
+			{
+				VkCommandBufferAllocateInfo alloc_info{};
+				alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+				alloc_info.commandBufferCount = 1;
+				alloc_info.commandPool = s_graphics_command_pool;
+				alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+				SM_VULKAN_ASSERT(vkAllocateCommandBuffers(s_device, &alloc_info, &frame.frame_command_buffer));
+			}
 
-            //// main draw resources
-            //VkImage main_draw_color_multisample_image;
-            //VkImageView main_draw_color_multisample_image_view;
-            //VkDeviceMemory main_draw_device_memory;
-            //u32 main_draw_color_num_mips;
+            // main draw resources
+			{
+				{
+					frame.main_draw_color_multisample_num_mips = 1;
 
-            //VkImage main_draw_depth_multisample_image;
-            //VkImageView main_draw_depth_multisample_image_view;
-            //VkDeviceMemory main_draw_device_memory;
-            //u32 main_draw_depth_num_mips;
+					// VkImage
+                    VkImageCreateInfo image_create_info{};
+                    image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+                    image_create_info.imageType = VK_IMAGE_TYPE_2D;
+                    image_create_info.extent.width = s_swapchain_extent.width;
+                    image_create_info.extent.height = s_swapchain_extent.height;
+                    image_create_info.extent.depth = 1;
+                    image_create_info.mipLevels = frame.main_draw_color_multisample_num_mips;
+                    image_create_info.arrayLayers = 1;
+                    image_create_info.format = s_main_color_format;
+                    image_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+                    image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                    image_create_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+                    image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+                    image_create_info.samples = s_max_msaa_samples;
+                    image_create_info.flags = 0;
+                    SM_VULKAN_ASSERT(vkCreateImage(s_device, &image_create_info, nullptr, &frame.main_draw_color_multisample_image));
 
-            //VkImage main_draw_color_resolve_multisample_image;
-            //VkImageView main_draw_color_resolve_multisample_image_view;
-            //VkDeviceMemory main_draw_device_memory;
-            //u32 main_draw_color_resolve_num_mips;
+					// VkDeviceMemory
+                    VkMemoryRequirements mem_requirements;
+                    vkGetImageMemoryRequirements(s_device, frame.main_draw_color_multisample_image, &mem_requirements);
 
-            //VkFramebuffer main_draw_framebuffer;
+                    VkMemoryAllocateInfo alloc_info{};
+                    alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+                    alloc_info.allocationSize = mem_requirements.size;
+                    alloc_info.memoryTypeIndex = find_supported_memory_type(s_phys_device_mem_props, mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                    SM_VULKAN_ASSERT(vkAllocateMemory(s_device, &alloc_info, nullptr, &frame.main_draw_color_multisample_device_memory));
 
-            //// mesh instance descriptors
-            //VkDescriptorPool mesh_instance_descriptor_pool;
+                    vkBindImageMemory(s_device, frame.main_draw_color_multisample_image, frame.main_draw_color_multisample_device_memory, 0);
 
-            //// post processing
-            //VkImage post_processing_color_resolve_multisample_image;
-            //VkImageView post_processing_color_resolve_multisample_image_view;
-            //VkDeviceMemory post_processing_device_memory;
-            //u32 post_processing_color_resolve_num_mips;
-            //VkFramebuffer post_processing_framebuffer;
-            //VkDescriptorSet	post_processing_descriptor_set;
+					// VkImageView
+                    VkImageViewCreateInfo image_view_create_info{};
+                    image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+                    image_view_create_info.image = frame.main_draw_color_multisample_image;
+                    image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+                    image_view_create_info.format = s_main_color_format;
+                    image_view_create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                    image_view_create_info.subresourceRange.baseMipLevel = 0;
+                    image_view_create_info.subresourceRange.levelCount = frame.main_draw_color_multisample_num_mips;
+					image_view_create_info.subresourceRange.baseArrayLayer = 0;
+					image_view_create_info.subresourceRange.layerCount = 1;
+					SM_VULKAN_ASSERT(vkCreateImageView(s_device, &image_view_create_info, nullptr, &frame.main_draw_color_multisample_image_view));
+				}
 
-            //// imgui 
-            //VkFramebuffer imgui_framebuffer;
+				{
+					frame.main_draw_depth_multisample_num_mips = 1;
+
+					// VkImage
+					VkImageCreateInfo image_create_info{};
+					image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+					image_create_info.imageType = VK_IMAGE_TYPE_2D;
+					image_create_info.extent.width = s_swapchain_extent.width;
+					image_create_info.extent.height = s_swapchain_extent.height;
+					image_create_info.extent.depth = 1;
+					image_create_info.mipLevels = frame.main_draw_depth_multisample_num_mips;
+					image_create_info.arrayLayers = 1;
+					image_create_info.format = s_depth_format;
+					image_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+					image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+					image_create_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+					image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+					image_create_info.samples = s_max_msaa_samples;
+					image_create_info.flags = 0;
+					SM_VULKAN_ASSERT(vkCreateImage(s_device, &image_create_info, nullptr, &frame.main_draw_depth_multisample_image));
+
+					// VkDeviceMemory
+					VkMemoryRequirements mem_requirements;
+					vkGetImageMemoryRequirements(s_device, frame.main_draw_depth_multisample_image, &mem_requirements);
+
+					VkMemoryAllocateInfo alloc_info{};
+					alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+					alloc_info.allocationSize = mem_requirements.size;
+					alloc_info.memoryTypeIndex = find_supported_memory_type(s_phys_device_mem_props, mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+					SM_VULKAN_ASSERT(vkAllocateMemory(s_device, &alloc_info, nullptr, &frame.main_draw_depth_multisample_device_memory));
+
+					vkBindImageMemory(s_device, frame.main_draw_depth_multisample_image, frame.main_draw_depth_multisample_device_memory, 0);
+
+					// VkImageView
+					VkImageViewCreateInfo image_view_create_info{};
+					image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+					image_view_create_info.image = frame.main_draw_depth_multisample_image;
+					image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+					image_view_create_info.format = s_depth_format;
+					image_view_create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+					image_view_create_info.subresourceRange.baseMipLevel = 0;
+					image_view_create_info.subresourceRange.levelCount = frame.main_draw_depth_multisample_num_mips;
+					image_view_create_info.subresourceRange.baseArrayLayer = 0;
+					image_view_create_info.subresourceRange.layerCount = 1;
+					SM_VULKAN_ASSERT(vkCreateImageView(s_device, &image_view_create_info, nullptr, &frame.main_draw_depth_multisample_image_view));
+				}
+
+				{
+					frame.main_draw_color_resolve_num_mips = 1;
+
+					// VkImage
+					VkImageCreateInfo image_create_info{};
+					image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+					image_create_info.imageType = VK_IMAGE_TYPE_2D;
+					image_create_info.extent.width = s_swapchain_extent.width;
+					image_create_info.extent.height = s_swapchain_extent.height;
+					image_create_info.extent.depth = 1;
+					image_create_info.mipLevels = frame.main_draw_color_resolve_num_mips;
+					image_create_info.arrayLayers = 1;
+					image_create_info.format = s_main_color_format;
+					image_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+					image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+					image_create_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+					image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+					image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
+					image_create_info.flags = 0;
+					SM_VULKAN_ASSERT(vkCreateImage(s_device, &image_create_info, nullptr, &frame.main_draw_color_resolve_image));
+
+					// VkDeviceMemory
+					VkMemoryRequirements mem_requirements;
+					vkGetImageMemoryRequirements(s_device, frame.main_draw_color_resolve_image, &mem_requirements);
+
+					VkMemoryAllocateInfo alloc_info{};
+					alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+					alloc_info.allocationSize = mem_requirements.size;
+					alloc_info.memoryTypeIndex = find_supported_memory_type(s_phys_device_mem_props, mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+					SM_VULKAN_ASSERT(vkAllocateMemory(s_device, &alloc_info, nullptr, &frame.main_draw_color_resolve_device_memory));
+
+					vkBindImageMemory(s_device, frame.main_draw_color_resolve_image, frame.main_draw_color_resolve_device_memory, 0);
+
+					// VkImageView
+					VkImageViewCreateInfo image_view_create_info{};
+					image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+					image_view_create_info.image = frame.main_draw_color_resolve_image;
+					image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+					image_view_create_info.format = s_main_color_format;
+					image_view_create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+					image_view_create_info.subresourceRange.baseMipLevel = 0;
+					image_view_create_info.subresourceRange.levelCount = frame.main_draw_color_resolve_num_mips;
+					image_view_create_info.subresourceRange.baseArrayLayer = 0;
+					image_view_create_info.subresourceRange.layerCount = 1;
+					SM_VULKAN_ASSERT(vkCreateImageView(s_device, &image_view_create_info, nullptr, &frame.main_draw_color_resolve_image_view));
+				}
+
+				{
+					VkFramebufferCreateInfo create_info{};
+					create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+					create_info.renderPass = s_main_draw_render_pass;
+					VkImageView image_views[] = {
+						frame.main_draw_color_multisample_image_view,
+						frame.main_draw_depth_multisample_image_view,
+						frame.main_draw_color_resolve_image_view
+					};
+					create_info.attachmentCount = ARRAY_LEN(image_views);
+					create_info.pAttachments = image_views;
+					create_info.width = s_swapchain_extent.width;
+					create_info.height = s_swapchain_extent.height;
+					create_info.layers = 1;
+					SM_VULKAN_ASSERT(vkCreateFramebuffer(s_device, &create_info, nullptr, &frame.main_draw_framebuffer));
+				}
+			}
+
+			// mesh instance descriptors
+			{
+				VkDescriptorPoolCreateInfo create_info{};
+                create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+				create_info.maxSets = 100;
+				VkDescriptorPoolSize pool_sizes[] = {
+					{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 100 }
+				};
+				create_info.poolSizeCount = ARRAY_LEN(pool_sizes);
+				create_info.pPoolSizes = pool_sizes;
+				SM_VULKAN_ASSERT(vkCreateDescriptorPool(s_device, &create_info, nullptr, &frame.mesh_instance_descriptor_pool));
+			}
+
+            // post processing
+			{
+                {
+                    frame.post_processing_color_num_mips = 1;
+
+                    // VkImage
+                    VkImageCreateInfo image_create_info{};
+                    image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+                    image_create_info.imageType = VK_IMAGE_TYPE_2D;
+                    image_create_info.extent.width = s_swapchain_extent.width;
+                    image_create_info.extent.height = s_swapchain_extent.height;
+                    image_create_info.extent.depth = 1;
+                    image_create_info.mipLevels = frame.post_processing_color_num_mips;
+                    image_create_info.arrayLayers = 1;
+                    image_create_info.format = s_main_color_format;
+                    image_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+                    image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                    image_create_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+                    image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+                    image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
+                    image_create_info.flags = 0;
+                    SM_VULKAN_ASSERT(vkCreateImage(s_device, &image_create_info, nullptr, &frame.post_processing_color_image));
+
+                    // VkDeviceMemory
+                    VkMemoryRequirements mem_requirements;
+                    vkGetImageMemoryRequirements(s_device, frame.post_processing_color_image, &mem_requirements);
+
+                    VkMemoryAllocateInfo alloc_info{};
+                    alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+                    alloc_info.allocationSize = mem_requirements.size;
+                    alloc_info.memoryTypeIndex = find_supported_memory_type(s_phys_device_mem_props, mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                    SM_VULKAN_ASSERT(vkAllocateMemory(s_device, &alloc_info, nullptr, &frame.post_processing_color_device_memory));
+
+                    vkBindImageMemory(s_device, frame.post_processing_color_image, frame.post_processing_color_device_memory, 0);
+
+                    // VkImageView
+                    VkImageViewCreateInfo image_view_create_info{};
+                    image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+                    image_view_create_info.image = frame.post_processing_color_image;
+                    image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+                    image_view_create_info.format = s_main_color_format;
+                    image_view_create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                    image_view_create_info.subresourceRange.baseMipLevel = 0;
+                    image_view_create_info.subresourceRange.levelCount = frame.post_processing_color_num_mips;
+                    image_view_create_info.subresourceRange.baseArrayLayer = 0;
+                    image_view_create_info.subresourceRange.layerCount = 1;
+                    SM_VULKAN_ASSERT(vkCreateImageView(s_device, &image_view_create_info, nullptr, &frame.post_processing_color_image_view));
+
+                }
+
+                {
+                    VkDescriptorSetAllocateInfo alloc_info{};
+                    alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+                    alloc_info.descriptorPool = s_frame_descriptor_pool;
+					VkDescriptorSetLayout set_layouts[] = {
+						s_post_process_descriptor_set_layout
+					};
+					alloc_info.pSetLayouts = set_layouts;
+					alloc_info.descriptorSetCount = ARRAY_LEN(set_layouts);
+                    SM_VULKAN_ASSERT(vkAllocateDescriptorSets(s_device, &alloc_info, &frame.post_processing_descriptor_set));
+                }
+			}
+
+            // imgui 
+            {
+                VkFramebufferCreateInfo create_info{};
+                create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+                create_info.renderPass = s_imgui_render_pass;
+                VkImageView image_views[] = {
+                    frame.main_draw_color_resolve_image_view
+                };
+                create_info.attachmentCount = ARRAY_LEN(image_views);
+                create_info.pAttachments = image_views;
+                create_info.width = s_swapchain_extent.width;
+                create_info.height = s_swapchain_extent.height;
+                create_info.layers = 1;
+                SM_VULKAN_ASSERT(vkCreateFramebuffer(s_device, &create_info, nullptr, &frame.imgui_framebuffer));
+            }
 
             //// infinite grid
             //VkBuffer infinite_grid_data_buffer;
@@ -1438,8 +1685,6 @@ void sm::init_renderer(window_t* window)
             //VkDeviceSize infinite_grid_device_size;
 
             //VkDescriptorSet infinite_grid_descriptor_set;
-
-
 		}
 	}
 
