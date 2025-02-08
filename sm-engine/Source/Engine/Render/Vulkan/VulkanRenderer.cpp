@@ -277,9 +277,8 @@ void VulkanRenderer::Init(Window* pWindow)
 	InitDescriptorSetLayouts();
 	InitRenderPasses();
 	InitImgui();
-
-
 	InitRenderFrames();
+
 	InitResources();
 	InitPipelineLayouts();
 	InitPipelines();

@@ -137,6 +137,9 @@ VkDescriptorSetLayout s_post_process_descriptor_set_layout = VK_NULL_HANDLE;
 VkDescriptorSetLayout s_material_descriptor_set_layout = VK_NULL_HANDLE;
 VkDescriptorSetLayout s_mesh_instance_descriptor_set_layout = VK_NULL_HANDLE;
 
+VkDescriptorSet s_global_descriptor_set = VK_NULL_HANDLE;
+VkSampler s_linear_sampler = VK_NULL_HANDLE;
+
 VkRenderPass s_main_draw_render_pass;
 VkRenderPass s_imgui_render_pass;
 
@@ -917,7 +920,7 @@ void sm::init_renderer(window_t* window)
 
 		// frame descriptor pool
 		{
-            // frame wender data, infinite grid, post processing
+            // frame render data, infinite grid, post processing
             u32 num_uniform_buffers_per_frame = 2;
             u32 num_storage_images_per_frame = 2; // post processing input + output
             u32 num_sets_per_frame = 3;
@@ -1627,63 +1630,151 @@ void sm::init_renderer(window_t* window)
                     VkMemoryAllocateInfo alloc_info{};
                     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
                     alloc_info.allocationSize = mem_requirements.size;
-                    alloc_info.memoryTypeIndex = find_supported_memory_type(s_phys_device_mem_props, mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-                    SM_VULKAN_ASSERT(vkAllocateMemory(s_device, &alloc_info, nullptr, &frame.post_processing_color_device_memory));
+					alloc_info.memoryTypeIndex = find_supported_memory_type(s_phys_device_mem_props, mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+					SM_VULKAN_ASSERT(vkAllocateMemory(s_device, &alloc_info, nullptr, &frame.post_processing_color_device_memory));
 
-                    vkBindImageMemory(s_device, frame.post_processing_color_image, frame.post_processing_color_device_memory, 0);
+					vkBindImageMemory(s_device, frame.post_processing_color_image, frame.post_processing_color_device_memory, 0);
 
-                    // VkImageView
-                    VkImageViewCreateInfo image_view_create_info{};
-                    image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-                    image_view_create_info.image = frame.post_processing_color_image;
-                    image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-                    image_view_create_info.format = s_main_color_format;
-                    image_view_create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-                    image_view_create_info.subresourceRange.baseMipLevel = 0;
-                    image_view_create_info.subresourceRange.levelCount = frame.post_processing_color_num_mips;
-                    image_view_create_info.subresourceRange.baseArrayLayer = 0;
-                    image_view_create_info.subresourceRange.layerCount = 1;
-                    SM_VULKAN_ASSERT(vkCreateImageView(s_device, &image_view_create_info, nullptr, &frame.post_processing_color_image_view));
+					// VkImageView
+					VkImageViewCreateInfo image_view_create_info{};
+					image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+					image_view_create_info.image = frame.post_processing_color_image;
+					image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+					image_view_create_info.format = s_main_color_format;
+					image_view_create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+					image_view_create_info.subresourceRange.baseMipLevel = 0;
+					image_view_create_info.subresourceRange.levelCount = frame.post_processing_color_num_mips;
+					image_view_create_info.subresourceRange.baseArrayLayer = 0;
+					image_view_create_info.subresourceRange.layerCount = 1;
+					SM_VULKAN_ASSERT(vkCreateImageView(s_device, &image_view_create_info, nullptr, &frame.post_processing_color_image_view));
 
-                }
+				}
 
-                {
-                    VkDescriptorSetAllocateInfo alloc_info{};
-                    alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-                    alloc_info.descriptorPool = s_frame_descriptor_pool;
+				{
+					VkDescriptorSetAllocateInfo alloc_info{};
+					alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+					alloc_info.descriptorPool = s_frame_descriptor_pool;
 					VkDescriptorSetLayout set_layouts[] = {
 						s_post_process_descriptor_set_layout
 					};
 					alloc_info.pSetLayouts = set_layouts;
 					alloc_info.descriptorSetCount = ARRAY_LEN(set_layouts);
-                    SM_VULKAN_ASSERT(vkAllocateDescriptorSets(s_device, &alloc_info, &frame.post_processing_descriptor_set));
-                }
+					SM_VULKAN_ASSERT(vkAllocateDescriptorSets(s_device, &alloc_info, &frame.post_processing_descriptor_set));
+				}
 			}
 
-            // imgui 
-            {
-                VkFramebufferCreateInfo create_info{};
-                create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-                create_info.renderPass = s_imgui_render_pass;
-                VkImageView image_views[] = {
-                    frame.main_draw_color_resolve_image_view
-                };
-                create_info.attachmentCount = ARRAY_LEN(image_views);
-                create_info.pAttachments = image_views;
-                create_info.width = s_swapchain_extent.width;
-                create_info.height = s_swapchain_extent.height;
-                create_info.layers = 1;
-                SM_VULKAN_ASSERT(vkCreateFramebuffer(s_device, &create_info, nullptr, &frame.imgui_framebuffer));
-            }
-
-            // infinite grid
+			// imgui 
 			{
-
+				VkFramebufferCreateInfo create_info{};
+				create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+				create_info.renderPass = s_imgui_render_pass;
+				VkImageView image_views[] = {
+					frame.main_draw_color_resolve_image_view
+				};
+				create_info.attachmentCount = ARRAY_LEN(image_views);
+				create_info.pAttachments = image_views;
+				create_info.width = s_swapchain_extent.width;
+				create_info.height = s_swapchain_extent.height;
+				create_info.layers = 1;
+				SM_VULKAN_ASSERT(vkCreateFramebuffer(s_device, &create_info, nullptr, &frame.imgui_framebuffer));
 			}
-            //VkBuffer infinite_grid_data_buffer;
-            //VkDeviceMemory infinite_grid_buffer_device_memory;
-            //VkDeviceSize infinite_grid_buffer_device_size;
-            //VkDescriptorSet infinite_grid_descriptor_set;
+
+			// infinite grid
+			{
+				// uniform buffer
+				{
+					VkBufferCreateInfo create_info{};
+					create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+					create_info.flags = 0;
+					create_info.size = sizeof(infinite_grid_data_t);
+					create_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+					create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+					u32 queue_indices[] = {
+						s_queue_indices.graphics_and_compute
+					};
+					create_info.queueFamilyIndexCount = ARRAY_LEN(queue_indices);
+					create_info.pQueueFamilyIndices = queue_indices;
+
+					SM_VULKAN_ASSERT(vkCreateBuffer(s_device, &create_info, nullptr, &frame.infinite_grid_data_buffer));
+
+					VkMemoryRequirements mem_requirements{};
+					vkGetBufferMemoryRequirements(s_device, frame.infinite_grid_data_buffer, &mem_requirements);
+
+					VkMemoryAllocateInfo alloc_info{};
+					alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+					alloc_info.allocationSize = mem_requirements.size;
+					alloc_info.memoryTypeIndex = find_supported_memory_type(s_phys_device_mem_props, mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+					SM_VULKAN_ASSERT(vkAllocateMemory(s_device, &alloc_info, nullptr, &frame.infinite_grid_buffer_device_memory));
+
+					vkBindBufferMemory(s_device, frame.infinite_grid_data_buffer, frame.infinite_grid_buffer_device_memory, 0);
+					frame.infinite_grid_buffer_device_size = mem_requirements.size;
+				}
+
+				// descriptor set
+				{
+					VkDescriptorSetAllocateInfo alloc_info{};
+					alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+					alloc_info.descriptorPool = s_frame_descriptor_pool;
+
+					VkDescriptorSetLayout descriptor_set_layouts[] = {
+						s_infinite_grid_descriptor_set_layout
+					};
+					alloc_info.descriptorSetCount = ARRAY_LEN(descriptor_set_layouts);
+					alloc_info.pSetLayouts = descriptor_set_layouts;
+
+					SM_VULKAN_ASSERT(vkAllocateDescriptorSets(s_device, &alloc_info, &frame.infinite_grid_descriptor_set));
+				}
+			}
+		}
+	}
+
+	// resources
+	{
+		// global resources
+		{
+			// global descriptor set
+			{
+                VkDescriptorSetAllocateInfo alloc_info{};
+                alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+                alloc_info.descriptorPool = s_global_descriptor_pool;
+
+                VkDescriptorSetLayout descriptor_set_layouts[] = {
+                   s_global_descriptor_set_layout 
+                };
+                alloc_info.descriptorSetCount = ARRAY_LEN(descriptor_set_layouts);
+                alloc_info.pSetLayouts = descriptor_set_layouts;
+
+                SM_VULKAN_ASSERT(vkAllocateDescriptorSets(s_device, &alloc_info, &s_global_descriptor_set));
+			}
+
+			// sampler
+			{
+                VkSamplerCreateInfo create_info{};
+				create_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+				create_info.flags = 0;
+				create_info.magFilter = VK_FILTER_LINEAR;
+				create_info.minFilter = VK_FILTER_LINEAR;
+                //VkSamplerMipmapMode     mipmapMode;
+                //VkSamplerAddressMode    addressModeU;
+                //VkSamplerAddressMode    addressModeV;
+                //VkSamplerAddressMode    addressModeW;
+                //float                   mipLodBias;
+                //VkBool32                anisotropyEnable;
+                //float                   maxAnisotropy;
+                //VkBool32                compareEnable;
+                //VkCompareOp             compareOp;
+                //float                   minLod;
+                //float                   maxLod;
+                //VkBorderColor           borderColor;
+                //VkBool32                unnormalizedCoordinates;
+                vkCreateSampler(s_device, &create_info, nullptr, &s_linear_sampler);
+			}
+		}
+
+		// viking room
+		{
 		}
 	}
 
