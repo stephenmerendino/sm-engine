@@ -3,43 +3,41 @@
 
 using namespace sm;
 
-char& static_string_t::operator[](size_t index)
+char& string_t::operator[](size_t index)
 {
-    SM_ASSERT(index <= c_str.size);
     return c_str[index];
 }
 
-const char& static_string_t::operator[](size_t index) const
+const char& string_t::operator[](size_t index) const
 {
-    SM_ASSERT(index <= c_str.size);
     return c_str[index];
 }
 
-void static_string_t::operator=(const char* str)
+void string_t::operator=(const char* str)
 {
     size_t len = strlen(str);
     sm::copy(c_str, str, len + 1);
     c_str[len] = '\0';
 }
 
-void static_string_t::operator=(static_string_t str)
+void string_t::operator=(string_t str)
 {
     *this = str.c_str.data;
 }
 
-static_string_t sm::init_static_string(sm::arena_t& arena, size_t size)
+string_t sm::init_string(sm::arena_t* arena, size_t size)
 {
-    static_string_t str;
-    str.c_str = init_static_array<char>(arena, size);
+    string_t str;
+    str.c_str = init_array_sized<char>(arena, size);
     return str;
 }
 
-wchar_t* sm::to_wchar_string(sm::arena_t& arena, const static_string_t& s)
+wchar_t* sm::to_wchar_string(sm::arena_t* arena, const string_t& s)
 {
 	return to_wchar_string(arena, s.c_str.data);
 }
 
-wchar_t* sm::to_wchar_string(sm::arena_t& arena, const char* s)
+wchar_t* sm::to_wchar_string(sm::arena_t* arena, const char* s)
 {
 	size_t len = strlen(s);
 	size_t num_chars_converted = 0;
@@ -48,7 +46,7 @@ wchar_t* sm::to_wchar_string(sm::arena_t& arena, const char* s)
 	return unicode_str;
 }
 
-void sm::to_wchar_string(wchar_t* wchar_string_memory, size_t max_num_chars, const static_string_t& s)
+void sm::to_wchar_string(wchar_t* wchar_string_memory, size_t max_num_chars, const string_t& s)
 {
 	to_wchar_string(wchar_string_memory, max_num_chars, s.c_str.data);
 }

@@ -170,7 +170,7 @@ static LRESULT win32_msg_handler(HWND window_handle, UINT msg, WPARAM w_param, L
 		if(engine_msg != window_msg_type_t::UNKNOWN)
 		{
             u64 engine_msg_data = translate_win32_msg_data(msg, w_param, l_param);
-            for(int i = 0; i < window->num_cbs; i++)
+            for(int i = 0; i < window->msg_cbs.cur_size; i++)
             {
                 const window_msg_cb_with_args_t& cb = window->msg_cbs[i];
                 cb.cb(engine_msg, engine_msg_data, cb.args);
@@ -183,7 +183,6 @@ static LRESULT win32_msg_handler(HWND window_handle, UINT msg, WPARAM w_param, L
 
 void internal_msg_handler(window_msg_type_t msg_type, u64 msg_data, void* user_args)
 {
-	sm::debug_printf("I received a message\n");
 }
 
 static void update_window_size(window_t* window)
@@ -210,7 +209,7 @@ static void update_window_position(window_t* window)
 	window->y = pos.top;
 }
 
-window_t* sm::init_window(sm::arena_t& arena, const char* name, u32 width, u32 height, bool resizable)
+window_t* sm::init_window(sm::arena_t* arena, const char* name, u32 width, u32 height, bool resizable)
 {
 	SetProcessDPIAware(); // make sure window is created with scaling handled
 
@@ -267,8 +266,7 @@ window_t* sm::init_window(sm::arena_t& arena, const char* name, u32 width, u32 h
 	update_window_size(window);
 	update_window_position(window);
 
-	window->msg_cbs = init_static_array<window_msg_cb_with_args_t>(arena, kMaxNumCbs);
-	window->num_cbs = 0;
+	window->msg_cbs = init_array<window_msg_cb_with_args_t>(arena, kMaxNumCbs);
 
 	add_window_msg_cb(window, internal_msg_handler, &window);
 
@@ -280,10 +278,11 @@ window_t* sm::init_window(sm::arena_t& arena, const char* name, u32 width, u32 h
 
 void sm::add_window_msg_cb(window_t* window, window_msg_cb_t cb, void* args)
 {
-	SM_ASSERT(window->num_cbs < kMaxNumCbs);
 	SM_ASSERT(window);
-	window->msg_cbs[window->num_cbs] = { .cb = cb, .args = args };
-	window->num_cbs++;
+	window_msg_cb_with_args_t cb_with_args{};
+	cb_with_args.cb = cb;
+	cb_with_args.args = args;
+	push(window->msg_cbs, cb_with_args);
 }
 
 void sm::update_window(window_t* window)

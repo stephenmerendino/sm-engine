@@ -35,30 +35,30 @@ void sm::destroy_arena(arena_t* arena)
     delete arena;
 }
 
-void* sm::alloc(arena_t& arena, size_t num_bytes)
+void* sm::alloc(arena_t* arena, size_t num_bytes)
 {
-    SM_ASSERT(arena.head_offset_bytes + num_bytes <= arena.size_bytes);
-    void* allocated_mem = (void*)( (uintptr_t)arena.memory + (uintptr_t)arena.head_offset_bytes );
-    arena.head_offset_bytes += num_bytes;
+    SM_ASSERT(arena->head_offset_bytes + num_bytes <= arena->size_bytes);
+    void* allocated_mem = (void*)( (uintptr_t)arena->memory + (uintptr_t)arena->head_offset_bytes );
+    arena->head_offset_bytes += num_bytes;
     return allocated_mem;
 }
 
-void* sm::alloc_zero(arena_t& arena, size_t num_bytes)
+void* sm::alloc_zero(arena_t* arena, size_t num_bytes)
 {
-    SM_ASSERT(arena.head_offset_bytes + num_bytes <= arena.size_bytes);
-    void* allocated_mem = (void*)( (uintptr_t)arena.memory + (uintptr_t)arena.head_offset_bytes );
+    SM_ASSERT(arena->head_offset_bytes + num_bytes <= arena->size_bytes);
+    void* allocated_mem = (void*)( (uintptr_t)arena->memory + (uintptr_t)arena->head_offset_bytes );
     memset(allocated_mem, 0, num_bytes);
-    arena.head_offset_bytes += num_bytes;
+    arena->head_offset_bytes += num_bytes;
     return allocated_mem;
 }
 
-void sm::reset_arena(arena_t& arena)
+void sm::reset_arena(arena_t* arena)
 {
-    arena.head_offset_bytes = 0;
+    arena->head_offset_bytes = 0;
 }
 
-void sm::free(arena_t& arena, size_t num_bytes)
+void sm::free(arena_t* arena, size_t num_bytes)
 {
-    SM_ASSERT(arena.head_offset_bytes >= num_bytes);
-    arena.head_offset_bytes -= num_bytes;
+    SM_ASSERT(arena->head_offset_bytes >= num_bytes);
+    arena->head_offset_bytes -= num_bytes;
 }

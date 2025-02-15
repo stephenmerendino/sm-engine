@@ -5,7 +5,7 @@
 
 using namespace sm;
 
-hash_t sm::hash(const static_string_t& str)
+hash_t sm::hash(const string_t& str)
 {
 	return hash(str.c_str.data);
 }

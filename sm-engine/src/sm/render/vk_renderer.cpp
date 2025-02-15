@@ -4,6 +4,7 @@
 #include "sm/core/helpers.h"
 #include "sm/math/helpers.h"
 #include "sm/math/mat44.h"
+#include "sm/render/mesh.h"
 #include "sm/render/window.h"
 #include "sm/render/vk_include.h"
 
@@ -45,8 +46,8 @@ struct vk_queue_indices_t
 struct vk_swapchain_info_t
 {
 	VkSurfaceCapabilitiesKHR capabilities = { 0 };
-	static_array_t<VkSurfaceFormatKHR> formats;
-	static_array_t<VkPresentModeKHR> present_modes;
+	array_t<VkSurfaceFormatKHR> formats;
+	array_t<VkPresentModeKHR> present_modes;
 };
 
 struct render_frame_t 
@@ -122,7 +123,7 @@ VkFormat s_main_color_format = VK_FORMAT_R8G8B8A8_UNORM;
 VkFormat s_depth_format = VK_FORMAT_UNDEFINED;
 
 VkSwapchainKHR s_swapchain = VK_NULL_HANDLE;
-static_array_t<VkImage> s_swapchain_images;
+array_t<VkImage> s_swapchain_images;
 VkFormat s_swapchain_format = VK_FORMAT_UNDEFINED;
 VkExtent2D s_swapchain_extent{};
 
@@ -143,7 +144,7 @@ VkSampler s_linear_sampler = VK_NULL_HANDLE;
 VkRenderPass s_main_draw_render_pass;
 VkRenderPass s_imgui_render_pass;
 
-static_array_t<render_frame_t> s_render_frames;
+array_t<render_frame_t> s_render_frames;
 
 static bool format_has_stencil(VkFormat format)
 {
@@ -173,9 +174,9 @@ static VkFormat find_supported_format(VkPhysicalDevice phys_device, VkFormat* ca
 	return VK_FORMAT_UNDEFINED;
 }
 
-static VkFormat find_supported_format(VkPhysicalDevice phys_device, const static_array_t<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
+static VkFormat find_supported_format(VkPhysicalDevice phys_device, const array_t<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
 {
-	return find_supported_format(phys_device, candidates.data, (u32)candidates.size, tiling, features);
+	return find_supported_format(phys_device, candidates.data, (u32)candidates.cur_size, tiling, features);
 }
 
 static VkFormat find_supported_depth_format(VkPhysicalDevice phys_device)
@@ -239,31 +240,17 @@ static VkCommandBuffer allocate_command_buffer(VkDevice device, VkCommandPool co
 	return command_buffer;
 }
 
-static static_array_t<VkCommandBuffer> allocate_command_buffers(arena_t& arena, VkDevice device, VkCommandPool command_pool, VkCommandBufferLevel level, u32 num_buffers)
-{
-	static_array_t<VkCommandBuffer> buffers = init_static_array<VkCommandBuffer>(arena, num_buffers);
-
-	VkCommandBufferAllocateInfo alloc_info{};
-	alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	alloc_info.commandPool = command_pool;
-	alloc_info.level = level;
-	alloc_info.commandBufferCount = num_buffers;
-
-	SM_VULKAN_ASSERT(vkAllocateCommandBuffers(device, &alloc_info, buffers.data));
-	return buffers;
-}
-
-static vk_queue_indices_t find_queue_indices(arena_t& arena, VkPhysicalDevice device, VkSurfaceKHR surface)
+static vk_queue_indices_t find_queue_indices(arena_t* arena, VkPhysicalDevice device, VkSurfaceKHR surface)
 {
 	u32 queue_familiy_count = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_familiy_count, nullptr);
 
-	static_array_t<VkQueueFamilyProperties> queue_family_props = init_static_array<VkQueueFamilyProperties>(arena, queue_familiy_count);
+	array_t<VkQueueFamilyProperties> queue_family_props = init_array_sized<VkQueueFamilyProperties>(arena, queue_familiy_count);
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_familiy_count, queue_family_props.data);
 
 	vk_queue_indices_t indices;
 
-	for (int i = 0; i < (int)queue_family_props.size; i++)
+	for (int i = 0; i < (int)queue_family_props.cur_size; i++)
 	{
 		const VkQueueFamilyProperties& props = queue_family_props[i];
 		if (indices.graphics_and_compute == vk_queue_indices_t::INVALID_QUEUE_INDEX && 
@@ -303,7 +290,7 @@ static bool has_required_queues(const vk_queue_indices_t& queue_indices)
 		   queue_indices.presentation != vk_queue_indices_t::INVALID_QUEUE_INDEX;
 }
 
-static vk_swapchain_info_t query_swapchain(arena_t& arena, VkPhysicalDevice physical_device, VkSurfaceKHR surface)
+static vk_swapchain_info_t query_swapchain(arena_t* arena, VkPhysicalDevice physical_device, VkSurfaceKHR surface)
 {
 	vk_swapchain_info_t details;
 
@@ -316,7 +303,7 @@ static vk_swapchain_info_t query_swapchain(arena_t& arena, VkPhysicalDevice phys
 
 	if (num_surface_formats != 0)
 	{
-		details.formats = init_static_array<VkSurfaceFormatKHR>(arena, num_surface_formats);
+		details.formats = init_array_sized<VkSurfaceFormatKHR>(arena, num_surface_formats);
 		vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &num_surface_formats, details.formats.data);
 	}
 
@@ -326,7 +313,7 @@ static vk_swapchain_info_t query_swapchain(arena_t& arena, VkPhysicalDevice phys
 
 	if (num_present_modes != 0)
 	{
-		details.present_modes = init_static_array<VkPresentModeKHR>(arena, num_present_modes);
+		details.present_modes = init_array_sized<VkPresentModeKHR>(arena, num_present_modes);
 		vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &num_present_modes, details.present_modes.data);
 	}
 
@@ -395,7 +382,7 @@ static VkDebugUtilsMessengerCreateInfoEXT setup_debug_messenger_create_info(PFN_
 	return 	create_info;
 }
 
-static void print_instance_info(arena_t& arena)
+static void print_instance_info(arena_t* arena)
 {
 	if (!is_debug())
 	{
@@ -407,7 +394,7 @@ static void print_instance_info(arena_t& arena)
 		u32 num_exts;
 		vkEnumerateInstanceExtensionProperties(nullptr, &num_exts, nullptr);
 
-		static_array_t<VkExtensionProperties> instance_extensions = init_static_array<VkExtensionProperties>(arena, num_exts);
+		array_t<VkExtensionProperties> instance_extensions = init_array_sized<VkExtensionProperties>(arena, num_exts);
 		vkEnumerateInstanceExtensionProperties(nullptr, &num_exts, instance_extensions.data);
 
 		debug_printf("Supported Instance Extensions\n");
@@ -423,7 +410,7 @@ static void print_instance_info(arena_t& arena)
 		u32 num_layers;
 		vkEnumerateInstanceLayerProperties(&num_layers, nullptr);
 
-		static_array_t<VkLayerProperties> instance_layers = init_static_array<VkLayerProperties>(arena, num_layers);
+		array_t<VkLayerProperties> instance_layers = init_array_sized<VkLayerProperties>(arena, num_layers);
 		vkEnumerateInstanceLayerProperties(&num_layers, instance_layers.data);
 
 		debug_printf("Supported Instance Validation Layers\n");
@@ -435,12 +422,12 @@ static void print_instance_info(arena_t& arena)
 	}
 }
 
-static bool check_validation_layer_support(arena_t& arena)
+static bool check_validation_layer_support(arena_t* arena)
 {
 	u32 num_layers;
 	vkEnumerateInstanceLayerProperties(&num_layers, nullptr);
 
-	static_array_t<VkLayerProperties> instance_layers = init_static_array<VkLayerProperties>(arena, num_layers);
+	array_t<VkLayerProperties> instance_layers = init_array_sized<VkLayerProperties>(arena, num_layers);
 	vkEnumerateInstanceLayerProperties(&num_layers, instance_layers.data);
 
 	for (const char* layerName : VALIDATION_LAYERS)
@@ -478,12 +465,12 @@ static VkSampleCountFlagBits get_max_msaa_samples(VkPhysicalDeviceProperties pro
 	return VK_SAMPLE_COUNT_1_BIT;
 }
 
-static bool check_physical_device_extension_support(arena_t& arena, VkPhysicalDevice device)
+static bool check_physical_device_extension_support(arena_t* arena, VkPhysicalDevice device)
 {
 	u32 num_extensions = 0;
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &num_extensions, nullptr);
 
-	static_array_t<VkExtensionProperties> extensions = init_static_array<VkExtensionProperties>(arena, num_extensions);
+	array_t<VkExtensionProperties> extensions = init_array_sized<VkExtensionProperties>(arena, num_extensions);
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &num_extensions, extensions.data);
 
 	u8 num_required_extensions = ARRAY_LEN(DEVICE_EXTENSIONS);
@@ -508,7 +495,7 @@ static bool check_physical_device_extension_support(arena_t& arena, VkPhysicalDe
 	return has_extension_counter == num_required_extensions;
 }
 
-static bool is_physical_device_suitable(arena_t& arena, VkPhysicalDevice device, VkSurfaceKHR surface)
+static bool is_physical_device_suitable(arena_t* arena, VkPhysicalDevice device, VkSurfaceKHR surface)
 {
 	VkPhysicalDeviceProperties props;
 	vkGetPhysicalDeviceProperties(device, &props);
@@ -534,7 +521,7 @@ static bool is_physical_device_suitable(arena_t& arena, VkPhysicalDevice device,
 	}
 
 	vk_swapchain_info_t swapchain_info = query_swapchain(arena, device, surface);
-	if (swapchain_info.formats.size == 0 || swapchain_info.present_modes.size == 0)
+	if (swapchain_info.formats.cur_size == 0 || swapchain_info.present_modes.cur_size == 0)
 	{
 		return false;
 	}
@@ -557,13 +544,14 @@ static PFN_vkVoidFunction imgui_vulkan_func_loader(const char* functionName, voi
 void sm::init_renderer(window_t* window)
 {	
 	s_window = window;
+	init_primitive_shapes();
 
 	arena_t* startup_arena = init_arena(MiB(1));
 
 	// vk instance
 	{
         load_vulkan_global_funcs();
-        print_instance_info(*startup_arena);
+        print_instance_info(startup_arena);
 
         // app info
         VkApplicationInfo app_info = {};
@@ -586,7 +574,7 @@ void sm::init_renderer(window_t* window)
         // validation layers
         if (ENABLE_VALIDATION_LAYERS)
         {
-            SM_ASSERT(check_validation_layer_support(*startup_arena));
+            SM_ASSERT(check_validation_layer_support(startup_arena));
             create_info.ppEnabledLayerNames = VALIDATION_LAYERS;
             create_info.enabledLayerCount = ARRAY_LEN(VALIDATION_LAYERS);
 
@@ -666,12 +654,12 @@ void sm::init_renderer(window_t* window)
 
 			for(const VkPhysicalDevice& device : devices)
 			{
-				if(is_physical_device_suitable(*startup_arena, device, s_surface))
+				if(is_physical_device_suitable(startup_arena, device, s_surface))
 				{
 					selected_phy_device = device;
 					vkGetPhysicalDeviceProperties(selected_phy_device, &selected_phys_device_props);
 					vkGetPhysicalDeviceMemoryProperties(selected_phy_device, &selected_phys_device_mem_props);
-					queue_indices = find_queue_indices(*startup_arena, device, s_surface);
+					queue_indices = find_queue_indices(startup_arena, device, s_surface);
 					max_num_msaa_samples = get_max_msaa_samples(selected_phys_device_props);
 					break;
 				}
@@ -768,10 +756,10 @@ void sm::init_renderer(window_t* window)
 
 	// swapchain
 	{
-        vk_swapchain_info_t swapchain_info = query_swapchain(*startup_arena, s_phys_device, s_surface);
+        vk_swapchain_info_t swapchain_info = query_swapchain(startup_arena, s_phys_device, s_surface);
 
         VkSurfaceFormatKHR swapchain_format = swapchain_info.formats[0];
-		for(int i = 0; i < swapchain_info.formats.size; i++)
+		for(int i = 0; i < swapchain_info.formats.cur_size; i++)
         {
 			const VkSurfaceFormatKHR& format = swapchain_info.formats[i];
             if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
@@ -781,7 +769,7 @@ void sm::init_renderer(window_t* window)
         }
 
 		VkPresentModeKHR swapchain_present_mode = VK_PRESENT_MODE_FIFO_KHR;
-		for(int i = 0; i < swapchain_info.present_modes.size; i++)
+		for(int i = 0; i < swapchain_info.present_modes.cur_size; i++)
         {
 			const VkPresentModeKHR& mode = swapchain_info.present_modes[i];
             if (mode == VK_PRESENT_MODE_MAILBOX_KHR)
@@ -852,7 +840,7 @@ void sm::init_renderer(window_t* window)
 		u32 num_images = 0;
         vkGetSwapchainImagesKHR(s_device, s_swapchain, &num_images, nullptr);
 
-        s_swapchain_images = init_static_array<VkImage>(*startup_arena, num_images);
+        s_swapchain_images = init_array_sized<VkImage>(startup_arena, num_images);
         vkGetSwapchainImagesKHR(s_device, s_swapchain, &num_images, s_swapchain_images.data);
 
         s_swapchain_format = swapchain_format.format;
@@ -865,7 +853,7 @@ void sm::init_renderer(window_t* window)
 		begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 		vkBeginCommandBuffer(command_buffer, &begin_info);
 		// transition swapchain images to presentation layout
-        for (u32 i = 0; i < (u32)s_swapchain_images.size; i++)
+        for (u32 i = 0; i < (u32)s_swapchain_images.cur_size; i++)
         {
             VkImageMemoryBarrier barrier{};
             barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -1299,8 +1287,8 @@ void sm::init_renderer(window_t* window)
         init_info.PipelineCache = VK_NULL_HANDLE;
         init_info.DescriptorPool = s_imgui_descriptor_pool;
         init_info.Subpass = 0;
-        init_info.MinImageCount = (u32)s_swapchain_images.size; 
-        init_info.ImageCount = (u32)s_swapchain_images.size;
+        init_info.MinImageCount = (u32)s_swapchain_images.cur_size; 
+        init_info.ImageCount = (u32)s_swapchain_images.cur_size;
         init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
         init_info.Allocator = VK_NULL_HANDLE;
         init_info.CheckVkResultFn = CheckImGuiVulkanResult;
@@ -1348,9 +1336,9 @@ void sm::init_renderer(window_t* window)
 
 	// render frames
 	{
-		s_render_frames = init_static_array<render_frame_t>(*startup_arena, MAX_NUM_FRAMES_IN_FLIGHT);
+		s_render_frames = init_array_sized<render_frame_t>(startup_arena, MAX_NUM_FRAMES_IN_FLIGHT);
 
-		for(size_t i = 0; i < s_render_frames.size; i++)
+		for(size_t i = 0; i < s_render_frames.cur_size; i++)
 		{
 			render_frame_t& frame = s_render_frames[i];
 
@@ -1691,7 +1679,7 @@ void sm::init_renderer(window_t* window)
 					create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 					u32 queue_indices[] = {
-						s_queue_indices.graphics_and_compute
+						(u32)s_queue_indices.graphics_and_compute
 					};
 					create_info.queueFamilyIndexCount = ARRAY_LEN(queue_indices);
 					create_info.pQueueFamilyIndices = queue_indices;
@@ -1756,20 +1744,44 @@ void sm::init_renderer(window_t* window)
 				create_info.flags = 0;
 				create_info.magFilter = VK_FILTER_LINEAR;
 				create_info.minFilter = VK_FILTER_LINEAR;
-                //VkSamplerMipmapMode     mipmapMode;
-                //VkSamplerAddressMode    addressModeU;
-                //VkSamplerAddressMode    addressModeV;
-                //VkSamplerAddressMode    addressModeW;
-                //float                   mipLodBias;
-                //VkBool32                anisotropyEnable;
-                //float                   maxAnisotropy;
-                //VkBool32                compareEnable;
-                //VkCompareOp             compareOp;
-                //float                   minLod;
-                //float                   maxLod;
-                //VkBorderColor           borderColor;
-                //VkBool32                unnormalizedCoordinates;
-                vkCreateSampler(s_device, &create_info, nullptr, &s_linear_sampler);
+				create_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+				create_info.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+				create_info.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+				create_info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+				create_info.mipLodBias = 0.0f;
+				create_info.anisotropyEnable = VK_FALSE;
+				create_info.maxAnisotropy = 0.0f;
+				create_info.compareEnable = VK_FALSE;
+				create_info.compareOp = VK_COMPARE_OP_NEVER;
+				create_info.minLod = 0.0f;
+				create_info.maxLod = 12.0f;
+				create_info.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+				create_info.unnormalizedCoordinates = VK_FALSE;
+                SM_VULKAN_ASSERT(vkCreateSampler(s_device, &create_info, nullptr, &s_linear_sampler));
+			}
+
+			// write sampler to global descriptor set
+			{
+				VkWriteDescriptorSet sampler_write{};
+				sampler_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				sampler_write.dstSet = s_global_descriptor_set;
+				sampler_write.dstBinding = 0;
+				sampler_write.dstArrayElement = 0;
+				sampler_write.descriptorCount = 1;
+				sampler_write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+
+				VkDescriptorImageInfo image_info{};
+				image_info.sampler = s_linear_sampler;
+				image_info.imageView = VK_NULL_HANDLE;
+				image_info.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+				
+				sampler_write.pImageInfo = &image_info;
+
+				VkWriteDescriptorSet descriptor_set_writes[] = {
+					sampler_write
+				};
+				
+                vkUpdateDescriptorSets(s_device, ARRAY_LEN(descriptor_set_writes), descriptor_set_writes, 0, nullptr);
 			}
 		}
 

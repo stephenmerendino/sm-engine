@@ -38,7 +38,7 @@
     <ClCompile Include="Source\Engine\Math\Vec4_old.cpp" />
     <ClCompile Include="Source\Engine\Render\Camera.cpp" />
     <ClCompile Include="Source\Engine\Render\DX12\DX12Renderer.cpp" />
-    <ClCompile Include="Source\Engine\Render\Mesh.cpp" />
+    <ClCompile Include="Source\Engine\Render\Mesh_old.cpp" />
     <ClCompile Include="Source\Engine\Render\MeshBuilder.cpp" />
     <ClCompile Include="Source\Engine\Render\RendererOld.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderSettings.cpp" />
@@ -96,6 +96,7 @@
     <ClCompile Include="src\sm\platform\win32\render\win32_vk_functions.cpp" />
     <ClCompile Include="src\sm\platform\win32\render\win32_window.cpp" />
     <ClCompile Include="src\sm\platform\win32\thread\win32_thread.cpp" />
+    <ClCompile Include="src\sm\render\mesh.cpp" />
     <ClCompile Include="src\sm\render\vk_renderer.cpp" />
     <ClCompile Include="src\third_party\imgui\backends\imgui_impl_vulkan.cpp" />
     <ClCompile Include="src\third_party\imgui\backends\imgui_impl_win32.cpp" />
@@ -136,7 +137,7 @@
     <ClInclude Include="Source\Engine\Platform\WindowsUtils.h" />
     <ClInclude Include="Source\Engine\Render\Camera.h" />
     <ClInclude Include="Source\Engine\Render\DX12\DX12Renderer.h" />
-    <ClInclude Include="Source\Engine\Render\Mesh.h" />
+    <ClInclude Include="Source\Engine\Render\Mesh_old.h" />
     <ClInclude Include="Source\Engine\Render\MeshBuilder.h" />
     <ClInclude Include="Source\Engine\Render\Renderer_old.h" />
     <ClInclude Include="Source\Engine\Render\RenderSettings.h" />
@@ -191,6 +192,7 @@
     <ClInclude Include="src\sm\memory\arena.h" />
     <ClInclude Include="src\sm\platform\platform_handle.h" />
     <ClInclude Include="src\sm\platform\win32\win32_include.h" />
+    <ClInclude Include="src\sm\render\mesh.h" />
     <ClInclude Include="src\sm\render\vk_renderer.h" />
     <ClInclude Include="src\sm\render\shader_compiler.h" />
     <ClInclude Include="src\sm\render\vk_functions.h" />

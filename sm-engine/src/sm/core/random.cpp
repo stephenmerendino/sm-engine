@@ -9,7 +9,7 @@ void sm::init_random()
 	::srand((u32)time(NULL));
 }
 
-f32 sm::gen_random_01()
+f32 sm::gen_random_zero_to_one()
 {
 	i32 num = ::rand();
 	return (f32)num / (f32)RAND_MAX;
@@ -18,7 +18,7 @@ f32 sm::gen_random_01()
 f32 sm::gen_random_between(f32 low, f32 high)
 {
 	f32 range = high - low;
-	return low + (gen_random_01() * range);
+	return low + (gen_random_zero_to_one() * range);
 }
 
 i32 sm::gen_random_between(i32 low, i32 high)

@@ -2,7 +2,7 @@
 #include "Engine/Config_old.h"
 #include "Engine/Core/Types.h"
 #include "Engine/Core/File_old.h"
-#include "Engine/Render/Mesh.h"
+#include "Engine/Render/Mesh_old.h"
 #include "Engine/Render/Vulkan/VulkanDevice.h"
 #include "Engine/Render/Vulkan/VulkanFormats.h"
 

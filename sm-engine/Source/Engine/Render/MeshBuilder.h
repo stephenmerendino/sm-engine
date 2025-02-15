@@ -3,7 +3,7 @@
 #include "Engine/Core/Types.h"
 #include "Engine/Core/Color_old.h"
 #include "Engine/Math/Mat44_old.h"
-#include "Engine/Render/Mesh.h"
+#include "Engine/Render/Mesh_old.h"
 #include "Engine/Render/Vertex.h"
 
 class MeshBuilder

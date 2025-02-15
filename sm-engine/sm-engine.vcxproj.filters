@@ -207,7 +207,7 @@
     <ClCompile Include="Source\Engine\Render\Vertex.cpp">
       <Filter>Source\Render</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Render\Mesh.cpp">
+    <ClCompile Include="Source\Engine\Render\Mesh_old.cpp">
       <Filter>Source\Render</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\MeshBuilder.cpp">
@@ -335,6 +335,9 @@
     </ClCompile>
     <ClCompile Include="src\sm\platform\win32\render\win32_vk_functions.cpp">
       <Filter>src\sm\platform\win32\render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\sm\render\mesh.cpp">
+      <Filter>src\sm\render</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -467,7 +470,7 @@
     <ClInclude Include="Source\Engine\Render\Vertex.h">
       <Filter>Source\Render</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Render\Mesh.h">
+    <ClInclude Include="Source\Engine\Render\Mesh_old.h">
       <Filter>Source\Render</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\MeshBuilder.h">
@@ -765,6 +768,9 @@
       <Filter>src\sm\render</Filter>
     </ClInclude>
     <ClInclude Include="src\sm\render\vk_include.h">
+      <Filter>src\sm\render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\render\mesh.h">
       <Filter>src\sm\render</Filter>
     </ClInclude>
   </ItemGroup>

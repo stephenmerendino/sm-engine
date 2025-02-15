@@ -39,12 +39,10 @@ namespace sm
         bool was_resized;
         bool was_closed;
         bool is_moving;
-        sm::static_array_t<window_msg_cb_with_args_t> msg_cbs;
-        u8 num_cbs;
-        byte_t padding[3];
+        sm::array_t<window_msg_cb_with_args_t> msg_cbs;
     };
 
-    window_t*   init_window(sm::arena_t& arena, const char* name, u32 width, u32 height, bool resizable);
+    window_t*   init_window(sm::arena_t* arena, const char* name, u32 width, u32 height, bool resizable);
     void        add_window_msg_cb(window_t* window, window_msg_cb_t cb, void* args);
     void        update_window(window_t* window);
     void        set_title(window_t* window, const char* new_title);
