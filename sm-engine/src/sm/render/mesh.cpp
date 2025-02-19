@@ -83,10 +83,10 @@ void sm::init_primitive_shapes()
         //builder.AddTriangle(v6_index, v7_index, v8_index);
         //builder.AddTriangle(v9_index, v10_index, v11_index);
 
-		mesh_t* axes_mesh = alloc_struct(s_primitives_arena, mesh_t);
-		axes_mesh->vertices = init_array<vertex_t>(s_primitives_arena, 64);
-		axes_mesh->indices = init_array<u32>(s_primitives_arena, 64);
-		axes_mesh->topology = primitive_topology_t::kLineList;
+		mesh_t* tetrahedron_mesh = alloc_struct(s_primitives_arena, mesh_t);
+		tetrahedron_mesh->vertices = init_array<vertex_t>(s_primitives_arena, 64);
+		tetrahedron_mesh->indices = init_array<u32>(s_primitives_arena, 64);
+		tetrahedron_mesh->topology = primitive_topology_t::kLineList;
 
         vec3_t v0_pos{0.0f, 0.0f, 1.0f};
 	}
