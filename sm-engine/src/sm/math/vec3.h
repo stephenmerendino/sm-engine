@@ -25,6 +25,9 @@ namespace sm
         inline bool operator==(const vec3_t& other);
 
         static const vec3_t ZERO;
+        static const vec3_t X_AXIS;
+        static const vec3_t Y_AXIS;
+        static const vec3_t Z_AXIS;
         static const vec3_t WORLD_FORWARD;
         static const vec3_t WORLD_BACKWARD;
         static const vec3_t WORLD_UP;

@@ -3,6 +3,7 @@
 #include "sm/math/vec2.h"
 #include "sm/math/vec3.h"
 #include "sm/core/array.h"
+#include "sm/core/color.h"
 
 namespace sm
 {
@@ -41,6 +42,10 @@ namespace sm
 		array_t<vertex_t> vertices;
 		array_t<u32> indices;
 	};
+
+    vertex_t init_vertex(const vec3_t& pos, const vec2_t& uv, const vec3_t& color);
+    vertex_t init_vertex(const vec3_t& pos, const vec2_t& uv, const color_f32_t& color);
+    void add_vertex_and_index(mesh_t* mesh, const vertex_t& v);
 
     void init_primitive_shapes();
     const mesh_t* get_primitive_shape_mesh(primitive_shape_t shape);

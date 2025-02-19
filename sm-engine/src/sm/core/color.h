@@ -1,6 +1,8 @@
 #pragma once
 
 #include "sm/core/types.h"
+#include "sm/math/vec3.h"
+#include "sm/math/vec4.h"
 
 namespace sm
 {
@@ -29,4 +31,14 @@ namespace sm
         static const color_u8_t GREEN;
         static const color_u8_t BLUE;
     };
+
+    inline vec3_t to_vec3(const color_f32_t& color)
+    {
+        return { color.r, color.g, color.b };
+    }
+
+    inline vec4_t to_vec4(const color_f32_t& color)
+    {
+        return { color.r, color.g, color.b, color.a };
+    }
 }
