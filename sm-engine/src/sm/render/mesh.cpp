@@ -1,4 +1,5 @@
 #include "sm/render/mesh.h"
+#include "sm/math/mat44.h"
 
 using namespace sm;
 
@@ -89,6 +90,11 @@ void sm::init_primitive_shapes()
 		tetrahedron_mesh->topology = primitive_topology_t::kLineList;
 
         vec3_t v0_pos{0.0f, 0.0f, 1.0f};
+        f32 pitch = 0.0f;
+
+        vec3_t v1_pos = to_vec3(init_vec4(1.0f, 0.0f, 0.0f, 0.0f) * init_rotation_y_degs(pitch));
+        vec3_t v2_pos = to_vec3(init_vec4(1.0f, 0.0f, 0.0f, 0.0f) * init_rotation_y_degs(pitch) * init_rotation_z_degs(120.0f));
+        vec3_t v3_pos = to_vec3(init_vec4(1.0f, 0.0f, 0.0f, 0.0f) * init_rotation_y_degs(pitch) * init_rotation_z_degs(240.0f));
 	}
 
     //kCube

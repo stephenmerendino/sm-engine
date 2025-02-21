@@ -27,6 +27,7 @@ namespace sm
         inline bool     operator==(const vec4_t& other) const;
 	};
 
+    inline vec4_t   init_vec4(f32 x, f32 y, f32 z, f32 w);
     inline vec4_t   init_vec4(const vec3_t& xyz, f32 w);
     inline f32      calc_len_sq(const vec4_t& v);
     inline f32      calc_len(const vec4_t& v);
@@ -34,6 +35,7 @@ namespace sm
     inline vec4_t   normalized(const vec4_t& v);
     inline vec4_t   operator*(f32 s, const vec4_t& v);
     inline f32      dot(const vec4_t& a, const vec4_t& b);
+    inline vec3_t   to_vec3(const vec4_t& v);
 
     inline vec4_t vec4_t::operator*(f32 s) const
     {
@@ -103,6 +105,11 @@ namespace sm
         return (x == other.x) && (y == other.y) && (z == other.z) && (w == other.w);
     }
 
+    inline vec4_t init_vec4(f32 x, f32 y, f32 z, f32 w)
+    {
+        return vec4_t(x, y, z, w);
+    }
+
     inline vec4_t init_vec4(const vec3_t& xyz, f32 w)
     {
         return vec4_t(xyz.x, xyz.y, xyz.z, w);
@@ -146,5 +153,10 @@ namespace sm
     inline f32 dot(const vec4_t& a, const vec4_t& b)
     {
         return (a.x * b.x) + (a.y * b.y) + (a.z * b.z) + (a.w * b.w);
+    }
+
+    inline vec3_t to_vec3(const vec4_t& v)
+    {
+        return vec3_t(v.x, v.y, v.z);
     }
 }
