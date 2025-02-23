@@ -45,7 +45,11 @@ namespace sm
 
     vertex_t init_vertex(const vec3_t& pos, const vec2_t& uv, const vec3_t& color);
     vertex_t init_vertex(const vec3_t& pos, const vec2_t& uv, const color_f32_t& color);
+
+    u32 add_vertex(mesh_t* mesh, const vertex_t& v);
+    void add_index(mesh_t* mesh, u32 index);
     void add_vertex_and_index(mesh_t* mesh, const vertex_t& v);
+    void add_triangle_indices(mesh_t* mesh, u32 index0, u32 index1, u32 index2);
 
     void init_primitive_shapes();
     const mesh_t* get_primitive_shape_mesh(primitive_shape_t shape);

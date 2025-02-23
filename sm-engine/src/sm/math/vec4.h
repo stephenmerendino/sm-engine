@@ -27,7 +27,6 @@ namespace sm
         inline bool     operator==(const vec4_t& other) const;
 	};
 
-    inline vec4_t   init_vec4(f32 x, f32 y, f32 z, f32 w);
     inline vec4_t   init_vec4(const vec3_t& xyz, f32 w);
     inline f32      calc_len_sq(const vec4_t& v);
     inline f32      calc_len(const vec4_t& v);
@@ -103,11 +102,6 @@ namespace sm
     inline bool vec4_t::operator==(const vec4_t& other) const
     {
         return (x == other.x) && (y == other.y) && (z == other.z) && (w == other.w);
-    }
-
-    inline vec4_t init_vec4(f32 x, f32 y, f32 z, f32 w)
-    {
-        return vec4_t(x, y, z, w);
     }
 
     inline vec4_t init_vec4(const vec3_t& xyz, f32 w)
