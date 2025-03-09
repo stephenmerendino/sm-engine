@@ -1,5 +1,9 @@
 #include "sm/render/mesh.h"
 #include "sm/math/mat44.h"
+#include "sm/config.h"
+
+#define TINYOBJLOADER_IMPLEMENTATION
+#include "third_party/tinyobjloader/tiny_obj_loader.h"
 
 using namespace sm;
 
@@ -514,4 +518,47 @@ const mesh_t* sm::get_primitive_shape_mesh(primitive_shape_t shape)
 {
 	SM_ASSERT(s_did_init_primitive_shapes);
 	return s_primitive_shapes[(u32)shape];
+}
+
+// Only used here because its necessary for tinyobj
+#include <vector>
+#include <string>
+
+mesh_t* sm::init_from_obj(sm::arena_t* arena, const char* obj_filepath)
+{
+    mesh_t* mesh = alloc_struct(arena, mesh_t);
+    mesh->vertices = init_array<vertex_t>(arena, 64);
+    mesh->indices = init_array<u32>(arena, 64);
+    mesh->topology = primitive_topology_t::kTriangleList;
+
+	tinyobj::attrib_t attrib;
+	std::vector<tinyobj::shape_t> shapes;
+	std::vector<tinyobj::material_t> materials;
+	std::string warn, err;
+
+	std::string fullFilepath = std::string(MODELS_PATH) + obj_filepath;
+
+	bool loaded = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, fullFilepath.c_str());
+	SM_ASSERT(loaded);
+
+	for (const auto& shape : shapes)
+	{
+		for (const auto& index : shape.mesh.indices)
+		{
+			vertex_t vertex;
+
+			vertex.pos = vec3_t(attrib.vertices[3 * index.vertex_index + 0],
+								attrib.vertices[3 * index.vertex_index + 1],
+								attrib.vertices[3 * index.vertex_index + 2]);
+
+			vertex.uv = vec2_t(attrib.texcoords[2 * index.texcoord_index + 0],
+							   1.0f - attrib.texcoords[2 * index.texcoord_index + 1]);
+
+			vertex.color = to_vec3(color_f32_t::WHITE);
+
+			add_vertex_and_index(mesh, vertex);
+		}
+	}
+
+    return mesh;
 }

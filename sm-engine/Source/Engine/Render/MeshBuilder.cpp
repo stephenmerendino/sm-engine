@@ -2,7 +2,7 @@
 #include "Engine/Config_old.h"
 #include "Engine/Core/Color_old.h"
 
-#define TINYOBJLOADER_IMPLEMENTATION
+//#define TINYOBJLOADER_IMPLEMENTATION
 #include "third_party/tinyobjloader/tiny_obj_loader.h"
 
 #define CHECK_WORKING_MESH() SM_ASSERT_MSG(m_workingMesh != nullptr, "Begin() hasn't been called on MeshBuilder to start building a new mesh\n")

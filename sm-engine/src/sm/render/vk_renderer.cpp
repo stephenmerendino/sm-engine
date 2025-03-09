@@ -146,6 +146,13 @@ VkRenderPass s_imgui_render_pass;
 
 array_t<render_frame_t> s_render_frames;
 
+mesh_t* s_viking_room_mesh = nullptr;
+VkBuffer s_viking_room_vertex_buffer = VK_NULL_HANDLE;
+VkBuffer s_viking_room_index_buffer = VK_NULL_HANDLE;
+//VkImage s_viking_room_diffuse_texture_image;
+//VkImageView s_viking_room_diffuse_texture_image_view;
+//VkDeviceMemory s_viking_room_diffuse_texture_device_memory;
+
 static bool format_has_stencil(VkFormat format)
 {
     return (format == VK_FORMAT_D32_SFLOAT_S8_UINT) || 
@@ -546,7 +553,7 @@ void sm::init_renderer(window_t* window)
 	s_window = window;
 	init_primitive_shapes();
 
-	arena_t* startup_arena = init_arena(MiB(1));
+	arena_t* startup_arena = init_arena(MiB(100));
 
 	// vk instance
 	{
@@ -1787,6 +1794,122 @@ void sm::init_renderer(window_t* window)
 
 		// viking room
 		{
+			s_viking_room_mesh = init_from_obj(startup_arena, "viking_room.obj");
+
+			//vkCreateBuffer()
+
+            //m_vikingRoomVertexBuffer.Init(VulkanBuffer::Type::kVertexBuffer, m_pVikingRoomMesh->CalcVertexBufferSize());
+            //m_vikingRoomVertexBuffer.Update(m_graphicsCommandPool, m_pVikingRoomMesh->m_vertices.data(), 0);
+
+            //m_vikingRoomIndexBuffer.Init(VulkanBuffer::Type::kIndexBuffer, m_pVikingRoomMesh->CalcIndexBufferSize());
+            //m_vikingRoomIndexBuffer.Update(m_graphicsCommandPool, m_pVikingRoomMesh->m_indices.data(), 0);
+
+            //m_vikingRoomDiffuseTexture.InitFromFile(m_graphicsCommandPool, "viking-room.png");
+
+            //m_vikingRoomMaterialDS = m_materialDescriptorPool.AllocateSet(m_materialDescriptorSetLayout);
+
+            //VulkanDescriptorSetWriter dsWriter;
+            //dsWriter.AddSampledImageWrite(m_vikingRoomMaterialDS, m_vikingRoomDiffuseTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 0, 1);
+            //dsWriter.PerformWrites();
+
+            //m_vikingRoomMeshInstanceBuffer.Init(VulkanBuffer::Type::kUniformBuffer, sizeof(MeshInstanceRenderData));
+		}
+
+		// pipeline layouts
+		{
+            //// Viking Room
+            //std::vector<VkDescriptorSetLayout> pipelineDescriptorSetLayouts = {
+            //    m_globalDescriptorSetLayout.m_layoutHandle,
+            //    m_frameDescriptorSetLayout.m_layoutHandle,
+            //    m_materialDescriptorSetLayout.m_layoutHandle,
+            //    m_meshInstanceDescriptorSetLayout.m_layoutHandle
+            //};
+
+            //m_vikingRoomMainDrawPipelineLayout.Init(pipelineDescriptorSetLayouts);
+
+            //// Infinite Grid
+            //std::vector<VkDescriptorSetLayout> infiniteGridDescriptorSetLayouts = { m_infiniteGridDescriptorSetLayout.m_layoutHandle };
+            //m_infiniteGridPipelineLayout.Init(infiniteGridDescriptorSetLayouts);
+
+            //// Post Processing
+            //std::vector<VkDescriptorSetLayout> layouts = { m_postProcessingDescriptorSetLayout.m_layoutHandle };
+            //m_postProcessingPipelineLayout.Init(layouts);
+		}
+
+		// pipelines
+		{
+            //// Viking Room Pipeline
+            //{
+            //    VulkanShaderStages shaderStages;
+            //    {
+            //        Shader vertShader;
+            //        CompileShader(ShaderType::kVs, "simple-diffuse.vs.hlsl", "Main", &vertShader);
+
+            //        Shader pixelShader;
+            //        CompileShader(ShaderType::kPs, "simple-diffuse.ps.hlsl", "Main", &pixelShader);
+
+            //        shaderStages.InitVsPs(vertShader, pixelShader);
+            //    }
+
+            //    VulkanMeshPipelineInputInfo pipelineMeshInputInfo;
+            //    pipelineMeshInputInfo.Init(m_pVikingRoomMesh, false);
+
+            //    VulkanPipelineState pipelineState;
+            //    pipelineState.InitRasterState(VK_POLYGON_MODE_FILL, VK_FRONT_FACE_COUNTER_CLOCKWISE, VK_CULL_MODE_BACK_BIT);
+            //    pipelineState.InitViewportState(0, 0, (F32)m_swapchain.m_extent.width, (F32)m_swapchain.m_extent.height, 0.0f, 1.0f, 0, 0, m_swapchain.m_extent.width, m_swapchain.m_extent.height);
+            //    pipelineState.InitMultisampleState(VulkanDevice::Get()->m_maxNumMsaaSamples);
+            //    pipelineState.InitDepthStencilState(true, true, VK_COMPARE_OP_LESS);
+            //    pipelineState.PreInitAddColorBlendAttachment(false);
+            //    pipelineState.InitColorBlendState(false);
+
+            //    m_vikingRoomMainDrawPipeline.InitGraphics(shaderStages, m_vikingRoomMainDrawPipelineLayout, pipelineMeshInputInfo, pipelineState, m_mainDrawRenderPass);
+
+            //    shaderStages.Destroy();
+            //}
+
+            //// Infinite grid
+            //{
+            //    VulkanShaderStages shaderStages;
+            //    {
+            //        Shader vertShader;
+            //        CompileShader(ShaderType::kVs, "infinite-grid.vs.hlsl", "Main", &vertShader);
+
+            //        Shader pixelShader;
+            //        CompileShader(ShaderType::kPs, "infinite-grid.ps.hlsl", "Main", &pixelShader);
+
+            //        shaderStages.InitVsPs(vertShader, pixelShader);
+            //    }
+
+            //    VulkanMeshPipelineInputInfo pipelineMeshInputInfo;
+            //    pipelineMeshInputInfo.Init(nullptr);
+
+            //    VulkanPipelineState pipelineState;
+            //    pipelineState.InitRasterState(VK_POLYGON_MODE_FILL, VK_FRONT_FACE_COUNTER_CLOCKWISE, VK_CULL_MODE_NONE);
+            //    pipelineState.InitViewportState(0, 0, (F32)m_swapchain.m_extent.width, (F32)m_swapchain.m_extent.height, 0.0f, 1.0f, 0, 0, m_swapchain.m_extent.width, m_swapchain.m_extent.height);
+            //    pipelineState.InitMultisampleState(VulkanDevice::Get()->m_maxNumMsaaSamples);
+            //    pipelineState.InitDepthStencilState(true, true, VK_COMPARE_OP_LESS);
+            //    pipelineState.PreInitAddColorBlendAttachment(true, VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD);
+            //    pipelineState.InitColorBlendState(false);
+
+            //    m_infiniteGridPipeline.InitGraphics(shaderStages, m_infiniteGridPipelineLayout, pipelineMeshInputInfo, pipelineState, m_mainDrawRenderPass);
+
+            //    shaderStages.Destroy();
+            //}
+
+            //// Post Processing
+            //{
+            //    VulkanShaderStages shaderStage;
+            //    {
+            //        Shader computeShader;
+            //        CompileShader(ShaderType::kCs, "post-processing.cs.hlsl", "Main", &computeShader);
+
+            //        shaderStage.InitCs(computeShader);
+            //    }
+
+            //    m_postProcessingPipeline.InitCompute(shaderStage, m_postProcessingPipelineLayout);
+
+            //    shaderStage.Destroy();
+            //}
 		}
 	}
 

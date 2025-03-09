@@ -54,5 +54,5 @@ namespace sm
     void init_primitive_shapes();
     const mesh_t* get_primitive_shape_mesh(primitive_shape_t shape);
 
-	//mesh_t* init_from_obj(const char* obj_filepath);
+	mesh_t* init_from_obj(sm::arena_t* arena, const char* obj_filepath);
 }
