@@ -55,4 +55,5 @@ namespace sm
     const mesh_t* get_primitive_shape_mesh(primitive_shape_t shape);
 
 	mesh_t* init_from_obj(sm::arena_t* arena, const char* obj_filepath);
+    size_t calc_mesh_vertex_buffer_size(const mesh_t* mesh);
 }

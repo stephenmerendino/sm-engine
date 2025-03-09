@@ -562,3 +562,8 @@ mesh_t* sm::init_from_obj(sm::arena_t* arena, const char* obj_filepath)
 
     return mesh;
 }
+
+size_t sm::calc_mesh_vertex_buffer_size(const mesh_t* mesh)
+{
+    return mesh->vertices.cur_size * sizeof(vertex_t);
+}
