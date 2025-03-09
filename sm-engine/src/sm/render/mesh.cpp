@@ -162,23 +162,23 @@ void sm::init_primitive_shapes()
 
     // octahedron
     {
-        //MeshBuilder builder;
-        //builder.Begin();
-        //builder.SetTopology(PrimitiveTopology::kTriangleList);
+		mesh_t* octahedron_mesh = alloc_struct(s_primitives_arena, mesh_t);
+		octahedron_mesh->vertices = init_array<vertex_t>(s_primitives_arena, 64);
+		octahedron_mesh->indices = init_array<u32>(s_primitives_arena, 64);
+		octahedron_mesh->topology = primitive_topology_t::kTriangleList;
 
-        //Vec3 v0_pos = Vec3(0.0f, 0.0f, 1.0f);
-        //Vec3 v1_pos = Vec3(1.0f, 0.0f, 0.0f);
-        //Vec3 v2_pos = Vec3(0.0f, 1.0f, 0.0f);
-        //Vec3 v3_pos = Vec3(-1.0f, 0.0f, 0.0f);
-        //Vec3 v4_pos = Vec3(0.0f, -1.0f, 0.0f);
-        //Vec3 v5_pos = Vec3(0.0f, 0.0f, -1.0f);
+        vec3_t v0_pos(0.0f, 0.0f, 1.0f);
+        vec3_t v1_pos(1.0f, 0.0f, 0.0f);
+        vec3_t v2_pos(0.0f, 1.0f, 0.0f);
+        vec3_t v3_pos(-1.0f, 0.0f, 0.0f);
+        vec3_t v4_pos(0.0f, -1.0f, 0.0f);
+        vec3_t v5_pos(0.0f, 0.0f, -1.0f);
 
-        //{
-        //    U32 i0 = builder.AddVertex(v0_pos, ColorF32::WHITE, Vec2(0.0f, 0.0f));
-        //    U32 i1 = builder.AddVertex(v1_pos, ColorF32::WHITE, Vec2(0.0f, 1.0f));
-        //    U32 i2 = builder.AddVertex(v2_pos, ColorF32::WHITE, Vec2(1.0f, 0.0f));
-        //    builder.AddTriangle(i0, i1, i2);
-        //}
+        {
+            add_vertex_and_index(octahedron_mesh, init_vertex(v0_pos, vec2_t(0.0f, 0.0f), color_f32_t::WHITE));
+            add_vertex_and_index(octahedron_mesh, init_vertex(v1_pos, vec2_t(0.0f, 1.0f), color_f32_t::WHITE));
+            add_vertex_and_index(octahedron_mesh, init_vertex(v2_pos, vec2_t(1.0f, 0.0f), color_f32_t::WHITE));
+        }
 
         //{
         //    U32 i0 = builder.AddVertex(v0_pos, ColorF32::WHITE, Vec2(0.0f, 0.0f));
@@ -228,8 +228,6 @@ void sm::init_primitive_shapes()
         //    U32 i2 = builder.AddVertex(v4_pos, ColorF32::WHITE, Vec2(0.0f, 1.0f));
         //    builder.AddTriangle(i0, i1, i2);
         //}
-
-        //return builder.Finish();
     }
 
     // uv sphere
