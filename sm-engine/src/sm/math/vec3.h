@@ -3,6 +3,7 @@
 #include "sm/core/assert.h"
 #include "sm/core/types.h"
 #include "sm/math/helpers.h"
+#include "sm/math/vec2.h"
 #include <cmath>
 
 namespace sm
@@ -35,6 +36,11 @@ namespace sm
         static const vec3_t WORLD_LEFT;
         static const vec3_t WORLD_RIGHT;
 	};
+
+    inline vec3_t init_vec3(const vec2_t& xy, f32 z)
+    {
+        return vec3_t(xy.x, xy.y, z);
+    }
 
     inline vec3_t vec3_t::operator*(f32 s) const
     {
