@@ -6,11 +6,11 @@
 #include "Engine/Render/Vulkan/VulkanCommands.h"
 #include "Engine/Render/Vulkan/VulkanBuffer.h"
 
-#pragma warning(push)
-#pragma warning(disable:4244)
-#define STB_IMAGE_IMPLEMENTATION
+//#pragma warning(push)
+//#pragma warning(disable:4244)
+//#define STB_IMAGE_IMPLEMENTATION
 #include "third_party/stb/stb_image.h"
-#pragma warning(pop)
+//#pragma warning(pop)
 
 #include <cmath>
 #include <string>

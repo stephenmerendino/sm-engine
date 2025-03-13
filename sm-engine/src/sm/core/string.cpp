@@ -25,6 +25,19 @@ void string_t::operator=(string_t str)
     *this = str.c_str.data;
 }
 
+string_t& string_t::operator+=(const char* str)
+{
+	size_t additional_len = strlen(str);
+	size_t cur_len = c_str.cur_size;
+	grow_capacity(c_str, cur_len + additional_len);
+}
+
+string_t& string_t::operator+=(const string_t& str)
+{
+	*this += str.c_str.data;
+	return *this;
+}
+
 string_t sm::init_string(sm::arena_t* arena, size_t size)
 {
     string_t str;

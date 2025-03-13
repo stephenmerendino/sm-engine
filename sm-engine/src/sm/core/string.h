@@ -10,6 +10,8 @@ namespace sm
         const char& operator[](size_t index) const;
         void        operator=(const char* str);
         void        operator=(string_t str);
+        string_t&   operator+=(const char* str);
+        string_t&   operator+=(const string_t& str);
     };
 
     string_t init_string(sm::arena_t* arena, size_t size);

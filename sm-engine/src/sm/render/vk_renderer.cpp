@@ -2,6 +2,7 @@
 #include "sm/config.h"
 #include "sm/core/debug.h"
 #include "sm/core/helpers.h"
+#include "sm/core/string.h"
 #include "sm/math/helpers.h"
 #include "sm/math/mat44.h"
 #include "sm/render/mesh.h"
@@ -11,6 +12,12 @@
 #include "third_party/imgui/imgui.h"
 #include "third_party/imgui/backends/imgui_impl_win32.h"
 #include "third_party/imgui/backends/imgui_impl_vulkan.h"
+
+#pragma warning(push)
+#pragma warning(disable:4244)
+#define STB_IMAGE_IMPLEMENTATION
+#include "third_party/stb/stb_image.h"
+#pragma warning(pop)
 
 using namespace sm;
 
@@ -151,9 +158,9 @@ VkBuffer s_viking_room_vertex_buffer = VK_NULL_HANDLE;
 VkDeviceMemory s_viking_room_vertex_buffer_memory = VK_NULL_HANDLE;
 VkBuffer s_viking_room_index_buffer = VK_NULL_HANDLE;
 VkDeviceMemory s_viking_room_index_buffer_memory = VK_NULL_HANDLE;
-//VkImage s_viking_room_diffuse_texture_image;
-//VkImageView s_viking_room_diffuse_texture_image_view;
+VkImage s_viking_room_diffuse_texture_image;
 //VkDeviceMemory s_viking_room_diffuse_texture_device_memory;
+//VkImageView s_viking_room_diffuse_texture_image_view;
 
 static bool format_has_stencil(VkFormat format)
 {
@@ -1941,6 +1948,47 @@ void sm::init_renderer(window_t* window)
 				}
 
 				upload_buffer_data(s_viking_room_index_buffer, s_viking_room_mesh->indices.data, index_buffer_size);
+			}
+
+			// viking room diffuse texture
+			{
+                int tex_width;
+                int tex_height;
+                int tex_channels;
+
+                VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
+
+                // load image pixels
+				const char* diffuse_texture_filename = "viking-room.png";
+				sm::string_t full_filepath = init_string(startup_arena, 64);
+				full_filepath += TEXTURES_PATH;
+				full_filepath += diffuse_texture_filename;
+                stbi_uc* pixels = stbi_load(full_filepath.c_str.data, &tex_width, &tex_height, &tex_channels, STBI_rgb_alpha);
+
+                // calc num mips
+                u32 num_mips = (u32)(std::floor(std::log2(max(tex_width, tex_height))) + 1);
+
+				// calc memory needed
+                VkDeviceSize image_size = tex_width * tex_height * 4; // times 4 because of STBI_rgb_alpha
+
+				VkImageCreateInfo image_create_info{};
+				image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+				image_create_info.pNext = nullptr;
+				image_create_info.flags = 0;
+				image_create_info.imageType = VK_IMAGE_TYPE_2D;
+                //VkFormat                 format;
+                //VkExtent3D               extent;
+                //uint32_t                 mipLevels;
+                //uint32_t                 arrayLayers;
+                //VkSampleCountFlagBits    samples;
+                //VkImageTiling            tiling;
+                //VkImageUsageFlags        usage;
+                //VkSharingMode            sharingMode;
+                //uint32_t                 queueFamilyIndexCount;
+                //const uint32_t*          pQueueFamilyIndices;
+                //VkImageLayout            initialLayout;
+
+				//SM_VULKAN_ASSERT(vkCreateImage(s_device, &image_create_info, nullptr, &s_viking_room_diffuse_texture_image));
 			}
 
             //m_vikingRoomDiffuseTexture.InitFromFile(m_graphicsCommandPool, "viking-room.png");
