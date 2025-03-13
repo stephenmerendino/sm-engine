@@ -1960,7 +1960,7 @@ void sm::init_renderer(window_t* window)
 
                 // load image pixels
 				const char* diffuse_texture_filename = "viking-room.png";
-				sm::string_t full_filepath = init_string(startup_arena, 64);
+				sm::string_t full_filepath = init_string(startup_arena);
 				full_filepath += TEXTURES_PATH;
 				full_filepath += diffuse_texture_filename;
                 stbi_uc* pixels = stbi_load(full_filepath.c_str.data, &tex_width, &tex_height, &tex_channels, STBI_rgb_alpha);

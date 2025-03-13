@@ -15,12 +15,14 @@ const char& string_t::operator[](size_t index) const
 
 void string_t::operator=(const char* str)
 {
+	c_str.cur_size = 0;
     size_t len = strlen(str);
-    sm::copy(c_str, str, len + 1);
-    c_str[len] = '\0';
+	grow_capacity(c_str, len + 1);
+	push(c_str, str, len);
+	c_str.data[len] = '\0';
 }
 
-void string_t::operator=(string_t str)
+void string_t::operator=(const string_t& str)
 {
     *this = str.c_str.data;
 }
@@ -28,8 +30,9 @@ void string_t::operator=(string_t str)
 string_t& string_t::operator+=(const char* str)
 {
 	size_t additional_len = strlen(str);
-	size_t cur_len = c_str.cur_size;
-	grow_capacity(c_str, cur_len + additional_len);
+	push(c_str, str, additional_len);
+	c_str.data[c_str.cur_size] = '\0';
+	return *this;
 }
 
 string_t& string_t::operator+=(const string_t& str)
@@ -41,8 +44,13 @@ string_t& string_t::operator+=(const string_t& str)
 string_t sm::init_string(sm::arena_t* arena, size_t size)
 {
     string_t str;
-    str.c_str = init_array_sized<char>(arena, size);
+    str.c_str = init_array<char>(arena, size);
     return str;
+}
+
+size_t sm::length(const string_t& str)
+{
+	return strlen(str.c_str.data);
 }
 
 wchar_t* sm::to_wchar_string(sm::arena_t* arena, const string_t& s)

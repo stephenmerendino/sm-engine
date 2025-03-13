@@ -92,4 +92,23 @@ namespace sm
         arr.data[arr.cur_size] = value;
         arr.cur_size++;
     }
+
+    template<typename T>
+    void push(array_t<T>& arr, const T* values, size_t num_values)
+    {
+        size_t needed_size = arr.cur_size + num_values;
+        if(needed_size > arr.max_capacity)
+        {
+            grow_capacity(arr, needed_size);
+        }
+
+        memcpy(arr.data + (arr.cur_size * sizeof(T)), values, num_values * sizeof(T));
+        arr.cur_size += num_values;
+    }
+
+    template<typename T>
+    void push(array_t<T>& arr, const array_t<T>& new_values)
+    {
+        push(arr, new_values.data, new_values.cur_size);
+    }
 }
