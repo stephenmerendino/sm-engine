@@ -56,4 +56,5 @@ namespace sm
 
 	mesh_t* init_from_obj(sm::arena_t* arena, const char* obj_filepath);
     size_t calc_mesh_vertex_buffer_size(const mesh_t* mesh);
+    size_t calc_mesh_index_buffer_size(const mesh_t* mesh);
 }

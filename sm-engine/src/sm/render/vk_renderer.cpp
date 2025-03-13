@@ -148,7 +148,9 @@ array_t<render_frame_t> s_render_frames;
 
 mesh_t* s_viking_room_mesh = nullptr;
 VkBuffer s_viking_room_vertex_buffer = VK_NULL_HANDLE;
+VkDeviceMemory s_viking_room_vertex_buffer_memory = VK_NULL_HANDLE;
 VkBuffer s_viking_room_index_buffer = VK_NULL_HANDLE;
+VkDeviceMemory s_viking_room_index_buffer_memory = VK_NULL_HANDLE;
 //VkImage s_viking_room_diffuse_texture_image;
 //VkImageView s_viking_room_diffuse_texture_image_view;
 //VkDeviceMemory s_viking_room_diffuse_texture_device_memory;
@@ -208,43 +210,6 @@ static u32 find_supported_memory_type(VkPhysicalDeviceMemoryProperties device_me
 
 	SM_ASSERT(found_mem_type != UINT_MAX);
 	return found_mem_type;
-}
-
-static VkCommandPool init_command_pool(VkDevice device, const vk_queue_indices_t& queue_indices, VkQueueFlags requested_queues, VkCommandPoolCreateFlags create_flags)
-{
-	VkCommandPoolCreateInfo create_info{};
-	create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	create_info.flags = create_flags;
-
-	// graphics + compute requested (normal queue)
-	if (requested_queues & VK_QUEUE_GRAPHICS_BIT)
-	{
-		create_info.queueFamilyIndex = queue_indices.graphics_and_compute;
-	}
-
-	// only Compute requested (async compute)
-	if ((requested_queues & (VK_QUEUE_COMPUTE_BIT | VK_QUEUE_GRAPHICS_BIT)) == VK_QUEUE_COMPUTE_BIT)
-	{
-		create_info.queueFamilyIndex = queue_indices.async_compute;
-	}
-
-	VkCommandPool command_pool{};
-	SM_VULKAN_ASSERT(vkCreateCommandPool(device, &create_info, nullptr, &command_pool));
-	return command_pool;
-}
-
-static VkCommandBuffer allocate_command_buffer(VkDevice device, VkCommandPool command_pool, VkCommandBufferLevel level)
-{
-	VkCommandBufferAllocateInfo alloc_info{};
-	alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	alloc_info.level = level;
-	alloc_info.commandPool = command_pool;
-	alloc_info.commandBufferCount = 1;
-
-	VkCommandBuffer command_buffer;
-	vkAllocateCommandBuffers(device, &alloc_info, &command_buffer);
-
-	return command_buffer;
 }
 
 static vk_queue_indices_t find_queue_indices(arena_t* arena, VkPhysicalDevice device, VkSurfaceKHR surface)
@@ -537,7 +502,7 @@ static bool is_physical_device_suitable(arena_t* arena, VkPhysicalDevice device,
 	return has_required_queues(queue_indices);
 }
 
-static void CheckImGuiVulkanResult(VkResult result)
+static void imgui_check_vulkan_result(VkResult result)
 {
     SM_VULKAN_ASSERT(result);
 }
@@ -546,6 +511,102 @@ static PFN_vkVoidFunction imgui_vulkan_func_loader(const char* functionName, voi
 {
 	VkInstance instance = *((VkInstance*)userData);
     return vkGetInstanceProcAddr(instance, functionName);
+}
+
+static void upload_buffer_data(VkBuffer dst_buffer, void* src_data, size_t src_data_size)
+{
+    VkBuffer staging_buffer = VK_NULL_HANDLE;
+
+    VkBufferCreateInfo staging_buffer_create_info{};
+    staging_buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    staging_buffer_create_info.pNext = nullptr;
+    staging_buffer_create_info.flags = 0;
+    staging_buffer_create_info.size = src_data_size;
+    staging_buffer_create_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    staging_buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    u32 queue_families[] = {
+        (u32)s_queue_indices.graphics_and_compute
+    };
+    staging_buffer_create_info.pQueueFamilyIndices = queue_families;
+    staging_buffer_create_info.queueFamilyIndexCount = ARRAY_LEN(queue_families);
+
+    SM_VULKAN_ASSERT(vkCreateBuffer(s_device, &staging_buffer_create_info, nullptr, &staging_buffer));
+
+    VkMemoryRequirements staging_buffer_mem_requirements{};
+    vkGetBufferMemoryRequirements(s_device, staging_buffer, &staging_buffer_mem_requirements);
+
+    VkDeviceMemory staging_buffer_memory = VK_NULL_HANDLE;
+
+    // allocate staging memory
+    VkMemoryAllocateInfo staging_alloc_info{};
+    staging_alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    staging_alloc_info.pNext = nullptr;
+    staging_alloc_info.allocationSize = staging_buffer_mem_requirements.size;
+    staging_alloc_info.memoryTypeIndex = find_supported_memory_type(s_phys_device_mem_props,
+        staging_buffer_mem_requirements.memoryTypeBits,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    SM_VULKAN_ASSERT(vkAllocateMemory(s_device, &staging_alloc_info, nullptr, &staging_buffer_memory));
+    SM_VULKAN_ASSERT(vkBindBufferMemory(s_device, staging_buffer, staging_buffer_memory, 0));
+
+    // map staging memory and memcpy vertex data into it
+    void* gpu_staging_memory = nullptr;
+    vkMapMemory(s_device, staging_buffer_memory, 0, staging_buffer_mem_requirements.size, 0, &gpu_staging_memory);
+    memcpy(gpu_staging_memory, src_data, src_data_size);
+    vkUnmapMemory(s_device, staging_buffer_memory);
+
+    // transfer vertex data to actual viking room vertex buffer
+    VkCommandBufferAllocateInfo command_buffer_alloc_info{};
+    command_buffer_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    command_buffer_alloc_info.pNext = nullptr;
+    command_buffer_alloc_info.commandPool = s_graphics_command_pool;
+    command_buffer_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    command_buffer_alloc_info.commandBufferCount = 1;
+
+    VkCommandBuffer buffer_copy_command_buffer = VK_NULL_HANDLE;
+    SM_VULKAN_ASSERT(vkAllocateCommandBuffers(s_device, &command_buffer_alloc_info, &buffer_copy_command_buffer));
+
+    VkCommandBufferBeginInfo buffer_copy_command_buffer_begin_info{};
+    buffer_copy_command_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    buffer_copy_command_buffer_begin_info.pNext = nullptr;
+    buffer_copy_command_buffer_begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    buffer_copy_command_buffer_begin_info.pInheritanceInfo = nullptr;
+    SM_VULKAN_ASSERT(vkBeginCommandBuffer(buffer_copy_command_buffer, &buffer_copy_command_buffer_begin_info));
+
+    VkBufferCopy buffer_copy{};
+    buffer_copy.srcOffset = 0;
+    buffer_copy.dstOffset = 0;
+    buffer_copy.size = src_data_size;
+
+    VkBufferCopy copy_regions[] = {
+        buffer_copy
+    };
+    vkCmdCopyBuffer(buffer_copy_command_buffer, staging_buffer, dst_buffer, ARRAY_LEN(copy_regions), copy_regions);
+
+    vkEndCommandBuffer(buffer_copy_command_buffer);
+
+    VkSubmitInfo submit_info{};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.pNext = nullptr;
+    submit_info.waitSemaphoreCount = 0;
+    submit_info.pWaitDstStageMask = nullptr;
+    submit_info.pWaitDstStageMask = 0;
+    VkCommandBuffer commands_to_submit[] = {
+        buffer_copy_command_buffer
+    };
+    submit_info.commandBufferCount = ARRAY_LEN(commands_to_submit);
+    submit_info.pCommandBuffers = commands_to_submit;
+    submit_info.signalSemaphoreCount = 0;
+    submit_info.pSignalSemaphores = nullptr;
+
+    VkSubmitInfo submit_infos[] = {
+        submit_info
+    };
+    SM_VULKAN_ASSERT(vkQueueSubmit(s_graphics_queue, ARRAY_LEN(submit_infos), submit_infos, nullptr));
+    vkQueueWaitIdle(s_graphics_queue);
+
+    vkDestroyBuffer(s_device, staging_buffer, nullptr);
+    vkFreeCommandBuffers(s_device, s_graphics_command_pool, ARRAY_LEN(commands_to_submit), commands_to_submit);
 }
 
 void sm::init_renderer(window_t* window)
@@ -755,10 +816,12 @@ void sm::init_renderer(window_t* window)
 
 	// command pool
 	{
-		s_graphics_command_pool = init_command_pool(s_device, 
-													s_queue_indices, 
-													VK_QUEUE_GRAPHICS_BIT, 
-													VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+		VkCommandPoolCreateInfo create_info{};
+		create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		create_info.pNext = nullptr;
+		create_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+		create_info.queueFamilyIndex = s_queue_indices.graphics_and_compute;
+		SM_VULKAN_ASSERT(vkCreateCommandPool(s_device, &create_info, nullptr, &s_graphics_command_pool));
 	}
 
 	// swapchain
@@ -854,11 +917,21 @@ void sm::init_renderer(window_t* window)
 		s_swapchain_extent = swapchain_extent;
         //m_imageInFlightFences.resize(m_numImages);
 
-		VkCommandBuffer command_buffer = allocate_command_buffer(s_device, s_graphics_command_pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+		VkCommandBufferAllocateInfo command_buffer_alloc_info{};
+		command_buffer_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		command_buffer_alloc_info.pNext = nullptr;
+		command_buffer_alloc_info.commandPool = s_graphics_command_pool;
+		command_buffer_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		command_buffer_alloc_info.commandBufferCount = 1;
+
+		VkCommandBuffer command_buffer;
+		vkAllocateCommandBuffers(s_device, &command_buffer_alloc_info, &command_buffer);
+
 		VkCommandBufferBeginInfo begin_info{};
 		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 		vkBeginCommandBuffer(command_buffer, &begin_info);
+
 		// transition swapchain images to presentation layout
         for (u32 i = 0; i < (u32)s_swapchain_images.cur_size; i++)
         {
@@ -1298,7 +1371,7 @@ void sm::init_renderer(window_t* window)
         init_info.ImageCount = (u32)s_swapchain_images.cur_size;
         init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
         init_info.Allocator = VK_NULL_HANDLE;
-        init_info.CheckVkResultFn = CheckImGuiVulkanResult;
+        init_info.CheckVkResultFn = imgui_check_vulkan_result;
         ImGui_ImplVulkan_Init(&init_info, s_imgui_render_pass);
 
         f32 dpi_scale = ImGui_ImplWin32_GetDpiScaleForHwnd(hwnd);
@@ -1795,20 +1868,19 @@ void sm::init_renderer(window_t* window)
 		// viking room
 		{
 			s_viking_room_mesh = init_from_obj(startup_arena, "viking_room.obj");
+            size_t vertex_buffer_size = calc_mesh_vertex_buffer_size(s_viking_room_mesh);
 
 			// vertex buffer
 			{
-				size_t viking_room_vertex_buffer_size = calc_mesh_vertex_buffer_size(s_viking_room_mesh);
-
                 VkBufferCreateInfo create_info{};
                 create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
                 create_info.pNext = nullptr;
                 create_info.flags = 0;
-                create_info.size = viking_room_vertex_buffer_size;
+                create_info.size = vertex_buffer_size;
                 create_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
                 create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-                u32 queueFamilyIndices[] = { s_queue_indices.graphics_and_compute };
+                u32 queueFamilyIndices[] = { (u32)s_queue_indices.graphics_and_compute };
                 create_info.pQueueFamilyIndices = queueFamilyIndices;
                 create_info.queueFamilyIndexCount = ARRAY_LEN(queueFamilyIndices);
 
@@ -1824,62 +1896,52 @@ void sm::init_renderer(window_t* window)
                 alloc_info.allocationSize = viking_room_mem_requirements.size;
                 alloc_info.memoryTypeIndex = find_supported_memory_type(s_phys_device_mem_props, viking_room_mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-                VkDeviceMemory viking_room_vertex_buffer_memory = VK_NULL_HANDLE;
-                SM_VULKAN_ASSERT(vkAllocateMemory(s_device, &alloc_info, nullptr, &viking_room_vertex_buffer_memory));
-                SM_VULKAN_ASSERT(vkBindBufferMemory(s_device, s_viking_room_vertex_buffer, viking_room_vertex_buffer_memory, 0));
+				SM_VULKAN_ASSERT(vkAllocateMemory(s_device, &alloc_info, nullptr, &s_viking_room_vertex_buffer_memory));
+				SM_VULKAN_ASSERT(vkBindBufferMemory(s_device, s_viking_room_vertex_buffer, s_viking_room_vertex_buffer_memory, 0));
 
-                // upload vertex data to staging buffer, then transfer from staging buffer to vertex buffer
-                {
-                    VkBuffer staging_buffer = VK_NULL_HANDLE;
-
-                    VkBufferCreateInfo staging_buffer_create_info{};
-                    staging_buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-                    staging_buffer_create_info.pNext = nullptr;
-                    staging_buffer_create_info.flags = 0;
-                    staging_buffer_create_info.size = viking_room_mem_requirements.size;
-                    staging_buffer_create_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-                    staging_buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-                    u32 queue_families[] = { 
-                        s_queue_indices.graphics_and_compute 
-                    };
-                    staging_buffer_create_info.pQueueFamilyIndices = queue_families;
-                    staging_buffer_create_info.queueFamilyIndexCount = ARRAY_LEN(queue_families);
-
-                    SM_VULKAN_ASSERT(vkCreateBuffer(s_device, &staging_buffer_create_info, nullptr, &staging_buffer));
-
-                    VkMemoryRequirements staging_viking_room_mem_requirements{};
-                    vkGetBufferMemoryRequirements(s_device, staging_buffer, &staging_viking_room_mem_requirements);
-
-					VkDeviceMemory staging_buffer_memory = VK_NULL_HANDLE;
-
-					// allocate staging memory
-					VkMemoryAllocateInfo staging_alloc_info{};
-					staging_alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-					staging_alloc_info.pNext = nullptr;
-					staging_alloc_info.allocationSize = staging_viking_room_mem_requirements.size;
-					staging_alloc_info.memoryTypeIndex = find_supported_memory_type(s_phys_device_mem_props, 
-																					staging_viking_room_mem_requirements.memoryTypeBits, 
-																					VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-					SM_VULKAN_ASSERT(vkAllocateMemory(s_device, &staging_alloc_info, nullptr, &staging_buffer_memory));
-                    SM_VULKAN_ASSERT(vkBindBufferMemory(s_device, staging_buffer, staging_buffer_memory, 0));
-
-					// map staging memory and memcpy vertex data into it
-					void* gpu_staging_memory = nullptr;
-					vkMapMemory(s_device, staging_buffer_memory, 0, staging_viking_room_mem_requirements.size, 0, &gpu_staging_memory);
-					memcpy(gpu_staging_memory, s_viking_room_mesh->vertices.data, viking_room_vertex_buffer_size);
-					vkUnmapMemory(s_device, staging_buffer_memory);
-
-					// transfer vertex data to actual viking room vertex buffer
-                }
-
+				upload_buffer_data(s_viking_room_vertex_buffer, s_viking_room_mesh->vertices.data, vertex_buffer_size);
 			}
 
-            //m_vikingRoomVertexBuffer.Init(VulkanBuffer::Type::kVertexBuffer, m_pVikingRoomMesh->CalcVertexBufferSize());
-            //m_vikingRoomVertexBuffer.Update(m_graphicsCommandPool, m_pVikingRoomMesh->m_vertices.data(), 0);
+			// viking room index buffer
+			{
+				size_t index_buffer_size = calc_mesh_index_buffer_size(s_viking_room_mesh);
 
-            //m_vikingRoomIndexBuffer.Init(VulkanBuffer::Type::kIndexBuffer, m_pVikingRoomMesh->CalcIndexBufferSize());
-            //m_vikingRoomIndexBuffer.Update(m_graphicsCommandPool, m_pVikingRoomMesh->m_indices.data(), 0);
+				// create the buffer
+				{
+					VkBufferCreateInfo create_info{};
+					create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+					create_info.pNext = nullptr;
+					create_info.flags = 0;
+					create_info.size = index_buffer_size;
+					create_info.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+					create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+					u32 queue_family_indices[] = {
+						(u32)s_queue_indices.graphics_and_compute
+					};
+					create_info.queueFamilyIndexCount = ARRAY_LEN(queue_family_indices);
+					create_info.pQueueFamilyIndices = queue_family_indices;
+
+					SM_VULKAN_ASSERT(vkCreateBuffer(s_device, &create_info, nullptr, &s_viking_room_index_buffer));
+				}
+
+				// allocate and bind the actual device memory to the buffer
+				{
+					VkMemoryRequirements index_buffer_memory_requirements{};
+					vkGetBufferMemoryRequirements(s_device, s_viking_room_index_buffer, &index_buffer_memory_requirements);
+
+					VkMemoryAllocateInfo alloc_info{};
+					alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+					alloc_info.pNext = nullptr;
+					alloc_info.allocationSize = index_buffer_memory_requirements.size;
+					alloc_info.memoryTypeIndex = find_supported_memory_type(s_phys_device_mem_props, index_buffer_memory_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+					SM_VULKAN_ASSERT(vkAllocateMemory(s_device, &alloc_info, nullptr, &s_viking_room_index_buffer_memory));
+
+					SM_VULKAN_ASSERT(vkBindBufferMemory(s_device, s_viking_room_index_buffer, s_viking_room_index_buffer_memory, 0));
+				}
+
+				upload_buffer_data(s_viking_room_index_buffer, s_viking_room_mesh->indices.data, index_buffer_size);
+			}
 
             //m_vikingRoomDiffuseTexture.InitFromFile(m_graphicsCommandPool, "viking-room.png");
 

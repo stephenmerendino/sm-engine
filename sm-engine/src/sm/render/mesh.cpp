@@ -536,9 +536,9 @@ mesh_t* sm::init_from_obj(sm::arena_t* arena, const char* obj_filepath)
 	std::vector<tinyobj::material_t> materials;
 	std::string warn, err;
 
-	std::string fullFilepath = std::string(MODELS_PATH) + obj_filepath;
+	std::string full_filepath = std::string(MODELS_PATH) + obj_filepath;
 
-	bool loaded = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, fullFilepath.c_str());
+	bool loaded = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, full_filepath.c_str());
 	SM_ASSERT(loaded);
 
 	for (const auto& shape : shapes)
@@ -566,4 +566,9 @@ mesh_t* sm::init_from_obj(sm::arena_t* arena, const char* obj_filepath)
 size_t sm::calc_mesh_vertex_buffer_size(const mesh_t* mesh)
 {
     return mesh->vertices.cur_size * sizeof(vertex_t);
+}
+
+size_t sm::calc_mesh_index_buffer_size(const mesh_t* mesh)
+{
+    return mesh->indices.cur_size * sizeof(u32);
 }
