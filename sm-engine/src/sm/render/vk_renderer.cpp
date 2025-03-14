@@ -159,7 +159,7 @@ VkDeviceMemory s_viking_room_vertex_buffer_memory = VK_NULL_HANDLE;
 VkBuffer s_viking_room_index_buffer = VK_NULL_HANDLE;
 VkDeviceMemory s_viking_room_index_buffer_memory = VK_NULL_HANDLE;
 VkImage s_viking_room_diffuse_texture_image;
-//VkDeviceMemory s_viking_room_diffuse_texture_device_memory;
+VkDeviceMemory s_viking_room_diffuse_texture_memory;
 //VkImageView s_viking_room_diffuse_texture_image_view;
 
 static bool format_has_stencil(VkFormat format)
@@ -1967,34 +1967,212 @@ void sm::init_renderer(window_t* window)
                 u32 num_mips = (u32)(std::floor(std::log2(max(tex_width, tex_height))) + 1);
 
 				// calc memory needed
-                VkDeviceSize image_size = tex_width * tex_height * 4; // times 4 because of STBI_rgb_alpha
+				size_t bytes_per_pixel = 4; // 4 because of STBI_rgb_alpha
+                VkDeviceSize image_size = tex_width * tex_height * bytes_per_pixel; 
 
-				VkImageCreateInfo image_create_info{};
-				image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-				image_create_info.pNext = nullptr;
-				image_create_info.flags = 0;
-				image_create_info.imageType = VK_IMAGE_TYPE_2D;
-				image_create_info.format = VK_FORMAT_R8G8B8A8_SRGB;
-				image_create_info.extent.width = tex_width;
-				image_create_info.extent.height = tex_height;
-				image_create_info.extent.depth = 1;
-				image_create_info.mipLevels = num_mips;
-				image_create_info.arrayLayers = 1;
-				image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
-				image_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
-				image_create_info.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-				image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-				u32 queue_family_indices[] = {
-					(u32)s_queue_indices.graphics_and_compute
-				};
-				image_create_info.queueFamilyIndexCount = ARRAY_LEN(queue_family_indices);
-				image_create_info.pQueueFamilyIndices = queue_family_indices;
-				image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+				// image
+				{
+                    VkImageCreateInfo image_create_info{};
+                    image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+                    image_create_info.pNext = nullptr;
+                    image_create_info.flags = 0;
+                    image_create_info.imageType = VK_IMAGE_TYPE_2D;
+                    image_create_info.format = VK_FORMAT_R8G8B8A8_SRGB;
+                    image_create_info.extent.width = tex_width;
+                    image_create_info.extent.height = tex_height;
+                    image_create_info.extent.depth = 1;
+                    image_create_info.mipLevels = num_mips;
+                    image_create_info.arrayLayers = 1;
+                    image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
+                    image_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+                    image_create_info.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+                    image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+                    u32 queue_family_indices[] = {
+                        (u32)s_queue_indices.graphics_and_compute
+                    };
+                    image_create_info.queueFamilyIndexCount = ARRAY_LEN(queue_family_indices);
+                    image_create_info.pQueueFamilyIndices = queue_family_indices;
+                    image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-				SM_VULKAN_ASSERT(vkCreateImage(s_device, &image_create_info, nullptr, &s_viking_room_diffuse_texture_image));
+                    SM_VULKAN_ASSERT(vkCreateImage(s_device, &image_create_info, nullptr, &s_viking_room_diffuse_texture_image));
+				}
+
+				// image memory
+				{
+
+					VkMemoryRequirements image_mem_requirements;
+					vkGetImageMemoryRequirements(s_device, s_viking_room_diffuse_texture_image, &image_mem_requirements);
+
+					VkMemoryAllocateInfo alloc_info{};
+					alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+					alloc_info.pNext = nullptr;
+					alloc_info.allocationSize = image_mem_requirements.size;
+					alloc_info.memoryTypeIndex = find_supported_memory_type(s_phys_device_mem_props, image_mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+					SM_VULKAN_ASSERT(vkAllocateMemory(s_device, &alloc_info, nullptr, &s_viking_room_diffuse_texture_memory));
+
+					SM_VULKAN_ASSERT(vkBindImageMemory(s_device, s_viking_room_diffuse_texture_image, s_viking_room_diffuse_texture_memory, 0));
+				}
+
+                // allocate command buffer
+                VkCommandBufferAllocateInfo command_buffer_alloc_info{};
+                command_buffer_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+                command_buffer_alloc_info.pNext = nullptr;
+                command_buffer_alloc_info.commandPool = s_graphics_command_pool;
+                command_buffer_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+                command_buffer_alloc_info.commandBufferCount = 1;
+
+                VkCommandBuffer command_buffer = VK_NULL_HANDLE;
+                SM_VULKAN_ASSERT(vkAllocateCommandBuffers(s_device, &command_buffer_alloc_info, &command_buffer));
+
+                // begin command buffer
+                VkCommandBufferBeginInfo command_buffer_begin_info{};
+                command_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+                command_buffer_begin_info.pNext = nullptr;
+                command_buffer_begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+                command_buffer_begin_info.pInheritanceInfo = nullptr;
+                SM_VULKAN_ASSERT(vkBeginCommandBuffer(command_buffer, &command_buffer_begin_info));
+
+				// staging buffer upload + copy
+				{
+                    VkBuffer staging_buffer = VK_NULL_HANDLE;
+                    VkDeviceMemory staging_buffer_memory = VK_NULL_HANDLE;
+
+                    VkBufferCreateInfo staging_buffer_create_info{};
+                    staging_buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+                    staging_buffer_create_info.pNext = nullptr;
+                    staging_buffer_create_info.flags = 0;
+                    staging_buffer_create_info.size = image_size;
+                    staging_buffer_create_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+                    staging_buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+                    u32 queue_family_indices[] = {
+                        (u32)s_queue_indices.graphics_and_compute
+                    };
+                    staging_buffer_create_info.queueFamilyIndexCount = ARRAY_LEN(queue_family_indices);
+                    staging_buffer_create_info.pQueueFamilyIndices = queue_family_indices;
+                    SM_VULKAN_ASSERT(vkCreateBuffer(s_device, &staging_buffer_create_info, nullptr, &staging_buffer));
+
+					VkMemoryRequirements staging_buffer_mem_requirements;
+					vkGetBufferMemoryRequirements(s_device, staging_buffer, &staging_buffer_mem_requirements);
+
+					VkMemoryAllocateInfo alloc_info{};
+					alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+					alloc_info.pNext = nullptr;
+					alloc_info.allocationSize = staging_buffer_mem_requirements.size;
+					alloc_info.memoryTypeIndex = find_supported_memory_type(s_phys_device_mem_props, staging_buffer_mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+					SM_VULKAN_ASSERT(vkAllocateMemory(s_device, &alloc_info, nullptr, &staging_buffer_memory));
+
+					SM_VULKAN_ASSERT(vkBindBufferMemory(s_device, staging_buffer, staging_buffer_memory, 0));
+
+					void* mapped_memory = nullptr;
+					SM_VULKAN_ASSERT(vkMapMemory(s_device, staging_buffer_memory, 0, image_size, 0, &mapped_memory));
+					memcpy(mapped_memory, pixels, image_size);
+					vkUnmapMemory(s_device, staging_buffer_memory);
+
+					// transition the image to transfer dst
+					VkImageMemoryBarrier image_memory_barrier{};
+					image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+					image_memory_barrier.pNext = nullptr;
+					image_memory_barrier.srcAccessMask = VK_ACCESS_NONE;
+					image_memory_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+					image_memory_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+					image_memory_barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+					image_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+					image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+					image_memory_barrier.image = s_viking_room_diffuse_texture_image;
+					image_memory_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+					image_memory_barrier.subresourceRange.baseMipLevel = 0;
+					image_memory_barrier.subresourceRange.levelCount = num_mips;
+					image_memory_barrier.subresourceRange.baseArrayLayer = 0;
+					image_memory_barrier.subresourceRange.layerCount = 1;
+
+					vkCmdPipelineBarrier(command_buffer,
+                                         VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                                         VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                         0,
+                                         0, nullptr, 
+										 0, nullptr, 
+										 1, &image_memory_barrier);
+
+					// do a buffer copy from staging buffer to image
+                    VkImageSubresourceLayers subresource_layers{};
+                    subresource_layers.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                    subresource_layers.mipLevel = 0;
+                    subresource_layers.baseArrayLayer = 0;
+                    subresource_layers.layerCount = 1;
+
+					VkExtent3D image_extent{};
+					image_extent.depth = 1;
+					image_extent.height = tex_height;
+					image_extent.width = tex_width;
+
+					VkOffset3D image_offset{};
+					image_offset.x = 0;
+					image_offset.y = 0;
+					image_offset.z = 0;
+
+					VkBufferImageCopy buffer_to_image_copy{};
+					buffer_to_image_copy.bufferOffset = 0;
+					buffer_to_image_copy.bufferRowLength = tex_width;
+					buffer_to_image_copy.bufferImageHeight = tex_height;
+					buffer_to_image_copy.imageSubresource = subresource_layers;
+					buffer_to_image_copy.imageOffset = image_offset;
+					buffer_to_image_copy.imageExtent = image_extent;
+
+					VkBufferImageCopy copy_regions[] = {
+						buffer_to_image_copy
+					};
+					vkCmdCopyBufferToImage(command_buffer, staging_buffer, s_viking_room_diffuse_texture_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, ARRAY_LEN(copy_regions), copy_regions);
+				}
+
+                // generate mip maps for image and setup final image layout
+				{
+					// todo: generate mip maps using vkCmdBlitImage in a loop going through subresources of the image
+
+					// transition the image to shader read
+					VkImageMemoryBarrier image_memory_barrier{};
+					image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+					image_memory_barrier.pNext = nullptr;
+					image_memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+					image_memory_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+					image_memory_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+					image_memory_barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+					image_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+					image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+					image_memory_barrier.image = s_viking_room_diffuse_texture_image;
+					image_memory_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+					image_memory_barrier.subresourceRange.baseMipLevel = 0;
+					image_memory_barrier.subresourceRange.levelCount = num_mips;
+					image_memory_barrier.subresourceRange.baseArrayLayer = 0;
+					image_memory_barrier.subresourceRange.layerCount = 1;
+
+					vkCmdPipelineBarrier(command_buffer,
+                                         VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                         0,
+                                         0, nullptr, 
+										 0, nullptr, 
+										 1, &image_memory_barrier);
+				}
+
+                // end and submit command buffer
+                vkEndCommandBuffer(command_buffer);
+
+                VkSubmitInfo command_submit_info{};
+                command_submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+                command_submit_info.pNext = nullptr;
+                command_submit_info.waitSemaphoreCount = 0;
+                command_submit_info.pWaitSemaphores = nullptr;
+                command_submit_info.pWaitDstStageMask = nullptr;
+                VkCommandBuffer command_buffers[] = {
+                    command_buffer
+                };
+                command_submit_info.commandBufferCount = ARRAY_LEN(command_buffers);
+                command_submit_info.pCommandBuffers = command_buffers;
+                command_submit_info.signalSemaphoreCount = 0;
+                command_submit_info.pSignalSemaphores = nullptr;
+
+                SM_VULKAN_ASSERT(vkQueueSubmit(s_graphics_queue, 1, &command_submit_info, VK_NULL_HANDLE));
 			}
-
-            //m_vikingRoomDiffuseTexture.InitFromFile(m_graphicsCommandPool, "viking-room.png");
 
             //m_vikingRoomMaterialDS = m_materialDescriptorPool.AllocateSet(m_materialDescriptorSetLayout);
 
