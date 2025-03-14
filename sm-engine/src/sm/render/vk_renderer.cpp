@@ -1952,17 +1952,15 @@ void sm::init_renderer(window_t* window)
 
 			// viking room diffuse texture
 			{
-                int tex_width;
-                int tex_height;
-                int tex_channels;
-
-                VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
-
                 // load image pixels
 				const char* diffuse_texture_filename = "viking-room.png";
 				sm::string_t full_filepath = init_string(startup_arena);
 				full_filepath += TEXTURES_PATH;
 				full_filepath += diffuse_texture_filename;
+
+                int tex_width;
+                int tex_height;
+                int tex_channels;
                 stbi_uc* pixels = stbi_load(full_filepath.c_str.data, &tex_width, &tex_height, &tex_channels, STBI_rgb_alpha);
 
                 // calc num mips
@@ -1976,19 +1974,24 @@ void sm::init_renderer(window_t* window)
 				image_create_info.pNext = nullptr;
 				image_create_info.flags = 0;
 				image_create_info.imageType = VK_IMAGE_TYPE_2D;
-                //VkFormat                 format;
-                //VkExtent3D               extent;
-                //uint32_t                 mipLevels;
-                //uint32_t                 arrayLayers;
-                //VkSampleCountFlagBits    samples;
-                //VkImageTiling            tiling;
-                //VkImageUsageFlags        usage;
-                //VkSharingMode            sharingMode;
-                //uint32_t                 queueFamilyIndexCount;
-                //const uint32_t*          pQueueFamilyIndices;
-                //VkImageLayout            initialLayout;
+				image_create_info.format = VK_FORMAT_R8G8B8A8_SRGB;
+				image_create_info.extent.width = tex_width;
+				image_create_info.extent.height = tex_height;
+				image_create_info.extent.depth = 1;
+				image_create_info.mipLevels = num_mips;
+				image_create_info.arrayLayers = 1;
+				image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
+				image_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+				image_create_info.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+				image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+				u32 queue_family_indices[] = {
+					(u32)s_queue_indices.graphics_and_compute
+				};
+				image_create_info.queueFamilyIndexCount = ARRAY_LEN(queue_family_indices);
+				image_create_info.pQueueFamilyIndices = queue_family_indices;
+				image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-				//SM_VULKAN_ASSERT(vkCreateImage(s_device, &image_create_info, nullptr, &s_viking_room_diffuse_texture_image));
+				SM_VULKAN_ASSERT(vkCreateImage(s_device, &image_create_info, nullptr, &s_viking_room_diffuse_texture_image));
 			}
 
             //m_vikingRoomDiffuseTexture.InitFromFile(m_graphicsCommandPool, "viking-room.png");
