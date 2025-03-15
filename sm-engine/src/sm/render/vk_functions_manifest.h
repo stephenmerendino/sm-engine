@@ -1,11 +1,14 @@
+#if defined _WIN32
+#include "sm/platform/win32/win32_include.h"
+#include "third_party/vulkan/vulkan_win32.h"
+#endif
+
 //---------------------------------------------------------------
 #if !defined(VK_EXPORTED_FUNCTION)
 #define VK_EXPORTED_FUNCTION(fun)
 #endif
 
 VK_EXPORTED_FUNCTION(vkGetInstanceProcAddr)
-
-#undef VK_EXPORTED_FUNCTION
 
 //---------------------------------------------------------------
 #if !defined(VK_GLOBAL_FUNCTION)
@@ -15,8 +18,6 @@ VK_EXPORTED_FUNCTION(vkGetInstanceProcAddr)
 VK_GLOBAL_FUNCTION(vkCreateInstance)
 VK_GLOBAL_FUNCTION(vkEnumerateInstanceExtensionProperties)
 VK_GLOBAL_FUNCTION(vkEnumerateInstanceLayerProperties)
-
-#undef VK_GLOBAL_FUNCTION
 
 //---------------------------------------------------------------
 #if !defined(VK_INSTANCE_FUNCTION)
@@ -39,10 +40,7 @@ VK_INSTANCE_FUNCTION(vkGetPhysicalDeviceMemoryProperties);
 VK_INSTANCE_FUNCTION(vkGetPhysicalDeviceFormatProperties);
 VK_INSTANCE_FUNCTION(vkCreateDevice)
 VK_INSTANCE_FUNCTION(vkGetDeviceProcAddr)
-VK_INSTANCE_FUNCTION(vkCreateWin32SurfaceKHR)
 VK_INSTANCE_FUNCTION(vkDestroySurfaceKHR)
-
-#undef VK_INSTANCE_FUNCTION
 
 //---------------------------------------------------------------
 #if !defined(VK_DEVICE_FUNCTION)
@@ -128,4 +126,11 @@ VK_DEVICE_FUNCTION(vkCmdBeginDebugUtilsLabelEXT)
 VK_DEVICE_FUNCTION(vkCmdEndDebugUtilsLabelEXT)
 VK_DEVICE_FUNCTION(vkCmdInsertDebugUtilsLabelEXT)
 
+#if defined _WIN32
+#include "sm/platform/win32/render/win32_vk_functions_manifest.h"
+#endif
+
+#undef VK_EXPORTED_FUNCTION
+#undef VK_GLOBAL_FUNCTION
+#undef VK_INSTANCE_FUNCTION
 #undef VK_DEVICE_FUNCTION

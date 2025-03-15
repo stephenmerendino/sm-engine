@@ -793,10 +793,10 @@
     <None Include="src\third_party\vulkan\vulkan.cppm">
       <Filter>src\third_party\vulkan</Filter>
     </None>
-    <None Include="src\sm\render\vk_functions_manifest.inl">
+    <None Include="src\sm\render\vk_functions_manifest.h">
       <Filter>src\sm\render</Filter>
     </None>
-    <None Include="src\sm\platform\win32\render\win32_vk_functions_manifest.inl">
+    <None Include="src\sm\platform\win32\render\win32_vk_functions_manifest.h">
       <Filter>src\sm\platform\win32\render</Filter>
     </None>
   </ItemGroup>

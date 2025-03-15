@@ -5,7 +5,7 @@
 #define VK_GLOBAL_FUNCTION(func)	PFN_##func func = VK_NULL_HANDLE;
 #define VK_INSTANCE_FUNCTION(func)	PFN_##func func = VK_NULL_HANDLE;
 #define VK_DEVICE_FUNCTION(func)	PFN_##func func = VK_NULL_HANDLE;
-#include "sm/render/vk_functions_manifest.inl"
+#include "sm/render/vk_functions_manifest.h"
 
 using namespace sm;
 
@@ -21,7 +21,7 @@ void sm::load_vulkan_global_funcs()
 		func = (PFN_##func)vkGetInstanceProcAddr(nullptr, #func); \
 		SM_ASSERT(nullptr != func);
 
-#include "sm/render/vk_functions_manifest.inl"
+#include "sm/render/vk_functions_manifest.h"
 }
 
 void sm::load_vulkan_instance_funcs(VkInstance instance)
@@ -30,7 +30,7 @@ void sm::load_vulkan_instance_funcs(VkInstance instance)
 		func = (PFN_##func)vkGetInstanceProcAddr(instance, #func); \
 		SM_ASSERT(nullptr != func);
 
-#include "sm/render/vk_functions_manifest.inl"
+#include "sm/render/vk_functions_manifest.h"
 }
 
 void sm::load_vulkan_device_funcs(VkDevice device)
@@ -39,5 +39,5 @@ void sm::load_vulkan_device_funcs(VkDevice device)
 		func = (PFN_##func)vkGetDeviceProcAddr(device, #func); \
 		SM_ASSERT(nullptr != func);
 
-#include "sm/render/vk_functions_manifest.inl"
+#include "sm/render/vk_functions_manifest.h"
 }
