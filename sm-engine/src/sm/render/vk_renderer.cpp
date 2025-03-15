@@ -159,9 +159,12 @@ VkBuffer s_viking_room_vertex_buffer = VK_NULL_HANDLE;
 VkDeviceMemory s_viking_room_vertex_buffer_memory = VK_NULL_HANDLE;
 VkBuffer s_viking_room_index_buffer = VK_NULL_HANDLE;
 VkDeviceMemory s_viking_room_index_buffer_memory = VK_NULL_HANDLE;
-VkImage s_viking_room_diffuse_texture_image;
-VkDeviceMemory s_viking_room_diffuse_texture_memory;
-VkImageView s_viking_room_diffuse_texture_image_view;
+VkImage s_viking_room_diffuse_texture_image = VK_NULL_HANDLE;
+VkDeviceMemory s_viking_room_diffuse_texture_memory = VK_NULL_HANDLE;
+VkImageView s_viking_room_diffuse_texture_image_view = VK_NULL_HANDLE;
+VkDescriptorSet s_viking_room_material_descriptor_set = VK_NULL_HANDLE;
+VkBuffer s_viking_room_mesh_instance_buffer = VK_NULL_HANDLE;
+VkDeviceMemory s_viking_room_mesh_instance_buffer_memory = VK_NULL_HANDLE;
 
 static bool format_has_stencil(VkFormat format)
 {
@@ -2125,7 +2128,7 @@ void sm::init_renderer(window_t* window)
 					vkCmdCopyBufferToImage(command_buffer, staging_buffer, s_viking_room_diffuse_texture_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, ARRAY_LEN(copy_regions), copy_regions);
 				}
 
-                // generate mip maps for image and setup final image layout
+				// generate mip maps for image and setup final image layout
 				{
 					// todo: generate mip maps using vkCmdBlitImage in a loop going through subresources of the image
 
@@ -2147,65 +2150,128 @@ void sm::init_renderer(window_t* window)
 					image_memory_barrier.subresourceRange.layerCount = 1;
 
 					vkCmdPipelineBarrier(command_buffer,
-                                         VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                                         0,
-                                         0, nullptr, 
-										 0, nullptr, 
-										 1, &image_memory_barrier);
+						VK_PIPELINE_STAGE_TRANSFER_BIT,
+						VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+						0,
+						0, nullptr,
+						0, nullptr,
+						1, &image_memory_barrier);
 				}
 
-                // end and submit command buffer
-                vkEndCommandBuffer(command_buffer);
+				// end and submit command buffer
+				vkEndCommandBuffer(command_buffer);
 
-                VkSubmitInfo command_submit_info{};
-                command_submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-                command_submit_info.pNext = nullptr;
-                command_submit_info.waitSemaphoreCount = 0;
-                command_submit_info.pWaitSemaphores = nullptr;
-                command_submit_info.pWaitDstStageMask = nullptr;
-                VkCommandBuffer command_buffers[] = {
-                    command_buffer
-                };
-                command_submit_info.commandBufferCount = ARRAY_LEN(command_buffers);
-                command_submit_info.pCommandBuffers = command_buffers;
-                command_submit_info.signalSemaphoreCount = 0;
-                command_submit_info.pSignalSemaphores = nullptr;
+				VkSubmitInfo command_submit_info{};
+				command_submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+				command_submit_info.pNext = nullptr;
+				command_submit_info.waitSemaphoreCount = 0;
+				command_submit_info.pWaitSemaphores = nullptr;
+				command_submit_info.pWaitDstStageMask = nullptr;
+				VkCommandBuffer command_buffers[] = {
+					command_buffer
+				};
+				command_submit_info.commandBufferCount = ARRAY_LEN(command_buffers);
+				command_submit_info.pCommandBuffers = command_buffers;
+				command_submit_info.signalSemaphoreCount = 0;
+				command_submit_info.pSignalSemaphores = nullptr;
 
-                SM_VULKAN_ASSERT(vkQueueSubmit(s_graphics_queue, 1, &command_submit_info, VK_NULL_HANDLE));
+				SM_VULKAN_ASSERT(vkQueueSubmit(s_graphics_queue, 1, &command_submit_info, VK_NULL_HANDLE));
 
-				VkComponentMapping components{};
-				components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-				components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-				components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-				components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+				// image view
+				{
+					VkComponentMapping components{};
+					components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+					components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+					components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+					components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 
-				VkImageSubresourceRange subresource_range{};
-                VkImageAspectFlags    aspectMask;
-                uint32_t              baseMipLevel;
-                uint32_t              levelCount;
-                uint32_t              baseArrayLayer;
-                uint32_t              layerCount;
+					VkImageSubresourceRange subresource_range{};
+					subresource_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+					subresource_range.baseMipLevel = 0;
+					subresource_range.levelCount = num_mips;
+					subresource_range.baseArrayLayer = 0;
+					subresource_range.layerCount = 1;
 
-				VkImageViewCreateInfo image_view_create_info{};
-                image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-                image_view_create_info.pNext = nullptr;
-				image_view_create_info.flags = 0;
-				image_view_create_info.image = s_viking_room_diffuse_texture_image;
-				image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-				image_view_create_info.format = VK_FORMAT_R8G8B8A8_SRGB;
-				image_view_create_info.components = components;
-				image_view_create_info.subresourceRange = subresource_range;
-				SM_VULKAN_ASSERT(vkCreateImageView());
+					VkImageViewCreateInfo image_view_create_info{};
+					image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+					image_view_create_info.pNext = nullptr;
+					image_view_create_info.flags = 0;
+					image_view_create_info.image = s_viking_room_diffuse_texture_image;
+					image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+					image_view_create_info.format = VK_FORMAT_R8G8B8A8_SRGB;
+					image_view_create_info.components = components;
+					image_view_create_info.subresourceRange = subresource_range;
+					SM_VULKAN_ASSERT(vkCreateImageView(s_device, &image_view_create_info, nullptr, &s_viking_room_diffuse_texture_image_view));
+				}
 			}
 
-            //m_vikingRoomMaterialDS = m_materialDescriptorPool.AllocateSet(m_materialDescriptorSetLayout);
+			// viking room descriptor set
+			{
+				// alloc
+				VkDescriptorSetAllocateInfo alloc_info{};
+				alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+				alloc_info.pNext = nullptr;
+				alloc_info.descriptorPool = s_material_descriptor_pool;
+				alloc_info.descriptorSetCount = 1;
+				VkDescriptorSetLayout descriptor_set_layouts[] = {
+					s_material_descriptor_set_layout
+				};
+				alloc_info.pSetLayouts = descriptor_set_layouts;
+				SM_VULKAN_ASSERT(vkAllocateDescriptorSets(s_device, &alloc_info, &s_viking_room_material_descriptor_set));
 
-            //VulkanDescriptorSetWriter dsWriter;
-            //dsWriter.AddSampledImageWrite(m_vikingRoomMaterialDS, m_vikingRoomDiffuseTexture, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 0, 1);
-            //dsWriter.PerformWrites();
+				// update
+                VkDescriptorImageInfo descriptor_set_write_image_info{};
+                descriptor_set_write_image_info.sampler = VK_NULL_HANDLE;
+                descriptor_set_write_image_info.imageView = s_viking_room_diffuse_texture_image_view;
+                descriptor_set_write_image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-            //m_vikingRoomMeshInstanceBuffer.Init(VulkanBuffer::Type::kUniformBuffer, sizeof(MeshInstanceRenderData));
+                VkWriteDescriptorSet descriptor_set_write{};
+                descriptor_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                descriptor_set_write.pNext = nullptr;
+                descriptor_set_write.dstSet = s_viking_room_material_descriptor_set;
+                descriptor_set_write.dstBinding = 0;
+                descriptor_set_write.dstArrayElement = 0;
+                descriptor_set_write.descriptorCount = 1;
+                descriptor_set_write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+                descriptor_set_write.pImageInfo = &descriptor_set_write_image_info;
+                descriptor_set_write.pBufferInfo = nullptr;
+                descriptor_set_write.pTexelBufferView = nullptr;
+
+                VkWriteDescriptorSet ds_writes[] = {
+                    descriptor_set_write
+                };
+
+                vkUpdateDescriptorSets(s_device, ARRAY_LEN(ds_writes), ds_writes, 0, nullptr);
+			}
+
+			// mesh instance uniform buffer
+			{
+				VkBufferCreateInfo buffer_create_info{};
+				buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+				buffer_create_info.pNext = nullptr;
+				buffer_create_info.flags = 0;
+				buffer_create_info.size = sizeof(mesh_instance_render_data_t);
+				buffer_create_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+				buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+				u32 queue_indices[] = {
+					(u32)s_queue_indices.graphics_and_compute
+				};
+				buffer_create_info.queueFamilyIndexCount = ARRAY_LEN(queue_indices);
+				buffer_create_info.pQueueFamilyIndices = queue_indices;
+				SM_VULKAN_ASSERT(vkCreateBuffer(s_device, &buffer_create_info, nullptr, &s_viking_room_mesh_instance_buffer));
+
+				VkMemoryRequirements buffer_memory_requirements;
+				vkGetBufferMemoryRequirements(s_device, s_viking_room_mesh_instance_buffer, &buffer_memory_requirements);
+
+				VkMemoryAllocateInfo buffer_memory_alloc_info{};
+				buffer_memory_alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+				buffer_memory_alloc_info.pNext = nullptr;
+				buffer_memory_alloc_info.allocationSize = buffer_memory_requirements.size;
+				buffer_memory_requirements.memoryTypeBits = find_supported_memory_type(s_phys_device_mem_props, buffer_memory_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+				SM_VULKAN_ASSERT(vkAllocateMemory(s_device, &buffer_memory_alloc_info, nullptr, &s_viking_room_mesh_instance_buffer_memory));
+
+				SM_VULKAN_ASSERT(vkBindBufferMemory(s_device, s_viking_room_mesh_instance_buffer, s_viking_room_mesh_instance_buffer_memory, 0));
+			}
 		}
 
 		// pipeline layouts
