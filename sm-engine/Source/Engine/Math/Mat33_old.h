@@ -77,19 +77,19 @@ inline Mat33::Mat33(F32* data)
 	,j(Vec3::ZERO)
 	,k(Vec3::ZERO)
 {
-	SM_ASSERT(nullptr != data);
+	SM_ASSERT_OLD(nullptr != data);
 	memcpy(data, data, sizeof(Mat33));
 }
 
 inline F32* Mat33::operator[](U32 row)
 {
-	SM_ASSERT(row >= 0 && row <= 2);
+	SM_ASSERT_OLD(row >= 0 && row <= 2);
 	return &data[row * 3];
 }
 
 inline const F32* Mat33::operator[](U32 row) const
 {
-	SM_ASSERT(row >= 0 && row <= 2);
+	SM_ASSERT_OLD(row >= 0 && row <= 2);
 	return &data[row * 3];
 }
 

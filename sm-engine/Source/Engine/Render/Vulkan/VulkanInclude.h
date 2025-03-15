@@ -8,7 +8,7 @@
 #include "Engine/Core/Assert_old.h"
 
 #if ASSERTIONS_ENABLED
-#define SM_VULKAN_ASSERT(vkResult) SM_ASSERT_MSG(VK_SUCCESS == vkResult, "Vulkan Assertion Failed")
+#define SM_VULKAN_ASSERT_OLD(vkResult) SM_ASSERT_MSG_OLD(VK_SUCCESS == vkResult, "Vulkan Assertion Failed")
 #else
-#define SM_VULKAN_ASSERT(vkResult) vkResult
+#define SM_VULKAN_ASSERT_OLD(vkResult) vkResult
 #endif

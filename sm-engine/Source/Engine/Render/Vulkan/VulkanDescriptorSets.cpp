@@ -24,7 +24,7 @@ void VulkanDescriptorSetLayout::Init()
 	layoutCreateInfo.bindingCount = (U32)m_layoutBindings.size();
 	layoutCreateInfo.pBindings = m_layoutBindings.data();
 
-	SM_VULKAN_ASSERT(vkCreateDescriptorSetLayout(VulkanDevice::GetHandle(), &layoutCreateInfo, nullptr, &m_layoutHandle));
+	SM_VULKAN_ASSERT_OLD(vkCreateDescriptorSetLayout(VulkanDevice::GetHandle(), &layoutCreateInfo, nullptr, &m_layoutHandle));
 }
 
 void VulkanDescriptorSetLayout::Destroy()
@@ -56,7 +56,7 @@ void VulkanDescriptorPool::Init(U32 maxSets)
 	createInfo.pPoolSizes = m_poolSizes.data();
 	createInfo.maxSets = m_maxSets;
 
-	SM_VULKAN_ASSERT(vkCreateDescriptorPool(VulkanDevice::GetHandle(), &createInfo, nullptr, &m_poolHandle));
+	SM_VULKAN_ASSERT_OLD(vkCreateDescriptorPool(VulkanDevice::GetHandle(), &createInfo, nullptr, &m_poolHandle));
 }
 
 void VulkanDescriptorPool::Reset()
@@ -91,7 +91,7 @@ std::vector<VkDescriptorSet> VulkanDescriptorPool::AllocateSets(const std::vecto
 	allocInfo.pSetLayouts = vkLayouts.data();
 
 	std::vector<VkDescriptorSet> vkDescriptorSets(layouts.size());
-	SM_VULKAN_ASSERT(vkAllocateDescriptorSets(VulkanDevice::GetHandle(), &allocInfo, vkDescriptorSets.data()));
+	SM_VULKAN_ASSERT_OLD(vkAllocateDescriptorSets(VulkanDevice::GetHandle(), &allocInfo, vkDescriptorSets.data()));
 
 	return vkDescriptorSets;
 }
@@ -188,7 +188,7 @@ void VulkanDescriptorSetWriter::PerformWrites()
 			case VK_DESCRIPTOR_TYPE_BLOCK_MATCH_IMAGE_QCOM:
 			case VK_DESCRIPTOR_TYPE_MAX_ENUM:
 			default:
-				SM_ERROR_MSG("Trying to set up a descriptor set write that isn't supported yet\n");
+				SM_ERROR_MSG_OLD("Trying to set up a descriptor set write that isn't supported yet\n");
 				break;
 		}
 	}

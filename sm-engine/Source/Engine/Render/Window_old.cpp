@@ -140,7 +140,7 @@ void Window::Init(const char* name, U32 width, U32 height, bool bResizable)
 						    NULL, NULL,
 						    GetModuleHandle(NULL),
 						    this);
-	SM_ASSERT(NULL != m_hwnd);
+	SM_ASSERT_OLD(NULL != m_hwnd);
 
 	UpdateWindowSize(this);
 	UpdateWindowPosition(this);

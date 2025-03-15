@@ -12,7 +12,7 @@ Thread::Thread()
 
 void Thread::Run(ThreadFunc func)
 {
-	SM_ASSERT(!m_bIsRunning);
+	SM_ASSERT_OLD(!m_bIsRunning);
 
 	m_func = func;
 
@@ -23,7 +23,7 @@ void Thread::Run(ThreadFunc func)
 							  0, // Creation flags
 							  (LPDWORD)&m_id); // Out id
 
-	SM_ASSERT(NULL != m_handle);
+	SM_ASSERT_OLD(NULL != m_handle);
 	m_bIsRunning = true;
 }
 

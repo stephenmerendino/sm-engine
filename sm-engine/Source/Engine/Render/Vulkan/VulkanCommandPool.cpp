@@ -29,7 +29,7 @@ void VulkanCommandPool::Init(VkQueueFlags requestedQueueFamilies, VkCommandPoolC
 		createInfo.queueFamilyIndex = VulkanDevice::Get()->m_queueFamilies.m_asyncComputeFamilyIndex;
 	}
 
-	SM_VULKAN_ASSERT(vkCreateCommandPool(VulkanDevice::GetHandle(), &createInfo, nullptr, &m_commandPoolHandle));
+	SM_VULKAN_ASSERT_OLD(vkCreateCommandPool(VulkanDevice::GetHandle(), &createInfo, nullptr, &m_commandPoolHandle));
 }
 
 void VulkanCommandPool::Destroy()
@@ -67,7 +67,7 @@ std::vector<VkCommandBuffer> VulkanCommandPool::AllocateCommandBuffers(VkCommand
 	allocInfo.level = level;
 	allocInfo.commandBufferCount = numBuffers;
 
-	SM_VULKAN_ASSERT(vkAllocateCommandBuffers(VulkanDevice::GetHandle(), &allocInfo, buffers.data()));
+	SM_VULKAN_ASSERT_OLD(vkAllocateCommandBuffers(VulkanDevice::GetHandle(), &allocInfo, buffers.data()));
 	return buffers;
 }
 

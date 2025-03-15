@@ -18,6 +18,7 @@ VK_GLOBAL_FUNCTION(vkEnumerateInstanceLayerProperties)
 
 #undef VK_GLOBAL_FUNCTION
 
+//---------------------------------------------------------------
 #if !defined(VK_INSTANCE_FUNCTION)
 #define VK_INSTANCE_FUNCTION(fun)
 #endif

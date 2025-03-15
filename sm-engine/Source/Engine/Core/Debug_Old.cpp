@@ -11,7 +11,7 @@ void DebugPrintf(const char* format, ...)
 	va_start(args, format);
 	static const int MAX_BUFFER_SIZE = 2048;
 	char formattedMsg[MAX_BUFFER_SIZE];
-	SM_ASSERT(vsnprintf_s(formattedMsg, MAX_BUFFER_SIZE, format, args) != -1);
+	SM_ASSERT_OLD(vsnprintf_s(formattedMsg, MAX_BUFFER_SIZE, format, args) != -1);
 	va_end(args);
 
 	OutputDebugStringA(formattedMsg);

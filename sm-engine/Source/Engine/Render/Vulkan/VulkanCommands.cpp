@@ -63,7 +63,7 @@ namespace VulkanCommands
 	{
 		// Check if image format supports linear filtered blitting
 		VkFormatProperties formatProps = VulkanDevice::Get()->QueryFormatProperties(format);;
-		SM_ASSERT(formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT);
+		SM_ASSERT_OLD(formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT);
 
 		VkImageMemoryBarrier barrier{};
 		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;

@@ -13,7 +13,7 @@ void Event::Init()
 							   TRUE,  // is manual reset
 							   FALSE, // initial state
 							   NULL); // optional name
-	SM_ASSERT(m_winEvent != NULL);
+	SM_ASSERT_OLD(m_winEvent != NULL);
 }
 
 void Event::Destroy()

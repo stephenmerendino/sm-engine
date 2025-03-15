@@ -174,7 +174,7 @@ void VulkanInstance::Init()
 	// validation layers
 	if (ENABLE_VALIDATION_LAYERS)
 	{
-		SM_ASSERT(CheckValidationLayerSupport());
+		SM_ASSERT_OLD(CheckValidationLayerSupport());
 		createInfo.ppEnabledLayerNames = VALIDATION_LAYERS.data();
 		createInfo.enabledLayerCount = (U32)VALIDATION_LAYERS.size();
 
@@ -194,7 +194,7 @@ void VulkanInstance::Init()
 	}
 
 	s_instance = new VulkanInstance();
-	SM_VULKAN_ASSERT(vkCreateInstance(&createInfo, nullptr, &s_instance->m_instanceHandle));
+	SM_VULKAN_ASSERT_OLD(vkCreateInstance(&createInfo, nullptr, &s_instance->m_instanceHandle));
 
 	LoadVulkanInstanceFuncs(s_instance->m_instanceHandle);
 
@@ -202,7 +202,7 @@ void VulkanInstance::Init()
 	if (ENABLE_VALIDATION_LAYERS)
 	{
 		VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = SetupDebugMessengerCreateInfo(VulkanDebugFunc);
-		SM_VULKAN_ASSERT(vkCreateDebugUtilsMessengerEXT(s_instance->m_instanceHandle, &debugMessengerCreateInfo, nullptr, &s_instance->m_debugMessengerHandle));
+		SM_VULKAN_ASSERT_OLD(vkCreateDebugUtilsMessengerEXT(s_instance->m_instanceHandle, &debugMessengerCreateInfo, nullptr, &s_instance->m_debugMessengerHandle));
 	}
 
 	bIsInitialized = true;

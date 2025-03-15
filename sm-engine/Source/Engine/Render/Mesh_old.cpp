@@ -278,7 +278,7 @@ const Mesh* Mesh::GetPrimitive(PrimitiveMeshType primitive)
 		case kCone: return s_conePrimitive;
 		case kCylinder: return s_cylinderPrimitive;
 		case kTorus: return s_torusPrimitive;
-		default: SM_ERROR_MSG("Tried using unimplemented primitive mesh type\n");
+		default: SM_ERROR_MSG_OLD("Tried using unimplemented primitive mesh type\n");
 	}
 
 	return nullptr;

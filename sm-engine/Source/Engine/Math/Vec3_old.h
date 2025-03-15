@@ -146,7 +146,7 @@ inline void Vec3::Normalize()
 {
 	// prevent division by zero by checking for zero length and asserting
 	F32 lengthSq = CalcLengthSq();
-	SM_ASSERT(!IsZero(lengthSq));
+	SM_ASSERT_OLD(!IsZero(lengthSq));
 
 	// do normalization now that we know length is not zero
 	F32 length = sqrtf(lengthSq);

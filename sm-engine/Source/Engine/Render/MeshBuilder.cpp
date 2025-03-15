@@ -5,7 +5,7 @@
 //#define TINYOBJLOADER_IMPLEMENTATION
 #include "third_party/tinyobjloader/tiny_obj_loader.h"
 
-#define CHECK_WORKING_MESH() SM_ASSERT_MSG(m_workingMesh != nullptr, "Begin() hasn't been called on MeshBuilder to start building a new mesh\n")
+#define CHECK_WORKING_MESH() SM_ASSERT_MSG_OLD(m_workingMesh != nullptr, "Begin() hasn't been called on MeshBuilder to start building a new mesh\n")
 
 MeshBuilder::MeshBuilder()
 	:m_workingMesh(nullptr)
@@ -73,7 +73,7 @@ void MeshBuilder::AddTriangleFromLast3Vertexes()
 {
 	CHECK_WORKING_MESH();
 	U32 size = (U32)m_workingMesh->m_vertices.size();
-	SM_ASSERT_MSG(size >= 3, "Trying to build triangle in mesh with less than 3 vertexes.\n");
+	SM_ASSERT_MSG_OLD(size >= 3, "Trying to build triangle in mesh with less than 3 vertexes.\n");
 	AddTriangle(size - 3, size - 2, size - 1);
 }
 
@@ -411,7 +411,7 @@ void MeshBuilder::AddFromObj(const char* objFilepath)
 	std::string fullFilepath = std::string(MODELS_PATH) + objFilepath;
 
 	bool loaded = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, fullFilepath.c_str());
-	SM_ASSERT(loaded);
+	SM_ASSERT_OLD(loaded);
 
 	for (const auto& shape : shapes)
 	{

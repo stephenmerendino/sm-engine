@@ -7,7 +7,7 @@ static I64 s_freqPerSec;
 static I64 GetCurrentTick()
 {
 	LARGE_INTEGER tick;
-	SM_ASSERT(QueryPerformanceCounter(&tick));
+	SM_ASSERT_OLD(QueryPerformanceCounter(&tick));
 	return tick.QuadPart;
 }
 
@@ -18,7 +18,7 @@ void Time::Init()
 	{
 		LARGE_INTEGER freq;
 		BOOL res = QueryPerformanceFrequency(&freq);
-		SM_ASSERT(res);
+		SM_ASSERT_OLD(res);
 		s_freqPerSec = freq.QuadPart;
 		didInit = true;
 	}

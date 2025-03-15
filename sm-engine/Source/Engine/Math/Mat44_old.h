@@ -151,7 +151,7 @@ inline Mat44::Mat44(F32* data)
 	,k(Vec4::ZERO)
 	,t(Vec4::ZERO)
 {
-	SM_ASSERT(nullptr != data);
+	SM_ASSERT_OLD(nullptr != data);
 	memcpy(data, data, sizeof(Mat44));
 }
 
@@ -173,13 +173,13 @@ inline Mat44::Mat44(const Vec3& inI, const Vec3& inJ, const Vec3& inK, const Vec
 
 inline F32* Mat44::operator[](U32 row)
 {
-	SM_ASSERT(row >= 0 && row <= 3);
+	SM_ASSERT_OLD(row >= 0 && row <= 3);
 	return &data[row * 4];
 }
 
 inline const F32* Mat44::operator[](U32 row) const
 {
-	SM_ASSERT(row >= 0 && row <= 3);
+	SM_ASSERT_OLD(row >= 0 && row <= 3);
 	return &data[row * 4];
 }
 

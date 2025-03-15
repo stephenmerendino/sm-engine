@@ -161,7 +161,7 @@ void JobSystem::Shutdown()
 
 void JobSystem::SubmitJob(Job* job)
 {
-	SM_ASSERT(job != nullptr);
+	SM_ASSERT_OLD(job != nullptr);
 
 	if (job->IsWaitingOnOthers())
 	{
@@ -189,7 +189,7 @@ Job* JobSystem::SubmitJob(JobFunc func, void* args)
 
 void JobSystem::ReleaseJob(Job* job)
 {
-	SM_ASSERT(job != nullptr);
+	SM_ASSERT_OLD(job != nullptr);
 	job->Release();
 	if (job->IsReleased())
 	{
@@ -218,7 +218,7 @@ bool JobSystem::IsBusy()
 
 void JobSystem::WaitOnJob(Job* job)
 {
-	SM_ASSERT(job != nullptr);
+	SM_ASSERT_OLD(job != nullptr);
 	while (job->GetStatus() != JobStatus::FINISHED)
 	{
 		Thread::Yield();

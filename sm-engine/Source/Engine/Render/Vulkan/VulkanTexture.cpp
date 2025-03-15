@@ -29,7 +29,7 @@ static VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspect
 	createInfo.subresourceRange.layerCount = 1;
 
 	VkImageView image_view;
-	SM_VULKAN_ASSERT(vkCreateImageView(VulkanDevice::GetHandle(), &createInfo, nullptr, &image_view));
+	SM_VULKAN_ASSERT_OLD(vkCreateImageView(VulkanDevice::GetHandle(), &createInfo, nullptr, &image_view));
 	return image_view;
 }
 
@@ -52,7 +52,7 @@ static void CreateImage(U32 width, U32 height, U32 numMips, VkSampleCountFlagBit
 	imageCreateInfo.samples = numSamples;
 	imageCreateInfo.flags = 0;
 
-	SM_VULKAN_ASSERT(vkCreateImage(VulkanDevice::GetHandle(), &imageCreateInfo, nullptr, outImage));
+	SM_VULKAN_ASSERT_OLD(vkCreateImage(VulkanDevice::GetHandle(), &imageCreateInfo, nullptr, outImage));
 
 	// Setup backing memory of image
 	VkMemoryRequirements memRequirements;
@@ -63,7 +63,7 @@ static void CreateImage(U32 width, U32 height, U32 numMips, VkSampleCountFlagBit
 	allocInfo.allocationSize = memRequirements.size;
 	allocInfo.memoryTypeIndex = VulkanDevice::Get()->FindSupportedMemoryType(memRequirements.memoryTypeBits, memProps);
 
-	SM_VULKAN_ASSERT(vkAllocateMemory(VulkanDevice::GetHandle(), &allocInfo, nullptr, outMemory));
+	SM_VULKAN_ASSERT_OLD(vkAllocateMemory(VulkanDevice::GetHandle(), &allocInfo, nullptr, outMemory));
 
 	vkBindImageMemory(VulkanDevice::GetHandle(), *outImage, *outMemory, 0);
 }

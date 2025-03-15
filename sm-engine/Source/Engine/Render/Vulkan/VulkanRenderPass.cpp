@@ -47,7 +47,7 @@ void VulkanRenderPass::PreInitAddSubpassAttachmentReference(U32 subpassIndex, Vu
 			subpass.m_colorAttachRefs.push_back(attachRef);
 			break;
 		case VulkanSubpass::AttachmentRefType::DEPTH:
-			SM_ASSERT(subpass.m_bHasDepthAttach == false);
+			SM_ASSERT_OLD(subpass.m_bHasDepthAttach == false);
 			subpass.m_depthAttachRef = attachRef;
 			subpass.m_bHasDepthAttach = true;
 			break;
@@ -55,7 +55,7 @@ void VulkanRenderPass::PreInitAddSubpassAttachmentReference(U32 subpassIndex, Vu
 			subpass.m_colorResolveAttachRefs.push_back(attachRef);
 			break;
 		case VulkanSubpass::AttachmentRefType::DEPTH_RESOLVE:
-			SM_ASSERT(subpass.m_bHasDepthResolveAttach == false);
+			SM_ASSERT_OLD(subpass.m_bHasDepthResolveAttach == false);
 			subpass.m_depthResolveAttachRef = attachRef;
 			subpass.m_bHasDepthResolveAttach = true;
 			break;
@@ -121,7 +121,7 @@ void VulkanRenderPass::Init()
 	createInfo.dependencyCount = (U32)m_subpassDependencies.size();
 	createInfo.pDependencies = m_subpassDependencies.data();
 
-	SM_VULKAN_ASSERT(vkCreateRenderPass2(VulkanDevice::GetHandle(), &createInfo, nullptr, &m_renderPassHandle));
+	SM_VULKAN_ASSERT_OLD(vkCreateRenderPass2(VulkanDevice::GetHandle(), &createInfo, nullptr, &m_renderPassHandle));
 }
 
 void VulkanRenderPass::Destroy()

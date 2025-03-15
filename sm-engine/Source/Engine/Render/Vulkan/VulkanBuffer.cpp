@@ -9,7 +9,7 @@ static void InteralInit(VulkanBuffer* bufferToInit, VkDeviceSize size, VkBufferU
 	createInfo.usage = usageFlags;
 	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	SM_VULKAN_ASSERT(vkCreateBuffer(VulkanDevice::GetHandle(), &createInfo, nullptr, &bufferToInit->m_bufferHandle));
+	SM_VULKAN_ASSERT_OLD(vkCreateBuffer(VulkanDevice::GetHandle(), &createInfo, nullptr, &bufferToInit->m_bufferHandle));
 
 	VkMemoryRequirements memRequirements;
 	vkGetBufferMemoryRequirements(VulkanDevice::GetHandle(), bufferToInit->m_bufferHandle, &memRequirements);
@@ -19,7 +19,7 @@ static void InteralInit(VulkanBuffer* bufferToInit, VkDeviceSize size, VkBufferU
 	allocInfo.allocationSize = memRequirements.size;
 	allocInfo.memoryTypeIndex = VulkanDevice::Get()->FindSupportedMemoryType(memRequirements.memoryTypeBits, memoryPropertyFlags);
 
-	SM_VULKAN_ASSERT(vkAllocateMemory(VulkanDevice::GetHandle(), &allocInfo, nullptr, &bufferToInit->m_deviceMemory));
+	SM_VULKAN_ASSERT_OLD(vkAllocateMemory(VulkanDevice::GetHandle(), &allocInfo, nullptr, &bufferToInit->m_deviceMemory));
 
 	vkBindBufferMemory(VulkanDevice::GetHandle(), bufferToInit->m_bufferHandle, bufferToInit->m_deviceMemory, 0);
 }
@@ -46,7 +46,7 @@ void VulkanBuffer::Init(VulkanBuffer::Type type, VkDeviceSize size)
 
 		case Type::kNumBufferTypes:
 		case Type::kInvalid:
-		default: SM_ERROR_MSG("Tried to init VulkanBuffer with incorrect type\n");
+		default: SM_ERROR_MSG_OLD("Tried to init VulkanBuffer with incorrect type\n");
 	}
 }
 

@@ -16,13 +16,13 @@ CComPtr<IDxcUtils> g_utils;
 void InitShaderCompiler()
 {
 	// Initialize DXC library
-	SM_ASSERT(SUCCEEDED(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(&g_library))));
+	SM_ASSERT_OLD(SUCCEEDED(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(&g_library))));
 
 	// Initialize DXC compiler
-	SM_ASSERT(SUCCEEDED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&g_compiler))));
+	SM_ASSERT_OLD(SUCCEEDED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&g_compiler))));
 
 	// Initialize DXC utility
-	SM_ASSERT(SUCCEEDED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&g_utils))));
+	SM_ASSERT_OLD(SUCCEEDED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&g_utils))));
 
 }
 
@@ -41,7 +41,7 @@ bool CompileShader(ShaderType type, const char* filename, const char* entry, Sha
 	uint32_t codePage = DXC_CP_ACP;
 	CComPtr<IDxcBlobEncoding> sourceBlob;
 	hres = g_utils->LoadFile(filepathW, &codePage, &sourceBlob);
-	SM_ASSERT(SUCCEEDED(hres));
+	SM_ASSERT_OLD(SUCCEEDED(hres));
 
 	LPCWSTR targetProfile;
 	switch (type)

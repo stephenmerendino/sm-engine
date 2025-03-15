@@ -29,7 +29,7 @@ void VulkanSampler::Init(U32 maxMipLevel)
     createInfo.minLod = 0.0f;
     createInfo.maxLod = (F32)m_maxMipLevel;
 
-    SM_VULKAN_ASSERT(vkCreateSampler(VulkanDevice::GetHandle(), &createInfo, nullptr, &m_samplerHandle));
+    SM_VULKAN_ASSERT_OLD(vkCreateSampler(VulkanDevice::GetHandle(), &createInfo, nullptr, &m_samplerHandle));
 }
 
 void VulkanSampler::Destroy()

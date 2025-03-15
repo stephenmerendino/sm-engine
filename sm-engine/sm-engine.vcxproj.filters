@@ -796,5 +796,8 @@
     <None Include="src\sm\render\vk_functions_manifest.inl">
       <Filter>src\sm\render</Filter>
     </None>
+    <None Include="src\sm\platform\win32\render\win32_vk_functions_manifest.inl">
+      <Filter>src\sm\platform\win32\render</Filter>
+    </None>
   </ItemGroup>
 </Project>

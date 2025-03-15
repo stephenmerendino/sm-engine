@@ -60,7 +60,7 @@ static void InitSurface(Window* pWindow, VkSurfaceKHR& outSurface)
 	createInfo.pNext = nullptr;
 	createInfo.hwnd = pWindow->m_hwnd;
 	createInfo.hinstance = GetModuleHandle(nullptr);
-	SM_VULKAN_ASSERT(vkCreateWin32SurfaceKHR(VulkanInstance::GetHandle(), &createInfo, nullptr, &outSurface));
+	SM_VULKAN_ASSERT_OLD(vkCreateWin32SurfaceKHR(VulkanInstance::GetHandle(), &createInfo, nullptr, &outSurface));
 }
 
 void VulkanRenderer::InitDescriptorSetLayouts()
@@ -258,7 +258,7 @@ void VulkanRenderer::DestroyResources()
 
 void VulkanRenderer::Init(Window* pWindow)
 {
-	SM_ASSERT(pWindow != nullptr);
+	SM_ASSERT_OLD(pWindow != nullptr);
 
 	m_pWindow = pWindow;
 	m_pRenderSettings = new RenderSettings();
@@ -539,7 +539,7 @@ void VulkanRenderer::PresentFinalImage()
 	}
 	else
 	{
-		SM_VULKAN_ASSERT(presentResult);
+		SM_VULKAN_ASSERT_OLD(presentResult);
 	}
 }
 
@@ -784,7 +784,7 @@ void VulkanRenderer::InitRenderFrames()
 
 static void CheckImGuiVulkanResult(VkResult result)
 {
-    SM_VULKAN_ASSERT(result);
+    SM_VULKAN_ASSERT_OLD(result);
 }
 
 static PFN_vkVoidFunction ImGuiVulkanFuncLoader(const char* functionName, void* userData)

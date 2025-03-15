@@ -94,7 +94,7 @@ VulkanSwapchain::VulkanSwapchain()
 
 void VulkanSwapchain::Init(Window* pWindow, const VkSurfaceKHR& surface)
 {
-	SM_ASSERT(pWindow != nullptr);
+	SM_ASSERT_OLD(pWindow != nullptr);
 
 	VulkanSwapchainDetails swapchainDetails = QuerySwapchainSupport(VulkanDevice::GetPhysDeviceHandle(), surface);
 
@@ -147,7 +147,7 @@ void VulkanSwapchain::Init(Window* pWindow, const VkSurfaceKHR& surface)
 	createInfo.clipped = VK_TRUE;
 	createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-	SM_VULKAN_ASSERT(vkCreateSwapchainKHR(VulkanDevice::GetHandle(), &createInfo, nullptr, &m_swapchainHandle));
+	SM_VULKAN_ASSERT_OLD(vkCreateSwapchainKHR(VulkanDevice::GetHandle(), &createInfo, nullptr, &m_swapchainHandle));
 
 	vkGetSwapchainImagesKHR(VulkanDevice::GetHandle(), m_swapchainHandle, &m_numImages, nullptr);
 

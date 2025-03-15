@@ -104,7 +104,7 @@ void VulkanDevice::Init(VkSurfaceKHR surface)
 	{
 		U32 deviceCount = 0;
 		vkEnumeratePhysicalDevices(VulkanInstance::GetHandle(), &deviceCount, nullptr);
-		SM_ASSERT(deviceCount != 0);
+		SM_ASSERT_OLD(deviceCount != 0);
 
 		std::vector<VkPhysicalDevice> devices(deviceCount);
 		vkEnumeratePhysicalDevices(VulkanInstance::GetHandle(), &deviceCount, devices.data());
@@ -138,7 +138,7 @@ void VulkanDevice::Init(VkSurfaceKHR surface)
 			}
 		}
 
-		SM_ASSERT(VK_NULL_HANDLE != selecetedPhysicalDevice);
+		SM_ASSERT_OLD(VK_NULL_HANDLE != selecetedPhysicalDevice);
 	}
 
 	// logical device
@@ -184,7 +184,7 @@ void VulkanDevice::Init(VkSurfaceKHR surface)
 
 		createInfo.pNext = &vk13features;
 
-		SM_VULKAN_ASSERT(vkCreateDevice(selecetedPhysicalDevice, &createInfo, nullptr, &logicalDevice));
+		SM_VULKAN_ASSERT_OLD(vkCreateDevice(selecetedPhysicalDevice, &createInfo, nullptr, &logicalDevice));
 
 		LoadVulkanDeviceFuncs(logicalDevice);
 	}
@@ -239,7 +239,7 @@ VkFormat VulkanDevice::FindSupportedDepthFormat() const
 												VK_IMAGE_TILING_OPTIMAL,
 												VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
-	SM_ASSERT(depthFormat != VK_FORMAT_UNDEFINED);
+	SM_ASSERT_OLD(depthFormat != VK_FORMAT_UNDEFINED);
 	return depthFormat;
 }
 
@@ -275,7 +275,7 @@ U32 VulkanDevice::FindSupportedMemoryType(U32 typeFilter, VkMemoryPropertyFlags 
 		}
 	}
 
-	SM_ASSERT(foundMemType != UINT_MAX);
+	SM_ASSERT_OLD(foundMemType != UINT_MAX);
 	return foundMemType;
 }
 

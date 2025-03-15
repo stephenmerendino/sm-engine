@@ -17,7 +17,7 @@ void VulkanFramebuffer::Init(const VulkanRenderPass& renderPass, const std::vect
 	createInfo.height = height;
 	createInfo.layers = layers;
 
-	SM_VULKAN_ASSERT(vkCreateFramebuffer(VulkanDevice::GetHandle(), &createInfo, nullptr, &m_framebufferHandle));
+	SM_VULKAN_ASSERT_OLD(vkCreateFramebuffer(VulkanDevice::GetHandle(), &createInfo, nullptr, &m_framebufferHandle));
 }
 
 void VulkanFramebuffer::Destroy()
