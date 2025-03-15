@@ -2368,6 +2368,20 @@ void sm::init_renderer(window_t* window)
             //    shaderStages.Destroy();
             //}
 
+			// viking room pipeline
+			{
+				// compile shaders
+                shader_t* vertex_shader = alloc_struct(startup_arena, shader_t);
+				SM_ASSERT(compile_shader(startup_arena, shader_type_t::VERTEX, "simple-diffuse.vs.hlsl", "Main", &vertex_shader));
+
+                shader_t* pixel_shader = alloc_struct(startup_arena, shader_t);
+				SM_ASSERT(compile_shader(startup_arena, shader_type_t::PIXEL, "simple-diffuse.ps.hlsl", "Main", &pixel_shader));
+
+				// init pipeline mesh input info
+				// init pipeline state
+				// init pipeline
+			}
+
             //// Infinite grid
             //{
             //    VulkanShaderStages shaderStages;

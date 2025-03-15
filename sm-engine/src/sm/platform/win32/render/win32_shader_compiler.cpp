@@ -27,7 +27,7 @@ void sm::init_shader_compiler()
 	SM_ASSERT(SUCCEEDED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&s_utils))));
 }
 
-bool sm::compile_shader(arena_t* arena, shader_type_t shader_type, const char* file_name, const char* entry_name, shader_t* out_shader)
+bool sm::compile_shader(arena_t* arena, shader_type_t shader_type, const char* file_name, const char* entry_name, shader_t** out_shader)
 {
 	HRESULT hres;
 
@@ -94,12 +94,12 @@ bool sm::compile_shader(arena_t* arena, shader_type_t shader_type, const char* f
 	CComPtr<IDxcBlob> code;
 	result->GetResult(&code);
 
-	out_shader->file_name = file_name;
-	out_shader->entry_name = entry_name;
-	out_shader->shader_type = shader_type;
+	(*out_shader)->file_name = file_name;
+	(*out_shader)->entry_name = entry_name;
+	(*out_shader)->shader_type = shader_type;
 
-	grow_capacity(out_shader->bytecode, code->GetBufferSize());
-	push(out_shader->bytecode, (byte_t*)code->GetBufferPointer(), code->GetBufferSize());
+	(*out_shader)->bytecode = init_array<byte_t>(arena, code->GetBufferSize());
+	push((*out_shader)->bytecode, (byte_t*)code->GetBufferPointer(), code->GetBufferSize());
 
 	return true;
 }
