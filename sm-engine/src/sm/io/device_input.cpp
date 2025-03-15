@@ -10,32 +10,32 @@ void input_handler(window_msg_type_t msg_type, u64 msg_data, void* user_args)
 {
 	if(msg_type == window_msg_type_t::KEY_DOWN)
 	{
-		key_code_t key_code = (key_code_t)msg_data;
-		if(key_code == key_code_t::KEY_INVALID)
+		key_code_t msg_key_code = (key_code_t)msg_data;
+		if(msg_key_code == key_code_t::KEY_INVALID)
 		{
 			return;
 		}
 
-		if(!is_bit_set((u8)s_key_states[(u32)key_code], (u8)key_state_bit_flags::IS_DOWN))
+		if(!is_bit_set((u8)s_key_states[(u32)msg_key_code], (u8)key_state_bit_flags_t::IS_DOWN))
 		{
-			set_bit((u8&)s_key_states[(u32)key_code], (u8)key_state_bit_flags::WAS_PRESSED);
+			set_bit((u8&)s_key_states[(u32)msg_key_code], (u8)key_state_bit_flags_t::WAS_PRESSED);
 		}
-        set_bit((u8&)s_key_states[(u32)key_code], (u8)key_state_bit_flags::IS_DOWN);
+        set_bit((u8&)s_key_states[(u32)msg_key_code], (u8)key_state_bit_flags_t::IS_DOWN);
 	}
 
 	if(msg_type == window_msg_type_t::KEY_UP)
 	{
-		key_code_t key_code = (key_code_t)msg_data;
-		if(key_code == key_code_t::KEY_INVALID)
+		key_code_t msg_key_code = (key_code_t)msg_data;
+		if(msg_key_code == key_code_t::KEY_INVALID)
 		{
 			return;
 		}
 
-		if(is_bit_set((u8)s_key_states[(u32)key_code], (u8)key_state_bit_flags::IS_DOWN))
+		if(is_bit_set((u8)s_key_states[(u32)msg_key_code], (u8)key_state_bit_flags_t::IS_DOWN))
 		{
-			set_bit((u8&)s_key_states[(u32)key_code], (u8)key_state_bit_flags::WAS_RELEASED);
+			set_bit((u8&)s_key_states[(u32)msg_key_code], (u8)key_state_bit_flags_t::WAS_RELEASED);
 		}
-        unset_bit((u8&)s_key_states[(u32)key_code], (u8)key_state_bit_flags::IS_DOWN);
+        unset_bit((u8&)s_key_states[(u32)msg_key_code], (u8)key_state_bit_flags_t::IS_DOWN);
 	}
 }
 
@@ -49,7 +49,7 @@ void sm::begin_frame_device_inputs()
 {
 	for (int i = 0; i < (u32)key_code_t::NUM_KEY_CODES; i++)
 	{
-		unset_bit(s_key_states[i], (u8)key_state_bit_flags::WAS_PRESSED | (u8)key_state_bit_flags::WAS_RELEASED);
+		unset_bit(s_key_states[i], (u8)key_state_bit_flags_t::WAS_PRESSED | (u8)key_state_bit_flags_t::WAS_RELEASED);
 	}
 }
 
@@ -59,15 +59,15 @@ void sm::update_device_inputs()
 
 bool sm::is_key_down(key_code_t key)
 {
-	return is_bit_set(s_key_states[(u8)key], (u8)key_state_bit_flags::IS_DOWN);
+	return is_bit_set(s_key_states[(u8)key], (u8)key_state_bit_flags_t::IS_DOWN);
 }
 
 bool sm::was_key_pressed(key_code_t key)
 {
-	return is_bit_set(s_key_states[(u8)key], (u8)key_state_bit_flags::WAS_PRESSED);
+	return is_bit_set(s_key_states[(u8)key], (u8)key_state_bit_flags_t::WAS_PRESSED);
 }
 
 bool sm::was_key_released(key_code_t key)
 {
-	return is_bit_set(s_key_states[(u8)key], (u8)key_state_bit_flags::WAS_RELEASED);
+	return is_bit_set(s_key_states[(u8)key], (u8)key_state_bit_flags_t::WAS_RELEASED);
 }

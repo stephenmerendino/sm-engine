@@ -127,7 +127,7 @@ namespace sm
         NUM_KEY_CODES
     };
 
-    enum class key_state_bit_flags : u8
+    enum class key_state_bit_flags_t : u8
     {
         IS_DOWN         = 0x01,
         WAS_PRESSED     = 0x02,

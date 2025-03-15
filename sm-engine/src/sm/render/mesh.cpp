@@ -8,7 +8,7 @@
 using namespace sm;
 
 bool s_did_init_primitive_shapes = false;
-mesh_t* s_primitive_shapes[(u32)primitive_shape_t::kNumPrimitiveShapes];
+mesh_t* s_primitive_shapes[(u32)primitive_shape_t::NUM_PRIMITIVE_SHAPES];
 arena_t* s_primitives_arena = nullptr;
 
 static void add_quad_3d(mesh_t* mesh, const vec3_t& top_left, const vec3_t& top_right, const vec3_t& bottom_right, const vec3_t& bottom_left)
@@ -96,7 +96,7 @@ void sm::init_primitive_shapes()
 		mesh_t* axes_mesh = alloc_struct(s_primitives_arena, mesh_t);
 		axes_mesh->vertices = init_array<vertex_t>(s_primitives_arena, 64);
 		axes_mesh->indices = init_array<u32>(s_primitives_arena, 64);
-		axes_mesh->topology = primitive_topology_t::kLineList;
+		axes_mesh->topology = primitive_topology_t::LINE_LIST;
 
 		add_vertex_and_index(axes_mesh, init_vertex(vec3_t::ZERO, vec2_t::ZERO, color_f32_t::RED));
 		add_vertex_and_index(axes_mesh, init_vertex(vec3_t::X_AXIS, vec2_t::ZERO, color_f32_t::RED));
@@ -107,7 +107,7 @@ void sm::init_primitive_shapes()
 		add_vertex_and_index(axes_mesh, init_vertex(vec3_t::ZERO, vec2_t::ZERO, color_f32_t::BLUE));
 		add_vertex_and_index(axes_mesh, init_vertex(vec3_t::Z_AXIS, vec2_t::ZERO, color_f32_t::BLUE));
 
-		s_primitive_shapes[(u32)primitive_shape_t::kAxes] = axes_mesh;
+		s_primitive_shapes[(u32)primitive_shape_t::AXES] = axes_mesh;
 	}
 
     // tetrahedron
@@ -115,7 +115,7 @@ void sm::init_primitive_shapes()
 		mesh_t* tetrahedron_mesh = alloc_struct(s_primitives_arena, mesh_t);
 		tetrahedron_mesh->vertices = init_array<vertex_t>(s_primitives_arena, 64);
 		tetrahedron_mesh->indices = init_array<u32>(s_primitives_arena, 64);
-		tetrahedron_mesh->topology = primitive_topology_t::kTriangleList;
+		tetrahedron_mesh->topology = primitive_topology_t::TRIANGLE_LIST;
 
         vec3_t v0_pos{0.0f, 0.0f, 1.0f};
 
@@ -144,7 +144,7 @@ void sm::init_primitive_shapes()
         add_vertex_and_index(tetrahedron_mesh, init_vertex(v3_pos, vec2_t(0.0f, 1.0f), color_f32_t::WHITE));
         add_vertex_and_index(tetrahedron_mesh, init_vertex(v2_pos, vec2_t(1.0f, 0.0f), color_f32_t::WHITE));
 
-        s_primitive_shapes[(u32)primitive_shape_t::kTetrahedron] = tetrahedron_mesh;
+        s_primitive_shapes[(u32)primitive_shape_t::TETRAHEDRON] = tetrahedron_mesh;
 	}
 
     // cube
@@ -152,7 +152,7 @@ void sm::init_primitive_shapes()
 		mesh_t* cube_mesh = alloc_struct(s_primitives_arena, mesh_t);
 		cube_mesh->vertices = init_array<vertex_t>(s_primitives_arena, 64);
 		cube_mesh->indices = init_array<u32>(s_primitives_arena, 64);
-		cube_mesh->topology = primitive_topology_t::kTriangleList;
+		cube_mesh->topology = primitive_topology_t::TRIANGLE_LIST;
 
         add_quad_3d(cube_mesh, vec3_t::WORLD_FORWARD * 0.5f,  vec3_t::WORLD_LEFT,         vec3_t::WORLD_UP, 0.5f, 0.5f, 1);
         add_quad_3d(cube_mesh, vec3_t::WORLD_LEFT * 0.5f,     vec3_t::WORLD_BACKWARD,     vec3_t::WORLD_UP, 0.5f, 0.5f, 1);
@@ -161,7 +161,7 @@ void sm::init_primitive_shapes()
         add_quad_3d(cube_mesh, vec3_t::WORLD_UP * 0.5f,       vec3_t::WORLD_RIGHT,        vec3_t::WORLD_FORWARD, 0.5f, 0.5f, 1);
         add_quad_3d(cube_mesh, vec3_t::WORLD_DOWN * 0.5f,     vec3_t::WORLD_LEFT,         vec3_t::WORLD_FORWARD, 0.5f, 0.5f, 1);
 
-        s_primitive_shapes[(u32)primitive_shape_t::kCube] = cube_mesh;
+        s_primitive_shapes[(u32)primitive_shape_t::CUBE] = cube_mesh;
     }
 
     // octahedron
@@ -169,7 +169,7 @@ void sm::init_primitive_shapes()
 		mesh_t* octahedron_mesh = alloc_struct(s_primitives_arena, mesh_t);
 		octahedron_mesh->vertices = init_array<vertex_t>(s_primitives_arena, 64);
 		octahedron_mesh->indices = init_array<u32>(s_primitives_arena, 64);
-		octahedron_mesh->topology = primitive_topology_t::kTriangleList;
+		octahedron_mesh->topology = primitive_topology_t::TRIANGLE_LIST;
 
         vec3_t v0_pos(0.0f, 0.0f, 1.0f);
         vec3_t v1_pos(1.0f, 0.0f, 0.0f);
@@ -226,7 +226,7 @@ void sm::init_primitive_shapes()
             add_vertex_and_index(octahedron_mesh, init_vertex(v4_pos, vec2_t(0.0f, 1.0f), color_f32_t::WHITE));
         }
 
-        s_primitive_shapes[(u32)primitive_shape_t::kOctahedron] = octahedron_mesh;
+        s_primitive_shapes[(u32)primitive_shape_t::OCTAHEDRON] = octahedron_mesh;
     }
 
     // uv sphere
@@ -234,7 +234,7 @@ void sm::init_primitive_shapes()
 		mesh_t* uv_sphere_mesh = alloc_struct(s_primitives_arena, mesh_t);
 		uv_sphere_mesh->vertices = init_array<vertex_t>(s_primitives_arena, 64);
 		uv_sphere_mesh->indices = init_array<u32>(s_primitives_arena, 64);
-		uv_sphere_mesh->topology = primitive_topology_t::kTriangleList;
+		uv_sphere_mesh->topology = primitive_topology_t::TRIANGLE_LIST;
 
         vec3_t origin(0.0f, 0.0f, 0.0f);
         u32 resolution = 64;
@@ -277,7 +277,7 @@ void sm::init_primitive_shapes()
             }
         }
 
-        s_primitive_shapes[(u32)primitive_shape_t::kUvSphere] = uv_sphere_mesh;
+        s_primitive_shapes[(u32)primitive_shape_t::UV_SPHERE] = uv_sphere_mesh;
     }
 
     // plane
@@ -285,11 +285,11 @@ void sm::init_primitive_shapes()
 		mesh_t* plane_mesh = alloc_struct(s_primitives_arena, mesh_t);
 		plane_mesh->vertices = init_array<vertex_t>(s_primitives_arena, 64);
 		plane_mesh->indices = init_array<u32>(s_primitives_arena, 64);
-		plane_mesh->topology = primitive_topology_t::kTriangleList;
+		plane_mesh->topology = primitive_topology_t::TRIANGLE_LIST;
 
         add_quad_3d(plane_mesh, vec3_t::ZERO, vec3_t::WORLD_RIGHT, vec3_t::WORLD_FORWARD, 0.5f, 0.5f, 1);
 
-        s_primitive_shapes[(u32)primitive_shape_t::kPlane] = plane_mesh;
+        s_primitive_shapes[(u32)primitive_shape_t::PLANE] = plane_mesh;
     }
 
     // quad
@@ -297,13 +297,13 @@ void sm::init_primitive_shapes()
 		mesh_t* quad_mesh = alloc_struct(s_primitives_arena, mesh_t);
 		quad_mesh->vertices = init_array<vertex_t>(s_primitives_arena, 64);
 		quad_mesh->indices = init_array<u32>(s_primitives_arena, 64);
-		quad_mesh->topology = primitive_topology_t::kTriangleList;
+		quad_mesh->topology = primitive_topology_t::TRIANGLE_LIST;
 
         // this is a full screen quad in ndc space
         // todo: probably should break this out into its own thing
         add_quad_3d(quad_mesh, vec3_t::ZERO, vec3_t(1.0f, 0.0f, 0.0f), vec3_t(0.0f, -1.0f, 0.0f), 1.0f, 1.0f, 1);
 
-        s_primitive_shapes[(u32)primitive_shape_t::kQuad] = quad_mesh;
+        s_primitive_shapes[(u32)primitive_shape_t::QUAD] = quad_mesh;
     }
 
     // cone
@@ -311,7 +311,7 @@ void sm::init_primitive_shapes()
 		mesh_t* cone_mesh = alloc_struct(s_primitives_arena, mesh_t);
 		cone_mesh->vertices = init_array<vertex_t>(s_primitives_arena, 64);
 		cone_mesh->indices = init_array<u32>(s_primitives_arena, 64);
-		cone_mesh->topology = primitive_topology_t::kTriangleList;
+		cone_mesh->topology = primitive_topology_t::TRIANGLE_LIST;
 
         vec3_t base_center = vec3_t::ZERO;
         vec3_t dir = vec3_t::WORLD_UP;
@@ -374,7 +374,7 @@ void sm::init_primitive_shapes()
             }
         }
 
-        s_primitive_shapes[(u32)primitive_shape_t::kCone] = cone_mesh;
+        s_primitive_shapes[(u32)primitive_shape_t::CONE] = cone_mesh;
     }
 
     // cylinder
@@ -382,7 +382,7 @@ void sm::init_primitive_shapes()
 		mesh_t* cylinder_mesh = alloc_struct(s_primitives_arena, mesh_t);
 		cylinder_mesh->vertices = init_array<vertex_t>(s_primitives_arena, 64);
 		cylinder_mesh->indices = init_array<u32>(s_primitives_arena, 64);
-		cylinder_mesh->topology = primitive_topology_t::kTriangleList;
+		cylinder_mesh->topology = primitive_topology_t::TRIANGLE_LIST;
 
         vec3_t base_center = vec3_t::ZERO;
         vec3_t dir = vec3_t::WORLD_UP;
@@ -463,7 +463,7 @@ void sm::init_primitive_shapes()
             }
         }
 
-        s_primitive_shapes[(u32)primitive_shape_t::kCylinder] = cylinder_mesh;
+        s_primitive_shapes[(u32)primitive_shape_t::CYLINDER] = cylinder_mesh;
     }
 
     // torus
@@ -471,7 +471,7 @@ void sm::init_primitive_shapes()
 		mesh_t* torus_mesh = alloc_struct(s_primitives_arena, mesh_t);
 		torus_mesh->vertices = init_array<vertex_t>(s_primitives_arena, 64);
 		torus_mesh->indices = init_array<u32>(s_primitives_arena, 64);
-		torus_mesh->topology = primitive_topology_t::kTriangleList;
+		torus_mesh->topology = primitive_topology_t::TRIANGLE_LIST;
 
         u32 resolution = 64;
         f32 u_scale = 3.0f;
@@ -508,7 +508,7 @@ void sm::init_primitive_shapes()
             }
         }
 
-        s_primitive_shapes[(u32)primitive_shape_t::kTorus] = torus_mesh;
+        s_primitive_shapes[(u32)primitive_shape_t::TORUS] = torus_mesh;
     }
 
 	s_did_init_primitive_shapes = true;
@@ -529,7 +529,7 @@ mesh_t* sm::init_from_obj(sm::arena_t* arena, const char* obj_filepath)
     mesh_t* mesh = alloc_struct(arena, mesh_t);
     mesh->vertices = init_array<vertex_t>(arena, 64);
     mesh->indices = init_array<u32>(arena, 64);
-    mesh->topology = primitive_topology_t::kTriangleList;
+    mesh->topology = primitive_topology_t::TRIANGLE_LIST;
 
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;

@@ -339,6 +339,9 @@
     <ClCompile Include="src\sm\render\mesh.cpp">
       <Filter>src\sm\render</Filter>
     </ClCompile>
+    <ClCompile Include="src\sm\platform\win32\render\win32_shader_compiler.cpp">
+      <Filter>src\sm\platform\win32\render</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Engine\Core\Assert_old.h">

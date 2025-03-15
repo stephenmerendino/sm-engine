@@ -9,24 +9,24 @@ namespace sm
 {
     enum class primitive_topology_t : u8
     {
-        kTriangleList,
-        kLineList,
-        kPointList
+        TRIANGLE_LIST,
+        LINE_LIST,
+        POINT_LIST
     };
 
     enum class primitive_shape_t : u32
     {
-        kAxes,
-        kTetrahedron,
-        kCube,
-        kOctahedron,
-        kUvSphere,
-        kPlane,
-        kQuad,
-        kCone,
-        kCylinder,
-        kTorus,
-        kNumPrimitiveShapes
+        AXES,
+        TETRAHEDRON,
+        CUBE,
+        OCTAHEDRON,
+        UV_SPHERE,
+        PLANE,
+        QUAD,
+        CONE,
+        CYLINDER,
+        TORUS,
+        NUM_PRIMITIVE_SHAPES
     };
 
 	struct vertex_t

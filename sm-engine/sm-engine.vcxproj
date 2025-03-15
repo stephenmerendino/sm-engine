@@ -93,6 +93,7 @@
     <ClCompile Include="src\sm\platform\win32\core\win32_debug.cpp" />
     <ClCompile Include="src\sm\platform\win32\io\win32_device_input.cpp" />
     <ClCompile Include="src\sm\platform\win32\io\win32_file.cpp" />
+    <ClCompile Include="src\sm\platform\win32\render\win32_shader_compiler.cpp" />
     <ClCompile Include="src\sm\platform\win32\render\win32_vk_functions.cpp" />
     <ClCompile Include="src\sm\platform\win32\render\win32_window.cpp" />
     <ClCompile Include="src\sm\platform\win32\thread\win32_thread.cpp" />

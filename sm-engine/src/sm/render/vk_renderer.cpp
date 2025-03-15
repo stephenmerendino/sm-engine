@@ -6,6 +6,7 @@
 #include "sm/math/helpers.h"
 #include "sm/math/mat44.h"
 #include "sm/render/mesh.h"
+#include "sm/render/shader_compiler.h"
 #include "sm/render/window.h"
 #include "sm/render/vk_include.h"
 
@@ -626,10 +627,11 @@ static void upload_buffer_data(VkBuffer dst_buffer, void* src_data, size_t src_d
 
 void sm::init_renderer(window_t* window)
 {	
-	s_window = window;
-	init_primitive_shapes();
-
 	arena_t* startup_arena = init_arena(MiB(100));
+
+	s_window = window;
+	init_shader_compiler();
+	init_primitive_shapes();
 
 	// vk instance
 	{
