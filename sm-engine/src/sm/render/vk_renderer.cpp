@@ -153,6 +153,7 @@ VkRenderPass s_imgui_render_pass;
 
 array_t<render_frame_t> s_render_frames;
 
+// viking room mesh/material resources
 mesh_t* s_viking_room_mesh = nullptr;
 VkBuffer s_viking_room_vertex_buffer = VK_NULL_HANDLE;
 VkDeviceMemory s_viking_room_vertex_buffer_memory = VK_NULL_HANDLE;
@@ -160,7 +161,7 @@ VkBuffer s_viking_room_index_buffer = VK_NULL_HANDLE;
 VkDeviceMemory s_viking_room_index_buffer_memory = VK_NULL_HANDLE;
 VkImage s_viking_room_diffuse_texture_image;
 VkDeviceMemory s_viking_room_diffuse_texture_memory;
-//VkImageView s_viking_room_diffuse_texture_image_view;
+VkImageView s_viking_room_diffuse_texture_image_view;
 
 static bool format_has_stencil(VkFormat format)
 {
@@ -2172,6 +2173,30 @@ void sm::init_renderer(window_t* window)
                 command_submit_info.pSignalSemaphores = nullptr;
 
                 SM_VULKAN_ASSERT(vkQueueSubmit(s_graphics_queue, 1, &command_submit_info, VK_NULL_HANDLE));
+
+				VkComponentMapping components{};
+				components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+				components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+				components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+				components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+				VkImageSubresourceRange subresource_range{};
+                VkImageAspectFlags    aspectMask;
+                uint32_t              baseMipLevel;
+                uint32_t              levelCount;
+                uint32_t              baseArrayLayer;
+                uint32_t              layerCount;
+
+				VkImageViewCreateInfo image_view_create_info{};
+                image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+                image_view_create_info.pNext = nullptr;
+				image_view_create_info.flags = 0;
+				image_view_create_info.image = s_viking_room_diffuse_texture_image;
+				image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+				image_view_create_info.format = VK_FORMAT_R8G8B8A8_SRGB;
+				image_view_create_info.components = components;
+				image_view_create_info.subresourceRange = subresource_range;
+				SM_VULKAN_ASSERT(vkCreateImageView());
 			}
 
             //m_vikingRoomMaterialDS = m_materialDescriptorPool.AllocateSet(m_materialDescriptorSetLayout);
