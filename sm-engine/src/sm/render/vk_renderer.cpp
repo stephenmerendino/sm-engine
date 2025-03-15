@@ -165,6 +165,10 @@ VkImageView s_viking_room_diffuse_texture_image_view = VK_NULL_HANDLE;
 VkDescriptorSet s_viking_room_material_descriptor_set = VK_NULL_HANDLE;
 VkBuffer s_viking_room_mesh_instance_buffer = VK_NULL_HANDLE;
 VkDeviceMemory s_viking_room_mesh_instance_buffer_memory = VK_NULL_HANDLE;
+VkPipelineLayout s_viking_room_main_draw_pipeline_layout = VK_NULL_HANDLE;
+
+VkPipelineLayout s_infinite_grid_pipeline_layout = VK_NULL_HANDLE;
+VkPipelineLayout s_post_process_pipeline_layout = VK_NULL_HANDLE;
 
 static bool format_has_stencil(VkFormat format)
 {
@@ -2276,23 +2280,59 @@ void sm::init_renderer(window_t* window)
 
 		// pipeline layouts
 		{
-            //// Viking Room
-            //std::vector<VkDescriptorSetLayout> pipelineDescriptorSetLayouts = {
-            //    m_globalDescriptorSetLayout.m_layoutHandle,
-            //    m_frameDescriptorSetLayout.m_layoutHandle,
-            //    m_materialDescriptorSetLayout.m_layoutHandle,
-            //    m_meshInstanceDescriptorSetLayout.m_layoutHandle
-            //};
+			// viking room
+			{
+                VkDescriptorSetLayout pipeline_descriptor_set_layouts[] = {
+                    s_global_descriptor_set_layout,
+                    s_frame_descriptor_set_layout,
+                    s_material_descriptor_set_layout,
+                    s_mesh_instance_descriptor_set_layout
+                };
 
-            //m_vikingRoomMainDrawPipelineLayout.Init(pipelineDescriptorSetLayouts);
+                VkPipelineLayoutCreateInfo pipeline_layout_create_info{};
+                pipeline_layout_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+                pipeline_layout_create_info.pNext = nullptr;
+                pipeline_layout_create_info.flags = 0;
+                pipeline_layout_create_info.setLayoutCount = ARRAY_LEN(pipeline_descriptor_set_layouts);
+                pipeline_layout_create_info.pSetLayouts = pipeline_descriptor_set_layouts;
+                pipeline_layout_create_info.pushConstantRangeCount = 0;
+                pipeline_layout_create_info.pPushConstantRanges = nullptr;
+                SM_VULKAN_ASSERT(vkCreatePipelineLayout(s_device, &pipeline_layout_create_info, nullptr, &s_viking_room_main_draw_pipeline_layout));
+			}
 
-            //// Infinite Grid
-            //std::vector<VkDescriptorSetLayout> infiniteGridDescriptorSetLayouts = { m_infiniteGridDescriptorSetLayout.m_layoutHandle };
-            //m_infiniteGridPipelineLayout.Init(infiniteGridDescriptorSetLayouts);
+            // infinite grid
+			{
+                VkDescriptorSetLayout pipeline_descriptor_set_layouts[] = {
+					s_infinite_grid_descriptor_set_layout
+                };
 
-            //// Post Processing
-            //std::vector<VkDescriptorSetLayout> layouts = { m_postProcessingDescriptorSetLayout.m_layoutHandle };
-            //m_postProcessingPipelineLayout.Init(layouts);
+                VkPipelineLayoutCreateInfo pipeline_layout_create_info{};
+                pipeline_layout_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+                pipeline_layout_create_info.pNext = nullptr;
+                pipeline_layout_create_info.flags = 0;
+                pipeline_layout_create_info.setLayoutCount = ARRAY_LEN(pipeline_descriptor_set_layouts);
+                pipeline_layout_create_info.pSetLayouts = pipeline_descriptor_set_layouts;
+                pipeline_layout_create_info.pushConstantRangeCount = 0;
+                pipeline_layout_create_info.pPushConstantRanges = nullptr;
+                SM_VULKAN_ASSERT(vkCreatePipelineLayout(s_device, &pipeline_layout_create_info, nullptr, &s_viking_room_main_draw_pipeline_layout));
+			}
+
+            // post processing
+			{
+                VkDescriptorSetLayout pipeline_descriptor_set_layouts[] = {
+                    s_post_process_descriptor_set_layout
+                };
+
+                VkPipelineLayoutCreateInfo pipeline_layout_create_info{};
+                pipeline_layout_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+                pipeline_layout_create_info.pNext = nullptr;
+                pipeline_layout_create_info.flags = 0;
+                pipeline_layout_create_info.setLayoutCount = ARRAY_LEN(pipeline_descriptor_set_layouts);
+                pipeline_layout_create_info.pSetLayouts = pipeline_descriptor_set_layouts;
+                pipeline_layout_create_info.pushConstantRangeCount = 0;
+                pipeline_layout_create_info.pPushConstantRanges = nullptr;
+                SM_VULKAN_ASSERT(vkCreatePipelineLayout(s_device, &pipeline_layout_create_info, nullptr, &s_viking_room_main_draw_pipeline_layout));
+			}
 		}
 
 		// pipelines
