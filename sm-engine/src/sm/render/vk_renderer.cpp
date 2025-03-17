@@ -627,7 +627,7 @@ static void upload_buffer_data(VkBuffer dst_buffer, void* src_data, size_t src_d
     vkFreeCommandBuffers(s_device, s_graphics_command_pool, ARRAY_LEN(commands_to_submit), commands_to_submit);
 }
 
-void sm::init_renderer(window_t* window)
+void sm::renderer_init(window_t* window)
 {	
 	arena_t* startup_arena = init_arena(MiB(100));
 
@@ -2477,8 +2477,8 @@ void sm::init_renderer(window_t* window)
 				VkRect2D scissor{};
 				scissor.offset.x = 0;
 				scissor.offset.y = 0;
-				scissor.extent.width = viewport.width;
-				scissor.extent.height = viewport.height;
+				scissor.extent.width = s_swapchain_extent.width;
+				scissor.extent.height = s_swapchain_extent.height;
 
 				VkRect2D scissors[] = {
 					scissor
@@ -2660,4 +2660,24 @@ void sm::init_renderer(window_t* window)
 	}
 
 	debug_printf("Finished initializing vulkan renderer\n");
+}
+
+void sm::renderer_begin_frame()
+{
+
+}
+
+void sm::renderer_update_frame(f32 ds)
+{
+
+}
+
+void sm::renderer_render_frame()
+{
+
+}
+
+void sm::renderer_end_frame()
+{
+
 }
