@@ -2,6 +2,8 @@
 
 using namespace sm;
 
+const mat44_t mat44_t::IDENTITY;
+
 inline static f32 calc_cofactor(const mat44_t& m, u32 row, u32 column)
 {
     mat33_t submatrix;

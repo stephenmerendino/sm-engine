@@ -201,7 +201,7 @@
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanCommands.cpp">
       <Filter>Source\Render\Vulkan</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Render\Camera.cpp">
+    <ClCompile Include="Source\Engine\Render\Camera_old.cpp">
       <Filter>Source\Render</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\Vertex.cpp">
@@ -342,6 +342,9 @@
     <ClCompile Include="src\sm\platform\win32\render\win32_shader_compiler.cpp">
       <Filter>src\sm\platform\win32\render</Filter>
     </ClCompile>
+    <ClCompile Include="src\sm\render\camera.cpp">
+      <Filter>src\sm\render</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Engine\Core\Assert_old.h">
@@ -467,7 +470,7 @@
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanCommands.h">
       <Filter>Source\Render\Vulkan</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Render\Camera.h">
+    <ClInclude Include="Source\Engine\Render\Camera_old.h">
       <Filter>Source\Render</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\Vertex.h">
@@ -774,6 +777,9 @@
       <Filter>src\sm\render</Filter>
     </ClInclude>
     <ClInclude Include="src\sm\render\mesh.h">
+      <Filter>src\sm\render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\render\camera.h">
       <Filter>src\sm\render</Filter>
     </ClInclude>
   </ItemGroup>

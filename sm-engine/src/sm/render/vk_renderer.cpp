@@ -2664,20 +2664,16 @@ void sm::renderer_init(window_t* window)
 
 void sm::renderer_begin_frame()
 {
-
 }
 
 void sm::renderer_update_frame(f32 ds)
 {
-
 }
 
 void sm::renderer_render_frame()
 {
-
 }
 
 void sm::renderer_end_frame()
 {
-
 }

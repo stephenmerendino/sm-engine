@@ -4,7 +4,7 @@
 #include "Engine/Core/Assert_old.h"
 #include "Engine/Core/Debug_Old.h"
 #include "Engine/Core/Macros.h"
-#include "Engine/Render/Camera.h"
+#include "Engine/Render/Camera_old.h"
 #include "Engine/Render/MeshBuilder.h"
 #include "Engine/Render/Mesh_old.h"
 #include "Engine/Render/ShaderCompiler.h"

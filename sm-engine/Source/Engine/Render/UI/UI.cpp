@@ -2,7 +2,7 @@
 #include "Engine/Core/Debug_Old.h"
 #include "third_party/imgui/imgui.h"
 #include "Engine/Render/Renderer_old.h"
-#include "Engine/Render/Camera.h"
+#include "Engine/Render/Camera_old.h"
 
 static bool s_showUI = true;
 static bool s_showDemoWindow = false;

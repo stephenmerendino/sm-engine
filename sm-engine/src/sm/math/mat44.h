@@ -34,6 +34,8 @@ namespace sm
         inline mat44_t& operator*=(f32 s);
         inline mat44_t operator*(const mat44_t& other) const;
         inline mat44_t& operator*=(const mat44_t& other);
+
+        static const mat44_t IDENTITY;
 	};
 
     inline mat44_t  init_mat44(const vec4_t& i, const vec4_t& j, const vec4_t& k, const vec4_t& t);
