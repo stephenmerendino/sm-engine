@@ -2,6 +2,7 @@
 
 #include "sm/core/types.h"
 #include "sm/math/ivec2.h"
+#include "sm/math/vec2.h"
 
 namespace sm
 {
@@ -136,12 +137,16 @@ namespace sm
 
 	void input_init(window_t* window);
 	void input_begin_frame();
-	void input_update();
+	void input_update(f32 ds);
+    void input_end_frame();
+
 	bool input_is_key_down(key_code_t key);
 	bool input_was_key_pressed(key_code_t key);
 	bool input_was_key_released(key_code_t key);
+
     void input_show_mouse();
     void input_hide_mouse();
     ivec2_t input_get_mouse_position();
     void input_set_mouse_position(const ivec2_t& pos);
+    vec2_t input_get_mouse_movement_normalized();
 }

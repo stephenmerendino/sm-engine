@@ -6,6 +6,12 @@ using namespace sm;
 
 u8 s_key_states[(u8)key_code_t::NUM_KEY_CODES] = { 0 };
 
+vec2_t s_mouse_movement_normalized = vec2_t::ZERO;
+bool s_mouse_is_shown = true;
+bool s_unhide_mouse = false;
+bool s_hide_mouse = false;
+ivec2_t s_saved_mouse_pos = ivec2_t::ZERO;
+
 void input_handler(window_msg_type_t msg_type, u64 msg_data, void* user_args)
 {
 	if(msg_type == window_msg_type_t::KEY_DOWN)
@@ -53,7 +59,11 @@ void sm::input_begin_frame()
 	}
 }
 
-void sm::input_update()
+void sm::input_update(f32 ds)
+{
+}
+
+void sm::input_end_frame()
 {
 }
 
@@ -70,4 +80,9 @@ bool sm::input_was_key_pressed(key_code_t key)
 bool sm::input_was_key_released(key_code_t key)
 {
 	return is_bit_set(s_key_states[(u8)key], (u8)key_state_bit_flags_t::WAS_RELEASED);
+}
+
+vec2_t sm::input_get_mouse_movement_normalized()
+{
+	return s_mouse_movement_normalized;
 }
