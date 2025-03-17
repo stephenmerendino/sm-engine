@@ -1,4 +1,4 @@
-#include "sm/io/device_input.h"
+#include "sm/io/input.h"
 #include "sm/core/bits.h"
 #include "sm/render/window.h"
 
@@ -39,13 +39,13 @@ void input_handler(window_msg_type_t msg_type, u64 msg_data, void* user_args)
 	}
 }
 
-void sm::init_device_inputs(window_t* window)
+void sm::input_init(window_t* window)
 {
 	SM_ASSERT(window);
-	add_window_msg_cb(window, input_handler, nullptr);
+	window_add_msg_cb(window, input_handler, nullptr);
 }
 
-void sm::begin_frame_device_inputs()
+void sm::input_begin_frame()
 {
 	for (int i = 0; i < (u32)key_code_t::NUM_KEY_CODES; i++)
 	{
@@ -53,21 +53,21 @@ void sm::begin_frame_device_inputs()
 	}
 }
 
-void sm::update_device_inputs()
+void sm::input_update()
 {
 }
 
-bool sm::is_key_down(key_code_t key)
+bool sm::input_is_key_down(key_code_t key)
 {
 	return is_bit_set(s_key_states[(u8)key], (u8)key_state_bit_flags_t::IS_DOWN);
 }
 
-bool sm::was_key_pressed(key_code_t key)
+bool sm::input_was_key_pressed(key_code_t key)
 {
 	return is_bit_set(s_key_states[(u8)key], (u8)key_state_bit_flags_t::WAS_PRESSED);
 }
 
-bool sm::was_key_released(key_code_t key)
+bool sm::input_was_key_released(key_code_t key)
 {
 	return is_bit_set(s_key_states[(u8)key], (u8)key_state_bit_flags_t::WAS_RELEASED);
 }

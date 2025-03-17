@@ -2,7 +2,7 @@
 
 namespace sm
 {
-    inline constexpr bool is_debug()
+    inline constexpr bool is_running_in_debug()
     {
     #if defined(NDEBUG)
         return false;

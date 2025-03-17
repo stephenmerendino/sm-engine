@@ -134,14 +134,14 @@ namespace sm
         WAS_RELEASED    = 0x04 
     };
 
-	void init_device_inputs(window_t* window);
-	void begin_frame_device_inputs();
-	void update_device_inputs();
-	bool is_key_down(key_code_t key);
-	bool was_key_pressed(key_code_t key);
-	bool was_key_released(key_code_t key);
-    void show_mouse();
-    void hide_mouse();
-    ivec2_t get_mouse_position();
-    void set_mouse_position(const ivec2_t& pos);
+	void input_init(window_t* window);
+	void input_begin_frame();
+	void input_update();
+	bool input_is_key_down(key_code_t key);
+	bool input_was_key_pressed(key_code_t key);
+	bool input_was_key_released(key_code_t key);
+    void input_show_mouse();
+    void input_hide_mouse();
+    ivec2_t input_get_mouse_position();
+    void input_set_mouse_position(const ivec2_t& pos);
 }

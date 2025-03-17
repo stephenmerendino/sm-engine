@@ -9,7 +9,7 @@
 
 using namespace sm;
 
-void sm::load_vulkan_global_funcs()
+void sm::vulkan_global_funcs_load()
 {
 #define VK_EXPORTED_FUNCTION(func) \
 		HMODULE vulkan_lib = LoadLibrary(L"vulkan-1.dll"); \
@@ -24,7 +24,7 @@ void sm::load_vulkan_global_funcs()
 #include "sm/render/vk_functions_manifest.h"
 }
 
-void sm::load_vulkan_instance_funcs(VkInstance instance)
+void sm::vulkan_instance_funcs_load(VkInstance instance)
 {
 #define VK_INSTANCE_FUNCTION(func) \
 		func = (PFN_##func)vkGetInstanceProcAddr(instance, #func); \
@@ -33,7 +33,7 @@ void sm::load_vulkan_instance_funcs(VkInstance instance)
 #include "sm/render/vk_functions_manifest.h"
 }
 
-void sm::load_vulkan_device_funcs(VkDevice device)
+void sm::vulkan_device_funcs_load(VkDevice device)
 {
 #define VK_DEVICE_FUNCTION(func) \
 		func = (PFN_##func)vkGetDeviceProcAddr(device, #func); \

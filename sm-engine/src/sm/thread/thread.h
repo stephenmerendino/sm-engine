@@ -4,7 +4,7 @@
 
 namespace sm
 {
-	void yield_thread();
-	void sleep_thread_ms(f32 ms);
-	void sleep_thread_seconds(f32 seconds);
+	void thread_yield();
+	void thread_sleep_ms(f32 ms);
+	void thread_sleep_seconds(f32 seconds);
 }

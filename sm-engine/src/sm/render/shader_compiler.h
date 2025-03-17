@@ -21,6 +21,6 @@ namespace sm
 		const char* entry_name;
 	};
 
-	void init_shader_compiler();
-	bool compile_shader(arena_t* arena, shader_type_t shader_type, const char* file_name, const char* entry_name, shader_t** out_shader);
+	void shader_compiler_init();
+	bool shader_compiler_compile(arena_t* arena, shader_type_t shader_type, const char* file_name, const char* entry_name, shader_t** out_shader);
 }

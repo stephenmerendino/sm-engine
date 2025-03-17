@@ -4,12 +4,12 @@
 
 using namespace sm;
 
-void sm::yield_thread()
+void sm::thread_yield()
 {
 	::SwitchToThread();
 }
 
-void sm::sleep_thread_ms(f32 ms)
+void sm::thread_sleep_ms(f32 ms)
 {
 	while (ms > 1000.0f)
 	{
@@ -25,11 +25,11 @@ void sm::sleep_thread_ms(f32 ms)
 
 	// Spin down the last bit of time since calling the Win32 Sleep function is too inaccurate
 	stopwatch_t stopwatch;
-	start_stopwatch(&stopwatch);
-	while (get_elapsed_ms(&stopwatch) < ms) { yield_thread(); }
+	stopwatch_start(&stopwatch);
+	while (stopwatch_get_elapsed_ms(&stopwatch) < ms) { thread_yield(); }
 }
 
-void sm::sleep_thread_seconds(f32 seconds)
+void sm::thread_sleep_seconds(f32 seconds)
 {
-	sleep_thread_ms(seconds * 1000.0f);
+	thread_sleep_ms(seconds * 1000.0f);
 }

@@ -1,5 +1,5 @@
 #include "sm/render/camera.h"
-#include "sm/io/device_input.h"
+#include "sm/io/input.h"
 
 using namespace sm;
 
@@ -10,7 +10,7 @@ void sm::camera_update(camera_t& camera, f32 ds)
 	vec3_t up = camera_get_up(camera);
 
 	f32 move_speed = 3.0f; // meters per second
-	if (is_key_down(key_code_t::KEY_SHIFT))
+	if (input_is_key_down(key_code_t::KEY_SHIFT))
 	{
 		move_speed *= 3.0f;
 	}
@@ -93,7 +93,7 @@ mat44_t sm::camera_get_view_transform(const camera_t& camera)
 	return mat44_t::IDENTITY;
 }
 
-void sm::camera_look_at(camera_t& camera, const vec3_t& lookAtPos, const vec3_t& upRef = vec3_t::WORLD_UP)
+void sm::camera_look_at(camera_t& camera, const vec3_t& lookAtPos, const vec3_t& upRef)
 {
 }
 

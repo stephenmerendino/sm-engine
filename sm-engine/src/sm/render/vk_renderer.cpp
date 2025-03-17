@@ -235,7 +235,7 @@ static vk_queue_indices_t find_queue_indices(arena_t* arena, VkPhysicalDevice de
 	u32 queue_familiy_count = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_familiy_count, nullptr);
 
-	array_t<VkQueueFamilyProperties> queue_family_props = init_array_sized<VkQueueFamilyProperties>(arena, queue_familiy_count);
+	array_t<VkQueueFamilyProperties> queue_family_props = array_init_sized<VkQueueFamilyProperties>(arena, queue_familiy_count);
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_familiy_count, queue_family_props.data);
 
 	vk_queue_indices_t indices;
@@ -293,7 +293,7 @@ static vk_swapchain_info_t query_swapchain(arena_t* arena, VkPhysicalDevice phys
 
 	if (num_surface_formats != 0)
 	{
-		details.formats = init_array_sized<VkSurfaceFormatKHR>(arena, num_surface_formats);
+		details.formats = array_init_sized<VkSurfaceFormatKHR>(arena, num_surface_formats);
 		vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &num_surface_formats, details.formats.data);
 	}
 
@@ -303,7 +303,7 @@ static vk_swapchain_info_t query_swapchain(arena_t* arena, VkPhysicalDevice phys
 
 	if (num_present_modes != 0)
 	{
-		details.present_modes = init_array_sized<VkPresentModeKHR>(arena, num_present_modes);
+		details.present_modes = array_init_sized<VkPresentModeKHR>(arena, num_present_modes);
 		vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface, &num_present_modes, details.present_modes.data);
 	}
 
@@ -374,7 +374,7 @@ static VkDebugUtilsMessengerCreateInfoEXT setup_debug_messenger_create_info(PFN_
 
 static void print_instance_info(arena_t* arena)
 {
-	if (!is_debug())
+	if (!is_running_in_debug())
 	{
 		return;
 	}
@@ -384,7 +384,7 @@ static void print_instance_info(arena_t* arena)
 		u32 num_exts;
 		vkEnumerateInstanceExtensionProperties(nullptr, &num_exts, nullptr);
 
-		array_t<VkExtensionProperties> instance_extensions = init_array_sized<VkExtensionProperties>(arena, num_exts);
+		array_t<VkExtensionProperties> instance_extensions = array_init_sized<VkExtensionProperties>(arena, num_exts);
 		vkEnumerateInstanceExtensionProperties(nullptr, &num_exts, instance_extensions.data);
 
 		debug_printf("Supported Instance Extensions\n");
@@ -400,7 +400,7 @@ static void print_instance_info(arena_t* arena)
 		u32 num_layers;
 		vkEnumerateInstanceLayerProperties(&num_layers, nullptr);
 
-		array_t<VkLayerProperties> instance_layers = init_array_sized<VkLayerProperties>(arena, num_layers);
+		array_t<VkLayerProperties> instance_layers = array_init_sized<VkLayerProperties>(arena, num_layers);
 		vkEnumerateInstanceLayerProperties(&num_layers, instance_layers.data);
 
 		debug_printf("Supported Instance Validation Layers\n");
@@ -417,7 +417,7 @@ static bool check_validation_layer_support(arena_t* arena)
 	u32 num_layers;
 	vkEnumerateInstanceLayerProperties(&num_layers, nullptr);
 
-	array_t<VkLayerProperties> instance_layers = init_array_sized<VkLayerProperties>(arena, num_layers);
+	array_t<VkLayerProperties> instance_layers = array_init_sized<VkLayerProperties>(arena, num_layers);
 	vkEnumerateInstanceLayerProperties(&num_layers, instance_layers.data);
 
 	for (const char* layerName : VALIDATION_LAYERS)
@@ -460,7 +460,7 @@ static bool check_physical_device_extension_support(arena_t* arena, VkPhysicalDe
 	u32 num_extensions = 0;
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &num_extensions, nullptr);
 
-	array_t<VkExtensionProperties> extensions = init_array_sized<VkExtensionProperties>(arena, num_extensions);
+	array_t<VkExtensionProperties> extensions = array_init_sized<VkExtensionProperties>(arena, num_extensions);
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &num_extensions, extensions.data);
 
 	u8 num_required_extensions = ARRAY_LEN(DEVICE_EXTENSIONS);
@@ -629,15 +629,15 @@ static void upload_buffer_data(VkBuffer dst_buffer, void* src_data, size_t src_d
 
 void sm::renderer_init(window_t* window)
 {	
-	arena_t* startup_arena = init_arena(MiB(100));
+	arena_t* startup_arena = arena_init(MiB(100));
 
 	s_window = window;
-	init_shader_compiler();
-	init_primitive_shapes();
+	shader_compiler_init();
+	primitive_shapes_init();
 
 	// vk instance
 	{
-        load_vulkan_global_funcs();
+        vulkan_global_funcs_load();
         print_instance_info(startup_arena);
 
         // app info
@@ -682,7 +682,7 @@ void sm::renderer_init(window_t* window)
 
         SM_VULKAN_ASSERT(vkCreateInstance(&create_info, nullptr, &s_instance));
 
-        load_vulkan_instance_funcs(s_instance);
+        vulkan_instance_funcs_load(s_instance);
 
         // real debug messenger for the whole game
         if (ENABLE_VALIDATION_LAYERS)
@@ -722,7 +722,7 @@ void sm::renderer_init(window_t* window)
             VkPhysicalDevice devices[max_num_devices];
             vkEnumeratePhysicalDevices(s_instance, &num_devices, devices);
 
-            if (is_debug())
+            if (is_running_in_debug())
             {
                 debug_printf("Physical Devices:\n");
 
@@ -809,7 +809,7 @@ void sm::renderer_init(window_t* window)
 
 			SM_VULKAN_ASSERT(vkCreateDevice(selected_phy_device, &create_info, nullptr, &logical_device));
 
-			load_vulkan_device_funcs(logical_device);
+			vulkan_device_funcs_load(logical_device);
 		}
 
 		VkQueue graphics_queue = VK_NULL_HANDLE;
@@ -929,7 +929,7 @@ void sm::renderer_init(window_t* window)
 		u32 num_images = 0;
         vkGetSwapchainImagesKHR(s_device, s_swapchain, &num_images, nullptr);
 
-        s_swapchain_images = init_array_sized<VkImage>(startup_arena, num_images);
+        s_swapchain_images = array_init_sized<VkImage>(startup_arena, num_images);
         vkGetSwapchainImagesKHR(s_device, s_swapchain, &num_images, s_swapchain_images.data);
 
         s_swapchain_format = swapchain_format.format;
@@ -1435,7 +1435,7 @@ void sm::renderer_init(window_t* window)
 
 	// render frames
 	{
-		s_render_frames = init_array_sized<render_frame_t>(startup_arena, MAX_NUM_FRAMES_IN_FLIGHT);
+		s_render_frames = array_init_sized<render_frame_t>(startup_arena, MAX_NUM_FRAMES_IN_FLIGHT);
 
 		for(size_t i = 0; i < s_render_frames.cur_size; i++)
 		{
@@ -1886,8 +1886,8 @@ void sm::renderer_init(window_t* window)
 
 		// viking room
 		{
-			s_viking_room_mesh = init_from_obj(startup_arena, "viking_room.obj");
-            size_t vertex_buffer_size = calc_mesh_vertex_buffer_size(s_viking_room_mesh);
+			s_viking_room_mesh = mesh_init_from_obj(startup_arena, "viking_room.obj");
+            size_t vertex_buffer_size = mesh_calc_vertex_buffer_size(s_viking_room_mesh);
 
 			// vertex buffer
 			{
@@ -1923,7 +1923,7 @@ void sm::renderer_init(window_t* window)
 
 			// viking room index buffer
 			{
-				size_t index_buffer_size = calc_mesh_index_buffer_size(s_viking_room_mesh);
+				size_t index_buffer_size = mesh_calc_index_buffer_size(s_viking_room_mesh);
 
 				// create the buffer
 				{
@@ -1966,7 +1966,7 @@ void sm::renderer_init(window_t* window)
 			{
                 // load image pixels
 				const char* diffuse_texture_filename = "viking-room.png";
-				sm::string_t full_filepath = init_string(startup_arena);
+				sm::string_t full_filepath = string_init(startup_arena);
 				full_filepath += TEXTURES_PATH;
 				full_filepath += diffuse_texture_filename;
 
@@ -2344,11 +2344,11 @@ void sm::renderer_init(window_t* window)
 			// viking room pipeline
 			{
 				// shaders
-                shader_t* vertex_shader = alloc_struct(startup_arena, shader_t);
-				SM_ASSERT(compile_shader(startup_arena, shader_type_t::VERTEX, "simple-diffuse.vs.hlsl", "Main", &vertex_shader));
+                shader_t* vertex_shader = arena_alloc_struct(startup_arena, shader_t);
+				SM_ASSERT(shader_compiler_compile(startup_arena, shader_type_t::VERTEX, "simple-diffuse.vs.hlsl", "Main", &vertex_shader));
 
-                shader_t* pixel_shader = alloc_struct(startup_arena, shader_t);
-				SM_ASSERT(compile_shader(startup_arena, shader_type_t::PIXEL, "simple-diffuse.ps.hlsl", "Main", &pixel_shader));
+                shader_t* pixel_shader = arena_alloc_struct(startup_arena, shader_t);
+				SM_ASSERT(shader_compiler_compile(startup_arena, shader_type_t::PIXEL, "simple-diffuse.ps.hlsl", "Main", &pixel_shader));
 
 				VkShaderModuleCreateInfo vertex_shader_module_create_info{};
 				vertex_shader_module_create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;

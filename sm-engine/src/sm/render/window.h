@@ -42,8 +42,8 @@ namespace sm
         sm::array_t<window_msg_cb_with_args_t> msg_cbs;
     };
 
-    window_t*   init_window(sm::arena_t* arena, const char* name, u32 width, u32 height, bool resizable);
-    void        add_window_msg_cb(window_t* window, window_msg_cb_t cb, void* args);
-    void        update_window(window_t* window);
-    void        set_title(window_t* window, const char* new_title);
+    window_t*   window_init(sm::arena_t* arena, const char* name, u32 width, u32 height, bool resizable);
+    void        window_add_msg_cb(window_t* window, window_msg_cb_t cb, void* args);
+    void        window_update(window_t* window);
+    void        window_set_title(window_t* window, const char* new_title);
 }

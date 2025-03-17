@@ -6,12 +6,12 @@
 
 using namespace sm;
 
-void sm::trigger_debug()
+void sm::trigger_debugger()
 {
 	__debugbreak();
 }
 
-bool sm::report_assert_failure_msg(const char* expression, const char* msg, const char* filename, int line_number)
+bool sm::assert_report_failure_msg(const char* expression, const char* msg, const char* filename, int line_number)
 {
 	char assert_msg[MAX_ASSERT_MSG_LEN];
 	sprintf_s(assert_msg, "%s\n\nFile: %s\nLine %i\nExpression \"%s\" failed.\n\nWould you like to debug? (Cancel quits program)", msg, filename, line_number, expression);
@@ -32,7 +32,7 @@ bool sm::report_assert_failure_msg(const char* expression, const char* msg, cons
 	return (user_btn_pressed == IDYES);
 }
 
-bool sm::report_assert_failure(const char* expression, const char* filename, int line_number)
+bool sm::assert_report_failure(const char* expression, const char* filename, int line_number)
 {
 	char assert_msg[MAX_ASSERT_MSG_LEN];
 	sprintf_s(assert_msg, "File: %s\nLine %i\nExpression \"%s\" failed.\n\nWould you like to debug? (Cancel quits program)", filename, line_number, expression);
@@ -53,7 +53,7 @@ bool sm::report_assert_failure(const char* expression, const char* filename, int
 	return (user_btn_pressed == IDYES);
 }
 
-bool sm::report_error_msg(const char* msg, const char* filename, int line_number)
+bool sm::assert_report_error_msg(const char* msg, const char* filename, int line_number)
 {
 	char assert_msg[MAX_ASSERT_MSG_LEN];
 	sprintf_s(assert_msg, "%s\n\nError triggered at File: %s\nLine %i\n\nWould you like to debug? (Cancel quits program)", msg, filename, line_number);
@@ -74,7 +74,7 @@ bool sm::report_error_msg(const char* msg, const char* filename, int line_number
 	return (user_btn_pressed == IDYES);
 }
 
-bool sm::report_error(const char* filename, int line_number)
+bool sm::assert_report_error(const char* filename, int line_number)
 {
 	char assert_msg[MAX_ASSERT_MSG_LEN];
 	sprintf_s(assert_msg, "Error triggered at File: %s\nLine %i\n\nWould you like to debug? (Cancel quits program)", filename, line_number);

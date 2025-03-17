@@ -43,18 +43,18 @@ namespace sm
 		array_t<u32> indices;
 	};
 
-    vertex_t init_vertex(const vec3_t& pos, const vec2_t& uv, const vec3_t& color);
-    vertex_t init_vertex(const vec3_t& pos, const vec2_t& uv, const color_f32_t& color);
+    vertex_t vertex_init(const vec3_t& pos, const vec2_t& uv, const vec3_t& color);
+    vertex_t vertex_init(const vec3_t& pos, const vec2_t& uv, const color_f32_t& color);
 
-    u32 add_vertex(mesh_t* mesh, const vertex_t& v);
-    void add_index(mesh_t* mesh, u32 index);
-    void add_vertex_and_index(mesh_t* mesh, const vertex_t& v);
-    void add_triangle_indices(mesh_t* mesh, u32 index0, u32 index1, u32 index2);
+    u32 mesh_add_vertex(mesh_t* mesh, const vertex_t& v);
+    void mesh_add_index(mesh_t* mesh, u32 index);
+    void mesh_add_vertex_and_index(mesh_t* mesh, const vertex_t& v);
+    void mesh_add_triangle_indices(mesh_t* mesh, u32 index0, u32 index1, u32 index2);
 
-    void init_primitive_shapes();
-    const mesh_t* get_primitive_shape_mesh(primitive_shape_t shape);
+    void primitive_shapes_init();
+    const mesh_t* primitive_shape_get_mesh(primitive_shape_t shape);
 
-	mesh_t* init_from_obj(sm::arena_t* arena, const char* obj_filepath);
-    size_t calc_mesh_vertex_buffer_size(const mesh_t* mesh);
-    size_t calc_mesh_index_buffer_size(const mesh_t* mesh);
+	mesh_t* mesh_init_from_obj(sm::arena_t* arena, const char* obj_filepath);
+    size_t mesh_calc_vertex_buffer_size(const mesh_t* mesh);
+    size_t mesh_calc_index_buffer_size(const mesh_t* mesh);
 }

@@ -6,7 +6,7 @@
 
 using namespace sm;
 
-array_t<byte_t> sm::read_binary_file(arena_t* arena, const char* filename)
+array_t<byte_t> sm::file_load_bytes(arena_t* arena, const char* filename)
 {
 	array_t<byte_t> data;
 
@@ -25,7 +25,7 @@ array_t<byte_t> sm::read_binary_file(arena_t* arena, const char* filename)
 	rewind(p_file);
 
 	// alloc buffer
-	data = init_array_sized<byte_t>(arena, file_len);
+	data = array_init_sized<byte_t>(arena, file_len);
 
 	// read into buffer
 	size_t bytes_read = fread(data.data, sizeof(byte_t), file_len, p_file);

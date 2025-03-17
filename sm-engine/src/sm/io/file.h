@@ -5,5 +5,5 @@
 
 namespace sm
 {
-    array_t<byte_t> read_binary_file(arena_t* arena, const char* filename);
+    array_t<byte_t> file_load_bytes(arena_t* arena, const char* filename);
 }

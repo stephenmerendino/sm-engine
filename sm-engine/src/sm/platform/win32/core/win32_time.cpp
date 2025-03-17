@@ -13,7 +13,7 @@ static i64 get_current_tick()
 	return tick.QuadPart;
 }
 
-void sm::init_time()
+void sm::time_init()
 {
 	static bool did_init = false;
 	if (!did_init)
@@ -26,13 +26,13 @@ void sm::init_time()
 	}
 }
 
-void sm::start_stopwatch(stopwatch_t* stopwatch)
+void sm::stopwatch_start(stopwatch_t* stopwatch)
 {
 	SM_ASSERT(stopwatch);
 	stopwatch->start_tick = get_current_tick();
 }
 
-f32 sm::get_elapsed_seconds(stopwatch_t* stopwatch)
+f32 sm::stopwatch_get_elapsed_seconds(stopwatch_t* stopwatch)
 {
 	SM_ASSERT(stopwatch);
 	i64 cur_tick = get_current_tick();
@@ -41,8 +41,8 @@ f32 sm::get_elapsed_seconds(stopwatch_t* stopwatch)
 	return seconds_elapsed;
 }
 
-f32 sm::get_elapsed_ms(stopwatch_t* stopwatch)
+f32 sm::stopwatch_get_elapsed_ms(stopwatch_t* stopwatch)
 {
 	SM_ASSERT(stopwatch);
-	return get_elapsed_seconds(stopwatch) * 1000.0f;
+	return stopwatch_get_elapsed_seconds(stopwatch) * 1000.0f;
 }

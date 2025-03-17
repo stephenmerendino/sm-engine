@@ -15,7 +15,7 @@ CComPtr<IDxcLibrary> s_library;
 CComPtr<IDxcCompiler3> s_compiler;
 CComPtr<IDxcUtils> s_utils;
 
-void sm::init_shader_compiler()
+void sm::shader_compiler_init()
 {
 	// Initialize DXC library
 	SM_ASSERT(SUCCEEDED(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(&s_library))));
@@ -27,18 +27,18 @@ void sm::init_shader_compiler()
 	SM_ASSERT(SUCCEEDED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&s_utils))));
 }
 
-bool sm::compile_shader(arena_t* arena, shader_type_t shader_type, const char* file_name, const char* entry_name, shader_t** out_shader)
+bool sm::shader_compiler_compile(arena_t* arena, shader_type_t shader_type, const char* file_name, const char* entry_name, shader_t** out_shader)
 {
 	HRESULT hres;
 
 	// append on the root shader directory
-	string_t full_filepath = init_string(arena);
+	string_t full_filepath = string_init(arena);
 	full_filepath += SHADERS_PATH;
 	full_filepath += file_name;
 
 	// need to convert filepath from const char * to LPCWSTR
-	wchar_t* full_filepath_w = to_wchar_string(arena, full_filepath);
-	wchar_t* entry_name_w = to_wchar_string(arena, entry_name);
+	wchar_t* full_filepath_w = string_to_wchar(arena, full_filepath);
+	wchar_t* entry_name_w = string_to_wchar(arena, entry_name);
 
 	// Load the HLSL text shader from disk
 	uint32_t code_page = DXC_CP_ACP;
@@ -56,13 +56,13 @@ bool sm::compile_shader(arena_t* arena, shader_type_t shader_type, const char* f
 	}
 
 	// configure the compiler arguments for compiling the HLSL shader to SPIR-V
-	array_t<LPCWSTR> arguments = init_array<LPCWSTR>(arena, 8);
-	push(arguments, (LPCWSTR)full_filepath_w);
-	push(arguments, L"-E");
-	push(arguments, (LPCWSTR)entry_name_w);
-	push(arguments, L"-T");
-	push(arguments, target_profile);
-	push(arguments, L"-spirv");
+	array_t<LPCWSTR> arguments = array_init<LPCWSTR>(arena, 8);
+	array_push(arguments, (LPCWSTR)full_filepath_w);
+	array_push(arguments, L"-E");
+	array_push(arguments, (LPCWSTR)entry_name_w);
+	array_push(arguments, L"-T");
+	array_push(arguments, target_profile);
+	array_push(arguments, L"-spirv");
 
 	// Compile shader
 	DxcBuffer buffer{};
@@ -98,8 +98,8 @@ bool sm::compile_shader(arena_t* arena, shader_type_t shader_type, const char* f
 	(*out_shader)->entry_name = entry_name;
 	(*out_shader)->shader_type = shader_type;
 
-	(*out_shader)->bytecode = init_array<byte_t>(arena, code->GetBufferSize());
-	push((*out_shader)->bytecode, (byte_t*)code->GetBufferPointer(), code->GetBufferSize());
+	(*out_shader)->bytecode = array_init<byte_t>(arena, code->GetBufferSize());
+	array_push((*out_shader)->bytecode, (byte_t*)code->GetBufferPointer(), code->GetBufferSize());
 
 	return true;
 }

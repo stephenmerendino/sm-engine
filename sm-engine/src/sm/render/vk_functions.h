@@ -5,9 +5,9 @@
 
 namespace sm
 {
-    void load_vulkan_global_funcs();
-    void load_vulkan_instance_funcs(VkInstance instance);
-    void load_vulkan_device_funcs(VkDevice device);
+    void vulkan_global_funcs_load();
+    void vulkan_instance_funcs_load(VkInstance instance);
+    void vulkan_device_funcs_load(VkDevice device);
 }
 
 #define VK_EXPORTED_FUNCTION(func)	extern PFN_##func func;

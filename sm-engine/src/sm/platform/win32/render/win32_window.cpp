@@ -2,7 +2,7 @@
 #include "sm/core/assert.h"
 #include "sm/core/debug.h"
 #include "sm/core/string.h"
-#include "sm/io/device_input.h"
+#include "sm/io/input.h"
 #include "sm/memory/arena.h"
 #include "sm/platform/win32/win32_include.h"
 
@@ -209,7 +209,7 @@ static void update_window_position(window_t* window)
 	window->y = pos.top;
 }
 
-window_t* sm::init_window(sm::arena_t* arena, const char* name, u32 width, u32 height, bool resizable)
+window_t* sm::window_init(sm::arena_t* arena, const char* name, u32 width, u32 height, bool resizable)
 {
 	SetProcessDPIAware(); // make sure window is created with scaling handled
 
@@ -239,14 +239,14 @@ window_t* sm::init_window(sm::arena_t* arena, const char* name, u32 width, u32 h
 	i32 create_width = full_size.right - full_size.left;
 	i32 create_height = full_size.bottom - full_size.top;
 
-	window_t* window = (window_t*)sm::alloc_zero(arena, sizeof(window_t));
+	window_t* window = (window_t*)sm::arena_alloc_zero(arena, sizeof(window_t));
 	window->name = name;
 	window->was_resized = false;
 	window->was_closed = false;
 	window->is_minimized = false;
 	window->is_moving = false;
 
-	wchar_t* unicode_name = sm::to_wchar_string(arena, name);
+	wchar_t* unicode_name = sm::string_to_wchar(arena, name);
 
 	HWND hwnd = CreateWindowEx(0,
 							   WINDOW_CLASS_NAME,
@@ -266,9 +266,9 @@ window_t* sm::init_window(sm::arena_t* arena, const char* name, u32 width, u32 h
 	update_window_size(window);
 	update_window_position(window);
 
-	window->msg_cbs = init_array<window_msg_cb_with_args_t>(arena, kMaxNumCbs);
+	window->msg_cbs = array_init<window_msg_cb_with_args_t>(arena, kMaxNumCbs);
 
-	add_window_msg_cb(window, internal_msg_handler, &window);
+	window_add_msg_cb(window, internal_msg_handler, &window);
 
 	// make sure to show on init
 	::ShowWindow(hwnd, SW_SHOW);
@@ -276,16 +276,16 @@ window_t* sm::init_window(sm::arena_t* arena, const char* name, u32 width, u32 h
 	return window;
 }
 
-void sm::add_window_msg_cb(window_t* window, window_msg_cb_t cb, void* args)
+void sm::window_add_msg_cb(window_t* window, window_msg_cb_t cb, void* args)
 {
 	SM_ASSERT(window);
 	window_msg_cb_with_args_t cb_with_args{};
 	cb_with_args.cb = cb;
 	cb_with_args.args = args;
-	push(window->msg_cbs, cb_with_args);
+	array_push(window->msg_cbs, cb_with_args);
 }
 
-void sm::update_window(window_t* window)
+void sm::window_update(window_t* window)
 {
 	SM_ASSERT(window);
 	window->was_resized = false;
@@ -305,12 +305,12 @@ void sm::update_window(window_t* window)
 	window->is_minimized = ::IsIconic(hwnd);
 }
 
-void sm::set_title(window_t* window, const char* new_title)
+void sm::window_set_title(window_t* window, const char* new_title)
 {
 	SM_ASSERT(window);
 	HWND hwnd = get_handle<HWND>(window->handle);
 	static const u32 kMaxScratchpadSize = 256;
 	wchar_t stack_scratchpad[kMaxScratchpadSize];
-	sm::to_wchar_string(stack_scratchpad, kMaxScratchpadSize, new_title);
+	sm::string_to_wchar(stack_scratchpad, kMaxScratchpadSize, new_title);
 	::SetWindowText(hwnd, stack_scratchpad);
 }
