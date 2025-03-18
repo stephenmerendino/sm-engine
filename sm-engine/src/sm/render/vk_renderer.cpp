@@ -62,7 +62,7 @@ struct vk_swapchain_info_t
 struct render_frame_t 
 {
 	// swapchain
-	i32	swapchain_image_index = -1;
+	u32	swapchain_image_index = UINT64_MAX;
 	VkSemaphore swapchain_image_is_ready_semaphore;
 
 	// frame level resources
@@ -175,6 +175,10 @@ VkPipelineLayout s_infinite_grid_main_draw_pipeline_layout = VK_NULL_HANDLE;
 VkPipelineLayout s_post_process_pipeline_layout = VK_NULL_HANDLE;
 
 camera_t s_main_camera;
+f32 s_elapsed_time_seconds = 0.0f;
+f32 s_delta_time_seconds = 0.0f;
+u64 s_cur_frame_number = 0;
+u8 s_cur_render_frame = 0;
 
 static bool format_has_stencil(VkFormat format)
 {
@@ -630,6 +634,167 @@ static void upload_buffer_data(VkBuffer dst_buffer, void* src_data, size_t src_d
     vkFreeCommandBuffers(s_device, s_graphics_command_pool, ARRAY_LEN(commands_to_submit), commands_to_submit);
 }
 
+static void init_swapchain()
+{
+	arena_t* stack_arena;
+	arena_stack_init(stack_arena, 256);
+    vk_swapchain_info_t swapchain_info = query_swapchain(stack_arena, s_phys_device, s_surface);
+
+    VkSurfaceFormatKHR swapchain_format = swapchain_info.formats[0];
+    for(int i = 0; i < swapchain_info.formats.cur_size; i++)
+    {
+        const VkSurfaceFormatKHR& format = swapchain_info.formats[i];
+        if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+        {
+            swapchain_format = format;
+        }
+    }
+
+    VkPresentModeKHR swapchain_present_mode = VK_PRESENT_MODE_FIFO_KHR;
+    for(int i = 0; i < swapchain_info.present_modes.cur_size; i++)
+    {
+        const VkPresentModeKHR& mode = swapchain_info.present_modes[i];
+        if (mode == VK_PRESENT_MODE_MAILBOX_KHR)
+        {
+            swapchain_present_mode = mode;
+            break;
+        }
+    }
+
+    VkExtent2D swapchain_extent{};
+    if (swapchain_info.capabilities.currentExtent.width != UINT32_MAX)
+    {
+        swapchain_extent = swapchain_info.capabilities.currentExtent;
+    }
+    else
+    {
+        swapchain_extent = { s_window->width, s_window->height };
+        swapchain_extent.width = clamp(swapchain_extent.width, swapchain_info.capabilities.minImageExtent.width, swapchain_info.capabilities.maxImageExtent.width);
+        swapchain_extent.height = clamp(swapchain_extent.height, swapchain_info.capabilities.minImageExtent.height, swapchain_info.capabilities.maxImageExtent.height);
+    }
+
+    u32 image_count = swapchain_info.capabilities.minImageCount + 1; // one extra image to prevent waiting on driver
+    if (swapchain_info.capabilities.maxImageCount > 0)
+    {
+        image_count = min(image_count, swapchain_info.capabilities.maxImageCount);
+    }
+
+    // TODO: Allow fullscreen
+    //VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = {};
+    //fullScreenInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
+    //fullScreenInfo.pNext = nullptr;
+    //fullScreenInfo.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT;
+
+    VkSwapchainCreateInfoKHR create_info{};
+    create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    create_info.pNext = nullptr; // use full_screen_info here
+    create_info.surface = s_surface;
+    create_info.minImageCount = image_count;
+    create_info.imageFormat = swapchain_format.format;
+    create_info.imageColorSpace = swapchain_format.colorSpace;
+    create_info.presentMode = swapchain_present_mode;
+    create_info.imageExtent = swapchain_extent;
+    create_info.imageArrayLayers = 1;
+    create_info.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+
+    u32 queueFamilyIndices[] = { (u32)s_queue_indices.graphics_and_compute, (u32)s_queue_indices.presentation };
+
+    if (s_queue_indices.graphics_and_compute != s_queue_indices.presentation)
+    {
+        create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+        create_info.queueFamilyIndexCount = 2;
+        create_info.pQueueFamilyIndices = queueFamilyIndices;
+    }
+    else
+    {
+        create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        create_info.queueFamilyIndexCount = 0;
+        create_info.pQueueFamilyIndices = nullptr;
+    }
+
+    create_info.preTransform = swapchain_info.capabilities.currentTransform;
+    create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    create_info.clipped = VK_TRUE;
+    create_info.oldSwapchain = VK_NULL_HANDLE;
+
+    SM_VULKAN_ASSERT(vkCreateSwapchainKHR(s_device, &create_info, nullptr, &s_swapchain));
+
+    u32 num_images = 0;
+    vkGetSwapchainImagesKHR(s_device, s_swapchain, &num_images, nullptr);
+
+	array_resize(s_swapchain_images, num_images);
+    vkGetSwapchainImagesKHR(s_device, s_swapchain, &num_images, s_swapchain_images.data);
+
+    s_swapchain_format = swapchain_format.format;
+    s_swapchain_extent = swapchain_extent;
+
+    VkCommandBufferAllocateInfo command_buffer_alloc_info{};
+    command_buffer_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    command_buffer_alloc_info.pNext = nullptr;
+    command_buffer_alloc_info.commandPool = s_graphics_command_pool;
+    command_buffer_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    command_buffer_alloc_info.commandBufferCount = 1;
+
+    VkCommandBuffer command_buffer;
+    vkAllocateCommandBuffers(s_device, &command_buffer_alloc_info, &command_buffer);
+
+    VkCommandBufferBeginInfo begin_info{};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(command_buffer, &begin_info);
+
+    // transition swapchain images to presentation layout
+    for (u32 i = 0; i < (u32)s_swapchain_images.cur_size; i++)
+    {
+        VkImageMemoryBarrier barrier{};
+        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        barrier.srcAccessMask = VK_ACCESS_NONE;
+        barrier.dstAccessMask = VK_ACCESS_NONE;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.image = s_swapchain_images[i];
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        barrier.subresourceRange.baseMipLevel = 0;
+        barrier.subresourceRange.levelCount = 1;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount = 1;
+
+        vkCmdPipelineBarrier(command_buffer,
+                             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                             0,
+                             0, nullptr,
+                             0, nullptr,
+                             1, &barrier);
+    }
+    vkEndCommandBuffer(command_buffer);
+    
+    VkSubmitInfo submit_info{};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &command_buffer;
+
+    vkQueueSubmit(s_graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
+    vkQueueWaitIdle(s_graphics_queue);
+
+    vkFreeCommandBuffers(s_device, s_graphics_command_pool, 1, &command_buffer);
+}
+
+static void refresh_swapchain()
+{
+	vkQueueWaitIdle(s_graphics_queue);
+
+	vkDestroySwapchainKHR(s_device, s_swapchain, nullptr);
+//	InitSwapchain();
+//
+//	DestroyRenderFrames();
+//	InitRenderFrames();
+//
+//	DestroyPipelines();
+//	InitPipelines();
+}
+
 void sm::renderer_init(window_t* window)
 {	
 	arena_t* startup_arena = arena_init(MiB(100));
@@ -847,150 +1012,9 @@ void sm::renderer_init(window_t* window)
 	}
 
 	// swapchain
-	{
-        vk_swapchain_info_t swapchain_info = query_swapchain(startup_arena, s_phys_device, s_surface);
-
-        VkSurfaceFormatKHR swapchain_format = swapchain_info.formats[0];
-		for(int i = 0; i < swapchain_info.formats.cur_size; i++)
-        {
-			const VkSurfaceFormatKHR& format = swapchain_info.formats[i];
-            if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
-            {
-                swapchain_format = format;
-            }
-        }
-
-		VkPresentModeKHR swapchain_present_mode = VK_PRESENT_MODE_FIFO_KHR;
-		for(int i = 0; i < swapchain_info.present_modes.cur_size; i++)
-        {
-			const VkPresentModeKHR& mode = swapchain_info.present_modes[i];
-            if (mode == VK_PRESENT_MODE_MAILBOX_KHR)
-            {
-				swapchain_present_mode = mode;
-				break;
-            }
-        }
-
-		VkExtent2D swapchain_extent{};
-        if (swapchain_info.capabilities.currentExtent.width != UINT32_MAX)
-        {
-            swapchain_extent = swapchain_info.capabilities.currentExtent;
-        }
-		else
-		{
-            swapchain_extent = { s_window->width, s_window->height };
-            swapchain_extent.width = clamp(swapchain_extent.width, swapchain_info.capabilities.minImageExtent.width, swapchain_info.capabilities.maxImageExtent.width);
-            swapchain_extent.height = clamp(swapchain_extent.height, swapchain_info.capabilities.minImageExtent.height, swapchain_info.capabilities.maxImageExtent.height);
-		}
-
-        u32 image_count = swapchain_info.capabilities.minImageCount + 1; // one extra image to prevent waiting on driver
-        if (swapchain_info.capabilities.maxImageCount > 0)
-        {
-            image_count = min(image_count, swapchain_info.capabilities.maxImageCount);
-        }
-
-        // TODO: Allow fullscreen
-        //VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = {};
-        //fullScreenInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
-        //fullScreenInfo.pNext = nullptr;
-        //fullScreenInfo.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT;
-
-        VkSwapchainCreateInfoKHR create_info{};
-        create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-        create_info.pNext = nullptr; // use full_screen_info here
-        create_info.surface = s_surface;
-        create_info.minImageCount = image_count;
-        create_info.imageFormat = swapchain_format.format;
-        create_info.imageColorSpace = swapchain_format.colorSpace;
-        create_info.presentMode = swapchain_present_mode;
-        create_info.imageExtent = swapchain_extent;
-        create_info.imageArrayLayers = 1;
-        create_info.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-
-        u32 queueFamilyIndices[] = { (u32)s_queue_indices.graphics_and_compute, (u32)s_queue_indices.presentation };
-
-        if (s_queue_indices.graphics_and_compute != s_queue_indices.presentation)
-        {
-            create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-            create_info.queueFamilyIndexCount = 2;
-            create_info.pQueueFamilyIndices = queueFamilyIndices;
-        }
-        else
-        {
-            create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-            create_info.queueFamilyIndexCount = 0;
-            create_info.pQueueFamilyIndices = nullptr;
-        }
-
-        create_info.preTransform = swapchain_info.capabilities.currentTransform;
-        create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-        create_info.clipped = VK_TRUE;
-        create_info.oldSwapchain = VK_NULL_HANDLE;
-
-        SM_VULKAN_ASSERT(vkCreateSwapchainKHR(s_device, &create_info, nullptr, &s_swapchain));
-
-		u32 num_images = 0;
-        vkGetSwapchainImagesKHR(s_device, s_swapchain, &num_images, nullptr);
-
-        s_swapchain_images = array_init_sized<VkImage>(startup_arena, num_images);
-        vkGetSwapchainImagesKHR(s_device, s_swapchain, &num_images, s_swapchain_images.data);
-
-        s_swapchain_format = swapchain_format.format;
-		s_swapchain_extent = swapchain_extent;
-        //m_imageInFlightFences.resize(m_numImages);
-
-		VkCommandBufferAllocateInfo command_buffer_alloc_info{};
-		command_buffer_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		command_buffer_alloc_info.pNext = nullptr;
-		command_buffer_alloc_info.commandPool = s_graphics_command_pool;
-		command_buffer_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		command_buffer_alloc_info.commandBufferCount = 1;
-
-		VkCommandBuffer command_buffer;
-		vkAllocateCommandBuffers(s_device, &command_buffer_alloc_info, &command_buffer);
-
-		VkCommandBufferBeginInfo begin_info{};
-		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		vkBeginCommandBuffer(command_buffer, &begin_info);
-
-		// transition swapchain images to presentation layout
-        for (u32 i = 0; i < (u32)s_swapchain_images.cur_size; i++)
-        {
-            VkImageMemoryBarrier barrier{};
-            barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-            barrier.srcAccessMask = VK_ACCESS_NONE;
-            barrier.dstAccessMask = VK_ACCESS_NONE;
-            barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            barrier.image = s_swapchain_images[i];
-            barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            barrier.subresourceRange.baseMipLevel = 0;
-            barrier.subresourceRange.levelCount = 1;
-            barrier.subresourceRange.baseArrayLayer = 0;
-            barrier.subresourceRange.layerCount = 1;
-
-            vkCmdPipelineBarrier(command_buffer,
-                                 VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                                 0,
-                                 0, nullptr,
-                                 0, nullptr,
-                                 1, &barrier);
-        }
-		vkEndCommandBuffer(command_buffer);
-        
-        VkSubmitInfo submit_info{};
-        submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submit_info.commandBufferCount = 1;
-        submit_info.pCommandBuffers = &command_buffer;
-
-        vkQueueSubmit(s_graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
-        vkQueueWaitIdle(s_graphics_queue);
-
-		vkFreeCommandBuffers(s_device, s_graphics_command_pool, 1, &command_buffer);
-	}
+	const u32 default_num_images = 3;
+    s_swapchain_images = array_init_sized<VkImage>(startup_arena, default_num_images);
+	init_swapchain();
 
 	// descriptor pools
 	{
@@ -2671,13 +2695,262 @@ void sm::renderer_begin_frame()
 
 void sm::renderer_update_frame(f32 ds)
 {
+	s_elapsed_time_seconds += ds;
+	s_delta_time_seconds = ds;
+
 	camera_update(s_main_camera, ds);
+
+	// imgui
+	::ImGui_ImplWin32_NewFrame();
+    ::ImGui_ImplVulkan_NewFrame();
+    ::ImGui::NewFrame();
 }
 
 void sm::renderer_render_frame()
 {
-}
+	//if (m_bReloadShadersRequested)
+	//{
+	//	m_bReloadShadersRequested = false;
+	//	VulkanDevice::Get()->FlushPipe();
+	//	InitPipelines();
+	//}
 
-void sm::renderer_end_frame()
-{
+	// setup new frame
+	{
+		s_cur_frame_number++;
+		s_cur_render_frame = s_cur_frame_number % MAX_NUM_FRAMES_IN_FLIGHT;
+		render_frame_t& cur_render_frame = s_render_frames[s_cur_render_frame];
+
+		VkFence frame_completed_fences[] = {
+			cur_render_frame.frame_completed_fence
+		};
+		SM_VULKAN_ASSERT(vkWaitForFences(s_device, ARRAY_LEN(frame_completed_fences), frame_completed_fences, VK_TRUE, UINT64_MAX));
+		SM_VULKAN_ASSERT(vkResetFences(s_device, ARRAY_LEN(frame_completed_fences), frame_completed_fences));
+
+		SM_VULKAN_ASSERT(vkResetCommandBuffer(cur_render_frame.frame_command_buffer, 0));
+		
+		VkResult swapchain_image_acquisition_result = vkAcquireNextImageKHR(s_device, 
+																			s_swapchain, 
+																			UINT64_MAX, 
+																			cur_render_frame.swapchain_image_is_ready_semaphore, 
+																			VK_NULL_HANDLE, 
+																			&cur_render_frame.swapchain_image_index);
+		if(swapchain_image_acquisition_result == VK_SUBOPTIMAL_KHR)
+		{
+			//refresh_swapchain();
+		}
+	}
+
+	// {
+    //    // Update frame descriptor
+    //    FrameRenderData frameRenderData;
+    //    frameRenderData.m_elapsedTimeSeconds = m_elapsedTimeSeconds;
+    //    frameRenderData.m_deltaTimeSeconds = m_deltaTimeSeconds;
+
+    //    curRenderFrame.m_frameDescriptorBuffer.Update(m_graphicsCommandPool, &frameRenderData, 0);
+
+    //    VulkanDescriptorSetWriter descriptorWriter;
+    //    descriptorWriter.AddUniformBufferWrite(curRenderFrame.m_frameDescriptorSet, curRenderFrame.m_frameDescriptorBuffer, 0, 0, 0, 1);
+    //    descriptorWriter.PerformWrites();
+
+    //    // Mesh instance reset
+    //    curRenderFrame.m_meshInstanceDescriptorPool.Reset();
+	//}
+
+	//// setup frame commands
+	//{
+    //    VulkanRenderFrame& curRenderFrame = m_renderFrames[m_currentFrame];
+
+    //    VulkanCommands::Begin(curRenderFrame.m_frameCommandBuffer, 0);
+
+    //    // Main Draw
+    //    VulkanCommands::BeginDebugLabel(curRenderFrame.m_frameCommandBuffer, "Main Draw", ColorF32(1.0f, 0.0f, 1.0f, 1.0f));
+    //    {
+    //        VkClearValue colorClear = {};
+    //        colorClear.color = { CLEAR_COLOR.r, CLEAR_COLOR.g, CLEAR_COLOR.b, CLEAR_COLOR.a };
+    //        VkClearValue depthClear = {};
+    //        depthClear.depthStencil = { 1.0f, 0 };
+
+    //        std::vector<VkClearValue> mainDrawClearValues = { colorClear, depthClear, colorClear };
+
+    //        VkOffset2D mainDrawOffset = { 0, 0 };
+    //        VkExtent2D mainDrawExtent = m_swapchain.m_extent;
+
+    //        VulkanCommands::BeginRenderPass(curRenderFrame.m_frameCommandBuffer, m_mainDrawRenderPass.m_renderPassHandle, curRenderFrame.m_mainDrawFramebuffer.m_framebufferHandle, mainDrawOffset, mainDrawExtent, mainDrawClearValues);
+    //            Mat44 view = m_pMainCamera->GetViewTransform();
+    //            Mat44 projection = Mat44::CreatePerspectiveProjection(45.0f, 0.01f, 100.0f, (F32)m_swapchain.m_extent.width / (F32)m_swapchain.m_extent.height);
+
+    //            // Viking Room
+    //            VulkanCommands::InsertDebugLabel(curRenderFrame.m_frameCommandBuffer, "Viking Room", ColorF32(1.0f, 0.0f, 1.0f, 1.0f));
+    //            {
+    //                Mat44 model = Mat44::IDENTITY;
+
+    //                MeshInstanceRenderData meshInstanceRenderData;
+    //                meshInstanceRenderData.m_mvp = model * view * projection;
+    //                //meshInstanceRenderData.m_mvp.Transpose();
+    //                m_vikingRoomMeshInstanceBuffer.Update(m_graphicsCommandPool, &meshInstanceRenderData, 0);
+
+    //                // Mesh instance descriptor set
+    //                VkDescriptorSet meshInstanceDescriptorSet = curRenderFrame.m_meshInstanceDescriptorPool.AllocateSet(m_meshInstanceDescriptorSetLayout);
+    //                VulkanDescriptorSetWriter meshInstanceDescriptorWriter;
+    //                meshInstanceDescriptorWriter.AddUniformBufferWrite(meshInstanceDescriptorSet, m_vikingRoomMeshInstanceBuffer, 0, 0, 0, 1);
+    //                meshInstanceDescriptorWriter.PerformWrites();
+
+    //                // Bind vertex buffer
+    //                VkBuffer vertexBuffer[] = { m_vikingRoomVertexBuffer.m_bufferHandle };
+    //                VkDeviceSize offsets[] = { 0 };
+    //                vkCmdBindVertexBuffers(curRenderFrame.m_frameCommandBuffer, 0, 1, vertexBuffer, offsets);
+
+    //                // Bind index buffer
+    //                vkCmdBindIndexBuffer(curRenderFrame.m_frameCommandBuffer, m_vikingRoomIndexBuffer.m_bufferHandle, 0, VK_INDEX_TYPE_UINT32);
+
+    //                // Bind pipeline
+    //                vkCmdBindPipeline(curRenderFrame.m_frameCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_vikingRoomMainDrawPipeline.m_pipelineHandle);
+
+    //                std::vector<VkDescriptorSet> mainDrawDescriptorSets = {
+    //                    m_globalDescriptorSet,
+    //                    curRenderFrame.m_frameDescriptorSet,
+    //                    m_vikingRoomMaterialDS,
+    //                    meshInstanceDescriptorSet	
+    //                };
+    //                vkCmdBindDescriptorSets(curRenderFrame.m_frameCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_vikingRoomMainDrawPipelineLayout.m_layoutHandle, 0, (U32)mainDrawDescriptorSets.size(), mainDrawDescriptorSets.data(), 0, nullptr);
+
+    //                // Draw command
+    //                vkCmdDrawIndexed(curRenderFrame.m_frameCommandBuffer, (U32)m_pVikingRoomMesh->m_indices.size(), 1, 0, 0, 0);
+    //            }
+
+    //            // Infinite grid
+    //            if (GetRenderSettings()->m_bDrawDebugWorldGrid)
+    //            {
+    //                VulkanCommands::InsertDebugLabel(curRenderFrame.m_frameCommandBuffer, "Infinite Grid", ColorF32(1.0f, 0.0f, 1.0f, 1.0f));
+    //                {
+	//					InfiniteGridData gridData;
+	//					gridData.m_viewProjection = view * projection;
+	//					gridData.m_inverseViewProjection = projection.Inversed() * view.Inversed();
+	//					gridData.m_fadeDistance = GetRenderSettings()->m_debugGridFadeDistance;
+	//					gridData.m_majorLineThickness = GetRenderSettings()->m_debugGridMajorLineThickness;
+	//					gridData.m_minorLineThickness = GetRenderSettings()->m_debugGridMinorLineThickness;
+
+	//					curRenderFrame.m_infiniteGridDataBuffer.Update(m_graphicsCommandPool, &gridData, 0);
+
+	//					VulkanDescriptorSetWriter writer;
+	//					writer.AddUniformBufferWrite(curRenderFrame.m_infiniteGridDescriptorSet, curRenderFrame.m_infiniteGridDataBuffer, 0, 0, 0, 1);
+	//					writer.PerformWrites();
+
+	//					vkCmdBindPipeline(curRenderFrame.m_frameCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_infiniteGridPipeline.m_pipelineHandle);
+
+	//					std::vector<VkDescriptorSet> infiniteGridDescriptorSets = {
+	//						curRenderFrame.m_infiniteGridDescriptorSet
+	//					};
+	//					vkCmdBindDescriptorSets(curRenderFrame.m_frameCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_infiniteGridPipelineLayout.m_layoutHandle, 0, (U32)infiniteGridDescriptorSets.size(), infiniteGridDescriptorSets.data(), 0, nullptr);
+
+	//					// Draw command
+	//					vkCmdDraw(curRenderFrame.m_frameCommandBuffer, 6, 1, 0, 0);
+	//				}
+	//			}
+	//			VulkanCommands::EndRenderPass(curRenderFrame.m_frameCommandBuffer);
+
+	//	}
+	//	VulkanCommands::EndDebugLabel(curRenderFrame.m_frameCommandBuffer);
+
+	//	// Post Processing
+	//	VulkanCommands::BeginDebugLabel(curRenderFrame.m_frameCommandBuffer, "Post Processing", ColorF32(1.0f, 0.5f, 0.0f, 1.0f));
+	//	{
+	//		// Write descriptor set
+	//		// Bind Descriptor set
+	//		// Bind Pipeline
+	//		// Execute
+	//	}
+	//	VulkanCommands::EndDebugLabel(curRenderFrame.m_frameCommandBuffer);
+
+	//	// ImGui
+	//	VulkanCommands::BeginDebugLabel(curRenderFrame.m_frameCommandBuffer, "ImGui", ColorF32(1.0f, 0.0f, 0.0f, 1.0f));
+	//	{
+	//		UI::Render();
+	//		VkOffset2D offset = {0, 0};
+	//		VulkanCommands::BeginRenderPass(curRenderFrame.m_frameCommandBuffer, m_imguiRenderPass.m_renderPassHandle, curRenderFrame.m_imguiFramebuffer.m_framebufferHandle, offset, m_swapchain.m_extent);
+	//		::ImGui::Render();
+	//		::ImDrawData* drawData = ::ImGui::GetDrawData();
+	//		ImGui_ImplVulkan_RenderDrawData(drawData, curRenderFrame.m_frameCommandBuffer);
+	//		VulkanCommands::EndRenderPass(curRenderFrame.m_frameCommandBuffer);
+	//	}
+	//	VulkanCommands::EndDebugLabel(curRenderFrame.m_frameCommandBuffer);
+
+	//	// Copy from main draw target to swapchain
+	//	VulkanCommands::BeginDebugLabel(curRenderFrame.m_frameCommandBuffer, "Copy to Swap Chain", ColorF32(0.0f, 1.0f, 0.0f, 1.0f));
+	//	{
+	//		VulkanCommands::TransitionImageLayout(curRenderFrame.m_frameCommandBuffer, m_swapchain.m_images[curRenderFrame.m_swapchainImageIndex], 1,
+	//			VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+	//			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+	//			VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT);
+
+	//		VulkanCommands::BlitColorImage(curRenderFrame.m_frameCommandBuffer, curRenderFrame.m_mainDrawColorResolveTexture.m_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, m_swapchain.m_extent.width, m_swapchain.m_extent.height, 1, 0,
+	//			m_swapchain.m_images[curRenderFrame.m_swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, m_swapchain.m_extent.width, m_swapchain.m_extent.height, 1, 0);
+
+	//		VulkanCommands::TransitionImageLayout(curRenderFrame.m_frameCommandBuffer, m_swapchain.m_images[curRenderFrame.m_swapchainImageIndex], 1,
+	//			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+	//			VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_NONE,
+	//			VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_NONE);
+	//	}
+	//	VulkanCommands::EndDebugLabel(curRenderFrame.m_frameCommandBuffer);
+
+	//	VulkanCommands::End(curRenderFrame.m_frameCommandBuffer);
+
+	//	//if (IsDebug())
+	//	//{
+	//	//	VkDebugUtilsLabelEXT queueLabel = {};
+	//	//	queueLabel.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+	//	//	queueLabel.pNext = nullptr;
+	//	//	queueLabel.pLabelName = "Graphics Queue";
+	//	//	queueLabel.color[0] = 1.0f;
+	//	//	queueLabel.color[1] = 1.0f;
+	//	//	queueLabel.color[2] = 0.0f;
+	//	//	queueLabel.color[3] = 1.0f;
+
+	//	//	vkQueueBeginDebugUtilsLabelEXT(VulkanDevice::Get()->m_graphicsQueue, &queueLabel);
+	//	//}
+
+	//	VkSubmitInfo submitInfo = {};
+	//	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	//	submitInfo.pNext = nullptr;
+	//	submitInfo.waitSemaphoreCount = 1;
+	//	submitInfo.pWaitSemaphores = &curRenderFrame.m_swapchainImageIsReadySemaphore.m_semaphoreHandle;
+	//	VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_TRANSFER_BIT};
+	//	submitInfo.pWaitDstStageMask = waitStages;
+	//	submitInfo.commandBufferCount = 1;
+	//	submitInfo.pCommandBuffers = &curRenderFrame.m_frameCommandBuffer;
+	//	submitInfo.signalSemaphoreCount = 1;
+	//	submitInfo.pSignalSemaphores = &curRenderFrame.m_frameCompletedSemaphore.m_semaphoreHandle;
+	//	vkQueueSubmit(VulkanDevice::Get()->m_graphicsQueue, 1, &submitInfo, curRenderFrame.m_frameCompletedFence.m_fenceHandle);
+	//}
+
+	//// present final image
+	//{
+    //    //if (m_pWindow->m_bWasClosed)
+    //    //{
+    //    //    return;
+    //    //}
+
+    //    VkPresentInfoKHR presentInfo = {};
+    //    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    //    presentInfo.pNext = nullptr;
+    //    presentInfo.waitSemaphoreCount = 1;
+    //    presentInfo.pWaitSemaphores = &m_renderFrames[m_currentFrame].m_frameCompletedSemaphore.m_semaphoreHandle;
+    //    presentInfo.swapchainCount = 1;
+    //    presentInfo.pSwapchains = &m_swapchain.m_swapchainHandle;
+    //    presentInfo.pImageIndices = &m_renderFrames[m_currentFrame].m_swapchainImageIndex;
+    //    presentInfo.pResults = nullptr;
+    //    VkResult presentResult = vkQueuePresentKHR(VulkanDevice::Get()->m_graphicsQueue, &presentInfo);
+    //    if (m_swapchain.NeedsRefresh(presentResult))
+    //    {
+    //        RefreshSwapchain();
+    //    }
+    //    else
+    //    {
+    //        SM_VULKAN_ASSERT_OLD(presentResult);
+    //    }
+	//}
+
+	// temp just so I can run
+	ImGui::Render();
 }

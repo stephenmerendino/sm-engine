@@ -24,4 +24,8 @@ namespace sm
 
     void     arena_reset(arena_t* arena);
     void     arena_free(arena_t* arena, size_t num_bytes);
+
+#define arena_stack_init(arena_pointer, num_bytes) \
+    byte_t stack_bytes[num_bytes]; \
+    arena_pointer = arena_init(stack_bytes, num_bytes);
 }
