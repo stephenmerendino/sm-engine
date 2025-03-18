@@ -5,6 +5,7 @@
 #include "sm/core/string.h"
 #include "sm/math/helpers.h"
 #include "sm/math/mat44.h"
+#include "sm/render/camera.h"
 #include "sm/render/mesh.h"
 #include "sm/render/shader_compiler.h"
 #include "sm/render/window.h"
@@ -172,6 +173,8 @@ VkPipeline s_viking_room_main_draw_pipeline = VK_NULL_HANDLE;
 
 VkPipelineLayout s_infinite_grid_main_draw_pipeline_layout = VK_NULL_HANDLE;
 VkPipelineLayout s_post_process_pipeline_layout = VK_NULL_HANDLE;
+
+camera_t s_main_camera;
 
 static bool format_has_stencil(VkFormat format)
 {
@@ -2668,6 +2671,7 @@ void sm::renderer_begin_frame()
 
 void sm::renderer_update_frame(f32 ds)
 {
+	camera_update(s_main_camera, ds);
 }
 
 void sm::renderer_render_frame()

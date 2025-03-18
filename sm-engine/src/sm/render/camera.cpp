@@ -17,216 +17,125 @@ void sm::camera_update(camera_t& camera, f32 ds)
 
 	vec3_t movement = vec3_t::ZERO;
 
-//	// Position
-//	if (g_inputSystem.IsKeyDown(KeyCode::KEY_W))
-//	{
-//		movement += forward * moveSpeed * ds;
-//	}
-//
-//	if (g_inputSystem.IsKeyDown(KeyCode::KEY_S))
-//	{
-//		movement += -forward * moveSpeed * ds;
-//	}
-//
-//	if (g_inputSystem.IsKeyDown(KeyCode::KEY_D))
-//	{
-//		movement += right * moveSpeed * ds;
-//	}
-//
-//	if (g_inputSystem.IsKeyDown(KeyCode::KEY_A))
-//	{
-//		movement += -right * moveSpeed * ds;
-//	}
-//
-//	if (g_inputSystem.IsKeyDown(KeyCode::KEY_E))
-//	{
-//		movement += up * moveSpeed * ds;
-//	}
-//
-//	if (g_inputSystem.IsKeyDown(KeyCode::KEY_Q))
-//	{
-//		movement += -up * moveSpeed * ds;
-//	}
-//
-//	m_worldPos += movement;
-//
-//	// Rotation
-//	const F32 rotateSpeed = 15000.0f;
-//	Vec2 mouseMovement = g_inputSystem.GetMouseMovement();
-//	if (mouseMovement.x != 0.0f)
-//	{
-//		F32 rotationDeg = -mouseMovement.x * rotateSpeed * ds;
-//		m_worldYawDeg += rotationDeg;
-//	}
-//
-//	if (mouseMovement.y != 0.0f)
-//	{
-//		F32 rotationDeg = mouseMovement.y * rotateSpeed * ds;
-//		m_worldPitchDeg += rotationDeg;
-//		m_worldPitchDeg = Clamp(m_worldPitchDeg, -89.9f, 89.9f);
-//	}
+	// position
+	if (input_is_key_down(key_code_t::KEY_W))
+	{
+		movement += forward * move_speed * ds;
+	}
 
+	if (input_is_key_down(key_code_t::KEY_S))
+	{
+		movement += -forward * move_speed * ds;
+	}
+
+	if (input_is_key_down(key_code_t::KEY_D))
+	{
+		movement += right * move_speed * ds;
+	}
+
+	if (input_is_key_down(key_code_t::KEY_A))
+	{
+		movement += -right * move_speed * ds;
+	}
+
+	if (input_is_key_down(key_code_t::KEY_E))
+	{
+		movement += up * move_speed * ds;
+	}
+
+	if (input_is_key_down(key_code_t::KEY_Q))
+	{
+		movement += -up * move_speed * ds;
+	}
+
+	camera.world_pos += movement;
+
+	// rotation
+	const f32 rotate_speed = 15000.0f;
+	vec2_t mouse_movement = input_get_mouse_movement_normalized();
+	if (mouse_movement.x != 0.0f)
+	{
+		f32 rotation_deg = -mouse_movement.x * rotate_speed * ds;
+		camera.world_yaw_degrees += rotation_deg;
+	}
+
+	if (mouse_movement.y != 0.0f)
+	{
+		f32 rotation_deg = mouse_movement.y * rotate_speed * ds;
+		camera.world_pitch_degrees += rotation_deg;
+		camera.world_pitch_degrees = clamp(camera.world_pitch_degrees, -89.9f, 89.9f);
+	}
 }
 
 vec3_t sm::camera_get_forward(const camera_t& camera)
 {
-	return vec3_t::ZERO;
+	mat44_t rotation = camera_get_rotation(camera);
+	return to_vec3(get_i_basis(rotation));
 }
 
 vec3_t sm::camera_get_right(const camera_t& camera)
 {
-	return vec3_t::ZERO;
+	mat44_t rotation = camera_get_rotation(camera);
+	return to_vec3(-get_j_basis(rotation));
 }
 
 vec3_t sm::camera_get_up(const camera_t& camera)
 {
-	return vec3_t::ZERO;
+	mat44_t rotation = camera_get_rotation(camera);
+	return to_vec3(get_k_basis(rotation));
 }
 
 mat44_t sm::camera_get_rotation(const camera_t& camera)
 {
-	return mat44_t::IDENTITY;
+	mat44_t pitch = init_rotation_y_degs(camera.world_pitch_degrees);
+	mat44_t yaw = init_rotation_z_degs(camera.world_yaw_degrees);
+
+	return pitch * yaw;
 }
 
 mat44_t sm::camera_get_view_transform(const camera_t& camera)
 {
-	return mat44_t::IDENTITY;
+	// Transform from world space to camera space by swapping x=>z, y=>-x, z=>y
+	// World is right handed z up, Camera is left handed Y up / z forward
+	mat44_t change_of_basis = mat44_t(0.0f, 0.0f, 1.0f, 0.0f,
+									 -1.0f, 0.0f, 0.0f, 0.0f,
+									  0.0f, 1.0f, 0.0f, 0.0f,
+									  0.0f, 0.0f, 0.0f, 1.0f);
+
+	mat44_t camera_to_world = camera_get_rotation(camera);
+	mat44_t world_to_camera = transposed(camera_to_world);
+
+	vec3_t world_translation = camera.world_pos;
+	vec3_t world_to_camera_translation = -1.0f * transform_point(world_to_camera, world_translation);
+
+	mat44_t view_transform = world_to_camera * change_of_basis;
+	vec3_t view_translation = transform_point(change_of_basis, world_to_camera_translation);
+	set_translation(view_transform, world_to_camera_translation);
+
+	return view_transform;
 }
 
-void sm::camera_look_at(camera_t& camera, const vec3_t& lookAtPos, const vec3_t& upRef)
+void sm::camera_look_at(camera_t& camera, const vec3_t& look_at_pos, const vec3_t& up_reference)
 {
-}
+	vec3_t view_dir = look_at_pos - camera.world_pos;
+	normalize(view_dir);
 
-//void Camera::Update(F32 ds)
-//{
-//	Vec3 forward = GetForward();
-//	Vec3 right = GetRight();
-//	Vec3 up = GetUp();
-//
-//	F32 moveSpeed = 3.0f; // meters per second
-//	if (g_inputSystem.IsKeyDown(KeyCode::KEY_SHIFT))
-//	{
-//		moveSpeed *= 3.0f;
-//	}
-//
-//	Vec3 movement = Vec3::ZERO;
-//
-//	// Position
-//	if (g_inputSystem.IsKeyDown(KeyCode::KEY_W))
-//	{
-//		movement += forward * moveSpeed * ds;
-//	}
-//
-//	if (g_inputSystem.IsKeyDown(KeyCode::KEY_S))
-//	{
-//		movement += -forward * moveSpeed * ds;
-//	}
-//
-//	if (g_inputSystem.IsKeyDown(KeyCode::KEY_D))
-//	{
-//		movement += right * moveSpeed * ds;
-//	}
-//
-//	if (g_inputSystem.IsKeyDown(KeyCode::KEY_A))
-//	{
-//		movement += -right * moveSpeed * ds;
-//	}
-//
-//	if (g_inputSystem.IsKeyDown(KeyCode::KEY_E))
-//	{
-//		movement += up * moveSpeed * ds;
-//	}
-//
-//	if (g_inputSystem.IsKeyDown(KeyCode::KEY_Q))
-//	{
-//		movement += -up * moveSpeed * ds;
-//	}
-//
-//	m_worldPos += movement;
-//
-//	// Rotation
-//	const F32 rotateSpeed = 15000.0f;
-//	Vec2 mouseMovement = g_inputSystem.GetMouseMovement();
-//	if (mouseMovement.x != 0.0f)
-//	{
-//		F32 rotationDeg = -mouseMovement.x * rotateSpeed * ds;
-//		m_worldYawDeg += rotationDeg;
-//	}
-//
-//	if (mouseMovement.y != 0.0f)
-//	{
-//		F32 rotationDeg = mouseMovement.y * rotateSpeed * ds;
-//		m_worldPitchDeg += rotationDeg;
-//		m_worldPitchDeg = Clamp(m_worldPitchDeg, -89.9f, 89.9f);
-//	}
-//}
-//
-//Vec3 Camera::GetForward() const
-//{
-//	return GetRotation().i.xyz;
-//}
-//
-//Vec3 Camera::GetRight() const
-//{
-//	return -GetRotation().j.xyz;
-//}
-//
-//Vec3 Camera::GetUp() const
-//{
-//	return GetRotation().k.xyz;
-//}
-//
-//Mat44 Camera::GetRotation() const
-//{
-//	Mat44 pitch = Mat44::CreateRotationYDegs(m_worldPitchDeg);
-//	Mat44 yaw = Mat44::CreateRotationZDegs(m_worldYawDeg);
-//
-//	return pitch * yaw;
-//}
-//
-//Mat44 Camera::GetViewTransform() const
-//{
-//	// Transform from world space to camera space by swapping x=>z, y=>-x, z=>y
-//	// World is right handed z up, Camera is left handed Y up / z forward
-//	Mat44 changeOfBasis = Mat44(0.0f, 0.0f, 1.0f, 0.0f,
-//								-1.0f, 0.0f, 0.0f, 0.0f,
-//								0.0f, 1.0f, 0.0f, 0.0f,
-//								0.0f, 0.0f, 0.0f, 1.0f);
-//
-//	Mat44 cameraToWorld = GetRotation();
-//	Mat44 worldToCamera = cameraToWorld.Transposed();
-//
-//	Vec3 worldTranslation = m_worldPos;
-//	Vec3 worldToCameraTranslation = -1.0f * worldToCamera.TransformPoint(worldTranslation);
-//
-//	Mat44 viewTransform = worldToCamera * changeOfBasis;
-//	Vec3 viewTranslation = changeOfBasis.TransformPoint(worldToCameraTranslation);
-//	viewTransform.t.xyz = viewTranslation;
-//
-//	return viewTransform;
-//}
-//
-//void Camera::LookAt(const Vec3& lookAtPos, const Vec3& upRef)
-//{
-//	Vec3 viewDir = lookAtPos - m_worldPos;
-//	viewDir.Normalize();
-//
-//	Vec3 viewUp = upRef - (Dot(upRef, viewDir) * viewDir);
-//	viewUp.Normalize();
-//
-//	Vec3 viewDirXY = Vec3(viewDir.x, viewDir.y, 0.0f);
-//	viewDirXY.Normalize();
-//
-//	F32 cosYawRads = Dot(viewDirXY, Vec3::FORWARD);
-//	F32 cosPitchRads = Dot(viewDir, upRef);
-//
-//	//#TODO(smerendino): Is there a more elegant way to get the correctly signed angle
-//	F32 angleSign = Dot(viewDirXY, Vec3::LEFT) > 0.0f ? 1.0f : -1.0f;
-//	F32 yawRads = acosf(cosYawRads) * angleSign;
-//	F32 pitchRads = acosf(cosPitchRads);
-//
-//	m_worldYawDeg = RadToDeg(yawRads);
-//
-//	F32 pitchDeg = RadToDeg(pitchRads);
-//	m_worldPitchDeg = Remap(pitchDeg, 0.0f, 180.0f, -90.0f, 90.0f); // remap angle between view dir and up to relative to xy plane
-//}
+	vec3_t view_up = up_reference - (dot(up_reference, view_dir) * view_dir);
+	normalize(view_up);
+
+	vec3_t view_dir_xy = vec3_t(view_dir.x, view_dir.y, 0.0f);
+	normalize(view_dir_xy);
+
+	f32 cos_yaw_rads = dot(view_dir_xy, vec3_t::WORLD_FORWARD);
+	f32 cos_pitch_rads = dot(view_dir, up_reference);
+
+	//#TODO(smerendino): Is there a more elegant way to get the correctly signed angle
+	f32 angle_sign = dot(view_dir_xy, vec3_t::WORLD_LEFT) > 0.0f ? 1.0f : -1.0f;
+	f32 yaw_rads = acosf(cos_yaw_rads) * angle_sign;
+	f32 pitch_rads = acosf(cos_pitch_rads);
+
+	camera.world_yaw_degrees = rad_to_deg(yaw_rads);
+
+	f32 pitch_deg = rad_to_deg(pitch_rads);
+	camera.world_pitch_degrees = remap(pitch_deg, 0.0f, 180.0f, -90.0f, 90.0f); // remap angle between view dir and up to relative to xy plane
+}

@@ -138,7 +138,6 @@ namespace sm
 	void input_init(window_t* window);
 	void input_begin_frame();
 	void input_update(f32 ds);
-    void input_end_frame();
 
 	bool input_is_key_down(key_code_t key);
 	bool input_was_key_pressed(key_code_t key);

@@ -18,5 +18,5 @@ namespace sm
 	vec3_t	camera_get_up(const camera_t& camera);
 	mat44_t camera_get_rotation(const camera_t& camera);
 	mat44_t camera_get_view_transform(const camera_t& camera);
-	void	camera_look_at(camera_t& camera, const vec3_t& lookAtPos, const vec3_t& upRef = vec3_t::WORLD_UP);
+	void	camera_look_at(camera_t& camera, const vec3_t& look_at_pos, const vec3_t& up_reference = vec3_t::WORLD_UP);
 }

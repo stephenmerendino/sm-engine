@@ -128,10 +128,6 @@ void sm::input_update(f32 ds)
 	}
 }
 
-void sm::input_end_frame()
-{
-}
-
 bool sm::input_is_key_down(key_code_t key)
 {
 	return is_bit_set(s_key_states[(u8)key], (u8)key_state_bit_flags_t::IS_DOWN);
