@@ -345,6 +345,9 @@
     <ClCompile Include="src\sm\render\camera.cpp">
       <Filter>src\sm\render</Filter>
     </ClCompile>
+    <ClCompile Include="src\sm\render\window.cpp">
+      <Filter>src\sm\render</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Engine\Core\Assert_old.h">
