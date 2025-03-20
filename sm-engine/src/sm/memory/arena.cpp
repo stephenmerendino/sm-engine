@@ -57,7 +57,7 @@ void sm::arena_reset(arena_t* arena)
     arena->head_offset_bytes = 0;
 }
 
-void sm::arena_free(arena_t* arena, size_t num_bytes)
+void sm::arena_free_bytes(arena_t* arena, size_t num_bytes)
 {
     SM_ASSERT(arena->head_offset_bytes >= num_bytes);
     arena->head_offset_bytes -= num_bytes;
