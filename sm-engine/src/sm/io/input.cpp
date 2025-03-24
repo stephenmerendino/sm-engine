@@ -9,7 +9,6 @@ static window_t* s_window = nullptr;
 u8 s_key_states[(u8)key_code_t::NUM_KEY_CODES] = { 0 };
 
 vec2_t s_mouse_movement_normalized = vec2_t::ZERO;
-bool s_mouse_is_shown = true;
 bool s_unhide_mouse = false;
 bool s_hide_mouse = false;
 ivec2_t s_saved_mouse_pos = ivec2_t::ZERO;
@@ -96,12 +95,12 @@ void sm::input_update(f32 ds)
 	// If imgui isn't being used then we check for right mouse hiding directly here, otherwise its in the imgui handler
 	//if (!ImGui::GetCurrentContext())
 	{
-		if (!input_is_key_down(key_code_t::MOUSE_RBUTTON) && !s_mouse_is_shown)
+		if (!input_is_key_down(key_code_t::MOUSE_RBUTTON) && !input_is_mouse_shown())
 		{
 			s_unhide_mouse = true;
 		}
 
-		if (input_is_key_down(key_code_t::MOUSE_RBUTTON) && s_mouse_is_shown)
+		if (input_is_key_down(key_code_t::MOUSE_RBUTTON) && input_is_mouse_shown())
 		{
 			s_hide_mouse = true;
 		}

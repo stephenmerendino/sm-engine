@@ -4,14 +4,23 @@
 
 using namespace sm;
 
+static bool s_mouse_is_shown = true;
+
 void sm::input_show_mouse()
 {
 	::ShowCursor(true);
+	s_mouse_is_shown = true;
 }
 
 void sm::input_hide_mouse()
 {
 	::ShowCursor(false);
+	s_mouse_is_shown = false;
+}
+
+bool sm::input_is_mouse_shown()
+{
+	return s_mouse_is_shown;
 }
 
 ivec2_t sm::input_get_mouse_position()

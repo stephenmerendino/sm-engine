@@ -145,6 +145,7 @@ namespace sm
 
     void input_show_mouse();
     void input_hide_mouse();
+    bool input_is_mouse_shown();
     ivec2_t input_get_mouse_position();
     void input_set_mouse_position(const ivec2_t& pos);
     vec2_t input_get_mouse_movement_normalized();
