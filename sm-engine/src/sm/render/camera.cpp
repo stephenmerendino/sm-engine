@@ -110,7 +110,7 @@ mat44_t sm::camera_get_view_transform(const camera_t& camera)
 
 	mat44_t view_transform = world_to_camera * change_of_basis;
 	vec3_t view_translation = transform_point(change_of_basis, world_to_camera_translation);
-	set_translation(view_transform, world_to_camera_translation);
+	set_translation(view_transform, view_translation);
 
 	return view_transform;
 }
