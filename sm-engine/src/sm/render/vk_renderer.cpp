@@ -789,6 +789,7 @@ static void init_render_frames_render_targets()
 
         // main draw resources
         {
+            // multisample color
             {
                 frame.main_draw_color_multisample_num_mips = 1;
 
@@ -836,6 +837,7 @@ static void init_render_frames_render_targets()
                 SM_VULKAN_ASSERT(vkCreateImageView(s_device, &image_view_create_info, nullptr, &frame.main_draw_color_multisample_image_view));
             }
 
+            // multisample depth
             {
                 frame.main_draw_depth_multisample_num_mips = 1;
 
@@ -883,6 +885,7 @@ static void init_render_frames_render_targets()
                 SM_VULKAN_ASSERT(vkCreateImageView(s_device, &image_view_create_info, nullptr, &frame.main_draw_depth_multisample_image_view));
             }
 
+            // color resolve
             {
                 frame.main_draw_color_resolve_num_mips = 1;
 
@@ -898,7 +901,7 @@ static void init_render_frames_render_targets()
                 image_create_info.format = s_main_color_format;
                 image_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
                 image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-                image_create_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+                image_create_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
                 image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
                 image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
                 image_create_info.flags = 0;
@@ -2968,42 +2971,166 @@ void sm::renderer_render_frame()
         // copy from color resolve to swapchain
         {
             // transition swapchain image from present to transfer dst
-            VkImageMemoryBarrier swapchain_to_transfer_dst_barrier{};
-            swapchain_to_transfer_dst_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            swapchain_to_transfer_dst_barrier.pNext = nullptr;
-            swapchain_to_transfer_dst_barrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-            swapchain_to_transfer_dst_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-            swapchain_to_transfer_dst_barrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-            swapchain_to_transfer_dst_barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-            swapchain_to_transfer_dst_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            swapchain_to_transfer_dst_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            swapchain_to_transfer_dst_barrier.image = s_swapchain_images[cur_render_frame.swapchain_image_index];
+            {
+                VkImageMemoryBarrier present_to_transfer_dst_barrier{};
+                present_to_transfer_dst_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+                present_to_transfer_dst_barrier.pNext = nullptr;
+                present_to_transfer_dst_barrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+                present_to_transfer_dst_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                present_to_transfer_dst_barrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+                present_to_transfer_dst_barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+                present_to_transfer_dst_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                present_to_transfer_dst_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                present_to_transfer_dst_barrier.image = s_swapchain_images[cur_render_frame.swapchain_image_index];
 
-            VkImageSubresourceRange subresource_range{};
-            subresource_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            subresource_range.baseMipLevel = 0;
-            subresource_range.levelCount = 1;
-            subresource_range.baseArrayLayer = 0;
-            subresource_range.layerCount = 1;
-            swapchain_to_transfer_dst_barrier.subresourceRange = subresource_range;
+                VkImageSubresourceRange subresource_range{};
+                subresource_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                subresource_range.baseMipLevel = 0;
+                subresource_range.levelCount = 1;
+                subresource_range.baseArrayLayer = 0;
+                subresource_range.layerCount = 1;
+                present_to_transfer_dst_barrier.subresourceRange = subresource_range;
 
-            vkCmdPipelineBarrier(cur_render_frame.frame_command_buffer,
-                                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                 0,
-                                 0, nullptr,
-                                 0, nullptr,
-                                 1, &swapchain_to_transfer_dst_barrier);
+                vkCmdPipelineBarrier(cur_render_frame.frame_command_buffer,
+                                     VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                     0,
+                                     0, nullptr,
+                                     0, nullptr,
+                                     1, &present_to_transfer_dst_barrier);
+            }
 
             // blit from main draw color resolve to swapchain
-            vkCmdBlitImage();
+            {
+                VkImageSubresourceLayers src_subresource{};
+                src_subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                src_subresource.mipLevel = 0;
+                src_subresource.baseArrayLayer = 0;
+                src_subresource.layerCount = 1;
+                VkOffset3D src_offset_min{};
+                src_offset_min.x = 0;
+                src_offset_min.y = 0;
+                src_offset_min.z = 0;
+                VkOffset3D src_offset_max{};
+                src_offset_max.x = s_swapchain_extent.width;
+                src_offset_max.y = s_swapchain_extent.height;
+                src_offset_max.z = 1;
+
+                VkImageSubresourceLayers dst_subresource{};
+                dst_subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                dst_subresource.mipLevel = 0;
+                dst_subresource.baseArrayLayer = 0;
+                dst_subresource.layerCount = 1;
+                VkOffset3D dst_offset_min{};
+                dst_offset_min.x = 0;
+                dst_offset_min.y = 0;
+                dst_offset_min.z = 0;
+                VkOffset3D dst_offset_max{};
+                dst_offset_max.x = s_swapchain_extent.width;
+                dst_offset_max.y = s_swapchain_extent.height;
+                dst_offset_max.z = 1;
+
+                VkImageBlit image_blit_region{};
+                image_blit_region.srcSubresource = src_subresource;
+                image_blit_region.srcOffsets[0] = src_offset_min;
+                image_blit_region.srcOffsets[1] = src_offset_max;
+                image_blit_region.dstSubresource = dst_subresource;
+                image_blit_region.dstOffsets[0] = dst_offset_min;
+                image_blit_region.dstOffsets[1] = dst_offset_max;
+
+                vkCmdBlitImage(cur_render_frame.frame_command_buffer,
+                               cur_render_frame.main_draw_color_resolve_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                               s_swapchain_images[cur_render_frame.swapchain_image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                               1, &image_blit_region, 
+                               VK_FILTER_LINEAR);
+            }
 
             // transition swapchain image from transfer dst to present
-            vkCmdPipelineBarrier();
+            {
+                VkImageMemoryBarrier transfer_dst_to_present_barrier{};
+                transfer_dst_to_present_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+                transfer_dst_to_present_barrier.pNext = nullptr;
+                transfer_dst_to_present_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                transfer_dst_to_present_barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+                transfer_dst_to_present_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+                transfer_dst_to_present_barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+                transfer_dst_to_present_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                transfer_dst_to_present_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                transfer_dst_to_present_barrier.image = s_swapchain_images[cur_render_frame.swapchain_image_index];
+
+                VkImageSubresourceRange subresource_range{};
+                subresource_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                subresource_range.baseMipLevel = 0;
+                subresource_range.levelCount = 1;
+                subresource_range.baseArrayLayer = 0;
+                subresource_range.layerCount = 1;
+                transfer_dst_to_present_barrier.subresourceRange = subresource_range;
+
+                vkCmdPipelineBarrier(cur_render_frame.frame_command_buffer,
+                                     VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+                                     0,
+                                     0, nullptr,
+                                     0, nullptr,
+                                     1, &transfer_dst_to_present_barrier);
+            }
         }
 
+        vkEndCommandBuffer(cur_render_frame.frame_command_buffer);
+
         // submit frame command buffer
+        VkSubmitInfo frame_command_submit_info{};
+        {
+            frame_command_submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            frame_command_submit_info.pNext = nullptr;
+
+            VkSemaphore wait_semaphores[] = { cur_render_frame.swapchain_image_is_ready_semaphore };
+            VkPipelineStageFlags wait_dst_stage_masks[] = { VK_PIPELINE_STAGE_TRANSFER_BIT };
+
+            frame_command_submit_info.waitSemaphoreCount = ARRAY_LEN(wait_semaphores);
+            frame_command_submit_info.pWaitSemaphores = wait_semaphores;
+            frame_command_submit_info.pWaitDstStageMask = wait_dst_stage_masks;
+
+            VkCommandBuffer command_buffers[] = {
+                cur_render_frame.frame_command_buffer
+            };
+            frame_command_submit_info.commandBufferCount = ARRAY_LEN(command_buffers);
+            frame_command_submit_info.pCommandBuffers = command_buffers;
+
+            VkSemaphore signal_semaphores[] = {
+                cur_render_frame.frame_completed_semaphore
+            };
+            frame_command_submit_info.signalSemaphoreCount = ARRAY_LEN(signal_semaphores);
+            frame_command_submit_info.pSignalSemaphores = signal_semaphores;
+        }
+
+        VkSubmitInfo frame_command_submits[] = {
+            frame_command_submit_info
+        };
+        vkQueueSubmit(s_graphics_queue, ARRAY_LEN(frame_command_submits), frame_command_submits, cur_render_frame.frame_completed_fence);
 
         // present swapchain to screen
+        VkPresentInfoKHR present_info{};
+        {
+            present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+            present_info.pNext = nullptr;
+            VkSemaphore wait_semaphores[] = {
+                cur_render_frame.frame_completed_semaphore
+            };
+            present_info.waitSemaphoreCount = ARRAY_LEN(wait_semaphores);
+            present_info.pWaitSemaphores = wait_semaphores;
+            present_info.swapchainCount = 1;
+            present_info.pSwapchains = &s_swapchain;
+            present_info.pImageIndices = &cur_render_frame.swapchain_image_index;
+            present_info.pResults = nullptr;
+        }
+        VkResult present_result = vkQueuePresentKHR(s_graphics_queue, &present_info);
+        if (present_result == VK_SUBOPTIMAL_KHR || present_result == VK_ERROR_OUT_OF_DATE_KHR)
+        {
+            refresh_swapchain();
+        }
+        else
+        {
+            SM_VULKAN_ASSERT(present_result);
+        }
     }
 
 	//// setup frame commands
