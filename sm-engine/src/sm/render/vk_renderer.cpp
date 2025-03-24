@@ -2009,7 +2009,7 @@ void sm::renderer_init(window_t* window)
             main_color_resolve_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
             main_color_resolve_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
             main_color_resolve_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            main_color_resolve_attachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            main_color_resolve_attachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
             main_color_resolve_attachment.flags = 0;
 
 			VkAttachmentDescription2 render_pass_attachments[] = {
@@ -2966,7 +2966,43 @@ void sm::renderer_render_frame()
         vkCmdEndRenderPass(cur_render_frame.frame_command_buffer);
 
         // copy from color resolve to swapchain
+        {
+            // transition swapchain image from present to transfer dst
+            VkImageMemoryBarrier swapchain_to_transfer_dst_barrier{};
+            swapchain_to_transfer_dst_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            swapchain_to_transfer_dst_barrier.pNext = nullptr;
+            swapchain_to_transfer_dst_barrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+            swapchain_to_transfer_dst_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            swapchain_to_transfer_dst_barrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+            swapchain_to_transfer_dst_barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            swapchain_to_transfer_dst_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            swapchain_to_transfer_dst_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            swapchain_to_transfer_dst_barrier.image = s_swapchain_images[cur_render_frame.swapchain_image_index];
+
+            VkImageSubresourceRange subresource_range{};
+            subresource_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            subresource_range.baseMipLevel = 0;
+            subresource_range.levelCount = 1;
+            subresource_range.baseArrayLayer = 0;
+            subresource_range.layerCount = 1;
+            swapchain_to_transfer_dst_barrier.subresourceRange = subresource_range;
+
+            vkCmdPipelineBarrier(cur_render_frame.frame_command_buffer,
+                                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                 0,
+                                 0, nullptr,
+                                 0, nullptr,
+                                 1, &swapchain_to_transfer_dst_barrier);
+
+            // blit from main draw color resolve to swapchain
+            vkCmdBlitImage();
+
+            // transition swapchain image from transfer dst to present
+            vkCmdPipelineBarrier();
+        }
+
         // submit frame command buffer
+
         // present swapchain to screen
     }
 
