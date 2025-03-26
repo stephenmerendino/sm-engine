@@ -240,7 +240,7 @@
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanPipeline.cpp">
       <Filter>Source\Render\Vulkan</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Render\UI\UI.cpp">
+    <ClCompile Include="Source\Engine\Render\UI\UI_old.cpp">
       <Filter>Source\Render\UI</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Render\RenderSettings.cpp">
@@ -346,6 +346,9 @@
       <Filter>src\sm\render</Filter>
     </ClCompile>
     <ClCompile Include="src\sm\render\window.cpp">
+      <Filter>src\sm\render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\sm\render\ui.cpp">
       <Filter>src\sm\render</Filter>
     </ClCompile>
   </ItemGroup>
@@ -512,7 +515,7 @@
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanPipeline.h">
       <Filter>Source\Render\Vulkan</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Render\UI\UI.h">
+    <ClInclude Include="Source\Engine\Render\UI\UI_old.h">
       <Filter>Source\Render\UI</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\Render\RenderSettings.h">
@@ -783,6 +786,9 @@
       <Filter>src\sm\render</Filter>
     </ClInclude>
     <ClInclude Include="src\sm\render\camera.h">
+      <Filter>src\sm\render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\render\ui.h">
       <Filter>src\sm\render</Filter>
     </ClInclude>
   </ItemGroup>

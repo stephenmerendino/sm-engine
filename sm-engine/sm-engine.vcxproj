@@ -43,7 +43,7 @@
     <ClCompile Include="Source\Engine\Render\RendererOld.cpp" />
     <ClCompile Include="Source\Engine\Render\RenderSettings.cpp" />
     <ClCompile Include="Source\Engine\Render\ShaderCompiler.cpp" />
-    <ClCompile Include="Source\Engine\Render\UI\UI.cpp" />
+    <ClCompile Include="Source\Engine\Render\UI\UI_old.cpp" />
     <ClCompile Include="Source\Engine\Render\Vertex.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanBuffer.cpp" />
     <ClCompile Include="Source\Engine\Render\Vulkan\VulkanCommandPool.cpp" />
@@ -99,6 +99,7 @@
     <ClCompile Include="src\sm\platform\win32\thread\win32_thread.cpp" />
     <ClCompile Include="src\sm\render\camera.cpp" />
     <ClCompile Include="src\sm\render\mesh.cpp" />
+    <ClCompile Include="src\sm\render\ui.cpp" />
     <ClCompile Include="src\sm\render\vk_renderer.cpp" />
     <ClCompile Include="src\sm\render\window.cpp" />
     <ClCompile Include="src\third_party\imgui\backends\imgui_impl_vulkan.cpp" />
@@ -146,7 +147,7 @@
     <ClInclude Include="Source\Engine\Render\Renderer_old.h" />
     <ClInclude Include="Source\Engine\Render\RenderSettings.h" />
     <ClInclude Include="Source\Engine\Render\ShaderCompiler.h" />
-    <ClInclude Include="Source\Engine\Render\UI\UI.h" />
+    <ClInclude Include="Source\Engine\Render\UI\UI_old.h" />
     <ClInclude Include="Source\Engine\Render\Vertex.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanBuffer.h" />
     <ClInclude Include="Source\Engine\Render\Vulkan\VulkanCommandPool.h" />
@@ -198,6 +199,7 @@
     <ClInclude Include="src\sm\platform\win32\win32_include.h" />
     <ClInclude Include="src\sm\render\camera.h" />
     <ClInclude Include="src\sm\render\mesh.h" />
+    <ClInclude Include="src\sm\render\ui.h" />
     <ClInclude Include="src\sm\render\vk_renderer.h" />
     <ClInclude Include="src\sm\render\shader_compiler.h" />
     <ClInclude Include="src\sm\render\vk_functions.h" />

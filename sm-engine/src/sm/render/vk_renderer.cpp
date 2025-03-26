@@ -8,6 +8,7 @@
 #include "sm/render/camera.h"
 #include "sm/render/mesh.h"
 #include "sm/render/shader_compiler.h"
+#include "sm/render/ui.h"
 #include "sm/render/window.h"
 #include "sm/render/vk_include.h"
 
@@ -2012,7 +2013,7 @@ void sm::renderer_init(window_t* window)
             main_color_resolve_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
             main_color_resolve_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
             main_color_resolve_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            main_color_resolve_attachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+            main_color_resolve_attachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             main_color_resolve_attachment.flags = 0;
 
 			VkAttachmentDescription2 render_pass_attachments[] = {
@@ -2967,6 +2968,35 @@ void sm::renderer_render_frame()
         }
 
         vkCmdEndRenderPass(cur_render_frame.frame_command_buffer);
+
+        // imgui
+		{
+			ui_render();
+
+            VkRect2D render_area{};
+            render_area.offset.x = 0;
+            render_area.offset.y = 0;
+            render_area.extent = s_swapchain_extent;
+
+            VkRenderPassBeginInfo imgui_render_pass_begin_info{};
+            imgui_render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            imgui_render_pass_begin_info.pNext = nullptr;
+            imgui_render_pass_begin_info.renderPass = s_imgui_render_pass;
+            imgui_render_pass_begin_info.framebuffer = cur_render_frame.imgui_framebuffer;
+            imgui_render_pass_begin_info.renderArea = render_area;
+            imgui_render_pass_begin_info.clearValueCount = 0;
+            imgui_render_pass_begin_info.pClearValues = nullptr;
+
+            VkSubpassContents subpass_contents = VK_SUBPASS_CONTENTS_INLINE;
+
+            vkCmdBeginRenderPass(cur_render_frame.frame_command_buffer, &imgui_render_pass_begin_info, subpass_contents);
+
+			::ImGui::Render();
+			::ImDrawData* draw_data = ::ImGui::GetDrawData();
+			ImGui_ImplVulkan_RenderDrawData(draw_data, cur_render_frame.frame_command_buffer);
+
+            vkCmdEndRenderPass(cur_render_frame.frame_command_buffer);
+		}
 
         // copy from color resolve to swapchain
         {
