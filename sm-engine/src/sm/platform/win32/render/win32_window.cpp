@@ -1,10 +1,12 @@
 #include "sm/render/window.h"
 #include "sm/core/assert.h"
+#include "sm/core/bits.h"
 #include "sm/core/debug.h"
 #include "sm/core/string.h"
 #include "sm/io/input.h"
 #include "sm/memory/arena.h"
 #include "sm/platform/win32/win32_include.h"
+#include "third_party/imgui/imgui.h"
 
 using namespace sm;
 
@@ -144,6 +146,8 @@ u64 translate_win32_msg_data(UINT msg, WPARAM w_param, LPARAM l_param)
 	}
 }
 
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 // message cb for all subscribers
 static LRESULT win32_msg_handler(HWND window_handle, UINT msg, WPARAM w_param, LPARAM l_param)
 {
@@ -162,6 +166,8 @@ static LRESULT win32_msg_handler(HWND window_handle, UINT msg, WPARAM w_param, L
 	LONG_PTR ptr = ::GetWindowLongPtr(window_handle, GWLP_USERDATA);
 	window_t* window = (window_t*)ptr;
 
+	bool imgui_handled_input = ImGui_ImplWin32_WndProcHandler(window_handle, msg, w_param, l_param);
+
 	if(window)
 	{
 		// Translate the OS specific message to an agnostic engine defined message, pass that back to any cbs
@@ -170,6 +176,11 @@ static LRESULT win32_msg_handler(HWND window_handle, UINT msg, WPARAM w_param, L
 		if(engine_msg != window_msg_type_t::UNKNOWN)
 		{
             u64 engine_msg_data = translate_win32_msg_data(msg, w_param, l_param);
+			if(imgui_handled_input)
+			{
+				engine_msg = window_msg_type_t::IMGUI_HANDLED_INPUT;
+			}
+
             for(int i = 0; i < window->msg_cbs.cur_size; i++)
             {
                 const window_msg_cb_with_args_t& cb = window->msg_cbs[i];

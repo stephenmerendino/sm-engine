@@ -113,6 +113,7 @@ struct render_frame_t
 };
 
 window_t* s_window = nullptr;
+static bool s_close_window = false;
 
 VkInstance s_instance = VK_NULL_HANDLE;
 VkDebugUtilsMessengerEXT s_debug_messenger = VK_NULL_HANDLE;
@@ -1554,11 +1555,21 @@ static void refresh_swapchain()
     refresh_pipelines();
 }
 
+void renderer_window_msg_handler(window_msg_type_t msg_type, u64 msg_data, void* user_args)
+{
+    if(msg_type == window_msg_type_t::CLOSE_WINDOW)
+    {
+        s_close_window = true;
+    }
+}
+
 void sm::renderer_init(window_t* window)
 {	
 	arena_t* startup_arena = arena_init(MiB(100));
 
 	s_window = window;
+    window_add_msg_cb(s_window, renderer_window_msg_handler, nullptr);
+
 	shader_compiler_init();
 	primitive_shapes_init();
 
@@ -2778,6 +2789,8 @@ void sm::renderer_render_frame()
 	//	VulkanDevice::Get()->FlushPipe();
 	//	InitPipelines();
 	//}
+
+    if(s_close_window) return;
 
     s_cur_frame_number++;
     s_cur_render_frame = s_cur_frame_number % MAX_NUM_FRAMES_IN_FLIGHT;

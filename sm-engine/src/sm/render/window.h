@@ -17,7 +17,8 @@ namespace sm
         UNKNOWN = -1,
         KEY_UP,
         KEY_DOWN,
-        CLOSE_WINDOW
+        CLOSE_WINDOW,
+        IMGUI_HANDLED_INPUT
     };
 
     typedef void (*window_msg_cb_t)(window_msg_type_t msg_type, u64 msg_data, void* user_args);

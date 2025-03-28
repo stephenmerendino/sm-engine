@@ -1,6 +1,7 @@
 #include "sm/io/input.h"
 #include "sm/core/bits.h"
 #include "sm/render/window.h"
+#include "third_party/imgui/imgui.h"
 
 using namespace sm;
 
@@ -42,8 +43,32 @@ static void update_mouse_movement()
                                          (f32)delta.y / (f32)window_size.y);
 }
 
-void input_handler(window_msg_type_t msg_type, u64 msg_data, void* user_args)
+static bool imgui_window_msg_handler(window_msg_type_t msg_type, u64 msg_data, void* user_args)
 {
+	if (!ImGui::GetCurrentContext()) return false;
+
+	if(msg_type == window_msg_type_t::KEY_UP || msg_type == window_msg_type_t::KEY_DOWN)
+	{
+		key_code_t msg_key_code = (key_code_t)msg_data;
+		if(msg_key_code == key_code_t::MOUSE_RBUTTON)
+		{
+            const ImGuiIO& io = ImGui::GetIO();
+            bool mouse_handled_by_imgui = io.WantSetMousePos || io.WantCaptureMouse;
+			return mouse_handled_by_imgui;
+		}
+	}
+
+	return false;
+}
+
+void input_window_msg_handler(window_msg_type_t msg_type, u64 msg_data, void* user_args)
+{
+	if (imgui_window_msg_handler(msg_type, msg_data, user_args))
+	{
+        //memset(s_key_states, 0, (u8)key_code_t::NUM_KEY_CODES);
+		return;
+	}
+
 	if(msg_type == window_msg_type_t::KEY_DOWN)
 	{
 		key_code_t msg_key_code = (key_code_t)msg_data;
@@ -79,7 +104,7 @@ void sm::input_init(window_t* window)
 {
 	SM_ASSERT(window);
 	s_window = window;
-	window_add_msg_cb(window, input_handler, nullptr);
+	window_add_msg_cb(window, input_window_msg_handler, nullptr);
 }
 
 void sm::input_begin_frame()
@@ -93,7 +118,7 @@ void sm::input_begin_frame()
 void sm::input_update(f32 ds)
 {
 	// If imgui isn't being used then we check for right mouse hiding directly here, otherwise its in the imgui handler
-	//if (!ImGui::GetCurrentContext())
+	if (!ImGui::GetCurrentContext())
 	{
 		if (!input_is_key_down(key_code_t::MOUSE_RBUTTON) && !input_is_mouse_shown())
 		{
