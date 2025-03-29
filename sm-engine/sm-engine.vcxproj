@@ -19,53 +19,6 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Source\Engine\Core\Assert_Old.cpp" />
-    <ClCompile Include="Source\Engine\Core\Color_old.cpp" />
-    <ClCompile Include="Source\Engine\Core\Debug_Old.cpp" />
-    <ClCompile Include="Source\Engine\Core\File_old.cpp" />
-    <ClCompile Include="Source\Engine\Core\Hash_old.cpp" />
-    <ClCompile Include="Source\Engine\Core\Macros.cpp" />
-    <ClCompile Include="Source\Engine\Core\Random_old.cpp" />
-    <ClCompile Include="Source\Engine\Core\Time_old.cpp" />
-    <ClCompile Include="Source\Engine\Input\InputSystem.cpp" />
-    <ClCompile Include="Source\Engine\Job\JobSystem.cpp" />
-    <ClCompile Include="Source\Engine\Math\IVec2_old.cpp" />
-    <ClCompile Include="Source\Engine\Math\Mat33_old.cpp" />
-    <ClCompile Include="Source\Engine\Math\Mat44_old.cpp" />
-    <ClCompile Include="Source\Engine\Math\MathUtils.cpp" />
-    <ClCompile Include="Source\Engine\Math\Vec2_old.cpp" />
-    <ClCompile Include="Source\Engine\Math\Vec3_old.cpp" />
-    <ClCompile Include="Source\Engine\Math\Vec4_old.cpp" />
-    <ClCompile Include="Source\Engine\Render\Camera_old.cpp" />
-    <ClCompile Include="Source\Engine\Render\DX12\DX12Renderer.cpp" />
-    <ClCompile Include="Source\Engine\Render\Mesh_old.cpp" />
-    <ClCompile Include="Source\Engine\Render\MeshBuilder.cpp" />
-    <ClCompile Include="Source\Engine\Render\RendererOld.cpp" />
-    <ClCompile Include="Source\Engine\Render\RenderSettings.cpp" />
-    <ClCompile Include="Source\Engine\Render\ShaderCompiler.cpp" />
-    <ClCompile Include="Source\Engine\Render\UI\UI_old.cpp" />
-    <ClCompile Include="Source\Engine\Render\Vertex.cpp" />
-    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanBuffer.cpp" />
-    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanCommandPool.cpp" />
-    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanCommands.cpp" />
-    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanDescriptorSets.cpp" />
-    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanDevice.cpp" />
-    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanFormats.cpp" />
-    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanFramebuffer.cpp" />
-    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanFunctions.cpp" />
-    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanInstance.cpp" />
-    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanPipeline.cpp" />
-    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanQueueFamilies.cpp" />
-    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanRenderer.cpp" />
-    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanRenderPass.cpp" />
-    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanSampler.cpp" />
-    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanSwapchain.cpp" />
-    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanSync.cpp" />
-    <ClCompile Include="Source\Engine\Render\Vulkan\VulkanTexture.cpp" />
-    <ClCompile Include="Source\Engine\Render\Window_old.cpp" />
-    <ClCompile Include="Source\Engine\Thread\CriticalSection.cpp" />
-    <ClCompile Include="Source\Engine\Thread\Event.cpp" />
-    <ClCompile Include="Source\Engine\Thread\Thread_old.cpp" />
     <ClCompile Include="src\sm\core\color.cpp" />
     <ClCompile Include="src\sm\core\hash.cpp" />
     <ClCompile Include="src\sm\core\random.cpp" />
@@ -116,63 +69,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Source\Engine\Config_old.h" />
-    <ClInclude Include="Source\Engine\Core\Assert_old.h" />
-    <ClInclude Include="Source\Engine\Core\BitFlags_old.h" />
-    <ClInclude Include="Source\Engine\Core\Color_old.h" />
-    <ClInclude Include="Source\Engine\Core\Debug_Old.h" />
-    <ClInclude Include="Source\Engine\Core\File_old.h" />
-    <ClInclude Include="Source\Engine\Core\Guid.h" />
-    <ClInclude Include="Source\Engine\Core\Hash_old.h" />
-    <ClInclude Include="Source\Engine\Core\Macros.h" />
-    <ClInclude Include="Source\Engine\Core\Random_old.h" />
-    <ClInclude Include="Source\Engine\Core\Time_old.h" />
-    <ClInclude Include="Source\Engine\Core\Types.h" />
-    <ClInclude Include="Source\Engine\Core\Utils.h" />
-    <ClInclude Include="Source\Engine\Input\InputSystem.h" />
-    <ClInclude Include="Source\Engine\Job\JobSystem.h" />
-    <ClInclude Include="Source\Engine\Math\IVec2_old.h" />
-    <ClInclude Include="Source\Engine\Math\Mat33_old.h" />
-    <ClInclude Include="Source\Engine\Math\Mat44_old.h" />
-    <ClInclude Include="Source\Engine\Math\MathUtils.h" />
-    <ClInclude Include="Source\Engine\Math\Vec2_old.h" />
-    <ClInclude Include="Source\Engine\Math\Vec3_old.h" />
-    <ClInclude Include="Source\Engine\Math\Vec4_old.h" />
-    <ClInclude Include="Source\Engine\Platform\WindowsInclude.h" />
-    <ClInclude Include="Source\Engine\Platform\WindowsUtils.h" />
-    <ClInclude Include="Source\Engine\Render\Camera_old.h" />
-    <ClInclude Include="Source\Engine\Render\DX12\DX12Renderer.h" />
-    <ClInclude Include="Source\Engine\Render\Mesh_old.h" />
-    <ClInclude Include="Source\Engine\Render\MeshBuilder.h" />
-    <ClInclude Include="Source\Engine\Render\Renderer_old.h" />
-    <ClInclude Include="Source\Engine\Render\RenderSettings.h" />
-    <ClInclude Include="Source\Engine\Render\ShaderCompiler.h" />
-    <ClInclude Include="Source\Engine\Render\UI\UI_old.h" />
-    <ClInclude Include="Source\Engine\Render\Vertex.h" />
-    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanBuffer.h" />
-    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanCommandPool.h" />
-    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanCommands.h" />
-    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanDescriptorSets.h" />
-    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanDevice.h" />
-    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanFormats.h" />
-    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanFramebuffer.h" />
-    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanFunctions.h" />
-    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanInclude.h" />
-    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanInstance.h" />
-    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanPipeline.h" />
-    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanQueueFamilies.h" />
-    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanRenderer.h" />
-    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanRenderPass.h" />
-    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanSampler.h" />
-    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanSwapchain.h" />
-    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanSync.h" />
-    <ClInclude Include="Source\Engine\Render\Vulkan\VulkanTexture.h" />
-    <ClInclude Include="Source\Engine\Render\Window_old.h" />
-    <ClInclude Include="Source\Engine\Thread\AtomicUtil.h" />
-    <ClInclude Include="Source\Engine\Thread\CriticalSection.h" />
-    <ClInclude Include="Source\Engine\Thread\Event.h" />
-    <ClInclude Include="Source\Engine\Thread\Thread_old.h" />
-    <ClInclude Include="Source\Engine\Thread\ThreadSafeQueue.h" />
     <ClInclude Include="src\sm\config.h" />
     <ClInclude Include="src\sm\core\assert.h" />
     <ClInclude Include="src\sm\core\bits.h" />
@@ -264,7 +160,6 @@
     <ClInclude Include="src\third_party\vulkan\vulkan_xlib_xrandr.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Source\Engine\Render\Vulkan\VulkanFunctionsManifest.inl" />
     <None Include="src\third_party\imgui\vulkan\generate_spv.sh" />
     <None Include="src\third_party\imgui\vulkan\glsl_shader.frag">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
