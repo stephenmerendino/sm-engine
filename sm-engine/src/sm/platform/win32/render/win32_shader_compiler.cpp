@@ -64,6 +64,12 @@ bool sm::shader_compiler_compile(arena_t* arena, shader_type_t shader_type, cons
 	array_push(arguments, target_profile);
 	array_push(arguments, L"-spirv");
 
+	if(is_running_in_debug())
+	{
+        array_push(arguments, L"-Zi");
+        array_push(arguments, L"-Od");
+	}
+
 	// Compile shader
 	DxcBuffer buffer{};
 	buffer.Encoding = DXC_CP_ACP;
