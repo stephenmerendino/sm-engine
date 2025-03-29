@@ -2776,21 +2776,27 @@ void sm::renderer_update_frame(f32 ds)
 	camera_update(s_main_camera, ds);
 
 	// imgui
-	::ImGui_ImplWin32_NewFrame();
-    ::ImGui_ImplVulkan_NewFrame();
-    ::ImGui::NewFrame();
+    if(!s_close_window && !window_is_minimized(s_window))
+    {
+        ::ImGui_ImplWin32_NewFrame();
+        ::ImGui_ImplVulkan_NewFrame();
+        ::ImGui::NewFrame();
+    }
 }
 
 void sm::renderer_render_frame()
 {
+    if(s_close_window || window_is_minimized(s_window))
+    {
+        return;
+    }
+
 	//if (m_bReloadShadersRequested)
 	//{
 	//	m_bReloadShadersRequested = false;
 	//	VulkanDevice::Get()->FlushPipe();
 	//	InitPipelines();
 	//}
-
-    if(s_close_window) return;
 
     s_cur_frame_number++;
     s_cur_render_frame = s_cur_frame_number % MAX_NUM_FRAMES_IN_FLIGHT;

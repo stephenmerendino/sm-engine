@@ -10,8 +10,6 @@ static window_t* s_window = nullptr;
 u8 s_key_states[(u8)key_code_t::NUM_KEY_CODES] = { 0 };
 
 vec2_t s_mouse_movement_normalized = vec2_t::ZERO;
-bool s_unhide_mouse = false;
-bool s_hide_mouse = false;
 ivec2_t s_saved_mouse_pos = ivec2_t::ZERO;
 
 static void save_mouse_pos()
@@ -26,7 +24,7 @@ static void restore_mouse_pos()
 
 static void center_mouse_on_screen()
 {
-	ivec2_t center_mouse_pos = window_calc_center_pos(*s_window);
+	ivec2_t center_mouse_pos = window_calc_center_pos(s_window);
 	input_set_mouse_position(center_mouse_pos);
 }
 
@@ -34,7 +32,7 @@ static void update_mouse_movement()
 {
 	ivec2_t mouse_pos = input_get_mouse_position();
 
-	ivec2_t center_window_pos = window_calc_center_pos(*s_window);
+	ivec2_t center_window_pos = window_calc_center_pos(s_window);
 	ivec2_t window_size = ivec2_t(s_window->width, s_window->height);
 
 	ivec2_t delta = mouse_pos - center_window_pos;
@@ -43,30 +41,25 @@ static void update_mouse_movement()
                                          (f32)delta.y / (f32)window_size.y);
 }
 
-static bool imgui_window_msg_handler(window_msg_type_t msg_type, u64 msg_data, void* user_args)
-{
-	if (!ImGui::GetCurrentContext()) return false;
-
-	if(msg_type == window_msg_type_t::KEY_UP || msg_type == window_msg_type_t::KEY_DOWN)
-	{
-		key_code_t msg_key_code = (key_code_t)msg_data;
-		if(msg_key_code == key_code_t::MOUSE_RBUTTON)
-		{
-            const ImGuiIO& io = ImGui::GetIO();
-            bool mouse_handled_by_imgui = io.WantSetMousePos || io.WantCaptureMouse;
-			return mouse_handled_by_imgui;
-		}
-	}
-
-	return false;
-}
-
 void input_window_msg_handler(window_msg_type_t msg_type, u64 msg_data, void* user_args)
 {
-	if (imgui_window_msg_handler(msg_type, msg_data, user_args))
+	if(ImGui::GetCurrentContext())
 	{
-        //memset(s_key_states, 0, (u8)key_code_t::NUM_KEY_CODES);
-		return;
+        if(msg_type == window_msg_type_t::KEY_UP || msg_type == window_msg_type_t::KEY_DOWN)
+        {
+            key_code_t msg_key_code = (key_code_t)msg_data;
+            if(msg_key_code == key_code_t::MOUSE_LBUTTON || 
+			   msg_key_code == key_code_t::MOUSE_RBUTTON || 
+			   msg_key_code == key_code_t::MOUSE_MBUTTON)
+            {
+                const ImGuiIO& io = ImGui::GetIO();
+                bool mouse_handled_by_imgui = io.WantSetMousePos || io.WantCaptureMouse;
+                if(mouse_handled_by_imgui)
+				{
+					return;
+				}
+            }
+        }
 	}
 
 	if(msg_type == window_msg_type_t::KEY_DOWN)
@@ -117,30 +110,14 @@ void sm::input_begin_frame()
 
 void sm::input_update(f32 ds)
 {
-	// If imgui isn't being used then we check for right mouse hiding directly here, otherwise its in the imgui handler
-	if (!ImGui::GetCurrentContext())
+	// right mouse button hides mouse to move camera around
+	if (!input_is_key_down(key_code_t::MOUSE_RBUTTON) && !input_is_mouse_shown())
 	{
-		if (!input_is_key_down(key_code_t::MOUSE_RBUTTON) && !input_is_mouse_shown())
-		{
-			s_unhide_mouse = true;
-		}
-
-		if (input_is_key_down(key_code_t::MOUSE_RBUTTON) && input_is_mouse_shown())
-		{
-			s_hide_mouse = true;
-		}
-	}
-
-	// Mouse movement update
-	if (s_unhide_mouse)
-	{
-		s_unhide_mouse = false;
 		input_show_mouse();
 		restore_mouse_pos();
 	}
-	else if (s_hide_mouse)
+	else if (input_is_key_down(key_code_t::MOUSE_RBUTTON) && input_is_mouse_shown())
 	{
-		s_hide_mouse = false;
 		input_hide_mouse();
 		save_mouse_pos();
 		center_mouse_on_screen();

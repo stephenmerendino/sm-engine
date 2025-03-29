@@ -3,7 +3,7 @@
 
 using namespace sm;
 
-static bool s_show_demo_window = true;
+static bool s_show_demo_window = false;
 
 void sm::ui_init()
 {

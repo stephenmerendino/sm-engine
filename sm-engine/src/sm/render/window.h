@@ -47,5 +47,6 @@ namespace sm
     void        window_add_msg_cb(window_t* window, window_msg_cb_t cb, void* args);
     void        window_update(window_t* window);
     void        window_set_title(window_t* window, const char* new_title);
-    ivec2_t     window_calc_center_pos(const window_t& window);
+    ivec2_t     window_calc_center_pos(const window_t* window);
+    bool        window_is_minimized(const window_t* window);
 }

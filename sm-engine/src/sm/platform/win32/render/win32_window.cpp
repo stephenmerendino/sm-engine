@@ -283,6 +283,7 @@ window_t* sm::window_init(sm::arena_t* arena, const char* name, u32 width, u32 h
 
 	// make sure to show on init
 	::ShowWindow(hwnd, SW_SHOW);
+	::BringWindowToTop(hwnd);
 
 	return window;
 }
@@ -324,4 +325,11 @@ void sm::window_set_title(window_t* window, const char* new_title)
 	wchar_t stack_scratchpad[kMaxScratchpadSize];
 	sm::string_to_wchar(stack_scratchpad, kMaxScratchpadSize, new_title);
 	::SetWindowText(hwnd, stack_scratchpad);
+}
+
+bool sm::window_is_minimized(const window_t* window)
+{
+	SM_ASSERT(window);
+	HWND hwnd = get_handle<HWND>(window->handle);
+	return ::IsIconic(hwnd);
 }
