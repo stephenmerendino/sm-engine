@@ -2819,6 +2819,20 @@ void sm::renderer_render_frame()
 		}
 	}
 
+    if (is_running_in_debug())
+    {
+        VkDebugUtilsLabelEXT queue_label{};
+        queue_label.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+        queue_label.pNext = nullptr;
+        queue_label.pLabelName = "graphics";
+        queue_label.color[0] = 1.0f;
+        queue_label.color[1] = 1.0f;
+        queue_label.color[2] = 0.0f;
+        queue_label.color[3] = 1.0f;
+
+        vkQueueBeginDebugUtilsLabelEXT(s_graphics_queue, &queue_label);
+    }
+
     // update frame descriptor
     {
         frame_render_data_t frame_data{};
