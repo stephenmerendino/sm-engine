@@ -127,6 +127,10 @@ void sm::input_update(f32 ds)
 		update_mouse_movement();
 		center_mouse_on_screen();
 	}
+	else
+	{
+		s_mouse_movement_normalized = vec2_t::ZERO;
+	}
 }
 
 bool sm::input_is_key_down(key_code_t key)
