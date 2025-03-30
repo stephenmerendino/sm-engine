@@ -3019,6 +3019,20 @@ void sm::renderer_render_frame()
 
         // main draw
         {
+            if (is_running_in_debug())
+            {
+                VkDebugUtilsLabelEXT debug_label{};
+                debug_label.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+                debug_label.pNext = nullptr;
+                debug_label.pLabelName = "Viking Room";
+                debug_label.color[0] = 0.0f;
+                debug_label.color[1] = 0.0f;
+                debug_label.color[2] = 1.0f;
+                debug_label.color[3] = 1.0f;
+
+                vkCmdBeginDebugUtilsLabelEXT(cur_render_frame.frame_command_buffer, &debug_label);
+            }
+
             mat44_t view = camera_get_view_transform(s_main_camera);
             mat44_t projection = init_perspective_proj(45.0f, 0.01f, 100.0f, (f32)s_swapchain_extent.width / (f32)s_swapchain_extent.height);
             mat44_t viking_room_model = mat44_t::IDENTITY;
@@ -3093,6 +3107,11 @@ void sm::renderer_render_frame()
 
             // draw mesh
             vkCmdDrawIndexed(cur_render_frame.frame_command_buffer, (u32)s_viking_room_mesh->indices.cur_size, 1, 0, 0, 0);
+
+            if (is_running_in_debug())
+            {
+                vkCmdEndDebugUtilsLabelEXT(cur_render_frame.frame_command_buffer);
+            }
         }
 
         vkCmdEndRenderPass(cur_render_frame.frame_command_buffer);
