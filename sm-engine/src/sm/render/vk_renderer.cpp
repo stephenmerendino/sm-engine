@@ -2426,6 +2426,15 @@ void sm::renderer_init(window_t* window)
                     image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
                     SM_VULKAN_ASSERT(vkCreateImage(s_device, &image_create_info, nullptr, &s_viking_room_diffuse_texture_image));
+
+                    VkDebugUtilsObjectNameInfoEXT debug_name_info = {
+                        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+                        .pNext = nullptr,
+                        .objectType = VK_OBJECT_TYPE_IMAGE,
+                        .objectHandle = (u64)s_viking_room_diffuse_texture_image,
+                        .pObjectName = "Viking Room Diffuse Texture"
+                    };
+                    SM_VULKAN_ASSERT(vkSetDebugUtilsObjectNameEXT(s_device, &debug_name_info));
 				}
 
 				// image memory
@@ -2520,7 +2529,7 @@ void sm::renderer_init(window_t* window)
                                          VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
                                          VK_PIPELINE_STAGE_TRANSFER_BIT,
                                          0,
-                                         0, nullptr, 
+                                         0, nullptr,
 										 0, nullptr, 
 										 1, &image_memory_barrier);
 
@@ -2874,6 +2883,20 @@ void sm::renderer_render_frame()
     s_cur_render_frame = s_cur_frame_number % MAX_NUM_FRAMES_IN_FLIGHT;
     render_frame_t& cur_render_frame = s_render_frames[s_cur_render_frame];
 
+    if (is_running_in_debug())
+    {
+        VkDebugUtilsLabelEXT queue_label{};
+        queue_label.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+        queue_label.pNext = nullptr;
+        queue_label.pLabelName = "Graphics Queue";
+        queue_label.color[0] = 1.0f;
+        queue_label.color[1] = 0.0f;
+        queue_label.color[2] = 0.0f;
+        queue_label.color[3] = 1.0f;
+
+        vkQueueBeginDebugUtilsLabelEXT(s_graphics_queue, &queue_label);
+    }
+
 	// setup new frame
 	{
 		VkFence frame_completed_fences[] = {
@@ -2896,20 +2919,6 @@ void sm::renderer_render_frame()
 			refresh_swapchain();
 		}
 	}
-
-    if (is_running_in_debug())
-    {
-        VkDebugUtilsLabelEXT queue_label{};
-        queue_label.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
-        queue_label.pNext = nullptr;
-        queue_label.pLabelName = "graphics";
-        queue_label.color[0] = 1.0f;
-        queue_label.color[1] = 1.0f;
-        queue_label.color[2] = 0.0f;
-        queue_label.color[3] = 1.0f;
-
-        vkQueueBeginDebugUtilsLabelEXT(s_graphics_queue, &queue_label);
-    }
 
     // update frame descriptor
     {
@@ -2952,6 +2961,20 @@ void sm::renderer_render_frame()
         command_buffer_begin_info.flags = 0;
         command_buffer_begin_info.pInheritanceInfo = nullptr;
         SM_VULKAN_ASSERT(vkBeginCommandBuffer(cur_render_frame.frame_command_buffer, &command_buffer_begin_info));
+
+        if (is_running_in_debug())
+        {
+            VkDebugUtilsLabelEXT debug_label{};
+            debug_label.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+            debug_label.pNext = nullptr;
+            debug_label.pLabelName = "Main Draw";
+            debug_label.color[0] = 0.0f;
+            debug_label.color[1] = 1.0f;
+            debug_label.color[2] = 0.0f;
+            debug_label.color[3] = 1.0f;
+
+            vkCmdBeginDebugUtilsLabelEXT(cur_render_frame.frame_command_buffer, &debug_label);
+        }
 
         // begin render pass
         {
@@ -3073,6 +3096,11 @@ void sm::renderer_render_frame()
         }
 
         vkCmdEndRenderPass(cur_render_frame.frame_command_buffer);
+
+        if (is_running_in_debug())
+        {
+            vkCmdEndDebugUtilsLabelEXT(cur_render_frame.frame_command_buffer);
+        }
 
         // imgui
 		{
@@ -3241,6 +3269,11 @@ void sm::renderer_render_frame()
             frame_command_submit_info
         };
         vkQueueSubmit(s_graphics_queue, ARRAY_LEN(frame_command_submits), frame_command_submits, cur_render_frame.frame_completed_fence);
+
+        if (is_running_in_debug())
+        {
+            vkQueueEndDebugUtilsLabelEXT(s_graphics_queue);
+        }
 
         // present swapchain to screen
         VkPresentInfoKHR present_info{};
