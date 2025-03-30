@@ -2838,6 +2838,13 @@ void sm::renderer_init(window_t* window)
 
 void sm::renderer_begin_frame()
 {
+	if (ui_was_reload_shaders_requested())
+	{
+        vkDeviceWaitIdle(s_device);
+        refresh_pipelines();
+	}
+
+    ui_begin_frame();
 }
 
 void sm::renderer_update_frame(f32 ds)
@@ -2862,13 +2869,6 @@ void sm::renderer_render_frame()
     {
         return;
     }
-
-	//if (m_bReloadShadersRequested)
-	//{
-	//	m_bReloadShadersRequested = false;
-	//	VulkanDevice::Get()->FlushPipe();
-	//	InitPipelines();
-	//}
 
     s_cur_frame_number++;
     s_cur_render_frame = s_cur_frame_number % MAX_NUM_FRAMES_IN_FLIGHT;
@@ -3461,7 +3461,4 @@ void sm::renderer_render_frame()
     //        SM_VULKAN_ASSERT_OLD(presentResult);
     //    }
 	//}
-
-	// temp just so I can run
-	ImGui::Render();
 }

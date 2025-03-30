@@ -4,9 +4,15 @@
 using namespace sm;
 
 static bool s_show_demo_window = false;
+static bool s_reload_shaders = false;
 
 void sm::ui_init()
 {
+}
+
+void sm::ui_begin_frame()
+{
+    s_reload_shaders = false;
 }
 
 void sm::ui_render()
@@ -17,6 +23,10 @@ void sm::ui_render()
         {
             s_show_demo_window = true;
         }
+        if (ImGui::MenuItem("Reload Shaders"))
+        {
+            s_reload_shaders = true;
+        }
         ImGui::EndMainMenuBar();
     }
 
@@ -24,4 +34,9 @@ void sm::ui_render()
 	{
         ImGui::ShowDemoWindow(&s_show_demo_window);
 	}
+}
+
+bool sm::ui_was_reload_shaders_requested()
+{
+    return s_reload_shaders;
 }
