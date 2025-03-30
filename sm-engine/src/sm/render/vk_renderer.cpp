@@ -3121,6 +3121,14 @@ void sm::renderer_render_frame()
             vkCmdEndDebugUtilsLabelEXT(cur_render_frame.frame_command_buffer);
         }
 
+        // post processing
+            /*
+                What do we need?
+                -A compute pipeline hooked up to our post processing shader
+                -A descriptor set with the read/write version of resolved color image from our main draw pass and with depth buffer to sample
+                -Dispatch the workload
+            */
+
         // imgui
 		{
 			ui_render();
