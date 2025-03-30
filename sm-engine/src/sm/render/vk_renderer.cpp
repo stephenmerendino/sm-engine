@@ -2272,7 +2272,7 @@ void sm::renderer_init(window_t* window)
 				create_info.compareEnable = VK_FALSE;
 				create_info.compareOp = VK_COMPARE_OP_NEVER;
 				create_info.minLod = 0.0f;
-				create_info.maxLod = 12.0f;
+				create_info.maxLod = VK_LOD_CLAMP_NONE;
 				create_info.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
 				create_info.unnormalizedCoordinates = VK_FALSE;
                 SM_VULKAN_ASSERT(vkCreateSampler(s_device, &create_info, nullptr, &s_linear_sampler));
@@ -2395,7 +2395,7 @@ void sm::renderer_init(window_t* window)
                 stbi_uc* pixels = stbi_load(full_filepath.c_str.data, &tex_width, &tex_height, &tex_channels, STBI_rgb_alpha);
 
                 // calc num mips
-                u32 num_mips = (u32)(std::floor(std::log2(max(tex_width, tex_height))) + 1);
+                u32 num_mips = (u32)(std::floor(std::log2( max(tex_width, tex_height))) + 1);
 
 				// calc memory needed
 				size_t bytes_per_pixel = 4; // 4 because of STBI_rgb_alpha
@@ -2557,32 +2557,104 @@ void sm::renderer_init(window_t* window)
 
 				// generate mip maps for image and setup final image layout
 				{
-					// todo: generate mip maps using vkCmdBlitImage in a loop going through subresources of the image
+                    for(u32 cur_mip_level = 0; cur_mip_level < num_mips; ++cur_mip_level)
+                    {
+                        u32 mip_level_read = cur_mip_level;
+                        u32 mip_level_write = cur_mip_level + 1;
 
-					// transition the image to shader read
-					VkImageMemoryBarrier image_memory_barrier{};
-					image_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-					image_memory_barrier.pNext = nullptr;
-					image_memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-					image_memory_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-					image_memory_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-					image_memory_barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-					image_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-					image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-					image_memory_barrier.image = s_viking_room_diffuse_texture_image;
-					image_memory_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-					image_memory_barrier.subresourceRange.baseMipLevel = 0;
-					image_memory_barrier.subresourceRange.levelCount = num_mips;
-					image_memory_barrier.subresourceRange.baseArrayLayer = 0;
-					image_memory_barrier.subresourceRange.layerCount = 1;
+                        // transition the mip_level_read to transfer src
+                        {
+                            VkImageMemoryBarrier image_mip_read_memory_barrier{};
+                            image_mip_read_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+                            image_mip_read_memory_barrier.pNext = nullptr;
+                            image_mip_read_memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                            image_mip_read_memory_barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+                            image_mip_read_memory_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+                            image_mip_read_memory_barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+                            image_mip_read_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                            image_mip_read_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                            image_mip_read_memory_barrier.image = s_viking_room_diffuse_texture_image;
+                            image_mip_read_memory_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                            image_mip_read_memory_barrier.subresourceRange.baseMipLevel = mip_level_read;
+                            image_mip_read_memory_barrier.subresourceRange.levelCount = 1;
+                            image_mip_read_memory_barrier.subresourceRange.baseArrayLayer = 0;
+                            image_mip_read_memory_barrier.subresourceRange.layerCount = 1;
 
-					vkCmdPipelineBarrier(command_buffer,
-						VK_PIPELINE_STAGE_TRANSFER_BIT,
-						VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-						0,
-						0, nullptr,
-						0, nullptr,
-						1, &image_memory_barrier);
+                            VkImageMemoryBarrier image_mip_barriers[] = {
+                                image_mip_read_memory_barrier,
+                            };
+                            vkCmdPipelineBarrier(command_buffer,
+                                VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                0,
+                                0, nullptr,
+                                0, nullptr,
+                                ARRAY_LEN(image_mip_barriers), image_mip_barriers);
+                        }
+
+                        // do actual copy from mip_level_read to mip_level_write
+                        if(mip_level_write < num_mips)
+                        {
+                            VkImageBlit blit_region{};
+                            blit_region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                            blit_region.srcSubresource.mipLevel = mip_level_read;
+                            blit_region.srcSubresource.baseArrayLayer = 0;
+                            blit_region.srcSubresource.layerCount = 1;
+                            blit_region.srcOffsets[0].x = 0;
+                            blit_region.srcOffsets[0].y = 0;
+                            blit_region.srcOffsets[0].z = 0;
+                            blit_region.srcOffsets[1].x = max(tex_width >> mip_level_read, 1);
+                            blit_region.srcOffsets[1].y = max(tex_height >> mip_level_read, 1);
+                            blit_region.srcOffsets[1].z = 1;
+                            blit_region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                            blit_region.dstSubresource.mipLevel = mip_level_write;
+                            blit_region.dstSubresource.baseArrayLayer = 0;
+                            blit_region.dstSubresource.layerCount = 1;
+                            blit_region.dstOffsets[0].x = 0;
+                            blit_region.dstOffsets[0].y = 0;
+                            blit_region.dstOffsets[0].z = 0;
+                            blit_region.dstOffsets[1].x = max(tex_width >> mip_level_write, 1);
+                            blit_region.dstOffsets[1].y = max(tex_height >> mip_level_write, 1);
+                            blit_region.dstOffsets[1].z = 1;
+
+                            vkCmdBlitImage(command_buffer,
+                                           s_viking_room_diffuse_texture_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                           s_viking_room_diffuse_texture_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                           1, &blit_region,
+                                           VK_FILTER_LINEAR);
+
+                        }
+                    }
+                                    
+                    // transition all mip levels to color attachment
+                    {
+                        VkImageMemoryBarrier image_to_color_attachment_memory_barrier{};
+                        image_to_color_attachment_memory_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+                        image_to_color_attachment_memory_barrier.pNext = nullptr;
+                        image_to_color_attachment_memory_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                        image_to_color_attachment_memory_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+                        image_to_color_attachment_memory_barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+                        image_to_color_attachment_memory_barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                        image_to_color_attachment_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                        image_to_color_attachment_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                        image_to_color_attachment_memory_barrier.image = s_viking_room_diffuse_texture_image;
+                        image_to_color_attachment_memory_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                        image_to_color_attachment_memory_barrier.subresourceRange.baseMipLevel = 0;
+                        image_to_color_attachment_memory_barrier.subresourceRange.levelCount = num_mips;
+                        image_to_color_attachment_memory_barrier.subresourceRange.baseArrayLayer = 0;
+                        image_to_color_attachment_memory_barrier.subresourceRange.layerCount = 1;
+
+                        VkImageMemoryBarrier image_mip_barriers[] = {
+                            image_to_color_attachment_memory_barrier,
+                        };
+                        vkCmdPipelineBarrier(command_buffer,
+                            VK_PIPELINE_STAGE_TRANSFER_BIT,
+                            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                            0,
+                            0, nullptr,
+                            0, nullptr,
+                            ARRAY_LEN(image_mip_barriers), image_mip_barriers);
+                    }
 				}
 
 				// end and submit command buffer
