@@ -905,7 +905,7 @@ static void init_render_frames_render_targets()
                 image_create_info.format = s_main_color_format;
                 image_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
                 image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-                image_create_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+                image_create_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
                 image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
                 image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
                 image_create_info.flags = 0;
@@ -971,7 +971,7 @@ static void init_render_frames_render_targets()
             image_create_info.format = s_main_color_format;
             image_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
             image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            image_create_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+            image_create_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
             image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
             image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
             image_create_info.flags = 0;
@@ -1009,7 +1009,7 @@ static void init_render_frames_render_targets()
             create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
             create_info.renderPass = s_imgui_render_pass;
             VkImageView image_views[] = {
-                frame.main_draw_color_resolve_image_view
+                frame.post_processing_color_image_view
             };
             create_info.attachmentCount = ARRAY_LEN(image_views);
             create_info.pAttachments = image_views;
@@ -2026,7 +2026,7 @@ void sm::renderer_init(window_t* window)
             main_color_resolve_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
             main_color_resolve_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
             main_color_resolve_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            main_color_resolve_attachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            main_color_resolve_attachment.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
             main_color_resolve_attachment.flags = 0;
 
 			VkAttachmentDescription2 render_pass_attachments[] = {
@@ -3128,10 +3128,123 @@ void sm::renderer_render_frame()
             /*
                 What do we need?
                 [x] A compute pipeline hooked up to our post processing shader
-                [] A descriptor set with the read/write versions of main draw rt and post processing rt
+                [x] Pipeline barrier at start to transition post processsing image to VK_IMAGE_LAYOUT_GENERAL
+                [x] A descriptor set with the read/write versions of main draw rt and post processing rt
+                [] Bind pipeline
                 [] Dispatch the workload
-                [] Transition post processing result to color attachment
+                [] Pipeline barrier at end to transition post processsing image to VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
             */
+
+            // transition post process storage image to VK_IMAGE_LAYOUT_GENERAL which is needed for a storage image
+            {
+                VkImageSubresourceRange subresource_range{
+                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .baseMipLevel = 0,
+                    .levelCount = 1,
+                    .baseArrayLayer = 0,
+                    .layerCount = 1
+                };
+                VkImageMemoryBarrier transition_post_process_to_layout_general_barrier{
+                    .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                    .pNext = nullptr,
+                    .srcAccessMask = VK_ACCESS_NONE,
+                    .dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+                    .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                    .newLayout = VK_IMAGE_LAYOUT_GENERAL,
+                    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .image = cur_render_frame.post_processing_color_image,
+                    .subresourceRange = subresource_range
+                };
+                vkCmdPipelineBarrier(cur_render_frame.frame_command_buffer,
+                                     VK_PIPELINE_STAGE_NONE, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                     0,
+                                     0, nullptr,
+                                     0, nullptr,
+                                     1, &transition_post_process_to_layout_general_barrier);
+            }
+
+            // update post process descriptor set
+            {
+                VkDescriptorImageInfo main_draw_color_storage_image_descriptor_info{
+                    .sampler = VK_NULL_HANDLE,
+                    .imageView = cur_render_frame.main_draw_color_resolve_image_view,
+                    .imageLayout = VK_IMAGE_LAYOUT_GENERAL
+                };
+                VkWriteDescriptorSet main_draw_color_storage_image_descriptor_set_write{
+                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .pNext = nullptr,
+                    .dstSet = cur_render_frame.post_processing_descriptor_set,
+                    .dstBinding = 0,
+                    .dstArrayElement = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                    .pImageInfo = &main_draw_color_storage_image_descriptor_info,
+                    .pBufferInfo = nullptr,
+                    .pTexelBufferView = nullptr
+                };
+
+                VkDescriptorImageInfo post_process_storage_image_descriptor_info{
+                    .sampler = VK_NULL_HANDLE,
+                    .imageView = cur_render_frame.post_processing_color_image_view,
+                    .imageLayout = VK_IMAGE_LAYOUT_GENERAL
+                };
+                VkWriteDescriptorSet post_process_storage_image_descriptor_set_write{
+                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .pNext = nullptr,
+                    .dstSet = cur_render_frame.post_processing_descriptor_set,
+                    .dstBinding = 1,
+                    .dstArrayElement = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                    .pImageInfo = &post_process_storage_image_descriptor_info,
+                    .pBufferInfo = nullptr,
+                    .pTexelBufferView = nullptr
+                };
+
+                VkWriteDescriptorSet descriptor_set_writes[] = {
+                    main_draw_color_storage_image_descriptor_set_write,
+                    post_process_storage_image_descriptor_set_write
+                };
+                vkUpdateDescriptorSets(s_device, ARRAY_LEN(descriptor_set_writes), descriptor_set_writes, 0, nullptr);
+            }
+
+            vkCmdBindDescriptorSets(cur_render_frame.frame_command_buffer, 
+                                    VK_PIPELINE_BIND_POINT_COMPUTE, 
+                                    s_post_process_pipeline_layout, 
+                                    0, 1, &cur_render_frame.post_processing_descriptor_set, 
+                                    0, nullptr);
+            vkCmdBindPipeline(cur_render_frame.frame_command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, s_post_process_compute_pipeline);
+            vkCmdDispatch(cur_render_frame.frame_command_buffer, s_swapchain_extent.width >> 3, s_swapchain_extent.height >> 3, 1);
+
+            // transition post process storage image to VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIONAL which is needed for imgui render pass
+            {
+                VkImageSubresourceRange subresource_range{
+                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .baseMipLevel = 0,
+                    .levelCount = 1,
+                    .baseArrayLayer = 0,
+                    .layerCount = 1
+                };
+                VkImageMemoryBarrier transition_post_process_to_layout_color_attachment_barrier{
+                    .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                    .pNext = nullptr,
+                    .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+                    .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                    .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
+                    .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .image = cur_render_frame.post_processing_color_image,
+                    .subresourceRange = subresource_range
+                };
+                vkCmdPipelineBarrier(cur_render_frame.frame_command_buffer,
+                                     VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                     0,
+                                     0, nullptr,
+                                     0, nullptr,
+                                     1, &transition_post_process_to_layout_color_attachment_barrier);
+            }
         }
 
         // imgui
@@ -3233,7 +3346,7 @@ void sm::renderer_render_frame()
                 image_blit_region.dstOffsets[1] = dst_offset_max;
 
                 vkCmdBlitImage(cur_render_frame.frame_command_buffer,
-                               cur_render_frame.main_draw_color_resolve_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                               cur_render_frame.post_processing_color_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                s_swapchain_images[cur_render_frame.swapchain_image_index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                1, &image_blit_region, 
                                VK_FILTER_LINEAR);

@@ -125,6 +125,7 @@ VK_DEVICE_FUNCTION(vkQueueInsertDebugUtilsLabelEXT)
 VK_DEVICE_FUNCTION(vkCmdBeginDebugUtilsLabelEXT)
 VK_DEVICE_FUNCTION(vkCmdEndDebugUtilsLabelEXT)
 VK_DEVICE_FUNCTION(vkCmdInsertDebugUtilsLabelEXT)
+VK_DEVICE_FUNCTION(vkCmdDispatch)
 
 #if defined _WIN32
 #include "sm/platform/win32/render/win32_vk_functions_manifest.h"
