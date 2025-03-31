@@ -32,6 +32,7 @@ bool sm::shader_compiler_compile(arena_t* arena, shader_type_t shader_type, cons
 	HRESULT hres;
 
 	// append on the root shader directory
+	// todo: move this out of platform specific code
 	string_t full_filepath = string_init(arena);
 	full_filepath += SHADERS_PATH;
 	full_filepath += file_name;

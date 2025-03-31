@@ -176,6 +176,8 @@ VkPipeline s_viking_room_main_draw_pipeline = VK_NULL_HANDLE;
 VkPipelineLayout s_infinite_grid_main_draw_pipeline_layout = VK_NULL_HANDLE;
 VkPipelineLayout s_post_process_pipeline_layout = VK_NULL_HANDLE;
 
+VkPipeline s_post_process_compute_pipeline = VK_NULL_HANDLE;
+
 camera_t s_main_camera;
 f32 s_elapsed_time_seconds = 0.0f;
 f32 s_delta_time_seconds = 0.0f;
@@ -1215,14 +1217,15 @@ static void refresh_render_frames_render_targets()
 static void init_pipelines()
 {
     arena_t* temp_shader_arena = arena_init(KiB(50));
+
     // viking room pipeline
     {
         // shaders
         shader_t* vertex_shader = arena_alloc_struct(temp_shader_arena, shader_t);
-        SM_ASSERT(shader_compiler_compile(temp_shader_arena, shader_type_t::VERTEX, "simple-diffuse.vs.hlsl", "Main", &vertex_shader));
+        SM_ASSERT(shader_compiler_compile(temp_shader_arena, shader_type_t::VERTEX, "simple-diffuse.vs.hlsl", "main", &vertex_shader));
 
         shader_t* pixel_shader = arena_alloc_struct(temp_shader_arena, shader_t);
-        SM_ASSERT(shader_compiler_compile(temp_shader_arena, shader_type_t::PIXEL, "simple-diffuse.ps.hlsl", "Main", &pixel_shader));
+        SM_ASSERT(shader_compiler_compile(temp_shader_arena, shader_type_t::PIXEL, "simple-diffuse.ps.hlsl", "main", &pixel_shader));
 
         VkShaderModuleCreateInfo vertex_shader_module_create_info{};
         vertex_shader_module_create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -1490,49 +1493,48 @@ static void init_pipelines()
         vkDestroyShaderModule(s_device, pixel_shader_module, nullptr);
     }
 
-    //// Infinite grid
-    //{
-    //    VulkanShaderStages shaderStages;
-    //    {
-    //        Shader vertShader;
-    //        CompileShader(ShaderType::kVs, "infinite-grid.vs.hlsl", "Main", &vertShader);
+    // post processing
+    {
+        shader_t* compute_shader = arena_alloc_struct(temp_shader_arena, shader_t);
+        SM_ASSERT(shader_compiler_compile(temp_shader_arena, shader_type_t::COMPUTE, "post-processing.cs.hlsl", "main", &compute_shader));
 
-    //        Shader pixelShader;
-    //        CompileShader(ShaderType::kPs, "infinite-grid.ps.hlsl", "Main", &pixelShader);
+        VkShaderModuleCreateInfo shader_module_create_info{
+            .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0,
+            .codeSize = compute_shader->bytecode.cur_size,
+            .pCode = (u32*)compute_shader->bytecode.data
+        };
 
-    //        shaderStages.InitVsPs(vertShader, pixelShader);
-    //    }
+        VkShaderModule shader_module = VK_NULL_HANDLE;
+        SM_VULKAN_ASSERT(vkCreateShaderModule(s_device, &shader_module_create_info, nullptr, &shader_module));
 
-    //    VulkanMeshPipelineInputInfo pipelineMeshInputInfo;
-    //    pipelineMeshInputInfo.Init(nullptr);
+        VkPipelineShaderStageCreateInfo post_process_shader_stage_create_info{
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0,
+            .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+            .module = shader_module,
+            .pName = compute_shader->entry_name,
+            .pSpecializationInfo = nullptr
+        };
 
-    //    VulkanPipelineState pipelineState;
-    //    pipelineState.InitRasterState(VK_POLYGON_MODE_FILL, VK_FRONT_FACE_COUNTER_CLOCKWISE, VK_CULL_MODE_NONE);
-    //    pipelineState.InitViewportState(0, 0, (F32)m_swapchain.m_extent.width, (F32)m_swapchain.m_extent.height, 0.0f, 1.0f, 0, 0, m_swapchain.m_extent.width, m_swapchain.m_extent.height);
-    //    pipelineState.InitMultisampleState(VulkanDevice::Get()->m_maxNumMsaaSamples);
-    //    pipelineState.InitDepthStencilState(true, true, VK_COMPARE_OP_LESS);
-    //    pipelineState.PreInitAddColorBlendAttachment(true, VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD);
-    //    pipelineState.InitColorBlendState(false);
+        VkComputePipelineCreateInfo post_process_create_info{
+            .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0,
+            .stage = post_process_shader_stage_create_info,
+            .layout = s_post_process_pipeline_layout,
+            .basePipelineHandle = VK_NULL_HANDLE,
+            .basePipelineIndex = 0 
+        };
+        VkComputePipelineCreateInfo pipeline_create_infos[] = {
+            post_process_create_info
+        };
+        SM_VULKAN_ASSERT(vkCreateComputePipelines(s_device, VK_NULL_HANDLE, ARRAY_LEN(pipeline_create_infos), pipeline_create_infos, nullptr, &s_post_process_compute_pipeline));
 
-    //    m_infiniteGridPipeline.InitGraphics(shaderStages, m_infiniteGridPipelineLayout, pipelineMeshInputInfo, pipelineState, m_mainDrawRenderPass);
-
-    //    shaderStages.Destroy();
-    //}
-
-    //// Post Processing
-    //{
-    //    VulkanShaderStages shaderStage;
-    //    {
-    //        Shader computeShader;
-    //        CompileShader(ShaderType::kCs, "post-processing.cs.hlsl", "Main", &computeShader);
-
-    //        shaderStage.InitCs(computeShader);
-    //    }
-
-    //    m_postProcessingPipeline.InitCompute(shaderStage, m_postProcessingPipelineLayout);
-
-    //    shaderStage.Destroy();
-    //}
+        vkDestroyShaderModule(s_device, shader_module, nullptr);
+    }
 
     arena_destroy(temp_shader_arena);
 }
@@ -2918,39 +2920,39 @@ void sm::renderer_render_frame()
 		{
 			refresh_swapchain();
 		}
+
+        // update frame descriptor
+        {
+            frame_render_data_t frame_data{};
+            frame_data.delta_time_seconds = s_delta_time_seconds;
+            frame_data.elapsed_time_seconds = s_elapsed_time_seconds;
+
+            upload_buffer_data(cur_render_frame.frame_descriptor_buffer, &frame_data, sizeof(frame_render_data_t));
+
+            VkWriteDescriptorSet descriptor_set_write{};
+            descriptor_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptor_set_write.pNext = nullptr;
+            descriptor_set_write.dstSet = cur_render_frame.frame_descriptor_set;
+            descriptor_set_write.dstBinding = 0;
+            descriptor_set_write.dstArrayElement = 0;
+            descriptor_set_write.descriptorCount = 1;
+            descriptor_set_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            descriptor_set_write.pImageInfo = nullptr;
+
+            VkDescriptorBufferInfo buffer_info{};
+            buffer_info.buffer = cur_render_frame.frame_descriptor_buffer;
+            buffer_info.offset = 0;
+            buffer_info.range = sizeof(frame_render_data_t);
+            descriptor_set_write.pBufferInfo = &buffer_info;
+
+            descriptor_set_write.pTexelBufferView = nullptr;
+
+            VkWriteDescriptorSet descriptor_set_writes[] = {
+                descriptor_set_write
+            };
+            vkUpdateDescriptorSets(s_device, ARRAY_LEN(descriptor_set_writes), descriptor_set_writes, 0, nullptr);
+        }
 	}
-
-    // update frame descriptor
-    {
-        frame_render_data_t frame_data{};
-        frame_data.delta_time_seconds = s_delta_time_seconds;
-        frame_data.elapsed_time_seconds = s_elapsed_time_seconds;
-
-        upload_buffer_data(cur_render_frame.frame_descriptor_buffer, &frame_data, sizeof(frame_render_data_t));
-
-        VkWriteDescriptorSet descriptor_set_write{};
-        descriptor_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptor_set_write.pNext = nullptr;
-        descriptor_set_write.dstSet = cur_render_frame.frame_descriptor_set;
-        descriptor_set_write.dstBinding = 0;
-        descriptor_set_write.dstArrayElement = 0;
-        descriptor_set_write.descriptorCount = 1;
-        descriptor_set_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        descriptor_set_write.pImageInfo = nullptr;
-
-        VkDescriptorBufferInfo buffer_info{};
-        buffer_info.buffer = cur_render_frame.frame_descriptor_buffer;
-        buffer_info.offset = 0;
-        buffer_info.range = sizeof(frame_render_data_t);
-        descriptor_set_write.pBufferInfo = &buffer_info;
-
-        descriptor_set_write.pTexelBufferView = nullptr;
-
-        VkWriteDescriptorSet descriptor_set_writes[] = {
-            descriptor_set_write
-        };
-        vkUpdateDescriptorSets(s_device, ARRAY_LEN(descriptor_set_writes), descriptor_set_writes, 0, nullptr);
-    }
 
     // actual frame work
     {
@@ -3122,12 +3124,15 @@ void sm::renderer_render_frame()
         }
 
         // post processing
+        {
             /*
                 What do we need?
-                -A compute pipeline hooked up to our post processing shader
-                -A descriptor set with the read/write version of resolved color image from our main draw pass and with depth buffer to sample
-                -Dispatch the workload
+                [x] A compute pipeline hooked up to our post processing shader
+                [] A descriptor set with the read/write versions of main draw rt and post processing rt
+                [] Dispatch the workload
+                [] Transition post processing result to color attachment
             */
+        }
 
         // imgui
 		{
