@@ -176,23 +176,25 @@ array_t<render_frame_t> s_render_frames;
 mesh_t* s_viking_room_mesh = nullptr;
 texture_t s_viking_room_diffuse_texture;
 
+//buffer_t s_viking_room_vertex_buffer;
 VkBuffer s_viking_room_vertex_buffer = VK_NULL_HANDLE;
 VkDeviceMemory s_viking_room_vertex_buffer_memory = VK_NULL_HANDLE;
 
+//buffer_t s_viking_room_index_buffer;
 VkBuffer s_viking_room_index_buffer = VK_NULL_HANDLE;
 VkDeviceMemory s_viking_room_index_buffer_memory = VK_NULL_HANDLE;
 
 VkDescriptorSet s_viking_room_material_descriptor_set = VK_NULL_HANDLE;
 
+//buffer_t s_viking_room_mesh_instance_buffer;
 VkBuffer s_viking_room_mesh_instance_buffer = VK_NULL_HANDLE;
 VkDeviceMemory s_viking_room_mesh_instance_buffer_memory = VK_NULL_HANDLE;
 
 VkPipelineLayout s_viking_room_main_draw_pipeline_layout = VK_NULL_HANDLE;
-VkPipeline s_viking_room_main_draw_pipeline = VK_NULL_HANDLE;
-
 VkPipelineLayout s_infinite_grid_main_draw_pipeline_layout = VK_NULL_HANDLE;
 VkPipelineLayout s_post_process_pipeline_layout = VK_NULL_HANDLE;
 
+VkPipeline s_viking_room_main_draw_pipeline = VK_NULL_HANDLE;
 VkPipeline s_post_process_compute_pipeline = VK_NULL_HANDLE;
 
 camera_t s_main_camera;
@@ -1053,6 +1055,35 @@ static void texture_release(texture_t& texture)
     vkDestroyImageView(s_context.device, texture.image_view, nullptr);
     vkDestroyImage(s_context.device, texture.image, nullptr);
     vkFreeMemory(s_context.device, texture.memory, nullptr);
+}
+
+static void buffer_init(buffer_t& out_buffer)
+{
+    VkBufferCreateInfo create_info{};
+    VkStructureType        sType;
+    const void*            pNext;
+    VkBufferCreateFlags    flags;
+    VkDeviceSize           size;
+    VkBufferUsageFlags     usage;
+    VkSharingMode          sharingMode;
+    uint32_t               queueFamilyIndexCount;
+    const uint32_t*        pQueueFamilyIndices;
+    vkCreateBuffer(s_context.device, &create_info, nullptr, &out_buffer.buffer);
+
+    VkMemoryRequirements mem_requirements{};
+    vkGetBufferMemoryRequirements(s_context.device, out_buffer.buffer, &mem_requirements);
+    out_buffer.memory_size = mem_requirements.size;
+
+    VkMemoryAllocateInfo alloc_info{};
+    vkAllocateMemory();
+
+    vkBindBufferMemory(s_context.device, out_buffer.buffer, out_buffer.memory, 0);
+}
+
+static void buffer_release(buffer_t& out_buffer)
+{
+    vkFreeMemory(s_context.device, out_buffer.memory, nullptr);
+    vkDestroyBuffer(s_context.device, out_buffer.buffer, nullptr);
 }
 
 static void init_swapchain()
