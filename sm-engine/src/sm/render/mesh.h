@@ -50,6 +50,8 @@ namespace sm
     void mesh_add_index(mesh_t* mesh, u32 index);
     void mesh_add_vertex_and_index(mesh_t* mesh, const vertex_t& v);
     void mesh_add_triangle_indices(mesh_t* mesh, u32 index0, u32 index1, u32 index2);
+    void mesh_add_quad_3d(mesh_t* mesh, const vec3_t& top_left, const vec3_t& top_right, const vec3_t& bottom_right, const vec3_t& bottom_left);
+    void mesh_add_quad_3d(mesh_t* mesh, const vec3_t& centerPos, const vec3_t& right, const vec3_t& up, f32 half_width, f32 half_height, u32 resolution);
 
     void primitive_shapes_init();
     const mesh_t* primitive_shape_get_mesh(primitive_shape_t shape);

@@ -113,7 +113,7 @@ struct render_frame_t
 	VkDescriptorSet infinite_grid_descriptor_set;
 };
 
-// uniform buffer layotus
+// uniform buffer layouts
 struct frame_render_data_t
 {
 	f32 elapsed_time_seconds;
@@ -151,9 +151,7 @@ VkDescriptorSetLayout s_global_descriptor_set_layout = VK_NULL_HANDLE;
 VkDescriptorSetLayout s_frame_descriptor_set_layout = VK_NULL_HANDLE;
 VkDescriptorSetLayout s_material_descriptor_set_layout = VK_NULL_HANDLE;
 VkDescriptorSetLayout s_mesh_instance_descriptor_set_layout = VK_NULL_HANDLE;
-
 VkDescriptorSetLayout s_post_process_descriptor_set_layout = VK_NULL_HANDLE;
-
 VkDescriptorSetLayout s_infinite_grid_descriptor_set_layout = VK_NULL_HANDLE;
 
 VkDescriptorSet s_global_descriptor_set = VK_NULL_HANDLE;
@@ -168,7 +166,10 @@ array_t<render_frame_t> s_render_frames;
 mesh_t* s_viking_room_mesh = nullptr;
 buffer_t s_viking_room_vertex_buffer;
 buffer_t s_viking_room_index_buffer;
+
+// we shouldn't have a single global mesh instance buffer, each frame needs it own buffer memory to point to for mvp
 buffer_t s_viking_room_mesh_instance_buffer;
+
 texture_t s_viking_room_diffuse_texture;
 VkDescriptorSet s_viking_room_material_descriptor_set = VK_NULL_HANDLE;
 VkPipelineLayout s_viking_room_main_draw_pipeline_layout = VK_NULL_HANDLE;

@@ -11,7 +11,7 @@ bool s_did_init_primitive_shapes = false;
 mesh_t* s_primitive_shapes[(u32)primitive_shape_t::NUM_PRIMITIVE_SHAPES];
 arena_t* s_primitives_arena = nullptr;
 
-static void add_quad_3d(mesh_t* mesh, const vec3_t& top_left, const vec3_t& top_right, const vec3_t& bottom_right, const vec3_t& bottom_left)
+void sm::mesh_add_quad_3d(mesh_t* mesh, const vec3_t& top_left, const vec3_t& top_right, const vec3_t& bottom_right, const vec3_t& bottom_left)
 {
 	u32 top_left_index = mesh_add_vertex(mesh, vertex_init(top_left, vec2_t(0.0f, 0.0f), color_f32_t::WHITE));
 	u32 top_right_index = mesh_add_vertex(mesh, vertex_init(top_right, vec2_t(1.0f, 0.0f), color_f32_t::WHITE));
@@ -22,7 +22,7 @@ static void add_quad_3d(mesh_t* mesh, const vec3_t& top_left, const vec3_t& top_
 	mesh_add_triangle_indices(mesh, top_left_index, bottom_left_index, bottom_right_index);
 }
 
-static void add_quad_3d(mesh_t* mesh, const vec3_t& centerPos, const vec3_t& right, const vec3_t& up, f32 half_width, f32 half_height, u32 resolution)
+void sm::mesh_add_quad_3d(mesh_t* mesh, const vec3_t& centerPos, const vec3_t& right, const vec3_t& up, f32 half_width, f32 half_height, u32 resolution)
 {
 	vec3_t right_norm = normalized(right);
 	vec3_t up_norm = normalized(up);
@@ -154,12 +154,12 @@ void sm::primitive_shapes_init()
 		cube_mesh->indices = array_init<u32>(s_primitives_arena, 64);
 		cube_mesh->topology = primitive_topology_t::TRIANGLE_LIST;
 
-        add_quad_3d(cube_mesh, vec3_t::WORLD_FORWARD * 0.5f,  vec3_t::WORLD_LEFT,         vec3_t::WORLD_UP, 0.5f, 0.5f, 1);
-        add_quad_3d(cube_mesh, vec3_t::WORLD_LEFT * 0.5f,     vec3_t::WORLD_BACKWARD,     vec3_t::WORLD_UP, 0.5f, 0.5f, 1);
-        add_quad_3d(cube_mesh, vec3_t::WORLD_BACKWARD * 0.5f, vec3_t::WORLD_RIGHT,        vec3_t::WORLD_UP, 0.5f, 0.5f, 1);
-        add_quad_3d(cube_mesh, vec3_t::WORLD_RIGHT * 0.5f,    vec3_t::WORLD_FORWARD,      vec3_t::WORLD_UP, 0.5f, 0.5f, 1);
-        add_quad_3d(cube_mesh, vec3_t::WORLD_UP * 0.5f,       vec3_t::WORLD_RIGHT,        vec3_t::WORLD_FORWARD, 0.5f, 0.5f, 1);
-        add_quad_3d(cube_mesh, vec3_t::WORLD_DOWN * 0.5f,     vec3_t::WORLD_LEFT,         vec3_t::WORLD_FORWARD, 0.5f, 0.5f, 1);
+        mesh_add_quad_3d(cube_mesh, vec3_t::WORLD_FORWARD * 0.5f,  vec3_t::WORLD_LEFT,         vec3_t::WORLD_UP, 0.5f, 0.5f, 1);
+        mesh_add_quad_3d(cube_mesh, vec3_t::WORLD_LEFT * 0.5f,     vec3_t::WORLD_BACKWARD,     vec3_t::WORLD_UP, 0.5f, 0.5f, 1);
+        mesh_add_quad_3d(cube_mesh, vec3_t::WORLD_BACKWARD * 0.5f, vec3_t::WORLD_RIGHT,        vec3_t::WORLD_UP, 0.5f, 0.5f, 1);
+        mesh_add_quad_3d(cube_mesh, vec3_t::WORLD_RIGHT * 0.5f,    vec3_t::WORLD_FORWARD,      vec3_t::WORLD_UP, 0.5f, 0.5f, 1);
+        mesh_add_quad_3d(cube_mesh, vec3_t::WORLD_UP * 0.5f,       vec3_t::WORLD_RIGHT,        vec3_t::WORLD_FORWARD, 0.5f, 0.5f, 1);
+        mesh_add_quad_3d(cube_mesh, vec3_t::WORLD_DOWN * 0.5f,     vec3_t::WORLD_LEFT,         vec3_t::WORLD_FORWARD, 0.5f, 0.5f, 1);
 
         s_primitive_shapes[(u32)primitive_shape_t::CUBE] = cube_mesh;
     }
@@ -287,7 +287,7 @@ void sm::primitive_shapes_init()
 		plane_mesh->indices = array_init<u32>(s_primitives_arena, 64);
 		plane_mesh->topology = primitive_topology_t::TRIANGLE_LIST;
 
-        add_quad_3d(plane_mesh, vec3_t::ZERO, vec3_t::WORLD_RIGHT, vec3_t::WORLD_FORWARD, 0.5f, 0.5f, 1);
+        mesh_add_quad_3d(plane_mesh, vec3_t::ZERO, vec3_t::WORLD_RIGHT, vec3_t::WORLD_FORWARD, 0.5f, 0.5f, 1);
 
         s_primitive_shapes[(u32)primitive_shape_t::PLANE] = plane_mesh;
     }
@@ -301,7 +301,7 @@ void sm::primitive_shapes_init()
 
         // this is a full screen quad in ndc space
         // todo: probably should break this out into its own thing
-        add_quad_3d(quad_mesh, vec3_t::ZERO, vec3_t(1.0f, 0.0f, 0.0f), vec3_t(0.0f, -1.0f, 0.0f), 1.0f, 1.0f, 1);
+        mesh_add_quad_3d(quad_mesh, vec3_t::ZERO, vec3_t(1.0f, 0.0f, 0.0f), vec3_t(0.0f, -1.0f, 0.0f), 1.0f, 1.0f, 1);
 
         s_primitive_shapes[(u32)primitive_shape_t::QUAD] = quad_mesh;
     }
