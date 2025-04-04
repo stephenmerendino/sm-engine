@@ -70,14 +70,12 @@ struct buffer_t
 {
     VkBuffer buffer = VK_NULL_HANDLE;
     VkDeviceMemory memory = VK_NULL_HANDLE;
-    VkDeviceSize memory_size = 0;
 };
 
 struct texture_t
 {
     VkImage image = VK_NULL_HANDLE;
     VkDeviceMemory memory = VK_NULL_HANDLE;
-    VkDeviceSize memory_size = 0;
     VkImageView image_view = VK_NULL_HANDLE;
     u32 num_mips = 0;
 };
@@ -91,12 +89,10 @@ struct render_frame_t
 	// frame level resources
 	VkFence frame_completed_fence;
 	VkSemaphore frame_completed_semaphore;
-	VkDescriptorSet frame_descriptor_set;
-
-    //buffer_t frame_descriptor_buffer;
-	VkBuffer frame_descriptor_buffer;
-	VkDeviceMemory frame_descriptor_buffer_memory;
 	VkCommandBuffer frame_command_buffer;
+
+    buffer_t frame_descriptor_buffer;
+	VkDescriptorSet frame_descriptor_set;
 
     texture_t main_draw_color_multisample_texture;
     texture_t main_draw_depth_multisample_texture;
@@ -113,11 +109,7 @@ struct render_frame_t
 	VkDescriptorSet	post_processing_descriptor_set;
 
 	// infinite grid
-    //buffer_t infinite_grid_data_buffer;
-    VkBuffer infinite_grid_data_buffer;
-    VkDeviceMemory infinite_grid_buffer_device_memory;
-    VkDeviceSize infinite_grid_buffer_device_size;
-
+    buffer_t infinite_grid_data_buffer;
 	VkDescriptorSet infinite_grid_descriptor_set;
 };
 
@@ -174,27 +166,17 @@ array_t<render_frame_t> s_render_frames;
 
 // viking room mesh/material resources
 mesh_t* s_viking_room_mesh = nullptr;
+buffer_t s_viking_room_vertex_buffer;
+buffer_t s_viking_room_index_buffer;
+buffer_t s_viking_room_mesh_instance_buffer;
 texture_t s_viking_room_diffuse_texture;
-
-//buffer_t s_viking_room_vertex_buffer;
-VkBuffer s_viking_room_vertex_buffer = VK_NULL_HANDLE;
-VkDeviceMemory s_viking_room_vertex_buffer_memory = VK_NULL_HANDLE;
-
-//buffer_t s_viking_room_index_buffer;
-VkBuffer s_viking_room_index_buffer = VK_NULL_HANDLE;
-VkDeviceMemory s_viking_room_index_buffer_memory = VK_NULL_HANDLE;
-
 VkDescriptorSet s_viking_room_material_descriptor_set = VK_NULL_HANDLE;
-
-//buffer_t s_viking_room_mesh_instance_buffer;
-VkBuffer s_viking_room_mesh_instance_buffer = VK_NULL_HANDLE;
-VkDeviceMemory s_viking_room_mesh_instance_buffer_memory = VK_NULL_HANDLE;
-
 VkPipelineLayout s_viking_room_main_draw_pipeline_layout = VK_NULL_HANDLE;
-VkPipelineLayout s_infinite_grid_main_draw_pipeline_layout = VK_NULL_HANDLE;
-VkPipelineLayout s_post_process_pipeline_layout = VK_NULL_HANDLE;
-
 VkPipeline s_viking_room_main_draw_pipeline = VK_NULL_HANDLE;
+
+VkPipelineLayout s_infinite_grid_main_draw_pipeline_layout = VK_NULL_HANDLE;
+
+VkPipelineLayout s_post_process_pipeline_layout = VK_NULL_HANDLE;
 VkPipeline s_post_process_compute_pipeline = VK_NULL_HANDLE;
 
 camera_t s_main_camera;
@@ -244,12 +226,12 @@ static VkFormat find_supported_depth_format(VkPhysicalDevice phys_device)
 	return depthFormat;
 }
 
-static u32 find_supported_memory_type(VkPhysicalDeviceMemoryProperties device_mem_props, u32 type_filter, VkMemoryPropertyFlags requested_flags)
+static u32 find_supported_memory_type(u32 type_filter, VkMemoryPropertyFlags requested_flags)
 {
 	u32 found_mem_type = UINT_MAX;
-	for (u32 i = 0; i < device_mem_props.memoryTypeCount; i++)
+	for (u32 i = 0; i < s_context.phys_device_mem_props.memoryTypeCount; i++)
 	{
-		if (type_filter & (1 << i) && (device_mem_props.memoryTypes[i].propertyFlags & requested_flags) == requested_flags)
+		if (type_filter & (1 << i) && (s_context.phys_device_mem_props.memoryTypes[i].propertyFlags & requested_flags) == requested_flags)
 		{
 			found_mem_type = i;
 			break;
@@ -591,9 +573,8 @@ static void upload_buffer_data(VkBuffer dst_buffer, void* src_data, size_t src_d
     staging_alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     staging_alloc_info.pNext = nullptr;
     staging_alloc_info.allocationSize = staging_buffer_mem_requirements.size;
-    staging_alloc_info.memoryTypeIndex = find_supported_memory_type(s_context.phys_device_mem_props,
-        staging_buffer_mem_requirements.memoryTypeBits,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    staging_alloc_info.memoryTypeIndex = find_supported_memory_type(staging_buffer_mem_requirements.memoryTypeBits,
+                                                                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     SM_VULKAN_ASSERT(vkAllocateMemory(s_context.device, &staging_alloc_info, nullptr, &staging_buffer_memory));
     SM_VULKAN_ASSERT(vkBindBufferMemory(s_context.device, staging_buffer, staging_buffer_memory, 0));
 
@@ -691,12 +672,11 @@ static void texture_init(texture_t& out_texture, VkFormat format, VkExtent3D siz
     // VkDeviceMemory
     VkMemoryRequirements mem_requirements;
     vkGetImageMemoryRequirements(s_context.device, out_texture.image, &mem_requirements);
-    out_texture.memory_size = mem_requirements.size;
 
     VkMemoryAllocateInfo alloc_info{};
     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    alloc_info.allocationSize = out_texture.memory_size;
-    alloc_info.memoryTypeIndex = find_supported_memory_type(s_context.phys_device_mem_props, mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    alloc_info.allocationSize = mem_requirements.size;
+    alloc_info.memoryTypeIndex = find_supported_memory_type(mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     SM_VULKAN_ASSERT(vkAllocateMemory(s_context.device, &alloc_info, nullptr, &out_texture.memory));
 
     vkBindImageMemory(s_context.device, out_texture.image, out_texture.memory, 0);
@@ -778,13 +758,11 @@ static void texture_init_from_file(texture_t& out_texture, const char* filename,
         VkMemoryRequirements image_mem_requirements;
         vkGetImageMemoryRequirements(s_context.device, out_texture.image, &image_mem_requirements);
 
-        out_texture.memory_size = image_mem_requirements.size;
-
         VkMemoryAllocateInfo alloc_info{};
         alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         alloc_info.pNext = nullptr;
-        alloc_info.allocationSize = out_texture.memory_size;
-        alloc_info.memoryTypeIndex = find_supported_memory_type(s_context.phys_device_mem_props, image_mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        alloc_info.allocationSize = image_mem_requirements.size;
+        alloc_info.memoryTypeIndex = find_supported_memory_type(image_mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
         SM_VULKAN_ASSERT(vkAllocateMemory(s_context.device, &alloc_info, nullptr, &out_texture.memory));
 
         SM_VULKAN_ASSERT(vkBindImageMemory(s_context.device, out_texture.image, out_texture.memory, 0));
@@ -835,7 +813,7 @@ static void texture_init_from_file(texture_t& out_texture, const char* filename,
         alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         alloc_info.pNext = nullptr;
         alloc_info.allocationSize = staging_buffer_mem_requirements.size;
-        alloc_info.memoryTypeIndex = find_supported_memory_type(s_context.phys_device_mem_props, staging_buffer_mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        alloc_info.memoryTypeIndex = find_supported_memory_type(staging_buffer_mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
         SM_VULKAN_ASSERT(vkAllocateMemory(s_context.device, &alloc_info, nullptr, &staging_buffer_memory));
 
         SM_VULKAN_ASSERT(vkBindBufferMemory(s_context.device, staging_buffer, staging_buffer_memory, 0));
@@ -1057,33 +1035,47 @@ static void texture_release(texture_t& texture)
     vkFreeMemory(s_context.device, texture.memory, nullptr);
 }
 
-static void buffer_init(buffer_t& out_buffer)
+static void buffer_init(buffer_t& out_buffer, size_t size, VkBufferUsageFlags usage_flags, VkMemoryPropertyFlags memory_flags)
 {
-    VkBufferCreateInfo create_info{};
-    VkStructureType        sType;
-    const void*            pNext;
-    VkBufferCreateFlags    flags;
-    VkDeviceSize           size;
-    VkBufferUsageFlags     usage;
-    VkSharingMode          sharingMode;
-    uint32_t               queueFamilyIndexCount;
-    const uint32_t*        pQueueFamilyIndices;
-    vkCreateBuffer(s_context.device, &create_info, nullptr, &out_buffer.buffer);
+    // buffer
+    u32 queue_families[] = {
+        (u32)s_context.queue_indices.graphics_and_compute
+    };
 
+    VkBufferCreateInfo create_info{
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .size = size,
+        .usage = usage_flags,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .queueFamilyIndexCount = ARRAY_LEN(queue_families),
+        .pQueueFamilyIndices = queue_families
+    };
+    SM_VULKAN_ASSERT(vkCreateBuffer(s_context.device, &create_info, nullptr, &out_buffer.buffer));
+
+    // memory
     VkMemoryRequirements mem_requirements{};
     vkGetBufferMemoryRequirements(s_context.device, out_buffer.buffer, &mem_requirements);
-    out_buffer.memory_size = mem_requirements.size;
 
-    VkMemoryAllocateInfo alloc_info{};
-    vkAllocateMemory();
+    u32 memory_type_index = find_supported_memory_type(mem_requirements.memoryTypeBits, memory_flags);
 
-    vkBindBufferMemory(s_context.device, out_buffer.buffer, out_buffer.memory, 0);
+    VkMemoryAllocateInfo alloc_info{
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .pNext = nullptr,
+        .allocationSize = mem_requirements.size,
+        .memoryTypeIndex = memory_type_index
+    };
+    SM_VULKAN_ASSERT(vkAllocateMemory(s_context.device, &alloc_info, nullptr, &out_buffer.memory));
+
+    // bind together
+    SM_VULKAN_ASSERT(vkBindBufferMemory(s_context.device, out_buffer.buffer, out_buffer.memory, 0));
 }
 
-static void buffer_release(buffer_t& out_buffer)
+static void buffer_release(buffer_t& buffer)
 {
-    vkFreeMemory(s_context.device, out_buffer.memory, nullptr);
-    vkDestroyBuffer(s_context.device, out_buffer.buffer, nullptr);
+    vkFreeMemory(s_context.device, buffer.memory, nullptr);
+    vkDestroyBuffer(s_context.device, buffer.buffer, nullptr);
 }
 
 static void init_swapchain()
@@ -1360,25 +1352,10 @@ static void init_render_frames()
 
 		// frame uniform buffer
         {
-            VkBufferCreateInfo create_info = {};
-            create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-            create_info.size = sizeof(frame_render_data_t);
-            create_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-            create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-            SM_VULKAN_ASSERT(vkCreateBuffer(s_context.device, &create_info, nullptr, &frame.frame_descriptor_buffer));
-
-            VkMemoryRequirements mem_requirements;
-            vkGetBufferMemoryRequirements(s_context.device, frame.frame_descriptor_buffer, &mem_requirements);
-
-            VkMemoryAllocateInfo alloc_info{};
-            alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-            alloc_info.allocationSize = mem_requirements.size;
-            alloc_info.memoryTypeIndex = find_supported_memory_type(s_context.phys_device_mem_props, mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-            SM_VULKAN_ASSERT(vkAllocateMemory(s_context.device, &alloc_info, nullptr, &frame.frame_descriptor_buffer_memory));
-
-            vkBindBufferMemory(s_context.device, frame.frame_descriptor_buffer, frame.frame_descriptor_buffer_memory, 0);
+            buffer_init(frame.frame_descriptor_buffer, 
+                        sizeof(frame_render_data_t), 
+                        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
         }
 
 		// frame command buffer
@@ -1421,33 +1398,10 @@ static void init_render_frames()
         {
             // uniform buffer
             {
-                VkBufferCreateInfo create_info{};
-                create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-                create_info.flags = 0;
-                create_info.size = sizeof(infinite_grid_data_t);
-                create_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-                create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-                u32 queue_indices[] = {
-                    (u32)s_context.queue_indices.graphics_and_compute
-                };
-                create_info.queueFamilyIndexCount = ARRAY_LEN(queue_indices);
-                create_info.pQueueFamilyIndices = queue_indices;
-
-                SM_VULKAN_ASSERT(vkCreateBuffer(s_context.device, &create_info, nullptr, &frame.infinite_grid_data_buffer));
-
-                VkMemoryRequirements mem_requirements{};
-                vkGetBufferMemoryRequirements(s_context.device, frame.infinite_grid_data_buffer, &mem_requirements);
-
-                VkMemoryAllocateInfo alloc_info{};
-                alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-                alloc_info.allocationSize = mem_requirements.size;
-                alloc_info.memoryTypeIndex = find_supported_memory_type(s_context.phys_device_mem_props, mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-                SM_VULKAN_ASSERT(vkAllocateMemory(s_context.device, &alloc_info, nullptr, &frame.infinite_grid_buffer_device_memory));
-
-                vkBindBufferMemory(s_context.device, frame.infinite_grid_data_buffer, frame.infinite_grid_buffer_device_memory, 0);
-                frame.infinite_grid_buffer_device_size = mem_requirements.size;
+                buffer_init(frame.infinite_grid_data_buffer, 
+                            sizeof(infinite_grid_data_t), 
+                            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+                            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
             }
 
             // descriptor set
@@ -2586,79 +2540,25 @@ void sm::renderer_init(window_t* window)
 		// viking room
 		{
 			s_viking_room_mesh = mesh_init_from_obj(startup_arena, "viking_room.obj");
-            size_t vertex_buffer_size = mesh_calc_vertex_buffer_size(s_viking_room_mesh);
 
 			// vertex buffer
 			{
-                VkBufferCreateInfo create_info{};
-                create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-                create_info.pNext = nullptr;
-                create_info.flags = 0;
-                create_info.size = vertex_buffer_size;
-                create_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-                create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-                u32 queueFamilyIndices[] = { (u32)s_context.queue_indices.graphics_and_compute };
-                create_info.pQueueFamilyIndices = queueFamilyIndices;
-                create_info.queueFamilyIndexCount = ARRAY_LEN(queueFamilyIndices);
-
-                SM_VULKAN_ASSERT(vkCreateBuffer(s_context.device, &create_info, nullptr, &s_viking_room_vertex_buffer));
-
-                VkMemoryRequirements viking_room_mem_requirements{};
-                vkGetBufferMemoryRequirements(s_context.device, s_viking_room_vertex_buffer, &viking_room_mem_requirements);
-
-                // allocate the memory
-                VkMemoryAllocateInfo alloc_info{};
-                alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-                alloc_info.pNext = nullptr;
-                alloc_info.allocationSize = viking_room_mem_requirements.size;
-                alloc_info.memoryTypeIndex = find_supported_memory_type(s_context.phys_device_mem_props, viking_room_mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-				SM_VULKAN_ASSERT(vkAllocateMemory(s_context.device, &alloc_info, nullptr, &s_viking_room_vertex_buffer_memory));
-				SM_VULKAN_ASSERT(vkBindBufferMemory(s_context.device, s_viking_room_vertex_buffer, s_viking_room_vertex_buffer_memory, 0));
-
-				upload_buffer_data(s_viking_room_vertex_buffer, s_viking_room_mesh->vertices.data, vertex_buffer_size);
+                size_t vertex_buffer_size = mesh_calc_vertex_buffer_size(s_viking_room_mesh);
+                buffer_init(s_viking_room_vertex_buffer, 
+                            vertex_buffer_size, 
+                            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+                            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+				upload_buffer_data(s_viking_room_vertex_buffer.buffer, s_viking_room_mesh->vertices.data, vertex_buffer_size);
 			}
 
 			// viking room index buffer
 			{
 				size_t index_buffer_size = mesh_calc_index_buffer_size(s_viking_room_mesh);
-
-				// create the buffer
-				{
-					VkBufferCreateInfo create_info{};
-					create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-					create_info.pNext = nullptr;
-					create_info.flags = 0;
-					create_info.size = index_buffer_size;
-					create_info.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-					create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-					u32 queue_family_indices[] = {
-						(u32)s_context.queue_indices.graphics_and_compute
-					};
-					create_info.queueFamilyIndexCount = ARRAY_LEN(queue_family_indices);
-					create_info.pQueueFamilyIndices = queue_family_indices;
-
-					SM_VULKAN_ASSERT(vkCreateBuffer(s_context.device, &create_info, nullptr, &s_viking_room_index_buffer));
-				}
-
-				// allocate and bind the actual device memory to the buffer
-				{
-					VkMemoryRequirements index_buffer_memory_requirements{};
-					vkGetBufferMemoryRequirements(s_context.device, s_viking_room_index_buffer, &index_buffer_memory_requirements);
-
-					VkMemoryAllocateInfo alloc_info{};
-					alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-					alloc_info.pNext = nullptr;
-					alloc_info.allocationSize = index_buffer_memory_requirements.size;
-					alloc_info.memoryTypeIndex = find_supported_memory_type(s_context.phys_device_mem_props, index_buffer_memory_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-					SM_VULKAN_ASSERT(vkAllocateMemory(s_context.device, &alloc_info, nullptr, &s_viking_room_index_buffer_memory));
-
-					SM_VULKAN_ASSERT(vkBindBufferMemory(s_context.device, s_viking_room_index_buffer, s_viking_room_index_buffer_memory, 0));
-				}
-
-				upload_buffer_data(s_viking_room_index_buffer, s_viking_room_mesh->indices.data, index_buffer_size);
+                buffer_init(s_viking_room_index_buffer, 
+                            index_buffer_size, 
+                            VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+                            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+				upload_buffer_data(s_viking_room_index_buffer.buffer, s_viking_room_mesh->indices.data, index_buffer_size);
 			}
 
 			// viking room diffuse texture
@@ -2707,31 +2607,10 @@ void sm::renderer_init(window_t* window)
 
 			// mesh instance uniform buffer
 			{
-				VkBufferCreateInfo buffer_create_info{};
-				buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-				buffer_create_info.pNext = nullptr;
-				buffer_create_info.flags = 0;
-				buffer_create_info.size = sizeof(mesh_instance_render_data_t);
-				buffer_create_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-				buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-				u32 queue_indices[] = {
-					(u32)s_context.queue_indices.graphics_and_compute
-				};
-				buffer_create_info.queueFamilyIndexCount = ARRAY_LEN(queue_indices);
-				buffer_create_info.pQueueFamilyIndices = queue_indices;
-				SM_VULKAN_ASSERT(vkCreateBuffer(s_context.device, &buffer_create_info, nullptr, &s_viking_room_mesh_instance_buffer));
-
-				VkMemoryRequirements buffer_memory_requirements;
-				vkGetBufferMemoryRequirements(s_context.device, s_viking_room_mesh_instance_buffer, &buffer_memory_requirements);
-
-				VkMemoryAllocateInfo buffer_memory_alloc_info{};
-				buffer_memory_alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-				buffer_memory_alloc_info.pNext = nullptr;
-				buffer_memory_alloc_info.allocationSize = buffer_memory_requirements.size;
-				buffer_memory_requirements.memoryTypeBits = find_supported_memory_type(s_context.phys_device_mem_props, buffer_memory_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-				SM_VULKAN_ASSERT(vkAllocateMemory(s_context.device, &buffer_memory_alloc_info, nullptr, &s_viking_room_mesh_instance_buffer_memory));
-
-				SM_VULKAN_ASSERT(vkBindBufferMemory(s_context.device, s_viking_room_mesh_instance_buffer, s_viking_room_mesh_instance_buffer_memory, 0));
+                buffer_init(s_viking_room_mesh_instance_buffer, 
+                            sizeof(mesh_instance_render_data_t), 
+                            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 			}
 		}
 
@@ -2878,7 +2757,7 @@ void sm::renderer_render_frame()
             frame_data.delta_time_seconds = s_delta_time_seconds;
             frame_data.elapsed_time_seconds = s_elapsed_time_seconds;
 
-            upload_buffer_data(cur_render_frame.frame_descriptor_buffer, &frame_data, sizeof(frame_render_data_t));
+            upload_buffer_data(cur_render_frame.frame_descriptor_buffer.buffer, &frame_data, sizeof(frame_render_data_t));
 
             VkWriteDescriptorSet descriptor_set_write{};
             descriptor_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -2891,7 +2770,7 @@ void sm::renderer_render_frame()
             descriptor_set_write.pImageInfo = nullptr;
 
             VkDescriptorBufferInfo buffer_info{};
-            buffer_info.buffer = cur_render_frame.frame_descriptor_buffer;
+            buffer_info.buffer = cur_render_frame.frame_descriptor_buffer.buffer;
             buffer_info.offset = 0;
             buffer_info.range = sizeof(frame_render_data_t);
             descriptor_set_write.pBufferInfo = &buffer_info;
@@ -2994,7 +2873,7 @@ void sm::renderer_render_frame()
             mesh_instance_render_data_t mesh_instance_render_data{};
             mesh_instance_render_data.mvp = viking_room_mvp;
 
-            upload_buffer_data(s_viking_room_mesh_instance_buffer, &mesh_instance_render_data, sizeof(mesh_instance_render_data_t));
+            upload_buffer_data(s_viking_room_mesh_instance_buffer.buffer, &mesh_instance_render_data, sizeof(mesh_instance_render_data_t));
 
             // allocate and update mesh instance descriptor set
             VkDescriptorSetAllocateInfo viking_room_mesh_instance_descriptor_set_alloc_info{};
@@ -3018,7 +2897,7 @@ void sm::renderer_render_frame()
             write_mesh_instance_descriptor_set.pImageInfo = nullptr;
 
             VkDescriptorBufferInfo descriptor_buffer_info{};
-            descriptor_buffer_info.buffer = s_viking_room_mesh_instance_buffer;
+            descriptor_buffer_info.buffer = s_viking_room_mesh_instance_buffer.buffer;
             descriptor_buffer_info.offset = 0;
             descriptor_buffer_info.range = sizeof(mesh_instance_render_data_t);
             write_mesh_instance_descriptor_set.pBufferInfo = &descriptor_buffer_info;
@@ -3033,7 +2912,7 @@ void sm::renderer_render_frame()
 
             // bind everything needed to draw
             VkBuffer vertex_buffers[] = {
-                s_viking_room_vertex_buffer
+                s_viking_room_vertex_buffer.buffer
             };
             VkDeviceSize offset = 0;
             VkDeviceSize offsets[] = {
@@ -3041,7 +2920,7 @@ void sm::renderer_render_frame()
             };
             vkCmdBindVertexBuffers(cur_render_frame.frame_command_buffer, 0, 1, vertex_buffers, offsets);
 
-            vkCmdBindIndexBuffer(cur_render_frame.frame_command_buffer, s_viking_room_index_buffer, 0, VK_INDEX_TYPE_UINT32);
+            vkCmdBindIndexBuffer(cur_render_frame.frame_command_buffer, s_viking_room_index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
             VkDescriptorSet descriptor_sets[] = {
                 s_global_descriptor_set,
