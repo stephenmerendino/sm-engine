@@ -1,5 +1,6 @@
 #pragma once
 
+#include  "sm/core/random.h"
 #include "sm/core/types.h"
 #include "sm/math/vec3.h"
 #include "sm/math/vec4.h"
@@ -40,5 +41,10 @@ namespace sm
     inline vec4_t to_vec4(const color_f32_t& color)
     {
         return { color.r, color.g, color.b, color.a };
+    }
+
+    inline color_f32_t color_gen_random()
+    {
+        return { .r = random_gen_zero_to_one(), .g = random_gen_zero_to_one(), .b = random_gen_zero_to_one(), .a = 1.0f };
     }
 }
