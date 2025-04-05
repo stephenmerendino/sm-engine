@@ -106,6 +106,7 @@ struct render_frame_t
 	VkDescriptorPool mesh_instance_descriptor_pool;
 
 	// post processing
+    buffer_t post_processing_params_buffer;
 	VkDescriptorSet	post_processing_descriptor_set;
 
 	// infinite grid
@@ -132,6 +133,12 @@ struct infinite_grid_data_t
 struct mesh_instance_render_data_t
 {
 	mat44_t mvp;
+};
+
+struct post_processing_params_t
+{
+    u32 texture_width = 0;
+    u32 texture_height = 0;
 };
 
 // internal
@@ -1384,6 +1391,11 @@ static void init_render_frames()
 
 		// post processing descriptor set
         {
+            buffer_init(frame.post_processing_params_buffer, 
+                        sizeof(post_processing_params_t), 
+                        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
             VkDescriptorSetAllocateInfo alloc_info{};
             alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
             alloc_info.descriptorPool = s_frame_descriptor_pool;
@@ -2171,9 +2183,16 @@ void sm::renderer_init(window_t* window)
 			dst_image_binding.descriptorCount = 1;
 			dst_image_binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
+			VkDescriptorSetLayoutBinding params_buffer_binding{};
+			params_buffer_binding.binding = 2;
+			params_buffer_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			params_buffer_binding.descriptorCount = 1;
+			params_buffer_binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
             VkDescriptorSetLayoutBinding layout_bindings[] = {
 				src_image_binding,
-				dst_image_binding
+				dst_image_binding,
+                params_buffer_binding
             };
 
             VkDescriptorSetLayoutCreateInfo create_info{};
@@ -2657,7 +2676,8 @@ void sm::renderer_init(window_t* window)
             // post processing
 			{
                 VkDescriptorSetLayout pipeline_descriptor_set_layouts[] = {
-                    s_post_process_descriptor_set_layout
+                    s_post_process_descriptor_set_layout,
+                    s_frame_descriptor_set_layout
                 };
 
                 VkPipelineLayoutCreateInfo pipeline_layout_create_info{};
@@ -3005,11 +3025,18 @@ void sm::renderer_render_frame()
 
             // update post process descriptor set
             {
+                post_processing_params_t post_process_params{
+                    .texture_width  = s_swapchain.extent.width,
+                    .texture_height = s_swapchain.extent.height
+                };
+                upload_buffer_data(cur_render_frame.post_processing_params_buffer.buffer, &post_process_params, sizeof(post_process_params));
+
                 VkDescriptorImageInfo main_draw_color_storage_image_descriptor_info{
                     .sampler = VK_NULL_HANDLE,
                     .imageView = cur_render_frame.main_draw_color_resolve_texture.image_view,
                     .imageLayout = VK_IMAGE_LAYOUT_GENERAL
                 };
+
                 VkWriteDescriptorSet main_draw_color_storage_image_descriptor_set_write{
                     .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                     .pNext = nullptr,
@@ -3041,17 +3068,43 @@ void sm::renderer_render_frame()
                     .pTexelBufferView = nullptr
                 };
 
+                VkDescriptorBufferInfo post_process_params_buffer_descriptor_info{
+                    .buffer = cur_render_frame.post_processing_params_buffer.buffer,
+                    .offset = 0,
+                    .range = sizeof(post_processing_params_t)
+                };
+                VkWriteDescriptorSet post_process_params_buffer_write{
+                    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                    .pNext = nullptr,
+                    .dstSet = cur_render_frame.post_processing_descriptor_set,
+                    .dstBinding = 2,
+                    .dstArrayElement = 0,
+                    .descriptorCount = 1,
+                    .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                    .pImageInfo = nullptr,
+                    .pBufferInfo = &post_process_params_buffer_descriptor_info,
+                    .pTexelBufferView = nullptr
+                };
+                
+
                 VkWriteDescriptorSet descriptor_set_writes[] = {
                     main_draw_color_storage_image_descriptor_set_write,
-                    post_process_storage_image_descriptor_set_write
+                    post_process_storage_image_descriptor_set_write,
+                    post_process_params_buffer_write
                 };
                 vkUpdateDescriptorSets(s_context.device, ARRAY_LEN(descriptor_set_writes), descriptor_set_writes, 0, nullptr);
             }
 
+            VkDescriptorSet post_processing_descriptor_sets[] = {
+                cur_render_frame.post_processing_descriptor_set,
+                cur_render_frame.frame_descriptor_set
+            };
+
             vkCmdBindDescriptorSets(cur_render_frame.frame_command_buffer, 
                                     VK_PIPELINE_BIND_POINT_COMPUTE, 
                                     s_post_process_pipeline_layout, 
-                                    0, 1, &cur_render_frame.post_processing_descriptor_set, 
+                                    0, 
+                                    ARRAY_LEN(post_processing_descriptor_sets), post_processing_descriptor_sets,
                                     0, nullptr);
             vkCmdBindPipeline(cur_render_frame.frame_command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, s_post_process_compute_pipeline);
             vkCmdDispatch(cur_render_frame.frame_command_buffer, s_swapchain.extent.width >> 3, s_swapchain.extent.height >> 3, 1);
