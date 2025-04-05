@@ -233,7 +233,7 @@ window_t* sm::window_init(sm::arena_t* arena, const char* name, u32 width, u32 h
 	wc.hCursor = ::LoadCursor(NULL, IDC_ARROW);
 	RegisterClassEx(&wc);
 
-	DWORD style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_VISIBLE;
+	DWORD style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_VISIBLE;
 	if (resizable)
 	{
 		style |= WS_THICKFRAME;

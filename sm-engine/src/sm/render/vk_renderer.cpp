@@ -80,6 +80,8 @@ struct texture_t
     u32 num_mips = 0;
 };
 
+static const u32 MAX_NUM_MESH_INSTANCES_PER_FRAME = 10;
+
 struct render_frame_t 
 {
 	// swapchain
@@ -104,6 +106,7 @@ struct render_frame_t
 
 	// mesh instance descriptors
 	VkDescriptorPool mesh_instance_descriptor_pool;
+    buffer_t mesh_instance_render_data_buffers[MAX_NUM_MESH_INSTANCES_PER_FRAME];
 
 	// post processing
     buffer_t post_processing_params_buffer;
@@ -175,7 +178,7 @@ buffer_t s_viking_room_vertex_buffer;
 buffer_t s_viking_room_index_buffer;
 
 // we shouldn't have a single global mesh instance buffer, each frame needs it own buffer memory to point to for mvp
-buffer_t s_viking_room_mesh_instance_buffer;
+//buffer_t s_viking_room_mesh_instance_buffer;
 
 texture_t s_viking_room_diffuse_texture;
 VkDescriptorSet s_viking_room_material_descriptor_set = VK_NULL_HANDLE;
@@ -1309,9 +1312,9 @@ static void init_render_frames_render_targets()
 
 static void init_render_frames()
 {
-    for(size_t i = 0; i < s_render_frames.cur_size; i++)
+    for(size_t render_frame_index = 0; render_frame_index < s_render_frames.cur_size; render_frame_index++)
     {
-        render_frame_t& frame = s_render_frames[i];
+        render_frame_t& frame = s_render_frames[render_frame_index];
 
 		// swapchain image is ready semaphore
         {
@@ -1387,6 +1390,17 @@ static void init_render_frames()
             create_info.poolSizeCount = ARRAY_LEN(pool_sizes);
             create_info.pPoolSizes = pool_sizes;
             SM_VULKAN_ASSERT(vkCreateDescriptorPool(s_context.device, &create_info, nullptr, &frame.mesh_instance_descriptor_pool));
+        }
+
+        // mesh instance render data buffers
+        {
+            for(u32 mesh_instance_index = 0; mesh_instance_index < MAX_NUM_MESH_INSTANCES_PER_FRAME; ++mesh_instance_index)
+            {
+                buffer_init(frame.mesh_instance_render_data_buffers[mesh_instance_index], 
+                            sizeof(mesh_instance_render_data_t), 
+                            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+                            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+            }
         }
 
 		// post processing descriptor set
@@ -2624,14 +2638,6 @@ void sm::renderer_init(window_t* window)
 
                 vkUpdateDescriptorSets(s_context.device, ARRAY_LEN(ds_writes), ds_writes, 0, nullptr);
 			}
-
-			// mesh instance uniform buffer
-			{
-                buffer_init(s_viking_room_mesh_instance_buffer, 
-                            sizeof(mesh_instance_render_data_t), 
-                            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
-                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-			}
 		}
 
 		// pipeline layouts
@@ -2894,7 +2900,7 @@ void sm::renderer_render_frame()
             mesh_instance_render_data_t mesh_instance_render_data{};
             mesh_instance_render_data.mvp = viking_room_mvp;
 
-            upload_buffer_data(s_viking_room_mesh_instance_buffer.buffer, &mesh_instance_render_data, sizeof(mesh_instance_render_data_t));
+            upload_buffer_data(cur_render_frame.mesh_instance_render_data_buffers[0].buffer, &mesh_instance_render_data, sizeof(mesh_instance_render_data_t));
 
             // allocate and update mesh instance descriptor set
             VkDescriptorSetAllocateInfo viking_room_mesh_instance_descriptor_set_alloc_info{};
@@ -2907,23 +2913,24 @@ void sm::renderer_render_frame()
             VkDescriptorSet viking_room_mesh_instance_descriptor_set = VK_NULL_HANDLE;
             SM_VULKAN_ASSERT(vkAllocateDescriptorSets(s_context.device, &viking_room_mesh_instance_descriptor_set_alloc_info, &viking_room_mesh_instance_descriptor_set));
 
-            VkWriteDescriptorSet write_mesh_instance_descriptor_set{};
-            write_mesh_instance_descriptor_set.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            write_mesh_instance_descriptor_set.pNext = nullptr;
-            write_mesh_instance_descriptor_set.dstSet = viking_room_mesh_instance_descriptor_set;
-            write_mesh_instance_descriptor_set.dstBinding = 0;
-            write_mesh_instance_descriptor_set.dstArrayElement = 0;
-            write_mesh_instance_descriptor_set.descriptorCount = 1;
-            write_mesh_instance_descriptor_set.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            write_mesh_instance_descriptor_set.pImageInfo = nullptr;
+            VkDescriptorBufferInfo descriptor_buffer_info{
+                .buffer = cur_render_frame.mesh_instance_render_data_buffers[0].buffer,
+                .offset = 0,
+                .range = sizeof(mesh_instance_render_data_t)
+            };
 
-            VkDescriptorBufferInfo descriptor_buffer_info{};
-            descriptor_buffer_info.buffer = s_viking_room_mesh_instance_buffer.buffer;
-            descriptor_buffer_info.offset = 0;
-            descriptor_buffer_info.range = sizeof(mesh_instance_render_data_t);
-            write_mesh_instance_descriptor_set.pBufferInfo = &descriptor_buffer_info;
-
-            write_mesh_instance_descriptor_set.pTexelBufferView = nullptr;
+            VkWriteDescriptorSet write_mesh_instance_descriptor_set{
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .pNext = nullptr,
+                .dstSet = viking_room_mesh_instance_descriptor_set,
+                .dstBinding = 0,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .pImageInfo = nullptr,
+                .pBufferInfo = &descriptor_buffer_info,
+                .pTexelBufferView = nullptr
+            };
 
             VkWriteDescriptorSet descriptor_set_writes[] = {
                 write_mesh_instance_descriptor_set
