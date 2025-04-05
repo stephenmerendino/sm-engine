@@ -223,6 +223,23 @@ static void end_queue_debug_label(VkQueue queue)
     vkQueueEndDebugUtilsLabelEXT(queue);
 }
 
+static void insert_queue_debug_label(VkQueue queue, const char* label, const color_f32_t& color)
+{
+    if (!is_running_in_debug())
+    {
+        return;
+    }
+
+    VkDebugUtilsLabelEXT queue_label{
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
+        .pNext = nullptr,
+        .pLabelName = label,
+        .color = { color.r, color.g, color.b, color.a }
+    };
+
+    vkQueueInsertDebugUtilsLabelEXT(queue, &queue_label);
+}
+
 static void begin_command_buffer_debug_label(VkCommandBuffer command_buffer, const char* label, const color_f32_t& color)
 {
     if (!is_running_in_debug())
@@ -248,6 +265,23 @@ static void end_command_buffer_debug_label(VkCommandBuffer command_buffer)
     }
 
     vkCmdEndDebugUtilsLabelEXT(command_buffer);
+}
+
+static void insert_command_buffer_debug_label(VkCommandBuffer command_buffer, const char* label, const color_f32_t& color)
+{
+    if (!is_running_in_debug())
+    {
+        return;
+    }
+
+    VkDebugUtilsLabelEXT queue_label{
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
+        .pNext = nullptr,
+        .pLabelName = label,
+        .color = { color.r, color.g, color.b, color.a }
+    };
+
+    vkCmdInsertDebugUtilsLabelEXT(command_buffer, &queue_label);
 }
 
 class auto_queue_debug_label_t
@@ -702,24 +736,28 @@ static void upload_buffer_data(VkBuffer dst_buffer, void* src_data, size_t src_d
     VkCommandBuffer buffer_copy_command_buffer = VK_NULL_HANDLE;
     SM_VULKAN_ASSERT(vkAllocateCommandBuffers(s_context.device, &command_buffer_alloc_info, &buffer_copy_command_buffer));
 
-    VkCommandBufferBeginInfo buffer_copy_command_buffer_begin_info{};
-    buffer_copy_command_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    buffer_copy_command_buffer_begin_info.pNext = nullptr;
-    buffer_copy_command_buffer_begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    buffer_copy_command_buffer_begin_info.pInheritanceInfo = nullptr;
-    SM_VULKAN_ASSERT(vkBeginCommandBuffer(buffer_copy_command_buffer, &buffer_copy_command_buffer_begin_info));
+    {
+        VkCommandBufferBeginInfo buffer_copy_command_buffer_begin_info{};
+        buffer_copy_command_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        buffer_copy_command_buffer_begin_info.pNext = nullptr;
+        buffer_copy_command_buffer_begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        buffer_copy_command_buffer_begin_info.pInheritanceInfo = nullptr;
+        SM_VULKAN_ASSERT(vkBeginCommandBuffer(buffer_copy_command_buffer, &buffer_copy_command_buffer_begin_info));
 
-    VkBufferCopy buffer_copy{};
-    buffer_copy.srcOffset = 0;
-    buffer_copy.dstOffset = 0;
-    buffer_copy.size = src_data_size;
+        SCOPED_QUEUE_DEBUG_LABEL(s_context.graphics_queue, "Staging Buffer Upload", color_gen_random());
 
-    VkBufferCopy copy_regions[] = {
-        buffer_copy
-    };
-    vkCmdCopyBuffer(buffer_copy_command_buffer, staging_buffer, dst_buffer, ARRAY_LEN(copy_regions), copy_regions);
+        VkBufferCopy buffer_copy{};
+        buffer_copy.srcOffset = 0;
+        buffer_copy.dstOffset = 0;
+        buffer_copy.size = src_data_size;
 
-    vkEndCommandBuffer(buffer_copy_command_buffer);
+        VkBufferCopy copy_regions[] = {
+            buffer_copy
+        };
+        vkCmdCopyBuffer(buffer_copy_command_buffer, staging_buffer, dst_buffer, ARRAY_LEN(copy_regions), copy_regions);
+
+        vkEndCommandBuffer(buffer_copy_command_buffer);
+    }
 
     VkSubmitInfo submit_info{};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
