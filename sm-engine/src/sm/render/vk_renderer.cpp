@@ -109,6 +109,7 @@ struct render_frame_t
     texture_t post_processing_color_texture;
 
 	VkFramebuffer main_draw_framebuffer;
+    VkFramebuffer gizmo_draw_framebuffer;
 	VkFramebuffer imgui_framebuffer;
 
 	// mesh instance descriptors
@@ -202,8 +203,9 @@ static VkDescriptorSet s_viking_room_material_descriptor_set = VK_NULL_HANDLE;
 static VkPipelineLayout s_viking_room_main_draw_pipeline_layout = VK_NULL_HANDLE;
 static VkPipeline s_viking_room_main_draw_pipeline = VK_NULL_HANDLE;
 
-static VkPipelineLayout s_infinite_grid_main_draw_pipeline_layout = VK_NULL_HANDLE;
+static VkPipeline s_gizmo_draw_pipeline = VK_NULL_HANDLE;
 
+static VkPipelineLayout s_infinite_grid_main_draw_pipeline_layout = VK_NULL_HANDLE;
 static VkPipelineLayout s_post_process_pipeline_layout = VK_NULL_HANDLE;
 static VkPipeline s_post_process_compute_pipeline = VK_NULL_HANDLE;
 
@@ -1447,6 +1449,22 @@ static void init_render_frames_render_targets()
             SM_VULKAN_ASSERT(vkCreateFramebuffer(s_context.device, &create_info, nullptr, &frame.main_draw_framebuffer));
         }
 
+        // gizmo draw framebuffer
+        {
+            VkFramebufferCreateInfo create_info{};
+            create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            create_info.renderPass = s_gizmo_render_pass;
+            VkImageView image_views[] = {
+                frame.post_processing_color_texture.image_view
+            };
+            create_info.attachmentCount = ARRAY_LEN(image_views);
+            create_info.pAttachments = image_views;
+            create_info.width = s_swapchain.extent.width;
+            create_info.height = s_swapchain.extent.height;
+            create_info.layers = 1;
+            SM_VULKAN_ASSERT(vkCreateFramebuffer(s_context.device, &create_info, nullptr, &frame.gizmo_draw_framebuffer));
+        }
+
         // imgui framebuffer
         {
             VkFramebufferCreateInfo create_info{};
@@ -2565,30 +2583,71 @@ void sm::renderer_init(window_t* window)
 
         // gizmo render pass
         {
-            VkAttachmentDescription2 color_rt_attachment{
-                //VkStructureType                 sType;
-                //const void*                     pNext;
-                //VkAttachmentDescriptionFlags    flags;
-                //VkFormat                        format;
-                //VkSampleCountFlagBits           samples;
-                //VkAttachmentLoadOp              loadOp;
-                //VkAttachmentStoreOp             storeOp;
-                //VkAttachmentLoadOp              stencilLoadOp;
-                //VkAttachmentStoreOp             stencilStoreOp;
-                //VkImageLayout                   initialLayout;
-                //VkImageLayout                   finalLayout;
+            VkAttachmentDescription2 color_rt_attachment_description{
+                .sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
+                .pNext = nullptr,
+                .flags = 0,
+                .format = s_swapchain.format,
+                .samples = VK_SAMPLE_COUNT_1_BIT,
+                .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+                .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+                .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
             };
 
             VkAttachmentDescription2 attachment_descriptions[] = {
-                color_rt_attachment
+                color_rt_attachment_description
+            };
+
+            VkAttachmentReference2 color_rt_attachment_reference{
+                .sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
+                .pNext = nullptr,
+                .attachment = 0,
+                .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT
+            };
+
+            VkAttachmentReference2 color_attachment_references[] = {
+                color_rt_attachment_reference
+            };
+
+            VkSubpassDescription2 subpass_description{
+                .sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2,
+                .pNext = nullptr,
+                .flags = 0,
+                .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+                .viewMask = 0,
+                .inputAttachmentCount = 0,
+                .pInputAttachments = nullptr,
+                .colorAttachmentCount  = ARRAY_LEN(color_attachment_references),
+                .pColorAttachments = color_attachment_references,
+                .pResolveAttachments = nullptr,
+                .pDepthStencilAttachment = nullptr,
+                .preserveAttachmentCount = 0,
+                .pPreserveAttachments = nullptr
             };
 
             VkSubpassDescription2 subpass_descriptions[] = {
-                {}
+                subpass_description
+            };
+
+            VkSubpassDependency2 subpass_dependency{
+                .sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
+                .pNext = nullptr,
+                .srcSubpass = VK_SUBPASS_EXTERNAL,
+                .dstSubpass = 0,
+                .srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                .dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                .srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                .dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                .dependencyFlags = 0,
+                .viewOffset = 0
             };
 
             VkSubpassDependency2 subpass_dependencies[] = {
-                {}
+                subpass_dependency
             };
 
             VkRenderPassCreateInfo2 create_info{
@@ -2605,7 +2664,7 @@ void sm::renderer_init(window_t* window)
                 .pCorrelatedViewMasks = nullptr
             };
             
-            vkCreateRenderPass2(s_context.device, &create_info, nullptr, &s_gizmo_render_pass);
+            SM_VULKAN_ASSERT(vkCreateRenderPass2(s_context.device, &create_info, nullptr, &s_gizmo_render_pass));
         }
 
 		// imgui render pass
