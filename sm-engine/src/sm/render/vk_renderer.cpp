@@ -693,6 +693,23 @@ static PFN_vkVoidFunction imgui_vulkan_func_loader(const char* functionName, voi
     return vkGetInstanceProcAddr(instance, functionName);
 }
 
+static void set_debug_name(VkObjectType type, u64 handle, const char* debug_name)
+{
+    if (!is_running_in_debug())
+    {
+        return;
+    }
+
+    VkDebugUtilsObjectNameInfoEXT debug_name_info = {
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .pNext = nullptr,
+        .objectType = type,
+        .objectHandle = handle,
+        .pObjectName = debug_name 
+    };
+    SM_VULKAN_ASSERT(vkSetDebugUtilsObjectNameEXT(s_context.device, &debug_name_info));
+}
+
 static void upload_buffer_data(VkBuffer dst_buffer, void* src_data, size_t src_data_size)
 {
     VkBuffer staging_buffer = VK_NULL_HANDLE;
@@ -897,14 +914,7 @@ static void texture_init_from_file(texture_t& out_texture, const char* filename,
 
         SM_VULKAN_ASSERT(vkCreateImage(s_context.device, &image_create_info, nullptr, &out_texture.image));
 
-        VkDebugUtilsObjectNameInfoEXT debug_name_info = {
-            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
-            .pNext = nullptr,
-            .objectType = VK_OBJECT_TYPE_IMAGE,
-            .objectHandle = (u64)out_texture.image,
-            .pObjectName = filename 
-        };
-        SM_VULKAN_ASSERT(vkSetDebugUtilsObjectNameEXT(s_context.device, &debug_name_info));
+        set_debug_name(VK_OBJECT_TYPE_IMAGE, (u64)out_texture.image, filename);
     }
 
     // image memory
@@ -3377,30 +3387,33 @@ static void present_frame(render_frame_t& render_frame)
     vkEndCommandBuffer(render_frame.frame_command_buffer);
 
     // submit frame command buffer
-    VkSubmitInfo frame_command_submit_info{};
-    {
-        frame_command_submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        frame_command_submit_info.pNext = nullptr;
+    VkSemaphore command_buffer_submit_wait_semaphores[] = { 
+        render_frame.swapchain_image_is_ready_semaphore 
+    };
 
-        VkSemaphore wait_semaphores[] = { render_frame.swapchain_image_is_ready_semaphore };
-        VkPipelineStageFlags wait_dst_stage_masks[] = { VK_PIPELINE_STAGE_TRANSFER_BIT };
+    VkPipelineStageFlags command_buffer_submit_wait_dst_stage_masks[] = { 
+        VK_PIPELINE_STAGE_TRANSFER_BIT 
+    };
 
-        frame_command_submit_info.waitSemaphoreCount = ARRAY_LEN(wait_semaphores);
-        frame_command_submit_info.pWaitSemaphores = wait_semaphores;
-        frame_command_submit_info.pWaitDstStageMask = wait_dst_stage_masks;
+    VkCommandBuffer command_buffers[] = {
+        render_frame.frame_command_buffer
+    };
 
-        VkCommandBuffer command_buffers[] = {
-            render_frame.frame_command_buffer
-        };
-        frame_command_submit_info.commandBufferCount = ARRAY_LEN(command_buffers);
-        frame_command_submit_info.pCommandBuffers = command_buffers;
+    VkSemaphore command_buffer_submit_signal_semaphores[] = {
+        render_frame.frame_completed_semaphore
+    };
 
-        VkSemaphore signal_semaphores[] = {
-            render_frame.frame_completed_semaphore
-        };
-        frame_command_submit_info.signalSemaphoreCount = ARRAY_LEN(signal_semaphores);
-        frame_command_submit_info.pSignalSemaphores = signal_semaphores;
-    }
+    VkSubmitInfo frame_command_submit_info{
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .pNext = nullptr,
+        .waitSemaphoreCount = ARRAY_LEN(command_buffer_submit_wait_semaphores),
+        .pWaitSemaphores = command_buffer_submit_wait_semaphores,
+        .pWaitDstStageMask = command_buffer_submit_wait_dst_stage_masks,
+        .commandBufferCount = ARRAY_LEN(command_buffers),
+        .pCommandBuffers = command_buffers,
+        .signalSemaphoreCount = ARRAY_LEN(command_buffer_submit_signal_semaphores),
+        .pSignalSemaphores = command_buffer_submit_signal_semaphores
+    };
 
     VkSubmitInfo frame_command_submits[] = {
         frame_command_submit_info
@@ -3408,20 +3421,21 @@ static void present_frame(render_frame_t& render_frame)
     vkQueueSubmit(s_context.graphics_queue, ARRAY_LEN(frame_command_submits), frame_command_submits, render_frame.frame_completed_fence);
 
     // present swapchain to screen
-    VkPresentInfoKHR present_info{};
-    {
-        present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        present_info.pNext = nullptr;
-        VkSemaphore wait_semaphores[] = {
-            render_frame.frame_completed_semaphore
-        };
-        present_info.waitSemaphoreCount = ARRAY_LEN(wait_semaphores);
-        present_info.pWaitSemaphores = wait_semaphores;
-        present_info.swapchainCount = 1;
-        present_info.pSwapchains = &s_swapchain.handle;
-        present_info.pImageIndices = &render_frame.swapchain_image_index;
-        present_info.pResults = nullptr;
-    }
+    VkSemaphore present_wait_semaphores[] = {
+        render_frame.frame_completed_semaphore
+    };
+
+    VkPresentInfoKHR present_info{
+        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .pNext = nullptr,
+        .waitSemaphoreCount = ARRAY_LEN(present_wait_semaphores),
+        .pWaitSemaphores = present_wait_semaphores,
+        .swapchainCount = 1,
+        .pSwapchains = &s_swapchain.handle,
+        .pImageIndices = &render_frame.swapchain_image_index,
+        .pResults = nullptr
+    };
+
     VkResult present_result = vkQueuePresentKHR(s_context.graphics_queue, &present_info);
     if (present_result == VK_SUBOPTIMAL_KHR || present_result == VK_ERROR_OUT_OF_DATE_KHR)
     {

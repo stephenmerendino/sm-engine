@@ -185,7 +185,7 @@ void sm::primitive_shapes_init()
                 vec4_t pos = vec4_t(radius, 0.0f, 0.0f, 0.0f) * init_rotation_y_degs(y_deg) * init_rotation_z_degs(z_deg);
                 vec3_t finalPos = origin + to_vec3(pos);
 
-                u32 vert_index = mesh_add_vertex(uv_sphere_mesh, vertex_init(finalPos, uv, color_f32_t::WHITE));
+                u32 vert_index = mesh_add_vertex(uv_sphere_mesh, { .pos = finalPos, .uv = uv, .color = to_vec3(color_f32_t::WHITE) });
 
                 if (v_slice == 0)
                 {
@@ -275,30 +275,30 @@ void sm::primitive_shapes_init()
 
             // top triangle 1
             {
-                mesh_add_vertex_and_index(cone_mesh, vertex_init(top_ws, vec2_t(0.5, 0.5f), color_f32_t::WHITE));
-                mesh_add_vertex_and_index(cone_mesh, vertex_init(p0_ws, vec2_t(u0, v0), color_f32_t::WHITE));
-                mesh_add_vertex_and_index(cone_mesh, vertex_init(p1_ws, vec2_t(u1, v1), color_f32_t::WHITE));
+                mesh_add_vertex_and_index(cone_mesh, { .pos = top_ws, .uv = vec2_t(0.5, 0.5f), .color = to_vec3(color_f32_t::WHITE) });
+                mesh_add_vertex_and_index(cone_mesh, { .pos = p0_ws, .uv = vec2_t(u0, v0), .color = to_vec3(color_f32_t::WHITE) });
+                mesh_add_vertex_and_index(cone_mesh, { .pos = p1_ws, .uv = vec2_t(u1, v1), .color = to_vec3(color_f32_t::WHITE) });
             }
 
             // top triangle 2
             {
-                mesh_add_vertex_and_index(cone_mesh, vertex_init(top_ws, vec2_t(0.5f, 0.5), color_f32_t::WHITE));
-                mesh_add_vertex_and_index(cone_mesh, vertex_init(p0_ws, vec2_t(u0, v0), color_f32_t::WHITE));
-                mesh_add_vertex_and_index(cone_mesh, vertex_init(p1_ws, vec2_t(u1, v1), color_f32_t::WHITE));
+                mesh_add_vertex_and_index(cone_mesh, { .pos = top_ws, .uv = vec2_t(0.5f, 0.5), .color = to_vec3(color_f32_t::WHITE) });
+                mesh_add_vertex_and_index(cone_mesh, { .pos = p0_ws, .uv = vec2_t(u0, v0), .color = to_vec3(color_f32_t::WHITE) });
+                mesh_add_vertex_and_index(cone_mesh, { .pos = p1_ws, .uv = vec2_t(u1, v1), .color = to_vec3(color_f32_t::WHITE) });
             }
 
             // bottom triangle 1
             {
-                mesh_add_vertex_and_index(cone_mesh, vertex_init(bot_ws, vec2_t(0.5f, 0.5f), color_f32_t::WHITE));
-                mesh_add_vertex_and_index(cone_mesh, vertex_init(p1_ws, vec2_t(u1, v1), color_f32_t::WHITE));
-                mesh_add_vertex_and_index(cone_mesh, vertex_init(p0_ws, vec2_t(u0, v0), color_f32_t::WHITE));
+                mesh_add_vertex_and_index(cone_mesh, { .pos = bot_ws, .uv = vec2_t(0.5f, 0.5f), .color = to_vec3(color_f32_t::WHITE) });
+                mesh_add_vertex_and_index(cone_mesh, { .pos = p1_ws, .uv = vec2_t(u1, v1), .color = to_vec3(color_f32_t::WHITE) });
+                mesh_add_vertex_and_index(cone_mesh, { .pos = p0_ws, .uv = vec2_t(u0, v0), .color = to_vec3(color_f32_t::WHITE) });
             }
 
             // bottom triangle 2
             {
-                mesh_add_vertex_and_index(cone_mesh, vertex_init(bot_ws, vec2_t(0.5f, 0.5f), color_f32_t::WHITE));
-                mesh_add_vertex_and_index(cone_mesh, vertex_init(p1_ws, vec2_t(u1, v1), color_f32_t::WHITE));
-                mesh_add_vertex_and_index(cone_mesh, vertex_init(p0_ws, vec2_t(u0, v0), color_f32_t::WHITE));
+                mesh_add_vertex_and_index(cone_mesh, { .pos = bot_ws, .uv = vec2_t(0.5f, 0.5f), .color = to_vec3(color_f32_t::WHITE) });
+                mesh_add_vertex_and_index(cone_mesh, { .pos = p1_ws, .uv = vec2_t(u1, v1), .color = to_vec3(color_f32_t::WHITE) });
+                mesh_add_vertex_and_index(cone_mesh, { .pos = p0_ws, .uv = vec2_t(u0, v0), .color = to_vec3(color_f32_t::WHITE) });
             }
         }
 
@@ -347,9 +347,9 @@ void sm::primitive_shapes_init()
                 f32 v0 = remap(p0_xy.y, -1.0f, 1.0f, 0.0f, 1.0f);
                 f32 v1 = remap(p1_xy.y, -1.0f, 1.0f, 0.0f, 1.0f);
 
-                mesh_add_vertex_and_index(cylinder_mesh, vertex_init(top_ws, vec2_t(0.5, 0.5f), color_f32_t::WHITE));
-                mesh_add_vertex_and_index(cylinder_mesh, vertex_init(p0_top_ws, vec2_t(u0, v0), color_f32_t::WHITE));
-                mesh_add_vertex_and_index(cylinder_mesh, vertex_init(p1_top_ws, vec2_t(u1, v1), color_f32_t::WHITE));
+                mesh_add_vertex_and_index(cylinder_mesh, { .pos = top_ws, .uv = vec2_t(0.5, 0.5f), .color = to_vec3(color_f32_t::WHITE) });
+                mesh_add_vertex_and_index(cylinder_mesh, { .pos = p0_top_ws, .uv = vec2_t(u0, v0), .color = to_vec3(color_f32_t::WHITE) });
+                mesh_add_vertex_and_index(cylinder_mesh, { .pos = p1_top_ws, .uv = vec2_t(u1, v1), .color = to_vec3(color_f32_t::WHITE) });
             }
 
             // side triangle 1
@@ -360,9 +360,9 @@ void sm::primitive_shapes_init()
                 u0 *= side_u_scale;
                 u1 *= side_u_scale;
 
-                mesh_add_vertex_and_index(cylinder_mesh, vertex_init(p0_bot_ws, vec2_t(u0, 1.0f), color_f32_t::WHITE));
-                mesh_add_vertex_and_index(cylinder_mesh, vertex_init(p1_bot_ws, vec2_t(u1, 1.0f), color_f32_t::WHITE));
-                mesh_add_vertex_and_index(cylinder_mesh, vertex_init(p1_top_ws, vec2_t(u1, 0.0f), color_f32_t::WHITE));
+                mesh_add_vertex_and_index(cylinder_mesh, { .pos = p0_bot_ws, .uv = vec2_t(u0, 1.0f), .color = to_vec3(color_f32_t::WHITE) });
+                mesh_add_vertex_and_index(cylinder_mesh, { .pos = p1_bot_ws, .uv = vec2_t(u1, 1.0f), .color = to_vec3(color_f32_t::WHITE) });
+                mesh_add_vertex_and_index(cylinder_mesh, { .pos = p1_top_ws, .uv = vec2_t(u1, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
             }
 
             // side triangle 2
@@ -373,9 +373,9 @@ void sm::primitive_shapes_init()
                 u0 *= side_u_scale;
                 u1 *= side_u_scale;
 
-                mesh_add_vertex_and_index(cylinder_mesh, vertex_init(p0_bot_ws, vec2_t(u0, 1.0f), color_f32_t::WHITE));
-                mesh_add_vertex_and_index(cylinder_mesh, vertex_init(p1_top_ws, vec2_t(u1, 0.0f), color_f32_t::WHITE));
-                mesh_add_vertex_and_index(cylinder_mesh, vertex_init(p0_top_ws, vec2_t(u0, 0.0f), color_f32_t::WHITE));
+                mesh_add_vertex_and_index(cylinder_mesh, { .pos = p0_bot_ws, .uv = vec2_t(u0, 1.0f), .color = to_vec3(color_f32_t::WHITE) });
+                mesh_add_vertex_and_index(cylinder_mesh, { .pos = p1_top_ws, .uv = vec2_t(u1, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
+                mesh_add_vertex_and_index(cylinder_mesh, { .pos = p0_top_ws, .uv = vec2_t(u0, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
             }
 
             // bottom triangle
@@ -385,9 +385,9 @@ void sm::primitive_shapes_init()
                 f32 v0 = remap(p0_xy.y, -1.0f, 1.0f, 0.0f, 1.0f);
                 f32 v1 = remap(p1_xy.y, -1.0f, 1.0f, 0.0f, 1.0f);
 
-                mesh_add_vertex_and_index(cylinder_mesh, vertex_init(bot_ws, vec2_t(0.5f, 0.5f), color_f32_t::WHITE));
-                mesh_add_vertex_and_index(cylinder_mesh, vertex_init(p1_bot_ws, vec2_t(u1, v1), color_f32_t::WHITE));
-                mesh_add_vertex_and_index(cylinder_mesh, vertex_init(p0_bot_ws, vec2_t(u0, v0), color_f32_t::WHITE));
+                mesh_add_vertex_and_index(cylinder_mesh, { .pos = bot_ws, .uv = vec2_t(0.5f, 0.5f), .color = to_vec3(color_f32_t::WHITE) });
+                mesh_add_vertex_and_index(cylinder_mesh, { .pos = p1_bot_ws, .uv = vec2_t(u1, v1), .color = to_vec3(color_f32_t::WHITE) });
+                mesh_add_vertex_and_index(cylinder_mesh, { .pos = p0_bot_ws, .uv = vec2_t(u0, v0), .color = to_vec3(color_f32_t::WHITE) });
             }
         }
 
@@ -422,7 +422,9 @@ void sm::primitive_shapes_init()
                 f32 deg = percent_around_ring * 360.0f;
                 vec2_t ring_pos_ls = polar_to_cartesian_degs(deg, 0.3f);
                 vec3_t ring_pos_ws = transform_point(ring_world_transform, init_vec3(ring_pos_ls, 0.0f));
-                u32 vert_index = mesh_add_vertex(torus_mesh, vertex_init(ring_pos_ws, vec2_t(percent_around_ring * u_scale, percent_around_torus * v_scale), color_f32_t::WHITE));
+                u32 vert_index = mesh_add_vertex(torus_mesh, { .pos = ring_pos_ws, 
+                                                               .uv = vec2_t(percent_around_ring * u_scale, percent_around_torus * v_scale), 
+                                                               .color = to_vec3(color_f32_t::WHITE) });
 
                 if (torus_slice > 0 && torus_ring_pos > 0)
                 {
@@ -519,10 +521,10 @@ void sm::mesh_add_triangle_indices(mesh_t* mesh, u32 index0, u32 index1, u32 ind
 
 void sm::mesh_add_quad_3d(mesh_t* mesh, const vec3_t& top_left, const vec3_t& top_right, const vec3_t& bottom_right, const vec3_t& bottom_left)
 {
-	u32 top_left_index = mesh_add_vertex(mesh, vertex_init(top_left, vec2_t(0.0f, 0.0f), color_f32_t::WHITE));
-	u32 top_right_index = mesh_add_vertex(mesh, vertex_init(top_right, vec2_t(1.0f, 0.0f), color_f32_t::WHITE));
-	u32 bottom_right_index = mesh_add_vertex(mesh, vertex_init(bottom_right, vec2_t(1.0f, 1.0f), color_f32_t::WHITE));
-	u32 bottom_left_index = mesh_add_vertex(mesh, vertex_init(bottom_left, vec2_t(0.0f, 1.0f), color_f32_t::WHITE));
+	u32 top_left_index = mesh_add_vertex(mesh, { .pos = top_left, .uv = vec2_t(0.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
+	u32 top_right_index = mesh_add_vertex(mesh, { .pos = top_right, .uv = vec2_t(1.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
+	u32 bottom_right_index = mesh_add_vertex(mesh, { .pos = bottom_right, .uv = vec2_t(1.0f, 1.0f), .color = to_vec3(color_f32_t::WHITE) });
+	u32 bottom_left_index = mesh_add_vertex(mesh, { .pos = bottom_left, .uv = vec2_t(0.0f, 1.0f), .color = to_vec3(color_f32_t::WHITE) });
 
 	mesh_add_triangle_indices(mesh, top_left_index, bottom_right_index, top_right_index);
 	mesh_add_triangle_indices(mesh, top_left_index, bottom_left_index, bottom_right_index);
@@ -545,7 +547,7 @@ void sm::mesh_add_quad_3d(mesh_t* mesh, const vec3_t& centerPos, const vec3_t& r
 			f32 u = (f32)x / (f32)(resolution);
 			f32 v = (f32)y / (f32)(resolution);
 			vec3_t vert_pos = top_left + (right * width_step * (f32)x) + (-up * height_step * (f32)y);
-			u32 vert_index = mesh_add_vertex(mesh, vertex_init(vert_pos, vec2_t(u, v), color_f32_t::WHITE));
+			u32 vert_index = mesh_add_vertex(mesh, { .pos = vert_pos, .uv = vec2_t(u, v), .color = to_vec3(color_f32_t::WHITE) });
 
 			if (y > 0 && x > 0)
 			{

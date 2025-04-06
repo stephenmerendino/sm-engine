@@ -9,5 +9,5 @@
 #if ASSERTIONS_ENABLED
 #define SM_VULKAN_ASSERT(vk_result) SM_ASSERT_MSG(VK_SUCCESS == vk_result, "Vulkan Assertion Failed")
 #else
-#define SM_VULKAN_ASSERT(vk_result) vkResult
+#define SM_VULKAN_ASSERT(vk_result) vk_result
 #endif
