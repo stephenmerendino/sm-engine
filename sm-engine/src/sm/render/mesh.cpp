@@ -26,14 +26,14 @@ void sm::primitive_shapes_init()
 		axes_mesh->indices = array_init<u32>(s_primitives_arena, 64);
 		axes_mesh->topology = primitive_topology_t::LINE_LIST;
 
-        mesh_add_vertex_and_index(axes_mesh, { .pos = vec3_t::ZERO, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::RED) } );
-		mesh_add_vertex_and_index(axes_mesh, { .pos = vec3_t::X_AXIS, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::RED) } );
+        mesh_add_vertex_and_index(axes_mesh, { .pos = vec3_t::ZERO, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::RED) });
+		mesh_add_vertex_and_index(axes_mesh, { .pos = vec3_t::X_AXIS, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::RED) });
 
-		mesh_add_vertex_and_index(axes_mesh, { .pos = vec3_t::ZERO, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::GREEN) } );
-		mesh_add_vertex_and_index(axes_mesh, { .pos = vec3_t::Y_AXIS, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::GREEN) } );
+		mesh_add_vertex_and_index(axes_mesh, { .pos = vec3_t::ZERO, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::GREEN) });
+		mesh_add_vertex_and_index(axes_mesh, { .pos = vec3_t::Y_AXIS, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::GREEN) });
 
-		mesh_add_vertex_and_index(axes_mesh, { .pos = vec3_t::ZERO, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::BLUE) } );
-		mesh_add_vertex_and_index(axes_mesh, { .pos = vec3_t::Z_AXIS, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::BLUE) } );
+		mesh_add_vertex_and_index(axes_mesh, { .pos = vec3_t::ZERO, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::BLUE) });
+		mesh_add_vertex_and_index(axes_mesh, { .pos = vec3_t::Z_AXIS, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::BLUE) });
 
 		s_primitive_shapes[(u32)primitive_shape_t::AXES] = axes_mesh;
 	}
@@ -56,21 +56,21 @@ void sm::primitive_shapes_init()
         normalize(v2_pos);
         normalize(v3_pos);
 
-        mesh_add_vertex_and_index(tetrahedron_mesh, vertex_init(v0_pos, vec2_t(0.0f, 0.0f), color_f32_t::WHITE));
-        mesh_add_vertex_and_index(tetrahedron_mesh, vertex_init(v1_pos, vec2_t(0.0f, 1.0f), color_f32_t::WHITE));
-        mesh_add_vertex_and_index(tetrahedron_mesh, vertex_init(v2_pos, vec2_t(1.0f, 0.0f), color_f32_t::WHITE));
+        mesh_add_vertex_and_index(tetrahedron_mesh, { .pos = v0_pos, .uv = vec2_t(0.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
+        mesh_add_vertex_and_index(tetrahedron_mesh, { .pos = v1_pos, .uv = vec2_t(0.0f, 1.0f), .color = to_vec3(color_f32_t::WHITE) });
+        mesh_add_vertex_and_index(tetrahedron_mesh, { .pos = v2_pos, .uv = vec2_t(1.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
 
-        mesh_add_vertex_and_index(tetrahedron_mesh, vertex_init(v0_pos, vec2_t(0.0f, 0.0f), color_f32_t::WHITE));
-        mesh_add_vertex_and_index(tetrahedron_mesh, vertex_init(v2_pos, vec2_t(0.0f, 1.0f), color_f32_t::WHITE));
-        mesh_add_vertex_and_index(tetrahedron_mesh, vertex_init(v3_pos, vec2_t(1.0f, 0.0f), color_f32_t::WHITE));
+        mesh_add_vertex_and_index(tetrahedron_mesh, { .pos = v0_pos, .uv = vec2_t(0.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
+        mesh_add_vertex_and_index(tetrahedron_mesh, { .pos = v2_pos, .uv = vec2_t(0.0f, 1.0f), .color = to_vec3(color_f32_t::WHITE) });
+        mesh_add_vertex_and_index(tetrahedron_mesh, { .pos = v3_pos, .uv = vec2_t(1.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
 
-        mesh_add_vertex_and_index(tetrahedron_mesh, vertex_init(v0_pos, vec2_t(0.0f, 0.0f), color_f32_t::WHITE));
-        mesh_add_vertex_and_index(tetrahedron_mesh, vertex_init(v3_pos, vec2_t(0.0f, 1.0f), color_f32_t::WHITE));
-        mesh_add_vertex_and_index(tetrahedron_mesh, vertex_init(v1_pos, vec2_t(1.0f, 0.0f), color_f32_t::WHITE));
+        mesh_add_vertex_and_index(tetrahedron_mesh, { .pos = v0_pos, .uv = vec2_t(0.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
+        mesh_add_vertex_and_index(tetrahedron_mesh, { .pos = v3_pos, .uv = vec2_t(0.0f, 1.0f), .color = to_vec3(color_f32_t::WHITE) });
+        mesh_add_vertex_and_index(tetrahedron_mesh, { .pos = v1_pos, .uv = vec2_t(1.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
 
-        mesh_add_vertex_and_index(tetrahedron_mesh, vertex_init(v1_pos, vec2_t(0.0f, 0.0f), color_f32_t::WHITE));
-        mesh_add_vertex_and_index(tetrahedron_mesh, vertex_init(v3_pos, vec2_t(0.0f, 1.0f), color_f32_t::WHITE));
-        mesh_add_vertex_and_index(tetrahedron_mesh, vertex_init(v2_pos, vec2_t(1.0f, 0.0f), color_f32_t::WHITE));
+        mesh_add_vertex_and_index(tetrahedron_mesh, { .pos = v1_pos, .uv = vec2_t(0.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
+        mesh_add_vertex_and_index(tetrahedron_mesh, { .pos = v3_pos, .uv = vec2_t(0.0f, 1.0f), .color = to_vec3(color_f32_t::WHITE) });
+        mesh_add_vertex_and_index(tetrahedron_mesh, { .pos = v2_pos, .uv = vec2_t(1.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
 
         s_primitive_shapes[(u32)primitive_shape_t::TETRAHEDRON] = tetrahedron_mesh;
 	}
@@ -107,51 +107,51 @@ void sm::primitive_shapes_init()
         vec3_t v5_pos(0.0f, 0.0f, -1.0f);
 
         {
-            mesh_add_vertex_and_index(octahedron_mesh, vertex_init(v0_pos, vec2_t(0.0f, 0.0f), color_f32_t::WHITE));
-            mesh_add_vertex_and_index(octahedron_mesh, vertex_init(v1_pos, vec2_t(0.0f, 1.0f), color_f32_t::WHITE));
-            mesh_add_vertex_and_index(octahedron_mesh, vertex_init(v2_pos, vec2_t(1.0f, 0.0f), color_f32_t::WHITE));
+            mesh_add_vertex_and_index(octahedron_mesh, { .pos = v0_pos, .uv = vec2_t(0.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
+            mesh_add_vertex_and_index(octahedron_mesh, { .pos = v1_pos, .uv = vec2_t(0.0f, 1.0f), .color = to_vec3(color_f32_t::WHITE) });
+            mesh_add_vertex_and_index(octahedron_mesh, { .pos = v2_pos, .uv = vec2_t(1.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
         }
 
         {
-            mesh_add_vertex_and_index(octahedron_mesh, vertex_init(v0_pos, vec2_t(0.0f, 0.0f), color_f32_t::WHITE));
-            mesh_add_vertex_and_index(octahedron_mesh, vertex_init(v2_pos, vec2_t(0.0f, 1.0f), color_f32_t::WHITE));
-            mesh_add_vertex_and_index(octahedron_mesh, vertex_init(v3_pos, vec2_t(1.0f, 0.0f), color_f32_t::WHITE));
+            mesh_add_vertex_and_index(octahedron_mesh, { .pos = v0_pos, .uv = vec2_t(0.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
+            mesh_add_vertex_and_index(octahedron_mesh, { .pos = v2_pos, .uv = vec2_t(0.0f, 1.0f), .color = to_vec3(color_f32_t::WHITE) });
+            mesh_add_vertex_and_index(octahedron_mesh, { .pos = v3_pos, .uv = vec2_t(1.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
         }
 
         {
-            mesh_add_vertex_and_index(octahedron_mesh, vertex_init(v0_pos, vec2_t(0.0f, 0.0f), color_f32_t::WHITE));
-            mesh_add_vertex_and_index(octahedron_mesh, vertex_init(v3_pos, vec2_t(0.0f, 1.0f), color_f32_t::WHITE));
-            mesh_add_vertex_and_index(octahedron_mesh, vertex_init(v4_pos, vec2_t(1.0f, 0.0f), color_f32_t::WHITE));
+            mesh_add_vertex_and_index(octahedron_mesh, { .pos = v0_pos, .uv = vec2_t(0.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
+            mesh_add_vertex_and_index(octahedron_mesh, { .pos = v3_pos, .uv = vec2_t(0.0f, 1.0f), .color = to_vec3(color_f32_t::WHITE) });
+            mesh_add_vertex_and_index(octahedron_mesh, { .pos = v4_pos, .uv = vec2_t(1.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
         }
 
         {
-            mesh_add_vertex_and_index(octahedron_mesh, vertex_init(v0_pos, vec2_t(0.0f, 0.0f), color_f32_t::WHITE));
-            mesh_add_vertex_and_index(octahedron_mesh, vertex_init(v4_pos, vec2_t(0.0f, 1.0f), color_f32_t::WHITE));
-            mesh_add_vertex_and_index(octahedron_mesh, vertex_init(v1_pos, vec2_t(1.0f, 0.0f), color_f32_t::WHITE));
+            mesh_add_vertex_and_index(octahedron_mesh, { .pos = v0_pos, .uv = vec2_t(0.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
+            mesh_add_vertex_and_index(octahedron_mesh, { .pos = v4_pos, .uv = vec2_t(0.0f, 1.0f), .color = to_vec3(color_f32_t::WHITE) });
+            mesh_add_vertex_and_index(octahedron_mesh, { .pos = v1_pos, .uv = vec2_t(1.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
         }
 
         {
-            mesh_add_vertex_and_index(octahedron_mesh, vertex_init(v0_pos, vec2_t(0.0f, 0.0f), color_f32_t::WHITE));
-            mesh_add_vertex_and_index(octahedron_mesh, vertex_init(v4_pos, vec2_t(1.0f, 0.0f), color_f32_t::WHITE));
-            mesh_add_vertex_and_index(octahedron_mesh, vertex_init(v1_pos, vec2_t(0.0f, 1.0f), color_f32_t::WHITE));
+            mesh_add_vertex_and_index(octahedron_mesh, { .pos = v0_pos, .uv = vec2_t(0.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
+            mesh_add_vertex_and_index(octahedron_mesh, { .pos = v4_pos, .uv = vec2_t(1.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
+            mesh_add_vertex_and_index(octahedron_mesh, { .pos = v1_pos, .uv = vec2_t(0.0f, 1.0f), .color = to_vec3(color_f32_t::WHITE) });
         }
 
         {
-            mesh_add_vertex_and_index(octahedron_mesh, vertex_init(v5_pos, vec2_t(0.0f, 0.0f), color_f32_t::WHITE));
-            mesh_add_vertex_and_index(octahedron_mesh, vertex_init(v3_pos, vec2_t(1.0f, 0.0f), color_f32_t::WHITE));
-            mesh_add_vertex_and_index(octahedron_mesh, vertex_init(v2_pos, vec2_t(0.0f, 1.0f), color_f32_t::WHITE));
+            mesh_add_vertex_and_index(octahedron_mesh, { .pos = v5_pos, .uv = vec2_t(0.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
+            mesh_add_vertex_and_index(octahedron_mesh, { .pos = v3_pos, .uv = vec2_t(1.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
+            mesh_add_vertex_and_index(octahedron_mesh, { .pos = v2_pos, .uv = vec2_t(0.0f, 1.0f), .color = to_vec3(color_f32_t::WHITE) });
         }
 
         {
-            mesh_add_vertex_and_index(octahedron_mesh, vertex_init(v5_pos, vec2_t(0.0f, 0.0f), color_f32_t::WHITE));
-            mesh_add_vertex_and_index(octahedron_mesh, vertex_init(v4_pos, vec2_t(1.0f, 0.0f), color_f32_t::WHITE));
-            mesh_add_vertex_and_index(octahedron_mesh, vertex_init(v3_pos, vec2_t(0.0f, 1.0f), color_f32_t::WHITE));
+            mesh_add_vertex_and_index(octahedron_mesh, { .pos = v5_pos, .uv = vec2_t(0.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
+            mesh_add_vertex_and_index(octahedron_mesh, { .pos = v4_pos, .uv = vec2_t(1.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
+            mesh_add_vertex_and_index(octahedron_mesh, { .pos = v3_pos, .uv = vec2_t(0.0f, 1.0f), .color = to_vec3(color_f32_t::WHITE) });
         }
 
         {
-            mesh_add_vertex_and_index(octahedron_mesh, vertex_init(v5_pos, vec2_t(0.0f, 0.0f), color_f32_t::WHITE));
-            mesh_add_vertex_and_index(octahedron_mesh, vertex_init(v1_pos, vec2_t(1.0f, 0.0f), color_f32_t::WHITE));
-            mesh_add_vertex_and_index(octahedron_mesh, vertex_init(v4_pos, vec2_t(0.0f, 1.0f), color_f32_t::WHITE));
+            mesh_add_vertex_and_index(octahedron_mesh, { .pos = v5_pos, .uv = vec2_t(0.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
+            mesh_add_vertex_and_index(octahedron_mesh, { .pos = v1_pos, .uv = vec2_t(1.0f, 0.0f), .color = to_vec3(color_f32_t::WHITE) });
+            mesh_add_vertex_and_index(octahedron_mesh, { .pos = v4_pos, .uv = vec2_t(0.0f, 1.0f), .color = to_vec3(color_f32_t::WHITE) });
         }
 
         s_primitive_shapes[(u32)primitive_shape_t::OCTAHEDRON] = octahedron_mesh;
