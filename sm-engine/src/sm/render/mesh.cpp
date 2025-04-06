@@ -5,87 +5,15 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "third_party/tinyobjloader/tiny_obj_loader.h"
 
+// Used here because its necessary for tinyobj
+#include <vector>
+#include <string>
+
 using namespace sm;
 
 bool s_did_init_primitive_shapes = false;
 mesh_t* s_primitive_shapes[(u32)primitive_shape_t::NUM_PRIMITIVE_SHAPES];
 arena_t* s_primitives_arena = nullptr;
-
-void sm::mesh_add_quad_3d(mesh_t* mesh, const vec3_t& top_left, const vec3_t& top_right, const vec3_t& bottom_right, const vec3_t& bottom_left)
-{
-	u32 top_left_index = mesh_add_vertex(mesh, vertex_init(top_left, vec2_t(0.0f, 0.0f), color_f32_t::WHITE));
-	u32 top_right_index = mesh_add_vertex(mesh, vertex_init(top_right, vec2_t(1.0f, 0.0f), color_f32_t::WHITE));
-	u32 bottom_right_index = mesh_add_vertex(mesh, vertex_init(bottom_right, vec2_t(1.0f, 1.0f), color_f32_t::WHITE));
-	u32 bottom_left_index = mesh_add_vertex(mesh, vertex_init(bottom_left, vec2_t(0.0f, 1.0f), color_f32_t::WHITE));
-
-	mesh_add_triangle_indices(mesh, top_left_index, bottom_right_index, top_right_index);
-	mesh_add_triangle_indices(mesh, top_left_index, bottom_left_index, bottom_right_index);
-}
-
-void sm::mesh_add_quad_3d(mesh_t* mesh, const vec3_t& centerPos, const vec3_t& right, const vec3_t& up, f32 half_width, f32 half_height, u32 resolution)
-{
-	vec3_t right_norm = normalized(right);
-	vec3_t up_norm = normalized(up);
-
-	f32 width_step = (half_width * 2.0f) / (f32)resolution;
-	f32 height_step = (half_height * 2.0f) / (f32)resolution;
-
-	vec3_t top_left = centerPos + (-right_norm * half_width) + (up_norm * half_height);
-
-	for (u32 y = 0; y <= resolution; y++)
-	{
-		for (u32 x = 0; x <= resolution; x++)
-		{
-			f32 u = (f32)x / (f32)(resolution);
-			f32 v = (f32)y / (f32)(resolution);
-			vec3_t vert_pos = top_left + (right * width_step * (f32)x) + (-up * height_step * (f32)y);
-			u32 vert_index = mesh_add_vertex(mesh, vertex_init(vert_pos, vec2_t(u, v), color_f32_t::WHITE));
-
-			if (y > 0 && x > 0)
-			{
-				u32 prevVertIndex = vert_index - 1;
-				u32 vertIndexLastRow = (vert_index - resolution) - 1;
-				u32 prevVertIndexLastRow = vertIndexLastRow - 1;
-				mesh_add_triangle_indices(mesh, vert_index, prevVertIndexLastRow, prevVertIndex);
-				mesh_add_triangle_indices(mesh, vert_index, vertIndexLastRow, prevVertIndexLastRow);
-			}
-		}
-	}
-}
-
-vertex_t sm::vertex_init(const vec3_t& pos, const vec2_t& uv, const vec3_t& color)
-{
-	return vertex_t(pos, uv, color);
-}
-
-vertex_t sm::vertex_init(const vec3_t& pos, const vec2_t& uv, const color_f32_t& color)
-{
-	return vertex_init(pos, uv, to_vec3(color));
-}
-
-u32 sm::mesh_add_vertex(mesh_t* mesh, const vertex_t& v)
-{
-    array_push(mesh->vertices, v);
-    return (u32)mesh->vertices.cur_size - 1;
-}
-
-void sm::mesh_add_index(mesh_t* mesh, u32 index)
-{
-    array_push(mesh->indices, index);
-}
-
-void sm::mesh_add_vertex_and_index(mesh_t* mesh, const vertex_t& v)
-{
-    u32 index = mesh_add_vertex(mesh, v);
-    mesh_add_index(mesh, index);
-}
-
-void sm::mesh_add_triangle_indices(mesh_t* mesh, u32 index0, u32 index1, u32 index2)
-{
-    mesh_add_index(mesh, index0);
-    mesh_add_index(mesh, index1);
-    mesh_add_index(mesh, index2);
-}
 
 void sm::primitive_shapes_init()
 {
@@ -98,14 +26,14 @@ void sm::primitive_shapes_init()
 		axes_mesh->indices = array_init<u32>(s_primitives_arena, 64);
 		axes_mesh->topology = primitive_topology_t::LINE_LIST;
 
-		mesh_add_vertex_and_index(axes_mesh, vertex_init(vec3_t::ZERO, vec2_t::ZERO, color_f32_t::RED));
-		mesh_add_vertex_and_index(axes_mesh, vertex_init(vec3_t::X_AXIS, vec2_t::ZERO, color_f32_t::RED));
+        mesh_add_vertex_and_index(axes_mesh, { .pos = vec3_t::ZERO, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::RED) } );
+		mesh_add_vertex_and_index(axes_mesh, { .pos = vec3_t::X_AXIS, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::RED) } );
 
-		mesh_add_vertex_and_index(axes_mesh, vertex_init(vec3_t::ZERO, vec2_t::ZERO, color_f32_t::GREEN));
-		mesh_add_vertex_and_index(axes_mesh, vertex_init(vec3_t::Y_AXIS, vec2_t::ZERO, color_f32_t::GREEN));
+		mesh_add_vertex_and_index(axes_mesh, { .pos = vec3_t::ZERO, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::GREEN) } );
+		mesh_add_vertex_and_index(axes_mesh, { .pos = vec3_t::Y_AXIS, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::GREEN) } );
 
-		mesh_add_vertex_and_index(axes_mesh, vertex_init(vec3_t::ZERO, vec2_t::ZERO, color_f32_t::BLUE));
-		mesh_add_vertex_and_index(axes_mesh, vertex_init(vec3_t::Z_AXIS, vec2_t::ZERO, color_f32_t::BLUE));
+		mesh_add_vertex_and_index(axes_mesh, { .pos = vec3_t::ZERO, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::BLUE) } );
+		mesh_add_vertex_and_index(axes_mesh, { .pos = vec3_t::Z_AXIS, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::BLUE) } );
 
 		s_primitive_shapes[(u32)primitive_shape_t::AXES] = axes_mesh;
 	}
@@ -520,16 +448,18 @@ const mesh_t* sm::primitive_shape_get_mesh(primitive_shape_t shape)
 	return s_primitive_shapes[(u32)shape];
 }
 
-// Only used here because its necessary for tinyobj
-#include <vector>
-#include <string>
-
-mesh_t* sm::mesh_init_from_obj(sm::arena_t* arena, const char* obj_filepath)
+mesh_t* sm::mesh_init(arena_t* arena, primitive_topology_t topology)
 {
     mesh_t* mesh = arena_alloc_struct(arena, mesh_t);
     mesh->vertices = array_init<vertex_t>(arena, 64);
     mesh->indices = array_init<u32>(arena, 64);
-    mesh->topology = primitive_topology_t::TRIANGLE_LIST;
+    mesh->topology = topology;
+    return mesh;
+}
+
+mesh_t* sm::mesh_init_from_obj(sm::arena_t* arena, const char* obj_filepath)
+{
+    mesh_t* mesh = mesh_init(arena);
 
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;
@@ -561,6 +491,72 @@ mesh_t* sm::mesh_init_from_obj(sm::arena_t* arena, const char* obj_filepath)
 	}
 
     return mesh;
+}
+
+u32 sm::mesh_add_vertex(mesh_t* mesh, const vertex_t& v)
+{
+    array_push(mesh->vertices, v);
+    return (u32)mesh->vertices.cur_size - 1;
+}
+
+void sm::mesh_add_index(mesh_t* mesh, u32 index)
+{
+    array_push(mesh->indices, index);
+}
+
+void sm::mesh_add_vertex_and_index(mesh_t* mesh, const vertex_t& v)
+{
+    u32 index = mesh_add_vertex(mesh, v);
+    mesh_add_index(mesh, index);
+}
+
+void sm::mesh_add_triangle_indices(mesh_t* mesh, u32 index0, u32 index1, u32 index2)
+{
+    mesh_add_index(mesh, index0);
+    mesh_add_index(mesh, index1);
+    mesh_add_index(mesh, index2);
+}
+
+void sm::mesh_add_quad_3d(mesh_t* mesh, const vec3_t& top_left, const vec3_t& top_right, const vec3_t& bottom_right, const vec3_t& bottom_left)
+{
+	u32 top_left_index = mesh_add_vertex(mesh, vertex_init(top_left, vec2_t(0.0f, 0.0f), color_f32_t::WHITE));
+	u32 top_right_index = mesh_add_vertex(mesh, vertex_init(top_right, vec2_t(1.0f, 0.0f), color_f32_t::WHITE));
+	u32 bottom_right_index = mesh_add_vertex(mesh, vertex_init(bottom_right, vec2_t(1.0f, 1.0f), color_f32_t::WHITE));
+	u32 bottom_left_index = mesh_add_vertex(mesh, vertex_init(bottom_left, vec2_t(0.0f, 1.0f), color_f32_t::WHITE));
+
+	mesh_add_triangle_indices(mesh, top_left_index, bottom_right_index, top_right_index);
+	mesh_add_triangle_indices(mesh, top_left_index, bottom_left_index, bottom_right_index);
+}
+
+void sm::mesh_add_quad_3d(mesh_t* mesh, const vec3_t& centerPos, const vec3_t& right, const vec3_t& up, f32 half_width, f32 half_height, u32 resolution)
+{
+	vec3_t right_norm = normalized(right);
+	vec3_t up_norm = normalized(up);
+
+	f32 width_step = (half_width * 2.0f) / (f32)resolution;
+	f32 height_step = (half_height * 2.0f) / (f32)resolution;
+
+	vec3_t top_left = centerPos + (-right_norm * half_width) + (up_norm * half_height);
+
+	for (u32 y = 0; y <= resolution; y++)
+	{
+		for (u32 x = 0; x <= resolution; x++)
+		{
+			f32 u = (f32)x / (f32)(resolution);
+			f32 v = (f32)y / (f32)(resolution);
+			vec3_t vert_pos = top_left + (right * width_step * (f32)x) + (-up * height_step * (f32)y);
+			u32 vert_index = mesh_add_vertex(mesh, vertex_init(vert_pos, vec2_t(u, v), color_f32_t::WHITE));
+
+			if (y > 0 && x > 0)
+			{
+				u32 prevVertIndex = vert_index - 1;
+				u32 vertIndexLastRow = (vert_index - resolution) - 1;
+				u32 prevVertIndexLastRow = vertIndexLastRow - 1;
+				mesh_add_triangle_indices(mesh, vert_index, prevVertIndexLastRow, prevVertIndex);
+				mesh_add_triangle_indices(mesh, vert_index, vertIndexLastRow, prevVertIndexLastRow);
+			}
+		}
+	}
 }
 
 size_t sm::mesh_calc_vertex_buffer_size(const mesh_t* mesh)

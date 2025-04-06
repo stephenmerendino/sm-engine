@@ -43,9 +43,11 @@ namespace sm
 		array_t<u32> indices;
 	};
 
-    vertex_t vertex_init(const vec3_t& pos, const vec2_t& uv, const vec3_t& color);
-    vertex_t vertex_init(const vec3_t& pos, const vec2_t& uv, const color_f32_t& color);
+    void primitive_shapes_init();
+    const mesh_t* primitive_shape_get_mesh(primitive_shape_t shape);
 
+    mesh_t* mesh_init(arena_t* arena, primitive_topology_t topology = primitive_topology_t::TRIANGLE_LIST);
+	mesh_t* mesh_init_from_obj(arena_t* arena, const char* obj_filepath);
     u32 mesh_add_vertex(mesh_t* mesh, const vertex_t& v);
     void mesh_add_index(mesh_t* mesh, u32 index);
     void mesh_add_vertex_and_index(mesh_t* mesh, const vertex_t& v);
@@ -53,10 +55,6 @@ namespace sm
     void mesh_add_quad_3d(mesh_t* mesh, const vec3_t& top_left, const vec3_t& top_right, const vec3_t& bottom_right, const vec3_t& bottom_left);
     void mesh_add_quad_3d(mesh_t* mesh, const vec3_t& centerPos, const vec3_t& right, const vec3_t& up, f32 half_width, f32 half_height, u32 resolution);
 
-    void primitive_shapes_init();
-    const mesh_t* primitive_shape_get_mesh(primitive_shape_t shape);
-
-	mesh_t* mesh_init_from_obj(sm::arena_t* arena, const char* obj_filepath);
     size_t mesh_calc_vertex_buffer_size(const mesh_t* mesh);
     size_t mesh_calc_index_buffer_size(const mesh_t* mesh);
 }

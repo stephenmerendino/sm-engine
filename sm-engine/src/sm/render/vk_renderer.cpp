@@ -80,6 +80,13 @@ struct texture_t
     u32 num_mips = 0;
 };
 
+struct gpu_mesh_data_t 
+{
+    mesh_t*  mesh = nullptr;
+    buffer_t vertex_buffer;
+    buffer_t index_buffer;
+};
+
 static const u32 MAX_NUM_MESH_INSTANCES_PER_FRAME = 10;
 
 struct render_frame_t 
@@ -144,57 +151,65 @@ struct post_processing_params_t
     u32 texture_height = 0;
 };
 
-// internal
 static window_t* s_window = nullptr;
 static bool s_close_window = false;
 static context_t s_context;
 static swapchain_t s_swapchain;
 
-VkCommandPool s_graphics_command_pool;
+static VkCommandPool s_graphics_command_pool;
 
-VkDescriptorPool s_global_descriptor_pool = VK_NULL_HANDLE;
-VkDescriptorPool s_frame_descriptor_pool = VK_NULL_HANDLE;
-VkDescriptorPool s_material_descriptor_pool = VK_NULL_HANDLE;
-VkDescriptorPool s_imgui_descriptor_pool = VK_NULL_HANDLE;
+static VkDescriptorPool s_global_descriptor_pool = VK_NULL_HANDLE;
+static VkDescriptorPool s_frame_descriptor_pool = VK_NULL_HANDLE;
+static VkDescriptorPool s_material_descriptor_pool = VK_NULL_HANDLE;
+static VkDescriptorPool s_imgui_descriptor_pool = VK_NULL_HANDLE;
+static VkDescriptorSetLayout s_global_descriptor_set_layout = VK_NULL_HANDLE;
+static VkDescriptorSetLayout s_frame_descriptor_set_layout = VK_NULL_HANDLE;
+static VkDescriptorSetLayout s_material_descriptor_set_layout = VK_NULL_HANDLE;
+static VkDescriptorSetLayout s_mesh_instance_descriptor_set_layout = VK_NULL_HANDLE;
+static VkDescriptorSetLayout s_post_process_descriptor_set_layout = VK_NULL_HANDLE;
+static VkDescriptorSetLayout s_infinite_grid_descriptor_set_layout = VK_NULL_HANDLE;
+static VkDescriptorSet s_global_descriptor_set = VK_NULL_HANDLE;
+static VkSampler s_linear_sampler = VK_NULL_HANDLE;
+static VkRenderPass s_main_draw_render_pass;
+static VkRenderPass s_imgui_render_pass;
+static array_t<render_frame_t> s_render_frames;
 
-VkDescriptorSetLayout s_global_descriptor_set_layout = VK_NULL_HANDLE;
-VkDescriptorSetLayout s_frame_descriptor_set_layout = VK_NULL_HANDLE;
-VkDescriptorSetLayout s_material_descriptor_set_layout = VK_NULL_HANDLE;
-VkDescriptorSetLayout s_mesh_instance_descriptor_set_layout = VK_NULL_HANDLE;
-VkDescriptorSetLayout s_post_process_descriptor_set_layout = VK_NULL_HANDLE;
-VkDescriptorSetLayout s_infinite_grid_descriptor_set_layout = VK_NULL_HANDLE;
+static gpu_mesh_data_t s_viking_room_mesh_data;
 
-VkDescriptorSet s_global_descriptor_set = VK_NULL_HANDLE;
-VkSampler s_linear_sampler = VK_NULL_HANDLE;
+static constexpr u32 INVALID_OBJECT_ID = UINT32_MAX;
 
-VkRenderPass s_main_draw_render_pass;
-VkRenderPass s_imgui_render_pass;
+enum class gizmo_mode_t : u8
+{
+    INACTIVE,
+    TRANSLATE,
+    ROTATE,
+    SCALE
+};
 
-array_t<render_frame_t> s_render_frames;
+struct gizmo_t
+{
+    gpu_mesh_data_t translate_tool_mesh;
+    gpu_mesh_data_t rotate_tool_mesh;
+    gpu_mesh_data_t scale_tool_mesh;
+    u32             selected_object_id  = INVALID_OBJECT_ID;
+    gizmo_mode_t    mode                = gizmo_mode_t::INACTIVE;
+};
 
-// viking room mesh/material resources
-mesh_t* s_viking_room_mesh = nullptr;
-buffer_t s_viking_room_vertex_buffer;
-buffer_t s_viking_room_index_buffer;
+static texture_t s_viking_room_diffuse_texture;
+static VkDescriptorSet s_viking_room_material_descriptor_set = VK_NULL_HANDLE;
+static VkPipelineLayout s_viking_room_main_draw_pipeline_layout = VK_NULL_HANDLE;
+static VkPipeline s_viking_room_main_draw_pipeline = VK_NULL_HANDLE;
 
-// we shouldn't have a single global mesh instance buffer, each frame needs it own buffer memory to point to for mvp
-//buffer_t s_viking_room_mesh_instance_buffer;
+static VkPipelineLayout s_infinite_grid_main_draw_pipeline_layout = VK_NULL_HANDLE;
 
-texture_t s_viking_room_diffuse_texture;
-VkDescriptorSet s_viking_room_material_descriptor_set = VK_NULL_HANDLE;
-VkPipelineLayout s_viking_room_main_draw_pipeline_layout = VK_NULL_HANDLE;
-VkPipeline s_viking_room_main_draw_pipeline = VK_NULL_HANDLE;
+static VkPipelineLayout s_post_process_pipeline_layout = VK_NULL_HANDLE;
+static VkPipeline s_post_process_compute_pipeline = VK_NULL_HANDLE;
 
-VkPipelineLayout s_infinite_grid_main_draw_pipeline_layout = VK_NULL_HANDLE;
-
-VkPipelineLayout s_post_process_pipeline_layout = VK_NULL_HANDLE;
-VkPipeline s_post_process_compute_pipeline = VK_NULL_HANDLE;
-
-camera_t s_main_camera;
-f32 s_elapsed_time_seconds = 0.0f;
-f32 s_delta_time_seconds = 0.0f;
-u64 s_cur_frame_number = 0;
-u8 s_cur_render_frame_index = 0;
+static camera_t s_main_camera;
+static f32 s_elapsed_time_seconds = 0.0f;
+static f32 s_delta_time_seconds = 0.0f;
+static u64 s_cur_frame_number = 0;
+static u8 s_cur_render_frame_index = 0;
 
 static void begin_queue_debug_label(VkQueue queue, const char* label, const color_f32_t& color)
 {
@@ -325,12 +340,6 @@ public:
 
 #define SCOPED_COMMAND_BUFFER_DEBUG_LABEL(command_buffer, label, color) \
     auto_command_buffer_debug_label_t CONCATENATE(auto_command_buffer_debug_label, __LINE__) (command_buffer, label, color)
-
-static bool format_has_stencil(VkFormat format)
-{
-    return (format == VK_FORMAT_D32_SFLOAT_S8_UINT) || 
-           (format == VK_FORMAT_D24_UNORM_S8_UINT);
-}
 
 static VkFormat find_supported_format(VkPhysicalDevice phys_device, VkFormat* candidates, u32 num_candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
 {
@@ -1223,7 +1232,7 @@ static void buffer_release(buffer_t& buffer)
     vkDestroyBuffer(s_context.device, buffer.buffer, nullptr);
 }
 
-static void init_swapchain()
+static void swapchain_init()
 {
 	arena_t* stack_arena;
 	arena_stack_init(stack_arena, 256);
@@ -1939,7 +1948,7 @@ static void refresh_swapchain()
 	vkQueueWaitIdle(s_context.graphics_queue);
 
 	vkDestroySwapchainKHR(s_context.device, s_swapchain.handle, nullptr);
-	init_swapchain();
+	swapchain_init();
 
 	refresh_render_frames_render_targets();
 
@@ -2155,6 +2164,42 @@ void renderer_window_msg_handler(window_msg_type_t msg_type, u64 msg_data, void*
     }
 }
 
+static void gpu_mesh_data_init(arena_t* arena, gpu_mesh_data_t& out_gpu_mesh, mesh_t* mesh)
+{
+    out_gpu_mesh.mesh = mesh;
+
+    // vertex buffer
+    {
+        size_t vertex_buffer_size = mesh_calc_vertex_buffer_size(out_gpu_mesh.mesh);
+        buffer_init(out_gpu_mesh.vertex_buffer, 
+                    vertex_buffer_size, 
+                    VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        upload_buffer_data(out_gpu_mesh.vertex_buffer.buffer, out_gpu_mesh.mesh->vertices.data, vertex_buffer_size);
+    }
+
+    // index buffer
+    {
+        size_t index_buffer_size = mesh_calc_index_buffer_size(out_gpu_mesh.mesh);
+        buffer_init(out_gpu_mesh.index_buffer, 
+                    index_buffer_size, 
+                    VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        upload_buffer_data(out_gpu_mesh.index_buffer.buffer, out_gpu_mesh.mesh->indices.data, index_buffer_size);
+    }
+
+}
+
+static void gizmo_init(arena_t* arena)
+{
+    // build translate tool mesh
+    mesh_t* translate_mesh = mesh_init(arena);
+
+    // build rotate tool mesh
+    // build scale tool mesh
+    // init gpu mesh data
+}
+
 void sm::renderer_init(window_t* window)
 {	
 	arena_t* startup_arena = arena_init(MiB(100));
@@ -2165,6 +2210,7 @@ void sm::renderer_init(window_t* window)
 	shader_compiler_init();
 	primitive_shapes_init();
     context_init(startup_arena);
+    gizmo_init(startup_arena);
 
 	// command pool
 	{
@@ -2179,7 +2225,7 @@ void sm::renderer_init(window_t* window)
 	// swapchain
 	const u32 default_num_images = 3;
     s_swapchain.images = array_init_sized<VkImage>(startup_arena, default_num_images);
-	init_swapchain();
+	swapchain_init();
 
 	// descriptor pools
 	{
@@ -2707,27 +2753,8 @@ void sm::renderer_init(window_t* window)
 
 		// viking room
 		{
-			s_viking_room_mesh = mesh_init_from_obj(startup_arena, "viking_room.obj");
-
-			// vertex buffer
-			{
-                size_t vertex_buffer_size = mesh_calc_vertex_buffer_size(s_viking_room_mesh);
-                buffer_init(s_viking_room_vertex_buffer, 
-                            vertex_buffer_size, 
-                            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
-                            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-				upload_buffer_data(s_viking_room_vertex_buffer.buffer, s_viking_room_mesh->vertices.data, vertex_buffer_size);
-			}
-
-			// viking room index buffer
-			{
-				size_t index_buffer_size = mesh_calc_index_buffer_size(s_viking_room_mesh);
-                buffer_init(s_viking_room_index_buffer, 
-                            index_buffer_size, 
-                            VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
-                            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-				upload_buffer_data(s_viking_room_index_buffer.buffer, s_viking_room_mesh->indices.data, index_buffer_size);
-			}
+            mesh_t* viking_room_obj = mesh_init_from_obj(startup_arena, "viking_room.obj");
+            gpu_mesh_data_init(startup_arena, s_viking_room_mesh_data, viking_room_obj);
 
 			// viking room diffuse texture
 			{
@@ -3025,7 +3052,7 @@ static void main_draw_pass(render_frame_t& render_frame)
 
         // bind everything needed to draw
         VkBuffer vertex_buffers[] = {
-            s_viking_room_vertex_buffer.buffer
+            s_viking_room_mesh_data.vertex_buffer.buffer
         };
         VkDeviceSize offset = 0;
         VkDeviceSize offsets[] = {
@@ -3033,7 +3060,7 @@ static void main_draw_pass(render_frame_t& render_frame)
         };
         vkCmdBindVertexBuffers(render_frame.frame_command_buffer, 0, 1, vertex_buffers, offsets);
 
-        vkCmdBindIndexBuffer(render_frame.frame_command_buffer, s_viking_room_index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindIndexBuffer(render_frame.frame_command_buffer, s_viking_room_mesh_data.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
         VkDescriptorSet descriptor_sets[] = {
             s_global_descriptor_set,
@@ -3051,7 +3078,7 @@ static void main_draw_pass(render_frame_t& render_frame)
         vkCmdBindPipeline(render_frame.frame_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_viking_room_main_draw_pipeline);
 
         // draw mesh
-        vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)s_viking_room_mesh->indices.cur_size, 1, 0, 0, 0);
+        vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)s_viking_room_mesh_data.mesh->indices.cur_size, 1, 0, 0, 0);
     }
 
     vkCmdEndRenderPass(render_frame.frame_command_buffer);
