@@ -2104,8 +2104,8 @@ static void init_pipelines()
         depth_stencil_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
         depth_stencil_state.pNext = nullptr;
         depth_stencil_state.flags = 0;
-        depth_stencil_state.depthTestEnable = VK_TRUE;
-        depth_stencil_state.depthWriteEnable = VK_TRUE;
+        depth_stencil_state.depthTestEnable = VK_FALSE;
+        depth_stencil_state.depthWriteEnable = VK_FALSE;
         depth_stencil_state.depthCompareOp = VK_COMPARE_OP_LESS;
         depth_stencil_state.depthBoundsTestEnable = VK_FALSE;
         depth_stencil_state.stencilTestEnable = VK_FALSE;
@@ -2503,7 +2503,7 @@ static void gizmo_init(arena_t* arena)
 {
     // build translate tool mesh
     mesh_t* translate_mesh = mesh_init(arena);
-    mesh_add_cylinder(translate_mesh, vec3_t::ZERO, vec3_t::X_AXIS, 1.0f, 0.5f, 32);
+    mesh_add_cylinder(translate_mesh, vec3_t::ZERO, vec3_t::X_AXIS, 2.0f, 0.15f, 32);
     gpu_mesh_data_init(arena, s_gizmo.translate_tool_gpu_mesh_data, translate_mesh);
 
     // build rotate tool mesh
@@ -3509,6 +3509,97 @@ static void main_draw_pass(render_frame_t& render_frame)
     vkCmdEndRenderPass(render_frame.frame_command_buffer);
 }
 
+static void gizmo_pass(render_frame_t& render_frame)
+{
+    SCOPED_COMMAND_BUFFER_DEBUG_LABEL(render_frame.frame_command_buffer, "Gizmo Pass", color_gen_random());
+
+    // begin gizmo render pass
+    VkOffset2D zero_offset{
+        .x = 0,
+        .y = 0
+    };
+    VkRect2D render_area{
+        .offset = zero_offset,
+        .extent = s_swapchain.extent
+    };
+    VkRenderPassBeginInfo render_pass_begin_info{
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .pNext = nullptr,
+        .renderPass = s_gizmo_render_pass,
+        .framebuffer = render_frame.gizmo_draw_framebuffer,
+        .renderArea = render_area,
+        .clearValueCount = 0,
+        .pClearValues = nullptr
+    };
+    vkCmdBeginRenderPass(render_frame.frame_command_buffer, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+
+    // update mesh instance buffer
+    mat44_t view = camera_get_view_transform(s_main_camera);
+    mat44_t projection = init_perspective_proj(45.0f, 0.01f, 100.0f, (f32)s_swapchain.extent.width / (f32)s_swapchain.extent.height);
+    mat44_t viking_room_model = mat44_t::IDENTITY;
+    mat44_t viking_room_mvp = viking_room_model * view * projection;
+    mesh_instance_render_data_t gizmo_mesh_instance_render_data{
+        .mvp = viking_room_mvp
+    };
+    upload_buffer_data(render_frame.mesh_instance_render_data_buffers[1].buffer, &gizmo_mesh_instance_render_data, sizeof(mesh_instance_render_data_t));
+
+    // allocate mesh instance descriptor set
+    VkDescriptorSetAllocateInfo mesh_instance_descriptor_set_alloc_info{
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .pNext = nullptr,
+        .descriptorPool = render_frame.mesh_instance_descriptor_pool,
+        .descriptorSetCount = 1,
+        .pSetLayouts = &s_mesh_instance_descriptor_set_layout
+    };
+    VkDescriptorSet mesh_instance_descriptor_set = VK_NULL_HANDLE;
+    vkAllocateDescriptorSets(s_context.device, &mesh_instance_descriptor_set_alloc_info, &mesh_instance_descriptor_set);
+
+    // write buffer to descriptor set
+    VkDescriptorBufferInfo mesh_instance_descriptor_buffer_info{
+        .buffer = render_frame.mesh_instance_render_data_buffers[1].buffer,
+        .offset = 0,
+        .range = sizeof(mesh_instance_render_data_t)
+    };
+    VkWriteDescriptorSet mesh_instance_descriptor_set_write{
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .pNext = nullptr,
+        .dstSet = mesh_instance_descriptor_set,
+        .dstBinding = 0,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .pImageInfo = nullptr,
+        .pBufferInfo = &mesh_instance_descriptor_buffer_info,
+        .pTexelBufferView = nullptr
+    };
+    VkWriteDescriptorSet descriptor_writes[] = {
+        mesh_instance_descriptor_set_write
+    };
+    vkUpdateDescriptorSets(s_context.device, ARRAY_LEN(descriptor_writes), descriptor_writes, 0, nullptr);
+
+    // bind descriptor set
+    VkDescriptorSet descriptor_sets[] = {
+        mesh_instance_descriptor_set
+    };
+    vkCmdBindDescriptorSets(render_frame.frame_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_gizmo_draw_pipeline_layout, 0, ARRAY_LEN(descriptor_sets), descriptor_sets, 0, nullptr);
+
+    // bind gizmo vertex & index buffer
+    VkDeviceSize offsets[] = {
+        0
+    };
+    vkCmdBindVertexBuffers(render_frame.frame_command_buffer, 0, 1, &s_gizmo.translate_tool_gpu_mesh_data.vertex_buffer.buffer, offsets);
+    vkCmdBindIndexBuffer(render_frame.frame_command_buffer, s_gizmo.translate_tool_gpu_mesh_data.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+    // bind gizmo pipeline
+    vkCmdBindPipeline(render_frame.frame_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_gizmo_draw_pipeline);
+
+    // render using gizmo indices
+    vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)s_gizmo.translate_tool_gpu_mesh_data.mesh->indices.cur_size, 1, 0, 0, 0);
+
+    // end gizmo render pass
+    vkCmdEndRenderPass(render_frame.frame_command_buffer);
+}
+
 static void post_processing_pass(render_frame_t& render_frame)
 {
     SCOPED_COMMAND_BUFFER_DEBUG_LABEL(render_frame.frame_command_buffer, "Post Processing", color_gen_random());
@@ -3860,11 +3951,6 @@ static void present_frame(render_frame_t& render_frame)
     {
         SM_VULKAN_ASSERT(present_result);
     }
-}
-
-static void gizmo_pass(render_frame_t& render_frame)
-{
-    // draw gizmo here
 }
 
 void sm::renderer_render_frame()
