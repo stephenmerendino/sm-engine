@@ -1738,10 +1738,17 @@ static void init_pipelines()
         vertex_color_attribute_description.format = VK_FORMAT_R32G32B32_SFLOAT;
         vertex_color_attribute_description.offset = offsetof(vertex_t, color);
 
+        VkVertexInputAttributeDescription vertex_normal_attribute_description{};
+        vertex_normal_attribute_description.location = 3;
+        vertex_normal_attribute_description.binding = 0;
+        vertex_normal_attribute_description.format = VK_FORMAT_R32G32B32_SFLOAT;
+        vertex_normal_attribute_description.offset = offsetof(vertex_t, normal);
+
         VkVertexInputAttributeDescription vertex_input_attributes_descriptions[] = {
             vertex_pos_attribute_description,
             vertex_uv_attribute_description,
-            vertex_color_attribute_description
+            vertex_color_attribute_description,
+            vertex_normal_attribute_description
         };
 
         vertex_input_state.vertexAttributeDescriptionCount = ARRAY_LEN(vertex_input_attributes_descriptions);
@@ -2013,10 +2020,17 @@ static void init_pipelines()
         vertex_color_attribute_description.format = VK_FORMAT_R32G32B32_SFLOAT;
         vertex_color_attribute_description.offset = offsetof(vertex_t, color);
 
+        VkVertexInputAttributeDescription vertex_normal_attribute_description{};
+        vertex_normal_attribute_description.location = 3;
+        vertex_normal_attribute_description.binding = 0;
+        vertex_normal_attribute_description.format = VK_FORMAT_R32G32B32_SFLOAT;
+        vertex_normal_attribute_description.offset = offsetof(vertex_t, normal);
+
         VkVertexInputAttributeDescription vertex_input_attributes_descriptions[] = {
             vertex_pos_attribute_description,
             vertex_uv_attribute_description,
-            vertex_color_attribute_description
+            vertex_color_attribute_description,
+            vertex_normal_attribute_description
         };
 
         vertex_input_state.vertexAttributeDescriptionCount = ARRAY_LEN(vertex_input_attributes_descriptions);
@@ -2503,7 +2517,7 @@ static void gizmo_init(arena_t* arena)
 {
     // build translate tool mesh
     mesh_t* translate_mesh = mesh_init(arena);
-    mesh_add_cylinder(translate_mesh, vec3_t::ZERO, vec3_t::X_AXIS, 2.0f, 0.15f, 32);
+    mesh_add_cube(translate_mesh, vec3_t::ZERO, 0.5f, 1, color_f32_t::RED);
     gpu_mesh_data_init(arena, s_gizmo.translate_tool_gpu_mesh_data, translate_mesh);
 
     // build rotate tool mesh
