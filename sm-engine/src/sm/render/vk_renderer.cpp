@@ -2542,6 +2542,9 @@ void sm::renderer_init(window_t* window)
 	primitive_shapes_init();
     context_init(startup_arena);
 
+    s_main_camera.world_pos = vec3_t{ .x = 3.0f, .y = 3.0f, .z = 3.0f };
+    camera_look_at(s_main_camera, vec3_t::ZERO);
+
 	// command pool
 	{
 		VkCommandPoolCreateInfo create_info{};
