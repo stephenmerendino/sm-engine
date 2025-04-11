@@ -205,7 +205,9 @@ void sm::mesh_add_uv_sphere(mesh_t* mesh, const vec3_t& origin, f32 radius, u32 
             vec4_t pos = vec4_t(radius, 0.0f, 0.0f, 0.0f) * init_rotation_y_degs(y_deg) * init_rotation_z_degs(z_deg);
             vec3_t finalPos = origin + to_vec3(pos);
 
-            u32 vert_index = mesh_add_vertex(mesh, { .pos = finalPos, .uv = uv, .color = to_vec3(vertex_color) });
+            vec3_t vertex_normal = normalized(to_vec3(pos) - origin);
+
+            u32 vert_index = mesh_add_vertex(mesh, { .pos = finalPos, .uv = uv, .color = to_vec3(vertex_color), .normal = vertex_normal });
 
             if (v_slice == 0)
             {
