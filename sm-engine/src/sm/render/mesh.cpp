@@ -94,7 +94,7 @@ void sm::primitive_shapes_init()
 		torus_mesh->vertices = array_init<vertex_t>(s_primitives_arena, 64);
 		torus_mesh->indices = array_init<u32>(s_primitives_arena, 64);
 		torus_mesh->topology = primitive_topology_t::TRIANGLE_LIST;
-        mesh_add_torus(torus_mesh, 32);
+        mesh_add_torus(torus_mesh, vec3_t::ZERO, vec3_t::WORLD_UP, 1.0f, 0.25f, 32);
         s_primitive_shapes[(u32)primitive_shape_t::TORUS] = torus_mesh;
     }
 
@@ -278,16 +278,17 @@ void sm::mesh_add_quad_3d(mesh_t* mesh, const vec3_t& centerPos, const vec3_t& r
 void sm::mesh_add_cone(mesh_t* mesh, const vec3_t& base_center, const vec3_t& dir, f32 height, f32 base_radius, u32 resolution, const color_f32_t& vertex_color)
 {
     vec3_t k = normalized(dir);
-    mat44_t local_to_world = init_basis_from_k(k);
-    scale(local_to_world, base_radius, base_radius, height);
-    translate(local_to_world, base_center);
+    mat44_t transformation = mat44_t::IDENTITY;
+    scale(transformation, base_radius, base_radius, height);
+    transformation *= init_basis_from_k(k);
+    translate(transformation, base_center);
 
     f32 theta_deg = 360.0f / (f32)resolution;
 
     vec3_t top_local(0.0f, 0.0f, 1.0f);
     vec3_t bot_local(0.0f, 0.0f, 0.0f);
-    vec3_t top_ws = transform_point(local_to_world, top_local);
-    vec3_t bot_ws = transform_point(local_to_world, bot_local);
+    vec3_t top_ws = transform_point(transformation, top_local);
+    vec3_t bot_ws = transform_point(transformation, bot_local);
 
     vec3_t vertex_color_vec3 = to_vec3(vertex_color);
 
@@ -296,8 +297,8 @@ void sm::mesh_add_cone(mesh_t* mesh, const vec3_t& base_center, const vec3_t& di
         vec3_t p0(cos_deg(theta_deg * slice), sin_deg(theta_deg * slice), 0.0f);
         vec3_t p1(cos_deg(theta_deg * (slice + 1)), sin_deg(theta_deg * (slice + 1)), 0.0f);
 
-        vec3_t p0_ws = transform_point(local_to_world, p0);
-        vec3_t p1_ws = transform_point(local_to_world, p1);
+        vec3_t p0_ws = transform_point(transformation, p0);
+        vec3_t p1_ws = transform_point(transformation, p1);
 
         f32 u0 = remap(p0.x, -1.0f, 1.0f, 0.0f, 1.0f);
         f32 u1 = remap(p1.x, -1.0f, 1.0f, 0.0f, 1.0f);
@@ -307,43 +308,48 @@ void sm::mesh_add_cone(mesh_t* mesh, const vec3_t& base_center, const vec3_t& di
 
         // top triangle 1
         {
-            mesh_add_vertex_and_index(mesh, { .pos = top_ws, .uv = vec2_t(0.5, 0.5f), .color = vertex_color_vec3 });
-            mesh_add_vertex_and_index(mesh, { .pos = p0_ws, .uv = vec2_t(u0, v0), .color = vertex_color_vec3 });
-            mesh_add_vertex_and_index(mesh, { .pos = p1_ws, .uv = vec2_t(u1, v1), .color = vertex_color_vec3 });
+            vec3_t normal = normalized(cross(p1_ws - p0_ws, top_ws - p0_ws));
+            mesh_add_vertex_and_index(mesh, { .pos = top_ws, .uv = vec2_t(0.5, 0.5f), .color = vertex_color_vec3, .normal = normal });
+            mesh_add_vertex_and_index(mesh, { .pos = p0_ws, .uv = vec2_t(u0, v0), .color = vertex_color_vec3, .normal = normal });
+            mesh_add_vertex_and_index(mesh, { .pos = p1_ws, .uv = vec2_t(u1, v1), .color = vertex_color_vec3, .normal = normal });
         }
 
         // top triangle 2
         {
-            mesh_add_vertex_and_index(mesh, { .pos = top_ws, .uv = vec2_t(0.5f, 0.5), .color = vertex_color_vec3 });
-            mesh_add_vertex_and_index(mesh, { .pos = p0_ws, .uv = vec2_t(u0, v0), .color = vertex_color_vec3 });
-            mesh_add_vertex_and_index(mesh, { .pos = p1_ws, .uv = vec2_t(u1, v1), .color = vertex_color_vec3 });
+            vec3_t normal = normalized(cross(p1_ws - p0_ws, top_ws - p0_ws));
+            mesh_add_vertex_and_index(mesh, { .pos = top_ws, .uv = vec2_t(0.5f, 0.5), .color = vertex_color_vec3, .normal = normal });
+            mesh_add_vertex_and_index(mesh, { .pos = p0_ws, .uv = vec2_t(u0, v0), .color = vertex_color_vec3, .normal = normal });
+            mesh_add_vertex_and_index(mesh, { .pos = p1_ws, .uv = vec2_t(u1, v1), .color = vertex_color_vec3, .normal = normal });
         }
 
         // bottom triangle 1
         {
-            mesh_add_vertex_and_index(mesh, { .pos = bot_ws, .uv = vec2_t(0.5f, 0.5f), .color = vertex_color_vec3 });
-            mesh_add_vertex_and_index(mesh, { .pos = p1_ws, .uv = vec2_t(u1, v1), .color = vertex_color_vec3 });
-            mesh_add_vertex_and_index(mesh, { .pos = p0_ws, .uv = vec2_t(u0, v0), .color = vertex_color_vec3 });
+            vec3_t normal = normalized(cross(p0_ws - p1_ws, bot_ws - p1_ws));
+            mesh_add_vertex_and_index(mesh, { .pos = bot_ws, .uv = vec2_t(0.5f, 0.5f), .color = vertex_color_vec3, .normal = normal});
+            mesh_add_vertex_and_index(mesh, { .pos = p1_ws, .uv = vec2_t(u1, v1), .color = vertex_color_vec3, .normal = normal });
+            mesh_add_vertex_and_index(mesh, { .pos = p0_ws, .uv = vec2_t(u0, v0), .color = vertex_color_vec3, .normal = normal });
         }
 
         // bottom triangle 2
         {
-            mesh_add_vertex_and_index(mesh, { .pos = bot_ws, .uv = vec2_t(0.5f, 0.5f), .color = vertex_color_vec3 });
-            mesh_add_vertex_and_index(mesh, { .pos = p1_ws, .uv = vec2_t(u1, v1), .color = vertex_color_vec3 });
-            mesh_add_vertex_and_index(mesh, { .pos = p0_ws, .uv = vec2_t(u0, v0), .color = vertex_color_vec3 });
+            vec3_t normal = normalized(cross(p0_ws - p1_ws, bot_ws - p1_ws));
+            mesh_add_vertex_and_index(mesh, { .pos = bot_ws, .uv = vec2_t(0.5f, 0.5f), .color = vertex_color_vec3, .normal = normal });
+            mesh_add_vertex_and_index(mesh, { .pos = p1_ws, .uv = vec2_t(u1, v1), .color = vertex_color_vec3, .normal = normal });
+            mesh_add_vertex_and_index(mesh, { .pos = p0_ws, .uv = vec2_t(u0, v0), .color = vertex_color_vec3, .normal = normal });
         }
     }
 }
 
-void sm::mesh_add_cylinder(mesh_t* mesh, const vec3_t& base_center, const vec3_t& dir, f32 height, f32 base_radius, u32 resolution, const color_f32_t& vertex_color)
+void sm::mesh_add_cylinder(mesh_t* mesh, const vec3_t& base_center, const vec3_t& dir, f32 height, f32 radius, u32 resolution, const color_f32_t& vertex_color)
 {
     f32 theta_deg = 360.0f / (f32)resolution;
     f32 side_u_scale = 3.0f;
 
     vec3_t k = normalized(dir);
-    mat44_t local_to_world = init_basis_from_k(k);
-    scale(local_to_world, base_radius, base_radius, height);
-    translate(local_to_world, base_center);
+    mat44_t transformation = mat44_t::IDENTITY;
+    scale(transformation, radius, radius, height);
+    transformation *= init_basis_from_k(k);
+    translate(transformation, base_center);
 
     vec3_t vertex_color_vec3 = to_vec3(vertex_color);
 
@@ -354,12 +360,12 @@ void sm::mesh_add_cylinder(mesh_t* mesh, const vec3_t& base_center, const vec3_t
         vec2_t p1_xy(cos_deg(theta_deg * (slice + 1)), sin_deg(theta_deg * (slice + 1)));
         vec3_t bot(0.0f, 0.0f, 0.0f);
 
-        vec3_t top_ws  = transform_point(local_to_world, top);
-        vec3_t p0_top_ws = transform_point(local_to_world, init_vec3(p0_xy, 1.0f));
-        vec3_t p1_top_ws = transform_point(local_to_world, init_vec3(p1_xy, 1.0f));
-        vec3_t p0_bot_ws = transform_point(local_to_world, init_vec3(p0_xy, 0.0f));
-        vec3_t p1_bot_ws = transform_point(local_to_world, init_vec3(p1_xy, 0.0f));
-        vec3_t bot_ws   = transform_point(local_to_world, bot);
+        vec3_t top_ws  = transform_point(transformation, top);
+        vec3_t p0_top_ws = transform_point(transformation, init_vec3(p0_xy, 1.0f));
+        vec3_t p1_top_ws = transform_point(transformation, init_vec3(p1_xy, 1.0f));
+        vec3_t p0_bot_ws = transform_point(transformation, init_vec3(p0_xy, 0.0f));
+        vec3_t p1_bot_ws = transform_point(transformation, init_vec3(p1_xy, 0.0f));
+        vec3_t bot_ws   = transform_point(transformation, bot);
 
         // top triangle
         {
@@ -368,9 +374,11 @@ void sm::mesh_add_cylinder(mesh_t* mesh, const vec3_t& base_center, const vec3_t
             f32 v0 = remap(p0_xy.y, -1.0f, 1.0f, 0.0f, 1.0f);
             f32 v1 = remap(p1_xy.y, -1.0f, 1.0f, 0.0f, 1.0f);
 
-            mesh_add_vertex_and_index(mesh, { .pos = top_ws, .uv = vec2_t(0.5, 0.5f), .color = vertex_color_vec3 });
-            mesh_add_vertex_and_index(mesh, { .pos = p0_top_ws, .uv = vec2_t(u0, v0), .color = vertex_color_vec3 });
-            mesh_add_vertex_and_index(mesh, { .pos = p1_top_ws, .uv = vec2_t(u1, v1), .color = vertex_color_vec3 });
+            vec3_t normal = normalized(cross(p1_top_ws - p0_top_ws, top_ws - p0_top_ws));
+
+            mesh_add_vertex_and_index(mesh, { .pos = top_ws, .uv = vec2_t(0.5, 0.5f), .color = vertex_color_vec3, .normal = normal });
+            mesh_add_vertex_and_index(mesh, { .pos = p0_top_ws, .uv = vec2_t(u0, v0), .color = vertex_color_vec3, .normal = normal });
+            mesh_add_vertex_and_index(mesh, { .pos = p1_top_ws, .uv = vec2_t(u1, v1), .color = vertex_color_vec3, .normal = normal });
         }
 
         // side triangle 1
@@ -381,9 +389,11 @@ void sm::mesh_add_cylinder(mesh_t* mesh, const vec3_t& base_center, const vec3_t
             u0 *= side_u_scale;
             u1 *= side_u_scale;
 
-            mesh_add_vertex_and_index(mesh, { .pos = p0_bot_ws, .uv = vec2_t(u0, 1.0f), .color = vertex_color_vec3 });
-            mesh_add_vertex_and_index(mesh, { .pos = p1_bot_ws, .uv = vec2_t(u1, 1.0f), .color = vertex_color_vec3 });
-            mesh_add_vertex_and_index(mesh, { .pos = p1_top_ws, .uv = vec2_t(u1, 0.0f), .color = vertex_color_vec3 });
+            vec3_t normal = normalized(cross(p1_top_ws - p1_bot_ws, p0_bot_ws - p1_bot_ws));
+
+            mesh_add_vertex_and_index(mesh, { .pos = p0_bot_ws, .uv = vec2_t(u0, 1.0f), .color = vertex_color_vec3, .normal = normal });
+            mesh_add_vertex_and_index(mesh, { .pos = p1_bot_ws, .uv = vec2_t(u1, 1.0f), .color = vertex_color_vec3, .normal = normal });
+            mesh_add_vertex_and_index(mesh, { .pos = p1_top_ws, .uv = vec2_t(u1, 0.0f), .color = vertex_color_vec3, .normal = normal });
         }
 
         // side triangle 2
@@ -394,9 +404,11 @@ void sm::mesh_add_cylinder(mesh_t* mesh, const vec3_t& base_center, const vec3_t
             u0 *= side_u_scale;
             u1 *= side_u_scale;
 
-            mesh_add_vertex_and_index(mesh, { .pos = p0_bot_ws, .uv = vec2_t(u0, 1.0f), .color = vertex_color_vec3 });
-            mesh_add_vertex_and_index(mesh, { .pos = p1_top_ws, .uv = vec2_t(u1, 0.0f), .color = vertex_color_vec3 });
-            mesh_add_vertex_and_index(mesh, { .pos = p0_top_ws, .uv = vec2_t(u0, 0.0f), .color = vertex_color_vec3 });
+            vec3_t normal = normalized(cross(p0_top_ws - p1_top_ws, p0_bot_ws - p1_top_ws));
+
+            mesh_add_vertex_and_index(mesh, { .pos = p0_bot_ws, .uv = vec2_t(u0, 1.0f), .color = vertex_color_vec3, .normal = normal });
+            mesh_add_vertex_and_index(mesh, { .pos = p1_top_ws, .uv = vec2_t(u1, 0.0f), .color = vertex_color_vec3, .normal = normal });
+            mesh_add_vertex_and_index(mesh, { .pos = p0_top_ws, .uv = vec2_t(u0, 0.0f), .color = vertex_color_vec3, .normal = normal });
         }
 
         // bottom triangle
@@ -406,14 +418,16 @@ void sm::mesh_add_cylinder(mesh_t* mesh, const vec3_t& base_center, const vec3_t
             f32 v0 = remap(p0_xy.y, -1.0f, 1.0f, 0.0f, 1.0f);
             f32 v1 = remap(p1_xy.y, -1.0f, 1.0f, 0.0f, 1.0f);
 
-            mesh_add_vertex_and_index(mesh, { .pos = bot_ws, .uv = vec2_t(0.5f, 0.5f), .color = vertex_color_vec3 });
-            mesh_add_vertex_and_index(mesh, { .pos = p1_bot_ws, .uv = vec2_t(u1, v1), .color = vertex_color_vec3 });
-            mesh_add_vertex_and_index(mesh, { .pos = p0_bot_ws, .uv = vec2_t(u0, v0), .color = vertex_color_vec3 });
+            vec3_t normal = normalized(cross(p0_bot_ws - p1_bot_ws, bot_ws - p1_bot_ws));
+
+            mesh_add_vertex_and_index(mesh, { .pos = bot_ws, .uv = vec2_t(0.5f, 0.5f), .color = vertex_color_vec3, .normal = normal });
+            mesh_add_vertex_and_index(mesh, { .pos = p1_bot_ws, .uv = vec2_t(u1, v1), .color = vertex_color_vec3, .normal = normal });
+            mesh_add_vertex_and_index(mesh, { .pos = p0_bot_ws, .uv = vec2_t(u0, v0), .color = vertex_color_vec3, .normal = normal });
         }
     }
 }
 
-void sm::mesh_add_torus(mesh_t* mesh, u32 resolution, const color_f32_t& vertex_color)
+void sm::mesh_add_torus(mesh_t* mesh, const vec3_t& center, const vec3_t& normal, f32 radius, f32 thickness, u32 resolution, const color_f32_t& vertex_color)
 {
     f32 u_scale = 3.0f;
     f32 v_scale = 8.0f;
@@ -422,22 +436,22 @@ void sm::mesh_add_torus(mesh_t* mesh, u32 resolution, const color_f32_t& vertex_
     {
         f32 percent_around_torus = (f32)torus_slice / (f32)resolution;
         f32 cur_deg = percent_around_torus * 360.0f;
-        vec3_t ring_anchor_pos = vec3_t(cos_deg(cur_deg), sin_deg(cur_deg), 0.0f);
+        vec3_t ring_anchor_pos = center + (radius * vec3_t(cos_deg(cur_deg), sin_deg(cur_deg), 0.0f));
 
-        vec3_t i = normalized(ring_anchor_pos);
-        vec3_t k = normalized(cross(vec3_t::WORLD_UP, i));
-        vec3_t j = cross(i, k);
-        mat44_t ring_world_transform = init_mat44(i, j, k, ring_anchor_pos);
+        mat44_t ring_world_transform = init_basis_from_k(normal);
+        translate(ring_world_transform, ring_anchor_pos);
 
         for (u32 torus_ring_pos = 0; torus_ring_pos <= resolution; torus_ring_pos++)
         {
             f32 percent_around_ring = (f32)torus_ring_pos / (f32)resolution;
             f32 deg = percent_around_ring * 360.0f;
-            vec2_t ring_pos_ls = polar_to_cartesian_degs(deg, 0.3f);
+            vec2_t ring_pos_ls = thickness * polar_to_cartesian_degs(deg, 0.3f);
             vec3_t ring_pos_ws = transform_point(ring_world_transform, init_vec3(ring_pos_ls, 0.0f));
+            vec3_t vertex_normal = normalized(ring_pos_ws - ring_anchor_pos);
             u32 vert_index = mesh_add_vertex(mesh, { .pos = ring_pos_ws, 
-                                                           .uv = vec2_t(percent_around_ring * u_scale, percent_around_torus * v_scale), 
-                                                           .color = to_vec3(vertex_color) });
+                                                     .uv = vec2_t(percent_around_ring * u_scale, percent_around_torus * v_scale), 
+                                                     .color = to_vec3(vertex_color),
+                                                     .normal = vertex_normal });
 
             if (torus_slice > 0 && torus_ring_pos > 0)
             {

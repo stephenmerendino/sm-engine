@@ -2521,21 +2521,21 @@ static void gizmo_init(arena_t* arena)
     mesh_add_uv_sphere(translate_mesh, vec3_t::ZERO, 0.5f, 64, color_f32_t::WHITE);
     //mesh_add_quad_3d(translate_mesh, vec3_t(0.0f, 1.0f, 1.0f), vec3_t(0.0f, -1.0f, 1.0f), vec3_t(0.0f, -1.0f, -1.0f), vec3_t(0.0f, 1.0f, -1.0f), color_f32_t::WHITE);
     //mesh_add_quad_3d(translate_mesh, vec3_t::ZERO, vec3_t::WORLD_LEFT, vec3_t::WORLD_UP, 1.0f, 1.0f, 1, color_f32_t::WHITE);
-    mesh_add_cone(translate_mesh, vec3_t{ .x = 1.5f, .y = 0.0f, .z = 0.0f}, vec3_t::WORLD_FORWARD, 2.0f, 1.0f);
-    mesh_add_cone(translate_mesh, vec3_t{ .x = 0.0f, .y = 1.5f, .z = 0.0f}, vec3_t::WORLD_UP, 2.0f, 1.0f);
-    //void mesh_add_cylinder(mesh_t* mesh, const vec3_t& base_center, const vec3_t& dir, f32 height, f32 base_radius, u32 resolution = 32, const color_f32_t& vertex_color = color_f32_t::WHITE);
-    //void mesh_add_torus(mesh_t* mesh, u32 resolution = 32, const color_f32_t& vertex_color = color_f32_t::WHITE);
+    //mesh_add_cone(translate_mesh, vec3_t{ .x = 1.5f, .y = 0.0f, .z = 0.0f}, vec3_t::WORLD_FORWARD, 2.0f, 1.0f, 128);
+    //mesh_add_cone(translate_mesh, vec3_t{ .x = 0.0f, .y = 1.5f, .z = 0.0f}, vec3_t::WORLD_UP, 2.0f, 1.0f, 128);
+    //mesh_add_cylinder(translate_mesh, vec3_t::ZERO, vec3_t::WORLD_LEFT, 2.0f, 0.5f);
+    mesh_add_torus(translate_mesh, vec3_t(3.0f, 0.0f, 0.0f), vec3_t::WORLD_FORWARD, 3.0f, 1.0f);
     gpu_mesh_data_init(arena, s_gizmo.translate_tool_gpu_mesh_data, translate_mesh);
 
     // build rotate tool mesh
     mesh_t* rotate_mesh = mesh_init(arena);
-    mesh_add_torus(rotate_mesh, 32);
-    gpu_mesh_data_init(arena, s_gizmo.rotate_tool_gpu_mesh_data, rotate_mesh);
+    //mesh_add_torus(rotate_mesh, 32);
+    //gpu_mesh_data_init(arena, s_gizmo.rotate_tool_gpu_mesh_data, rotate_mesh);
 
     // build scale tool mesh
     mesh_t* scale_mesh = mesh_init(arena);
-    mesh_add_torus(scale_mesh, 32);
-    gpu_mesh_data_init(arena, s_gizmo.scale_tool_gpu_mesh_data, scale_mesh);
+    //mesh_add_torus(scale_mesh, 32);
+    //gpu_mesh_data_init(arena, s_gizmo.scale_tool_gpu_mesh_data, scale_mesh);
 }
 
 void sm::renderer_init(window_t* window)
