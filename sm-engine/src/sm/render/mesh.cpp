@@ -432,23 +432,32 @@ void sm::mesh_add_torus(mesh_t* mesh, const vec3_t& center, const vec3_t& normal
     f32 u_scale = 3.0f;
     f32 v_scale = 8.0f;
 
+    mat44_t world_transform = init_basis_from_k(normal);
+    translate(world_transform, center);
+
     for (u32 torus_slice = 0; torus_slice <= resolution; torus_slice++)
     {
         f32 percent_around_torus = (f32)torus_slice / (f32)resolution;
         f32 cur_deg = percent_around_torus * 360.0f;
-        vec3_t ring_anchor_pos = center + (radius * vec3_t(cos_deg(cur_deg), sin_deg(cur_deg), 0.0f));
 
-        mat44_t ring_world_transform = init_basis_from_k(normal);
-        translate(ring_world_transform, ring_anchor_pos);
+        mat44_t ring_transform = init_translation(radius, 0.0f, 0.0f) * init_rotation_z_degs(cur_deg);
+        vec3_t ring_anchor_pos = transform_point(ring_transform, vec3_t::ZERO);
 
         for (u32 torus_ring_pos = 0; torus_ring_pos <= resolution; torus_ring_pos++)
         {
             f32 percent_around_ring = (f32)torus_ring_pos / (f32)resolution;
             f32 deg = percent_around_ring * 360.0f;
-            vec2_t ring_pos_ls = thickness * polar_to_cartesian_degs(deg, 0.3f);
-            vec3_t ring_pos_ws = transform_point(ring_world_transform, init_vec3(ring_pos_ls, 0.0f));
-            vec3_t vertex_normal = normalized(ring_pos_ws - ring_anchor_pos);
-            u32 vert_index = mesh_add_vertex(mesh, { .pos = ring_pos_ws, 
+
+            vec2_t ring_pos_xz = polar_to_cartesian_degs(deg, thickness);
+            vec4_t ring_pos_ls{ .x = ring_pos_xz.x, .y = 0.0f, .z = ring_pos_xz.y, .w = 1.0f};
+
+            vec4_t torus_pos_ls = ring_pos_ls * ring_transform;
+            vec4_t torus_pos_ws = torus_pos_ls * world_transform;
+
+            vec3_t vertex_normal = normalized(to_vec3(torus_pos_ls) - ring_anchor_pos);
+            vertex_normal = normalized(transform_dir(world_transform, vertex_normal));
+
+            u32 vert_index = mesh_add_vertex(mesh, { .pos = to_vec3(torus_pos_ws), 
                                                      .uv = vec2_t(percent_around_ring * u_scale, percent_around_torus * v_scale), 
                                                      .color = to_vec3(vertex_color),
                                                      .normal = vertex_normal });
