@@ -87,6 +87,30 @@ struct gpu_mesh_data_t
     buffer_t index_buffer;
 };
 
+struct transform_t
+{
+    vec3_t scale        { .x = 1.0f, .y = 1.0f, .z = 1.0f };
+    vec4_t quaternion   { .x = 0.0f, .y = 0.0f, .z = 0.0f, .w = 1.0f };
+    vec3_t translation  { .x = 0.0f, .y = 0.0f, .z = 0.0f };
+};
+
+struct material_t
+{
+    // put material params/data here
+};
+
+//typedef u64 mesh_id_t;
+//typedef u64 material_id_t;
+struct mesh_instance_t
+{
+    //mesh_id_t mesh_id;
+    //material_id_t material_id;
+    gpu_mesh_data_t gpu_mesh_data;
+    transform_t transform;
+};
+
+array_t<mesh_instance_t> s_mesh_instances;
+
 static const u32 MAX_NUM_MESH_INSTANCES_PER_FRAME = 10;
 
 struct render_frame_t 
@@ -2510,21 +2534,14 @@ static void gpu_mesh_data_init(arena_t* arena, gpu_mesh_data_t& out_gpu_mesh, me
                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
         upload_buffer_data(out_gpu_mesh.index_buffer.buffer, out_gpu_mesh.mesh->indices.data, index_buffer_size);
     }
-
 }
 
 static void gizmo_init(arena_t* arena)
 {
     // build translate tool mesh
     mesh_t* translate_mesh = mesh_init(arena);
-    //mesh_add_cube(translate_mesh, vec3_t::ZERO, 0.5f, 1, color_f32_t::RED);
-    mesh_add_uv_sphere(translate_mesh, vec3_t::ZERO, 0.5f, 64, color_f32_t::WHITE);
-    //mesh_add_quad_3d(translate_mesh, vec3_t(0.0f, 1.0f, 1.0f), vec3_t(0.0f, -1.0f, 1.0f), vec3_t(0.0f, -1.0f, -1.0f), vec3_t(0.0f, 1.0f, -1.0f), color_f32_t::WHITE);
-    //mesh_add_quad_3d(translate_mesh, vec3_t::ZERO, vec3_t::WORLD_LEFT, vec3_t::WORLD_UP, 1.0f, 1.0f, 1, color_f32_t::WHITE);
-    //mesh_add_cone(translate_mesh, vec3_t{ .x = 1.5f, .y = 0.0f, .z = 0.0f}, vec3_t::WORLD_FORWARD, 2.0f, 1.0f, 128);
-    //mesh_add_cone(translate_mesh, vec3_t{ .x = 0.0f, .y = 1.5f, .z = 0.0f}, vec3_t::WORLD_UP, 2.0f, 1.0f, 128);
-    //mesh_add_cylinder(translate_mesh, vec3_t::ZERO, vec3_t::WORLD_LEFT, 2.0f, 0.5f);
-    mesh_add_torus(translate_mesh, vec3_t(3.0f, 0.0f, 0.0f), vec3_t::WORLD_FORWARD, 3.0f, 1.0f);
+    //void mesh_add_cube(mesh_t* mesh, const vec3_t& center, f32 half_size, u32 resolution = 1, const color_f32_t& vertex_color = color_f32_t::WHITE);
+    mesh_add_cube(translate_mesh, vec3_t::ZERO, 0.5f, 1, color_f32_t::RED);
     gpu_mesh_data_init(arena, s_gizmo.translate_tool_gpu_mesh_data, translate_mesh);
 
     // build rotate tool mesh
@@ -3455,7 +3472,7 @@ static void main_draw_pass(render_frame_t& render_frame)
 
         mat44_t view = camera_get_view_transform(s_main_camera);
         mat44_t projection = init_perspective_proj(45.0f, 0.01f, 100.0f, (f32)s_swapchain.extent.width / (f32)s_swapchain.extent.height);
-        mat44_t viking_room_model = mat44_t::IDENTITY;
+        mat44_t viking_room_model = mat44_t::IDENTITY; // use mesh instance transform to calculate this
         mat44_t viking_room_mvp = viking_room_model * view * projection;
 
         mesh_instance_render_data_t mesh_instance_render_data{};
