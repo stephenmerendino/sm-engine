@@ -80,38 +80,34 @@ struct texture_t
     u32 num_mips = 0;
 };
 
-struct gpu_mesh_data_t 
+struct mesh_t 
 {
-    mesh_t*  mesh = nullptr;
     buffer_t vertex_buffer;
     buffer_t index_buffer;
+    u32 num_indices = 0;
 };
 
 struct transform_t
 {
-    vec3_t scale        { .x = 1.0f, .y = 1.0f, .z = 1.0f };
-    vec4_t quaternion   { .x = 0.0f, .y = 0.0f, .z = 0.0f, .w = 1.0f };
-    vec3_t translation  { .x = 0.0f, .y = 0.0f, .z = 0.0f };
+    vec3_t scale { .x = 1.0f, .y = 1.0f, .z = 1.0f };
+    vec4_t quaternion { .x = 0.0f, .y = 0.0f, .z = 0.0f, .w = 1.0f };
+    vec3_t translation { .x = 0.0f, .y = 0.0f, .z = 0.0f };
 };
 
-struct material_t
-{
-    // put material params/data here
-};
-
-//typedef u64 mesh_id_t;
-//typedef u64 material_id_t;
 struct mesh_instance_t
 {
-    //mesh_id_t mesh_id;
-    //material_id_t material_id;
-    gpu_mesh_data_t gpu_mesh_data;
+    mesh_data_t* mesh = nullptr;
+    //material_t* material = nullptr;
     transform_t transform;
 };
 
-array_t<mesh_instance_t> s_mesh_instances;
+struct level_t 
+{
+    array_t<mesh_instance_t> mesh_instances;
+};
 
-static const u32 MAX_NUM_MESH_INSTANCES_PER_FRAME = 10;
+static const u32 MAX_NUM_MESH_INSTANCES_PER_FRAME = 1024;
+static constexpr u32 INVALID_OBJECT_ID = UINT32_MAX;
 
 struct render_frame_t 
 {
@@ -180,8 +176,6 @@ struct post_processing_params_t
 };
 
 // gizmo
-static constexpr u32 INVALID_OBJECT_ID = UINT32_MAX;
-
 enum class gizmo_mode_t : u8
 {
     INACTIVE,
@@ -192,10 +186,9 @@ enum class gizmo_mode_t : u8
 
 struct gizmo_t
 {
-    gpu_mesh_data_t translate_tool_gpu_mesh_data;
-    gpu_mesh_data_t rotate_tool_gpu_mesh_data;
-    gpu_mesh_data_t scale_tool_gpu_mesh_data;
-    u32             selected_object_id = INVALID_OBJECT_ID;
+    mesh_t translate_tool_gpu_mesh_data;
+    mesh_t rotate_tool_gpu_mesh_data;
+    mesh_t scale_tool_gpu_mesh_data;
     gizmo_mode_t    mode = gizmo_mode_t::INACTIVE;
 };
 
@@ -224,11 +217,12 @@ static VkRenderPass s_imgui_render_pass;
 static array_t<render_frame_t> s_render_frames;
 static gizmo_t s_gizmo;
 
-static gpu_mesh_data_t s_viking_room_mesh_data;
+static mesh_t s_viking_room_mesh_data;
 static texture_t s_viking_room_diffuse_texture;
 static VkDescriptorSet s_viking_room_material_descriptor_set = VK_NULL_HANDLE;
 static VkPipelineLayout s_viking_room_main_draw_pipeline_layout = VK_NULL_HANDLE;
 static VkPipeline s_viking_room_main_draw_pipeline = VK_NULL_HANDLE;
+static transform_t s_viking_room_transform;
 
 static VkPipelineLayout s_gizmo_draw_pipeline_layout = VK_NULL_HANDLE;
 static VkPipeline s_gizmo_draw_pipeline = VK_NULL_HANDLE;
@@ -2511,48 +2505,54 @@ void renderer_window_msg_handler(window_msg_type_t msg_type, u64 msg_data, void*
     }
 }
 
-static void gpu_mesh_data_init(arena_t* arena, gpu_mesh_data_t& out_gpu_mesh, mesh_t* mesh)
+static void mesh_init(arena_t* arena, mesh_t& out_mesh, mesh_data_t* mesh_data)
 {
-    out_gpu_mesh.mesh = mesh;
-
     // vertex buffer
     {
-        size_t vertex_buffer_size = mesh_calc_vertex_buffer_size(out_gpu_mesh.mesh);
-        buffer_init(out_gpu_mesh.vertex_buffer, 
+        size_t vertex_buffer_size = mesh_data_calc_vertex_buffer_size(mesh_data);
+        buffer_init(out_mesh.vertex_buffer, 
                     vertex_buffer_size, 
                     VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-        upload_buffer_data(out_gpu_mesh.vertex_buffer.buffer, out_gpu_mesh.mesh->vertices.data, vertex_buffer_size);
+        upload_buffer_data(out_mesh.vertex_buffer.buffer, mesh_data->vertices.data, vertex_buffer_size);
     }
 
     // index buffer
     {
-        size_t index_buffer_size = mesh_calc_index_buffer_size(out_gpu_mesh.mesh);
-        buffer_init(out_gpu_mesh.index_buffer, 
+        size_t index_buffer_size = mesh_data_calc_index_buffer_size(mesh_data);
+        buffer_init(out_mesh.index_buffer, 
                     index_buffer_size, 
                     VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-        upload_buffer_data(out_gpu_mesh.index_buffer.buffer, out_gpu_mesh.mesh->indices.data, index_buffer_size);
+        upload_buffer_data(out_mesh.index_buffer.buffer, mesh_data->indices.data, index_buffer_size);
     }
+
+    out_mesh.num_indices = mesh_data->indices.cur_size;
 }
 
 static void gizmo_init(arena_t* arena)
 {
+    f32 gizmo_length = 0.75f;
+    f32 gizmo_bar_thickness = 0.05f;
+    f32 scale_box_thickness = 0.10f;
+
     // build translate tool mesh
-    mesh_t* translate_mesh = mesh_init(arena);
-    //void mesh_add_cube(mesh_t* mesh, const vec3_t& center, f32 half_size, u32 resolution = 1, const color_f32_t& vertex_color = color_f32_t::WHITE);
-    mesh_add_cube(translate_mesh, vec3_t::ZERO, 0.5f, 1, color_f32_t::RED);
-    gpu_mesh_data_init(arena, s_gizmo.translate_tool_gpu_mesh_data, translate_mesh);
+    mesh_data_t* translate_mesh = mesh_init(arena);
+    //mesh_data_init(arena, s_gizmo.translate_tool_gpu_mesh_data, translate_mesh);
 
     // build rotate tool mesh
-    mesh_t* rotate_mesh = mesh_init(arena);
-    //mesh_add_torus(rotate_mesh, 32);
+    mesh_data_t* rotate_mesh = mesh_init(arena);
     //gpu_mesh_data_init(arena, s_gizmo.rotate_tool_gpu_mesh_data, rotate_mesh);
 
     // build scale tool mesh
-    mesh_t* scale_mesh = mesh_init(arena);
-    //mesh_add_torus(scale_mesh, 32);
-    //gpu_mesh_data_init(arena, s_gizmo.scale_tool_gpu_mesh_data, scale_mesh);
+    mesh_data_t* scale_mesh = mesh_init(arena);
+    mesh_data_add_cylinder(scale_mesh, vec3_t::ZERO, vec3_t::WORLD_FORWARD, gizmo_length, gizmo_bar_thickness, 32, color_f32_t::RED);
+    mesh_data_add_cube(scale_mesh, { .x = gizmo_length, .y = 0.0f, .z = 0.0f }, scale_box_thickness, 1, color_f32_t::RED);
+    mesh_data_add_cylinder(scale_mesh, vec3_t::ZERO, vec3_t::WORLD_LEFT, gizmo_length, gizmo_bar_thickness, 32, color_f32_t::GREEN);
+    mesh_data_add_cube(scale_mesh, { .x = 0.0f, .y = gizmo_length, .z = 0.0f }, scale_box_thickness, 1, color_f32_t::GREEN);
+    mesh_data_add_cylinder(scale_mesh, vec3_t::ZERO, vec3_t::WORLD_UP, gizmo_length, gizmo_bar_thickness, 32, color_f32_t::BLUE);
+    mesh_data_add_cube(scale_mesh, { .x = 0.0f, .y = 0.0f, .z = gizmo_length }, scale_box_thickness, 1, color_f32_t::BLUE);
+    mesh_init(arena, s_gizmo.scale_tool_gpu_mesh_data, scale_mesh);
 }
 
 void sm::renderer_init(window_t* window)
@@ -2563,7 +2563,8 @@ void sm::renderer_init(window_t* window)
     window_add_msg_cb(s_window, renderer_window_msg_handler, nullptr);
 
 	shader_compiler_init();
-	primitive_shapes_init();
+	mesh_data_init_primitives();
+
     context_init(startup_arena);
 
     s_main_camera.world_pos = vec3_t{ .x = 3.0f, .y = 3.0f, .z = 3.0f };
@@ -3198,8 +3199,8 @@ void sm::renderer_init(window_t* window)
 
 		// viking room
 		{
-            mesh_t* viking_room_obj = mesh_init_from_obj(startup_arena, "viking_room.obj");
-            gpu_mesh_data_init(startup_arena, s_viking_room_mesh_data, viking_room_obj);
+            mesh_data_t* viking_room_obj = mesh_data_init_from_obj(startup_arena, "viking_room.obj");
+            mesh_init(startup_arena, s_viking_room_mesh_data, viking_room_obj);
 
 			// viking room diffuse texture
 			{
@@ -3544,7 +3545,7 @@ static void main_draw_pass(render_frame_t& render_frame)
         vkCmdBindPipeline(render_frame.frame_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_viking_room_main_draw_pipeline);
 
         // draw mesh
-        vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)s_viking_room_mesh_data.mesh->indices.cur_size, 1, 0, 0, 0);
+        vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)s_viking_room_mesh_data.num_indices, 1, 0, 0, 0);
     }
 
     vkCmdEndRenderPass(render_frame.frame_command_buffer);
@@ -3628,14 +3629,14 @@ static void gizmo_pass(render_frame_t& render_frame)
     VkDeviceSize offsets[] = {
         0
     };
-    vkCmdBindVertexBuffers(render_frame.frame_command_buffer, 0, 1, &s_gizmo.translate_tool_gpu_mesh_data.vertex_buffer.buffer, offsets);
-    vkCmdBindIndexBuffer(render_frame.frame_command_buffer, s_gizmo.translate_tool_gpu_mesh_data.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindVertexBuffers(render_frame.frame_command_buffer, 0, 1, &s_gizmo.scale_tool_gpu_mesh_data.vertex_buffer.buffer, offsets);
+    vkCmdBindIndexBuffer(render_frame.frame_command_buffer, s_gizmo.scale_tool_gpu_mesh_data.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
     // bind gizmo pipeline
     vkCmdBindPipeline(render_frame.frame_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_gizmo_draw_pipeline);
 
     // render using gizmo indices
-    vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)s_gizmo.translate_tool_gpu_mesh_data.mesh->indices.cur_size, 1, 0, 0, 0);
+    vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)s_gizmo.scale_tool_gpu_mesh_data.num_indices, 1, 0, 0, 0);
 
     // end gizmo render pass
     vkCmdEndRenderPass(render_frame.frame_command_buffer);

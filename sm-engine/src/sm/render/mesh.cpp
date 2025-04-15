@@ -12,113 +12,113 @@
 using namespace sm;
 
 bool s_did_init_primitive_shapes = false;
-mesh_t* s_primitive_shapes[(u32)primitive_shape_t::NUM_PRIMITIVE_SHAPES];
+mesh_data_t* s_primitive_shapes[(u32)primitive_t::NUM_PRIMITIVE_SHAPES];
 arena_t* s_primitives_arena = nullptr;
 
-void sm::primitive_shapes_init()
+void sm::mesh_data_init_primitives()
 {
 	s_primitives_arena = arena_init(MiB(2));
 
 	// axes
 	{
-		mesh_t* axes_mesh = arena_alloc_struct(s_primitives_arena, mesh_t);
+		mesh_data_t* axes_mesh = arena_alloc_struct(s_primitives_arena, mesh_data_t);
 		axes_mesh->vertices = array_init<vertex_t>(s_primitives_arena, 64);
 		axes_mesh->indices = array_init<u32>(s_primitives_arena, 64);
-		axes_mesh->topology = primitive_topology_t::LINE_LIST;
+		axes_mesh->topology = mesh_topology_t::LINE_LIST;
 
-        mesh_add_vertex_and_index(axes_mesh, { .pos = vec3_t::ZERO, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::RED), .normal = vec3_t::ZERO });
-		mesh_add_vertex_and_index(axes_mesh, { .pos = vec3_t::X_AXIS, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::RED), .normal = vec3_t::ZERO });
+        mesh_data_add_vertex_and_index(axes_mesh, { .pos = vec3_t::ZERO, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::RED), .normal = vec3_t::ZERO });
+		mesh_data_add_vertex_and_index(axes_mesh, { .pos = vec3_t::X_AXIS, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::RED), .normal = vec3_t::ZERO });
 
-		mesh_add_vertex_and_index(axes_mesh, { .pos = vec3_t::ZERO, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::GREEN), .normal = vec3_t::ZERO });
-		mesh_add_vertex_and_index(axes_mesh, { .pos = vec3_t::Y_AXIS, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::GREEN), .normal = vec3_t::ZERO });
+		mesh_data_add_vertex_and_index(axes_mesh, { .pos = vec3_t::ZERO, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::GREEN), .normal = vec3_t::ZERO });
+		mesh_data_add_vertex_and_index(axes_mesh, { .pos = vec3_t::Y_AXIS, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::GREEN), .normal = vec3_t::ZERO });
 
-		mesh_add_vertex_and_index(axes_mesh, { .pos = vec3_t::ZERO, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::BLUE), .normal = vec3_t::ZERO });
-		mesh_add_vertex_and_index(axes_mesh, { .pos = vec3_t::Z_AXIS, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::BLUE), .normal = vec3_t::ZERO });
+		mesh_data_add_vertex_and_index(axes_mesh, { .pos = vec3_t::ZERO, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::BLUE), .normal = vec3_t::ZERO });
+		mesh_data_add_vertex_and_index(axes_mesh, { .pos = vec3_t::Z_AXIS, .uv = vec2_t::ZERO, .color = to_vec3(color_f32_t::BLUE), .normal = vec3_t::ZERO });
 
-		s_primitive_shapes[(u32)primitive_shape_t::AXES] = axes_mesh;
+		s_primitive_shapes[(u32)primitive_t::AXES] = axes_mesh;
 	}
 
     // cube
     {
-		mesh_t* cube_mesh = arena_alloc_struct(s_primitives_arena, mesh_t);
+		mesh_data_t* cube_mesh = arena_alloc_struct(s_primitives_arena, mesh_data_t);
 		cube_mesh->vertices = array_init<vertex_t>(s_primitives_arena, 64);
 		cube_mesh->indices = array_init<u32>(s_primitives_arena, 64);
-		cube_mesh->topology = primitive_topology_t::TRIANGLE_LIST;
-        mesh_add_cube(cube_mesh, vec3_t::ZERO, 1);
-        s_primitive_shapes[(u32)primitive_shape_t::CUBE] = cube_mesh;
+		cube_mesh->topology = mesh_topology_t::TRIANGLE_LIST;
+        mesh_data_add_cube(cube_mesh, vec3_t::ZERO, 1);
+        s_primitive_shapes[(u32)primitive_t::CUBE] = cube_mesh;
     }
 
     // uv sphere
     {
-		mesh_t* uv_sphere_mesh = arena_alloc_struct(s_primitives_arena, mesh_t);
+		mesh_data_t* uv_sphere_mesh = arena_alloc_struct(s_primitives_arena, mesh_data_t);
 		uv_sphere_mesh->vertices = array_init<vertex_t>(s_primitives_arena, 64);
 		uv_sphere_mesh->indices = array_init<u32>(s_primitives_arena, 64);
-		uv_sphere_mesh->topology = primitive_topology_t::TRIANGLE_LIST;
-        mesh_add_uv_sphere(uv_sphere_mesh, vec3_t::ZERO, 1.0f, 64);
-        s_primitive_shapes[(u32)primitive_shape_t::UV_SPHERE] = uv_sphere_mesh;
+		uv_sphere_mesh->topology = mesh_topology_t::TRIANGLE_LIST;
+        mesh_data_add_uv_sphere(uv_sphere_mesh, vec3_t::ZERO, 1.0f, 64);
+        s_primitive_shapes[(u32)primitive_t::UV_SPHERE] = uv_sphere_mesh;
     }
 
     // quad
     {
-		mesh_t* quad_mesh = arena_alloc_struct(s_primitives_arena, mesh_t);
+		mesh_data_t* quad_mesh = arena_alloc_struct(s_primitives_arena, mesh_data_t);
 		quad_mesh->vertices = array_init<vertex_t>(s_primitives_arena, 64);
 		quad_mesh->indices = array_init<u32>(s_primitives_arena, 64);
-		quad_mesh->topology = primitive_topology_t::TRIANGLE_LIST;
-        mesh_add_quad_3d(quad_mesh, vec3_t::ZERO, vec3_t::WORLD_RIGHT, vec3_t::WORLD_UP, 0.5f, 0.5f, 1);
-        s_primitive_shapes[(u32)primitive_shape_t::QUAD] = quad_mesh;
+		quad_mesh->topology = mesh_topology_t::TRIANGLE_LIST;
+        mesh_data_add_quad_3d(quad_mesh, vec3_t::ZERO, vec3_t::WORLD_RIGHT, vec3_t::WORLD_UP, 0.5f, 0.5f, 1);
+        s_primitive_shapes[(u32)primitive_t::QUAD] = quad_mesh;
     }
 
     // cone
     {
-		mesh_t* cone_mesh = arena_alloc_struct(s_primitives_arena, mesh_t);
+		mesh_data_t* cone_mesh = arena_alloc_struct(s_primitives_arena, mesh_data_t);
 		cone_mesh->vertices = array_init<vertex_t>(s_primitives_arena, 64);
 		cone_mesh->indices = array_init<u32>(s_primitives_arena, 64);
-		cone_mesh->topology = primitive_topology_t::TRIANGLE_LIST;
-        mesh_add_cone(cone_mesh, vec3_t::ZERO, vec3_t::WORLD_UP, 1.0f, 1.0f, 32);
-        s_primitive_shapes[(u32)primitive_shape_t::CONE] = cone_mesh;
+		cone_mesh->topology = mesh_topology_t::TRIANGLE_LIST;
+        mesh_data_add_cone(cone_mesh, vec3_t::ZERO, vec3_t::WORLD_UP, 1.0f, 1.0f, 32);
+        s_primitive_shapes[(u32)primitive_t::CONE] = cone_mesh;
     }
 
     // cylinder
     {
-		mesh_t* cylinder_mesh = arena_alloc_struct(s_primitives_arena, mesh_t);
+		mesh_data_t* cylinder_mesh = arena_alloc_struct(s_primitives_arena, mesh_data_t);
 		cylinder_mesh->vertices = array_init<vertex_t>(s_primitives_arena, 64);
 		cylinder_mesh->indices = array_init<u32>(s_primitives_arena, 64);
-		cylinder_mesh->topology = primitive_topology_t::TRIANGLE_LIST;
-        mesh_add_cylinder(cylinder_mesh, vec3_t::ZERO, vec3_t::WORLD_UP, 1.0f, 1.0f);
-        s_primitive_shapes[(u32)primitive_shape_t::CYLINDER] = cylinder_mesh;
+		cylinder_mesh->topology = mesh_topology_t::TRIANGLE_LIST;
+        mesh_data_add_cylinder(cylinder_mesh, vec3_t::ZERO, vec3_t::WORLD_UP, 1.0f, 1.0f);
+        s_primitive_shapes[(u32)primitive_t::CYLINDER] = cylinder_mesh;
     }
 
     // torus
     {
-		mesh_t* torus_mesh = arena_alloc_struct(s_primitives_arena, mesh_t);
+		mesh_data_t* torus_mesh = arena_alloc_struct(s_primitives_arena, mesh_data_t);
 		torus_mesh->vertices = array_init<vertex_t>(s_primitives_arena, 64);
 		torus_mesh->indices = array_init<u32>(s_primitives_arena, 64);
-		torus_mesh->topology = primitive_topology_t::TRIANGLE_LIST;
-        mesh_add_torus(torus_mesh, vec3_t::ZERO, vec3_t::WORLD_UP, 1.0f, 0.25f, 32);
-        s_primitive_shapes[(u32)primitive_shape_t::TORUS] = torus_mesh;
+		torus_mesh->topology = mesh_topology_t::TRIANGLE_LIST;
+        mesh_data_add_torus(torus_mesh, vec3_t::ZERO, vec3_t::WORLD_UP, 1.0f, 0.25f, 32);
+        s_primitive_shapes[(u32)primitive_t::TORUS] = torus_mesh;
     }
 
 	s_did_init_primitive_shapes = true;
 }
 
-const mesh_t* sm::primitive_shape_get_mesh(primitive_shape_t shape)
+const mesh_data_t* sm::mesh_data_get_primitive(primitive_t shape)
 {
 	SM_ASSERT(s_did_init_primitive_shapes);
 	return s_primitive_shapes[(u32)shape];
 }
 
-mesh_t* sm::mesh_init(arena_t* arena, primitive_topology_t topology)
+mesh_data_t* sm::mesh_init(arena_t* arena, mesh_topology_t topology)
 {
-    mesh_t* mesh = arena_alloc_struct(arena, mesh_t);
+    mesh_data_t* mesh = arena_alloc_struct(arena, mesh_data_t);
     mesh->vertices = array_init<vertex_t>(arena, 64);
     mesh->indices = array_init<u32>(arena, 64);
     mesh->topology = topology;
     return mesh;
 }
 
-mesh_t* sm::mesh_init_from_obj(sm::arena_t* arena, const char* obj_filepath)
+mesh_data_t* sm::mesh_data_init_from_obj(sm::arena_t* arena, const char* obj_filepath)
 {
-    mesh_t* mesh = mesh_init(arena);
+    mesh_data_t* mesh = mesh_init(arena);
 
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;
@@ -145,48 +145,48 @@ mesh_t* sm::mesh_init_from_obj(sm::arena_t* arena, const char* obj_filepath)
 
 			vertex.color = to_vec3(color_f32_t::WHITE);
 
-			mesh_add_vertex_and_index(mesh, vertex);
+			mesh_data_add_vertex_and_index(mesh, vertex);
 		}
 	}
 
     return mesh;
 }
 
-u32 sm::mesh_add_vertex(mesh_t* mesh, const vertex_t& v)
+u32 sm::mesh_data_add_vertex(mesh_data_t* mesh, const vertex_t& v)
 {
     array_push(mesh->vertices, v);
     return (u32)mesh->vertices.cur_size - 1;
 }
 
-void sm::mesh_add_index(mesh_t* mesh, u32 index)
+void sm::mesh_data_add_index(mesh_data_t* mesh, u32 index)
 {
     array_push(mesh->indices, index);
 }
 
-void sm::mesh_add_vertex_and_index(mesh_t* mesh, const vertex_t& v)
+void sm::mesh_data_add_vertex_and_index(mesh_data_t* mesh, const vertex_t& v)
 {
-    u32 index = mesh_add_vertex(mesh, v);
-    mesh_add_index(mesh, index);
+    u32 index = mesh_data_add_vertex(mesh, v);
+    mesh_data_add_index(mesh, index);
 }
 
-void sm::mesh_add_triangle_indices(mesh_t* mesh, u32 index0, u32 index1, u32 index2)
+void sm::mesh_data_add_triangle_indices(mesh_data_t* mesh, u32 index0, u32 index1, u32 index2)
 {
-    mesh_add_index(mesh, index0);
-    mesh_add_index(mesh, index1);
-    mesh_add_index(mesh, index2);
+    mesh_data_add_index(mesh, index0);
+    mesh_data_add_index(mesh, index1);
+    mesh_data_add_index(mesh, index2);
 }
 
-void sm::mesh_add_cube(mesh_t* mesh, const vec3_t& center, f32 half_size, u32 resolution, const color_f32_t& vertex_color)
+void sm::mesh_data_add_cube(mesh_data_t* mesh, const vec3_t& center, f32 half_size, u32 resolution, const color_f32_t& vertex_color)
 {
-    mesh_add_quad_3d(mesh, center + vec3_t::WORLD_FORWARD * half_size,  vec3_t::WORLD_LEFT,         vec3_t::WORLD_UP, half_size, half_size, resolution,        vertex_color);
-    mesh_add_quad_3d(mesh, center + vec3_t::WORLD_LEFT * half_size,     vec3_t::WORLD_BACKWARD,     vec3_t::WORLD_UP, half_size, half_size, resolution,        vertex_color);
-    mesh_add_quad_3d(mesh, center + vec3_t::WORLD_BACKWARD * half_size, vec3_t::WORLD_RIGHT,        vec3_t::WORLD_UP, half_size, half_size, resolution,        vertex_color);
-    mesh_add_quad_3d(mesh, center + vec3_t::WORLD_RIGHT * half_size,    vec3_t::WORLD_FORWARD,      vec3_t::WORLD_UP, half_size, half_size, resolution,        vertex_color);
-    mesh_add_quad_3d(mesh, center + vec3_t::WORLD_UP * half_size,       vec3_t::WORLD_RIGHT,        vec3_t::WORLD_FORWARD, half_size, half_size, resolution,   vertex_color);
-    mesh_add_quad_3d(mesh, center + vec3_t::WORLD_DOWN * half_size,     vec3_t::WORLD_LEFT,         vec3_t::WORLD_FORWARD, half_size, half_size, resolution,   vertex_color);
+    mesh_data_add_quad_3d(mesh, center + vec3_t::WORLD_FORWARD * half_size,  vec3_t::WORLD_LEFT,         vec3_t::WORLD_UP, half_size, half_size, resolution,        vertex_color);
+    mesh_data_add_quad_3d(mesh, center + vec3_t::WORLD_LEFT * half_size,     vec3_t::WORLD_BACKWARD,     vec3_t::WORLD_UP, half_size, half_size, resolution,        vertex_color);
+    mesh_data_add_quad_3d(mesh, center + vec3_t::WORLD_BACKWARD * half_size, vec3_t::WORLD_RIGHT,        vec3_t::WORLD_UP, half_size, half_size, resolution,        vertex_color);
+    mesh_data_add_quad_3d(mesh, center + vec3_t::WORLD_RIGHT * half_size,    vec3_t::WORLD_FORWARD,      vec3_t::WORLD_UP, half_size, half_size, resolution,        vertex_color);
+    mesh_data_add_quad_3d(mesh, center + vec3_t::WORLD_UP * half_size,       vec3_t::WORLD_RIGHT,        vec3_t::WORLD_FORWARD, half_size, half_size, resolution,   vertex_color);
+    mesh_data_add_quad_3d(mesh, center + vec3_t::WORLD_DOWN * half_size,     vec3_t::WORLD_LEFT,         vec3_t::WORLD_FORWARD, half_size, half_size, resolution,   vertex_color);
 }
 
-void sm::mesh_add_uv_sphere(mesh_t* mesh, const vec3_t& origin, f32 radius, u32 resolution, const color_f32_t& vertex_color)
+void sm::mesh_data_add_uv_sphere(mesh_data_t* mesh, const vec3_t& origin, f32 radius, u32 resolution, const color_f32_t& vertex_color)
 {
     f32 u_delta_deg = 360.0f / (f32)resolution;
     f32 v_delta_deg = 180.0f / (f32)resolution;
@@ -207,7 +207,7 @@ void sm::mesh_add_uv_sphere(mesh_t* mesh, const vec3_t& origin, f32 radius, u32 
 
             vec3_t vertex_normal = normalized(to_vec3(pos) - origin);
 
-            u32 vert_index = mesh_add_vertex(mesh, { .pos = finalPos, .uv = uv, .color = to_vec3(vertex_color), .normal = vertex_normal });
+            u32 vert_index = mesh_data_add_vertex(mesh, { .pos = finalPos, .uv = uv, .color = to_vec3(vertex_color), .normal = vertex_normal });
 
             if (v_slice == 0)
             {
@@ -221,28 +221,28 @@ void sm::mesh_add_uv_sphere(mesh_t* mesh, const vec3_t& origin, f32 radius, u32 
                 u32 vert_index_last_slice = (vert_index - resolution) - 1;
                 u32 prev_vert_index_last_slice = vert_index_last_slice - 1;
 
-                mesh_add_triangle_indices(mesh, vert_index, vert_index_last_slice, prev_vert_index_last_slice);
-                mesh_add_triangle_indices(mesh, vert_index, prev_vert_index_last_slice, prev_vert_index);
+                mesh_data_add_triangle_indices(mesh, vert_index, vert_index_last_slice, prev_vert_index_last_slice);
+                mesh_data_add_triangle_indices(mesh, vert_index, prev_vert_index_last_slice, prev_vert_index);
             }
         }
     }
 }
 
-void sm::mesh_add_quad_3d(mesh_t* mesh, const vec3_t& top_left, const vec3_t& top_right, const vec3_t& bottom_right, const vec3_t& bottom_left, const color_f32_t& vertex_color)
+void sm::mesh_data_add_quad_3d(mesh_data_t* mesh, const vec3_t& top_left, const vec3_t& top_right, const vec3_t& bottom_right, const vec3_t& bottom_left, const color_f32_t& vertex_color)
 {
     vec3_t vertex_color_vec3 = to_vec3(vertex_color);
     vec3_t normal = normalized(cross(top_right - bottom_left, top_left - bottom_left));
 
-	u32 top_left_index = mesh_add_vertex(mesh, { .pos = top_left, .uv = vec2_t(0.0f, 0.0f), .color = vertex_color_vec3 , .normal = normal });
-	u32 top_right_index = mesh_add_vertex(mesh, { .pos = top_right, .uv = vec2_t(1.0f, 0.0f), .color = vertex_color_vec3, .normal = normal });
-	u32 bottom_right_index = mesh_add_vertex(mesh, { .pos = bottom_right, .uv = vec2_t(1.0f, 1.0f), .color = vertex_color_vec3, .normal = normal });
-	u32 bottom_left_index = mesh_add_vertex(mesh, { .pos = bottom_left, .uv = vec2_t(0.0f, 1.0f), .color = vertex_color_vec3, .normal = normal });
+	u32 top_left_index = mesh_data_add_vertex(mesh, { .pos = top_left, .uv = vec2_t(0.0f, 0.0f), .color = vertex_color_vec3 , .normal = normal });
+	u32 top_right_index = mesh_data_add_vertex(mesh, { .pos = top_right, .uv = vec2_t(1.0f, 0.0f), .color = vertex_color_vec3, .normal = normal });
+	u32 bottom_right_index = mesh_data_add_vertex(mesh, { .pos = bottom_right, .uv = vec2_t(1.0f, 1.0f), .color = vertex_color_vec3, .normal = normal });
+	u32 bottom_left_index = mesh_data_add_vertex(mesh, { .pos = bottom_left, .uv = vec2_t(0.0f, 1.0f), .color = vertex_color_vec3, .normal = normal });
 
-	mesh_add_triangle_indices(mesh, top_left_index, bottom_right_index, top_right_index);
-	mesh_add_triangle_indices(mesh, top_left_index, bottom_left_index, bottom_right_index);
+	mesh_data_add_triangle_indices(mesh, top_left_index, bottom_right_index, top_right_index);
+	mesh_data_add_triangle_indices(mesh, top_left_index, bottom_left_index, bottom_right_index);
 }
 
-void sm::mesh_add_quad_3d(mesh_t* mesh, const vec3_t& centerPos, const vec3_t& right, const vec3_t& up, f32 half_width, f32 half_height, u32 resolution, const color_f32_t& vertex_color)
+void sm::mesh_data_add_quad_3d(mesh_data_t* mesh, const vec3_t& centerPos, const vec3_t& right, const vec3_t& up, f32 half_width, f32 half_height, u32 resolution, const color_f32_t& vertex_color)
 {
 	vec3_t right_norm = normalized(right);
 	vec3_t up_norm = normalized(up);
@@ -261,21 +261,21 @@ void sm::mesh_add_quad_3d(mesh_t* mesh, const vec3_t& centerPos, const vec3_t& r
 			f32 u = (f32)x / (f32)(resolution);
 			f32 v = (f32)y / (f32)(resolution);
 			vec3_t vert_pos = top_left + (right * width_step * (f32)x) + (-up * height_step * (f32)y);
-			u32 vert_index = mesh_add_vertex(mesh, { .pos = vert_pos, .uv = vec2_t(u, v), .color = to_vec3(vertex_color), .normal = normal });
+			u32 vert_index = mesh_data_add_vertex(mesh, { .pos = vert_pos, .uv = vec2_t(u, v), .color = to_vec3(vertex_color), .normal = normal });
 
 			if (y > 0 && x > 0)
 			{
 				u32 prevVertIndex = vert_index - 1;
 				u32 vertIndexLastRow = (vert_index - resolution) - 1;
 				u32 prevVertIndexLastRow = vertIndexLastRow - 1;
-				mesh_add_triangle_indices(mesh, vert_index, prevVertIndexLastRow, prevVertIndex);
-				mesh_add_triangle_indices(mesh, vert_index, vertIndexLastRow, prevVertIndexLastRow);
+				mesh_data_add_triangle_indices(mesh, vert_index, prevVertIndexLastRow, prevVertIndex);
+				mesh_data_add_triangle_indices(mesh, vert_index, vertIndexLastRow, prevVertIndexLastRow);
 			}
 		}
 	}
 }
 
-void sm::mesh_add_cone(mesh_t* mesh, const vec3_t& base_center, const vec3_t& dir, f32 height, f32 base_radius, u32 resolution, const color_f32_t& vertex_color)
+void sm::mesh_data_add_cone(mesh_data_t* mesh, const vec3_t& base_center, const vec3_t& dir, f32 height, f32 base_radius, u32 resolution, const color_f32_t& vertex_color)
 {
     vec3_t k = normalized(dir);
     mat44_t transformation = mat44_t::IDENTITY;
@@ -309,38 +309,38 @@ void sm::mesh_add_cone(mesh_t* mesh, const vec3_t& base_center, const vec3_t& di
         // top triangle 1
         {
             vec3_t normal = normalized(cross(p1_ws - p0_ws, top_ws - p0_ws));
-            mesh_add_vertex_and_index(mesh, { .pos = top_ws, .uv = vec2_t(0.5, 0.5f), .color = vertex_color_vec3, .normal = normal });
-            mesh_add_vertex_and_index(mesh, { .pos = p0_ws, .uv = vec2_t(u0, v0), .color = vertex_color_vec3, .normal = normal });
-            mesh_add_vertex_and_index(mesh, { .pos = p1_ws, .uv = vec2_t(u1, v1), .color = vertex_color_vec3, .normal = normal });
+            mesh_data_add_vertex_and_index(mesh, { .pos = top_ws, .uv = vec2_t(0.5, 0.5f), .color = vertex_color_vec3, .normal = normal });
+            mesh_data_add_vertex_and_index(mesh, { .pos = p0_ws, .uv = vec2_t(u0, v0), .color = vertex_color_vec3, .normal = normal });
+            mesh_data_add_vertex_and_index(mesh, { .pos = p1_ws, .uv = vec2_t(u1, v1), .color = vertex_color_vec3, .normal = normal });
         }
 
         // top triangle 2
         {
             vec3_t normal = normalized(cross(p1_ws - p0_ws, top_ws - p0_ws));
-            mesh_add_vertex_and_index(mesh, { .pos = top_ws, .uv = vec2_t(0.5f, 0.5), .color = vertex_color_vec3, .normal = normal });
-            mesh_add_vertex_and_index(mesh, { .pos = p0_ws, .uv = vec2_t(u0, v0), .color = vertex_color_vec3, .normal = normal });
-            mesh_add_vertex_and_index(mesh, { .pos = p1_ws, .uv = vec2_t(u1, v1), .color = vertex_color_vec3, .normal = normal });
+            mesh_data_add_vertex_and_index(mesh, { .pos = top_ws, .uv = vec2_t(0.5f, 0.5), .color = vertex_color_vec3, .normal = normal });
+            mesh_data_add_vertex_and_index(mesh, { .pos = p0_ws, .uv = vec2_t(u0, v0), .color = vertex_color_vec3, .normal = normal });
+            mesh_data_add_vertex_and_index(mesh, { .pos = p1_ws, .uv = vec2_t(u1, v1), .color = vertex_color_vec3, .normal = normal });
         }
 
         // bottom triangle 1
         {
             vec3_t normal = normalized(cross(p0_ws - p1_ws, bot_ws - p1_ws));
-            mesh_add_vertex_and_index(mesh, { .pos = bot_ws, .uv = vec2_t(0.5f, 0.5f), .color = vertex_color_vec3, .normal = normal});
-            mesh_add_vertex_and_index(mesh, { .pos = p1_ws, .uv = vec2_t(u1, v1), .color = vertex_color_vec3, .normal = normal });
-            mesh_add_vertex_and_index(mesh, { .pos = p0_ws, .uv = vec2_t(u0, v0), .color = vertex_color_vec3, .normal = normal });
+            mesh_data_add_vertex_and_index(mesh, { .pos = bot_ws, .uv = vec2_t(0.5f, 0.5f), .color = vertex_color_vec3, .normal = normal});
+            mesh_data_add_vertex_and_index(mesh, { .pos = p1_ws, .uv = vec2_t(u1, v1), .color = vertex_color_vec3, .normal = normal });
+            mesh_data_add_vertex_and_index(mesh, { .pos = p0_ws, .uv = vec2_t(u0, v0), .color = vertex_color_vec3, .normal = normal });
         }
 
         // bottom triangle 2
         {
             vec3_t normal = normalized(cross(p0_ws - p1_ws, bot_ws - p1_ws));
-            mesh_add_vertex_and_index(mesh, { .pos = bot_ws, .uv = vec2_t(0.5f, 0.5f), .color = vertex_color_vec3, .normal = normal });
-            mesh_add_vertex_and_index(mesh, { .pos = p1_ws, .uv = vec2_t(u1, v1), .color = vertex_color_vec3, .normal = normal });
-            mesh_add_vertex_and_index(mesh, { .pos = p0_ws, .uv = vec2_t(u0, v0), .color = vertex_color_vec3, .normal = normal });
+            mesh_data_add_vertex_and_index(mesh, { .pos = bot_ws, .uv = vec2_t(0.5f, 0.5f), .color = vertex_color_vec3, .normal = normal });
+            mesh_data_add_vertex_and_index(mesh, { .pos = p1_ws, .uv = vec2_t(u1, v1), .color = vertex_color_vec3, .normal = normal });
+            mesh_data_add_vertex_and_index(mesh, { .pos = p0_ws, .uv = vec2_t(u0, v0), .color = vertex_color_vec3, .normal = normal });
         }
     }
 }
 
-void sm::mesh_add_cylinder(mesh_t* mesh, const vec3_t& base_center, const vec3_t& dir, f32 height, f32 radius, u32 resolution, const color_f32_t& vertex_color)
+void sm::mesh_data_add_cylinder(mesh_data_t* mesh, const vec3_t& base_center, const vec3_t& dir, f32 height, f32 radius, u32 resolution, const color_f32_t& vertex_color)
 {
     f32 theta_deg = 360.0f / (f32)resolution;
     f32 side_u_scale = 3.0f;
@@ -376,9 +376,9 @@ void sm::mesh_add_cylinder(mesh_t* mesh, const vec3_t& base_center, const vec3_t
 
             vec3_t normal = normalized(cross(p1_top_ws - p0_top_ws, top_ws - p0_top_ws));
 
-            mesh_add_vertex_and_index(mesh, { .pos = top_ws, .uv = vec2_t(0.5, 0.5f), .color = vertex_color_vec3, .normal = normal });
-            mesh_add_vertex_and_index(mesh, { .pos = p0_top_ws, .uv = vec2_t(u0, v0), .color = vertex_color_vec3, .normal = normal });
-            mesh_add_vertex_and_index(mesh, { .pos = p1_top_ws, .uv = vec2_t(u1, v1), .color = vertex_color_vec3, .normal = normal });
+            mesh_data_add_vertex_and_index(mesh, { .pos = top_ws, .uv = vec2_t(0.5, 0.5f), .color = vertex_color_vec3, .normal = normal });
+            mesh_data_add_vertex_and_index(mesh, { .pos = p0_top_ws, .uv = vec2_t(u0, v0), .color = vertex_color_vec3, .normal = normal });
+            mesh_data_add_vertex_and_index(mesh, { .pos = p1_top_ws, .uv = vec2_t(u1, v1), .color = vertex_color_vec3, .normal = normal });
         }
 
         // side triangle 1
@@ -391,9 +391,9 @@ void sm::mesh_add_cylinder(mesh_t* mesh, const vec3_t& base_center, const vec3_t
 
             vec3_t normal = normalized(cross(p1_top_ws - p1_bot_ws, p0_bot_ws - p1_bot_ws));
 
-            mesh_add_vertex_and_index(mesh, { .pos = p0_bot_ws, .uv = vec2_t(u0, 1.0f), .color = vertex_color_vec3, .normal = normal });
-            mesh_add_vertex_and_index(mesh, { .pos = p1_bot_ws, .uv = vec2_t(u1, 1.0f), .color = vertex_color_vec3, .normal = normal });
-            mesh_add_vertex_and_index(mesh, { .pos = p1_top_ws, .uv = vec2_t(u1, 0.0f), .color = vertex_color_vec3, .normal = normal });
+            mesh_data_add_vertex_and_index(mesh, { .pos = p0_bot_ws, .uv = vec2_t(u0, 1.0f), .color = vertex_color_vec3, .normal = normal });
+            mesh_data_add_vertex_and_index(mesh, { .pos = p1_bot_ws, .uv = vec2_t(u1, 1.0f), .color = vertex_color_vec3, .normal = normal });
+            mesh_data_add_vertex_and_index(mesh, { .pos = p1_top_ws, .uv = vec2_t(u1, 0.0f), .color = vertex_color_vec3, .normal = normal });
         }
 
         // side triangle 2
@@ -406,9 +406,9 @@ void sm::mesh_add_cylinder(mesh_t* mesh, const vec3_t& base_center, const vec3_t
 
             vec3_t normal = normalized(cross(p0_top_ws - p1_top_ws, p0_bot_ws - p1_top_ws));
 
-            mesh_add_vertex_and_index(mesh, { .pos = p0_bot_ws, .uv = vec2_t(u0, 1.0f), .color = vertex_color_vec3, .normal = normal });
-            mesh_add_vertex_and_index(mesh, { .pos = p1_top_ws, .uv = vec2_t(u1, 0.0f), .color = vertex_color_vec3, .normal = normal });
-            mesh_add_vertex_and_index(mesh, { .pos = p0_top_ws, .uv = vec2_t(u0, 0.0f), .color = vertex_color_vec3, .normal = normal });
+            mesh_data_add_vertex_and_index(mesh, { .pos = p0_bot_ws, .uv = vec2_t(u0, 1.0f), .color = vertex_color_vec3, .normal = normal });
+            mesh_data_add_vertex_and_index(mesh, { .pos = p1_top_ws, .uv = vec2_t(u1, 0.0f), .color = vertex_color_vec3, .normal = normal });
+            mesh_data_add_vertex_and_index(mesh, { .pos = p0_top_ws, .uv = vec2_t(u0, 0.0f), .color = vertex_color_vec3, .normal = normal });
         }
 
         // bottom triangle
@@ -420,14 +420,14 @@ void sm::mesh_add_cylinder(mesh_t* mesh, const vec3_t& base_center, const vec3_t
 
             vec3_t normal = normalized(cross(p0_bot_ws - p1_bot_ws, bot_ws - p1_bot_ws));
 
-            mesh_add_vertex_and_index(mesh, { .pos = bot_ws, .uv = vec2_t(0.5f, 0.5f), .color = vertex_color_vec3, .normal = normal });
-            mesh_add_vertex_and_index(mesh, { .pos = p1_bot_ws, .uv = vec2_t(u1, v1), .color = vertex_color_vec3, .normal = normal });
-            mesh_add_vertex_and_index(mesh, { .pos = p0_bot_ws, .uv = vec2_t(u0, v0), .color = vertex_color_vec3, .normal = normal });
+            mesh_data_add_vertex_and_index(mesh, { .pos = bot_ws, .uv = vec2_t(0.5f, 0.5f), .color = vertex_color_vec3, .normal = normal });
+            mesh_data_add_vertex_and_index(mesh, { .pos = p1_bot_ws, .uv = vec2_t(u1, v1), .color = vertex_color_vec3, .normal = normal });
+            mesh_data_add_vertex_and_index(mesh, { .pos = p0_bot_ws, .uv = vec2_t(u0, v0), .color = vertex_color_vec3, .normal = normal });
         }
     }
 }
 
-void sm::mesh_add_torus(mesh_t* mesh, const vec3_t& center, const vec3_t& normal, f32 radius, f32 thickness, u32 resolution, const color_f32_t& vertex_color)
+void sm::mesh_data_add_torus(mesh_data_t* mesh, const vec3_t& center, const vec3_t& normal, f32 radius, f32 thickness, u32 resolution, const color_f32_t& vertex_color)
 {
     f32 u_scale = 3.0f;
     f32 v_scale = 8.0f;
@@ -457,7 +457,7 @@ void sm::mesh_add_torus(mesh_t* mesh, const vec3_t& center, const vec3_t& normal
             vec3_t vertex_normal = normalized(to_vec3(torus_pos_ls) - ring_anchor_pos);
             vertex_normal = normalized(transform_dir(world_transform, vertex_normal));
 
-            u32 vert_index = mesh_add_vertex(mesh, { .pos = to_vec3(torus_pos_ws), 
+            u32 vert_index = mesh_data_add_vertex(mesh, { .pos = to_vec3(torus_pos_ws), 
                                                      .uv = vec2_t(percent_around_ring * u_scale, percent_around_torus * v_scale), 
                                                      .color = to_vec3(vertex_color),
                                                      .normal = vertex_normal });
@@ -468,19 +468,19 @@ void sm::mesh_add_torus(mesh_t* mesh, const vec3_t& center, const vec3_t& normal
                 u32 vert_index_last_ring = (vert_index - resolution) - 1;
                 u32 prev_vert_index_last_ring = vert_index_last_ring - 1;
 
-                mesh_add_triangle_indices(mesh, vert_index, prev_vert_index_last_ring, prev_vert_index);
-                mesh_add_triangle_indices(mesh, vert_index, vert_index_last_ring, prev_vert_index_last_ring);
+                mesh_data_add_triangle_indices(mesh, vert_index, prev_vert_index_last_ring, prev_vert_index);
+                mesh_data_add_triangle_indices(mesh, vert_index, vert_index_last_ring, prev_vert_index_last_ring);
             }
         }
     }
 }
 
-size_t sm::mesh_calc_vertex_buffer_size(const mesh_t* mesh)
+size_t sm::mesh_data_calc_vertex_buffer_size(const mesh_data_t* mesh)
 {
     return mesh->vertices.cur_size * sizeof(vertex_t);
 }
 
-size_t sm::mesh_calc_index_buffer_size(const mesh_t* mesh)
+size_t sm::mesh_data_calc_index_buffer_size(const mesh_data_t* mesh)
 {
     return mesh->indices.cur_size * sizeof(u32);
 }
