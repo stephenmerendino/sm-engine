@@ -128,8 +128,6 @@ struct render_frame_t
     texture_t main_draw_color_resolve_texture;
     texture_t post_processing_color_texture;
 
-	VkFramebuffer main_draw_framebuffer;
-    VkFramebuffer gizmo_draw_framebuffer;
 	VkFramebuffer imgui_framebuffer;
 
 	// mesh instance descriptors
@@ -210,8 +208,7 @@ static VkDescriptorSetLayout s_post_process_descriptor_set_layout = VK_NULL_HAND
 static VkDescriptorSetLayout s_infinite_grid_descriptor_set_layout = VK_NULL_HANDLE;
 static VkDescriptorSet s_global_descriptor_set = VK_NULL_HANDLE;
 static VkSampler s_linear_sampler = VK_NULL_HANDLE;
-static VkRenderPass s_main_draw_render_pass;
-static VkRenderPass s_gizmo_render_pass;
+
 static VkRenderPass s_imgui_render_pass;
 
 static array_t<render_frame_t> s_render_frames;
@@ -1453,39 +1450,39 @@ static void init_render_frames_render_targets()
                      VK_SAMPLE_COUNT_1_BIT, 
                      false);
 
-        // main draw framebuffer
-        {
-            VkFramebufferCreateInfo create_info{};
-            create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            create_info.renderPass = s_main_draw_render_pass;
-            VkImageView image_views[] = {
-                frame.main_draw_color_multisample_texture.image_view,
-                frame.main_draw_depth_multisample_texture.image_view,
-                frame.main_draw_color_resolve_texture.image_view
-            };
-            create_info.attachmentCount = ARRAY_LEN(image_views);
-            create_info.pAttachments = image_views;
-            create_info.width = s_swapchain.extent.width;
-            create_info.height = s_swapchain.extent.height;
-            create_info.layers = 1;
-            SM_VULKAN_ASSERT(vkCreateFramebuffer(s_context.device, &create_info, nullptr, &frame.main_draw_framebuffer));
-        }
+        //// main draw framebuffer
+        //{
+        //    VkFramebufferCreateInfo create_info{};
+        //    create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        //    create_info.renderPass = s_main_draw_render_pass;
+        //    VkImageView image_views[] = {
+        //        frame.main_draw_color_multisample_texture.image_view,
+        //        frame.main_draw_depth_multisample_texture.image_view,
+        //        frame.main_draw_color_resolve_texture.image_view
+        //    };
+        //    create_info.attachmentCount = ARRAY_LEN(image_views);
+        //    create_info.pAttachments = image_views;
+        //    create_info.width = s_swapchain.extent.width;
+        //    create_info.height = s_swapchain.extent.height;
+        //    create_info.layers = 1;
+        //    SM_VULKAN_ASSERT(vkCreateFramebuffer(s_context.device, &create_info, nullptr, &frame.main_draw_framebuffer));
+        //}
 
-        // gizmo draw framebuffer
-        {
-            VkFramebufferCreateInfo create_info{};
-            create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            create_info.renderPass = s_gizmo_render_pass;
-            VkImageView image_views[] = {
-                frame.post_processing_color_texture.image_view
-            };
-            create_info.attachmentCount = ARRAY_LEN(image_views);
-            create_info.pAttachments = image_views;
-            create_info.width = s_swapchain.extent.width;
-            create_info.height = s_swapchain.extent.height;
-            create_info.layers = 1;
-            SM_VULKAN_ASSERT(vkCreateFramebuffer(s_context.device, &create_info, nullptr, &frame.gizmo_draw_framebuffer));
-        }
+        //// gizmo draw framebuffer
+        //{
+        //    VkFramebufferCreateInfo create_info{};
+        //    create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        //    create_info.renderPass = s_gizmo_render_pass;
+        //    VkImageView image_views[] = {
+        //        frame.post_processing_color_texture.image_view
+        //    };
+        //    create_info.attachmentCount = ARRAY_LEN(image_views);
+        //    create_info.pAttachments = image_views;
+        //    create_info.width = s_swapchain.extent.width;
+        //    create_info.height = s_swapchain.extent.height;
+        //    create_info.layers = 1;
+        //    SM_VULKAN_ASSERT(vkCreateFramebuffer(s_context.device, &create_info, nullptr, &frame.gizmo_draw_framebuffer));
+        //}
 
         // imgui framebuffer
         {
@@ -1657,7 +1654,7 @@ static void refresh_render_frames_render_targets()
         texture_release(frame.main_draw_color_resolve_texture);
         texture_release(frame.post_processing_color_texture);
 
-		vkDestroyFramebuffer(s_context.device, frame.main_draw_framebuffer, nullptr);
+		//vkDestroyFramebuffer(s_context.device, frame.main_draw_framebuffer, nullptr);
 		vkDestroyFramebuffer(s_context.device, frame.imgui_framebuffer, nullptr);
 	}
 
@@ -1920,9 +1917,23 @@ static void init_pipelines()
         dynamic_state.dynamicStateCount = 0;
         dynamic_state.pDynamicStates = nullptr;
 
+        VkFormat color_formats[] = {
+            s_context.main_color_format
+        };
+
+        VkPipelineRenderingCreateInfo pipeline_rendering_create_info{
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+			.pNext = nullptr,
+            .viewMask = 0,
+			.colorAttachmentCount = ARRAY_LEN(color_formats),
+			.pColorAttachmentFormats = color_formats,
+			.depthAttachmentFormat = s_context.depth_format,
+			.stencilAttachmentFormat = VK_FORMAT_UNDEFINED 
+        };
+
         VkGraphicsPipelineCreateInfo pipeline_create_info{};
         pipeline_create_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        pipeline_create_info.pNext = nullptr;
+        pipeline_create_info.pNext = &pipeline_rendering_create_info;
         pipeline_create_info.flags = 0;
         pipeline_create_info.stageCount = ARRAY_LEN(shader_stages);
         pipeline_create_info.pStages = shader_stages;
@@ -1936,7 +1947,7 @@ static void init_pipelines()
         pipeline_create_info.pColorBlendState = &color_blend_state;
         pipeline_create_info.pDynamicState = &dynamic_state;
         pipeline_create_info.layout = s_viking_room_main_draw_pipeline_layout;
-        pipeline_create_info.renderPass = s_main_draw_render_pass;
+        pipeline_create_info.renderPass = VK_NULL_HANDLE;
         pipeline_create_info.subpass = 0;
         pipeline_create_info.basePipelineHandle = VK_NULL_HANDLE;
         pipeline_create_info.basePipelineIndex = 0;
@@ -2202,9 +2213,23 @@ static void init_pipelines()
         dynamic_state.dynamicStateCount = 0;
         dynamic_state.pDynamicStates = nullptr;
 
+        VkFormat color_formats[] = {
+            s_context.main_color_format,
+        };
+
+        VkPipelineRenderingCreateInfo pipeline_rendering_create_info{
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+			.pNext = nullptr,
+            .viewMask = 0,
+			.colorAttachmentCount = ARRAY_LEN(color_formats),
+			.pColorAttachmentFormats = color_formats,
+			.depthAttachmentFormat = VK_FORMAT_UNDEFINED,
+			.stencilAttachmentFormat = VK_FORMAT_UNDEFINED
+        };
+
         VkGraphicsPipelineCreateInfo pipeline_create_info{};
         pipeline_create_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        pipeline_create_info.pNext = nullptr;
+        pipeline_create_info.pNext = &pipeline_rendering_create_info;
         pipeline_create_info.flags = 0;
         pipeline_create_info.stageCount = ARRAY_LEN(shader_stages);
         pipeline_create_info.pStages = shader_stages;
@@ -2218,7 +2243,7 @@ static void init_pipelines()
         pipeline_create_info.pColorBlendState = &color_blend_state;
         pipeline_create_info.pDynamicState = &dynamic_state;
         pipeline_create_info.layout = s_gizmo_draw_pipeline_layout;
-        pipeline_create_info.renderPass = s_gizmo_render_pass;
+        pipeline_create_info.renderPass = VK_NULL_HANDLE;
         pipeline_create_info.subpass = 0;
         pipeline_create_info.basePipelineHandle = VK_NULL_HANDLE;
         pipeline_create_info.basePipelineIndex = 0;
@@ -2449,8 +2474,14 @@ static void context_init(arena_t* arena)
 			VkPhysicalDeviceFeatures device_features{};
 			device_features.samplerAnisotropy = VK_TRUE;
 
+			VkPhysicalDeviceVulkan13Features vk13features{};
+			vk13features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+			vk13features.synchronization2 = VK_TRUE;
+            vk13features.dynamicRendering = VK_TRUE;
+
 			VkDeviceCreateInfo create_info{};
 			create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+			create_info.pNext = &vk13features;
 			create_info.pQueueCreateInfos = queue_create_infos;
 			create_info.queueCreateInfoCount = num_queues;
 			create_info.pEnabledFeatures = &device_features;
@@ -2463,12 +2494,6 @@ static void context_init(arena_t* arena)
 				create_info.enabledLayerCount = ARRAY_LEN(VALIDATION_LAYERS);
 				create_info.ppEnabledLayerNames = VALIDATION_LAYERS;
 			}
-
-			VkPhysicalDeviceVulkan13Features vk13features{}; // vulkan 1.3 features
-			vk13features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-			vk13features.synchronization2 = VK_TRUE;
-
-			create_info.pNext = &vk13features;
 
 			SM_VULKAN_ASSERT(vkCreateDevice(selected_phy_device, &create_info, nullptr, &logical_device));
 
@@ -2527,7 +2552,7 @@ static void mesh_init(arena_t* arena, mesh_t& out_mesh, mesh_data_t* mesh_data)
         upload_buffer_data(out_mesh.index_buffer.buffer, mesh_data->indices.data, index_buffer_size);
     }
 
-    out_mesh.num_indices = mesh_data->indices.cur_size;
+    out_mesh.num_indices = (u32)mesh_data->indices.cur_size;
 }
 
 static void gizmo_init(arena_t* arena)
@@ -2795,199 +2820,8 @@ void sm::renderer_init(window_t* window)
 		}
 	}
 
-	// render passes
-	{
-		// main draw render pass
-		{
-            VkAttachmentDescription2 main_color_attachment{};
-            main_color_attachment.sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2;
-            main_color_attachment.format = s_context.main_color_format;
-            main_color_attachment.samples = s_context.max_msaa_samples;
-            main_color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-            main_color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-            main_color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-            main_color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-            main_color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            main_color_attachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            main_color_attachment.flags = 0;
-
-            VkAttachmentDescription2 main_depth_stencil_attachment{};
-            main_depth_stencil_attachment.sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2;
-            main_depth_stencil_attachment.format = s_context.depth_format;
-            main_depth_stencil_attachment.samples = s_context.max_msaa_samples;
-            main_depth_stencil_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-            main_depth_stencil_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-            main_depth_stencil_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-            main_depth_stencil_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-            main_depth_stencil_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            main_depth_stencil_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-            main_depth_stencil_attachment.flags = 0;
-
-            VkAttachmentDescription2 main_color_resolve_attachment{};
-            main_color_resolve_attachment.sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2;
-            main_color_resolve_attachment.format = s_context.main_color_format;
-            main_color_resolve_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-            main_color_resolve_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-            main_color_resolve_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-            main_color_resolve_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-            main_color_resolve_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-            main_color_resolve_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            main_color_resolve_attachment.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
-            main_color_resolve_attachment.flags = 0;
-
-            VkAttachmentDescription2 render_pass_attachments[] = {
-                main_color_attachment,
-                main_depth_stencil_attachment,
-                main_color_resolve_attachment
-            };
-
-            VkSubpassDescription2 subpass_desc{};
-            subpass_desc.sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2;
-            subpass_desc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-
-            VkAttachmentReference2 color_attachment_ref{};
-            color_attachment_ref.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2;
-            color_attachment_ref.attachment = 0;
-            color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            color_attachment_ref.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-
-            VkAttachmentReference2 depth_stencil_attachment_ref{};
-            depth_stencil_attachment_ref.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2;
-            depth_stencil_attachment_ref.attachment = 1;
-            depth_stencil_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-            depth_stencil_attachment_ref.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-
-            VkAttachmentReference2 color_resolve_attachment_ref{};
-            color_resolve_attachment_ref.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2;
-            color_resolve_attachment_ref.attachment = 2;
-            color_resolve_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            color_resolve_attachment_ref.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-
-            VkAttachmentReference2 color_attachments[] = {
-                color_attachment_ref
-            };
-
-            subpass_desc.colorAttachmentCount = (u32)ARRAY_LEN(color_attachments);
-            subpass_desc.pColorAttachments = color_attachments;
-            subpass_desc.pDepthStencilAttachment = &depth_stencil_attachment_ref;
-            subpass_desc.pResolveAttachments = &color_resolve_attachment_ref;
-
-            VkSubpassDescription2 subpass_descs[] = {
-                subpass_desc
-            };
-
-            VkSubpassDependency2 subpass_dependency{};
-            subpass_dependency.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2;
-            subpass_dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-            subpass_dependency.dstSubpass = 0;
-            subpass_dependency.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT;
-            subpass_dependency.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT;
-            subpass_dependency.srcAccessMask = VK_ACCESS_2_NONE;
-            subpass_dependency.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-            subpass_dependency.dependencyFlags = 0;
-
-            VkSubpassDependency2 subpass_dependencies[] = {
-                subpass_dependency
-            };
-
-            VkRenderPassCreateInfo2 create_info = {};
-            create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2;
-            create_info.attachmentCount = (u32)ARRAY_LEN(render_pass_attachments);
-            create_info.pAttachments = render_pass_attachments;
-            create_info.subpassCount = (u32)ARRAY_LEN(subpass_descs);
-            create_info.pSubpasses = subpass_descs;
-            create_info.dependencyCount = (u32)ARRAY_LEN(subpass_dependencies);
-            create_info.pDependencies = subpass_dependencies;
-
-            SM_VULKAN_ASSERT(vkCreateRenderPass2(s_context.device, &create_info, nullptr, &s_main_draw_render_pass));
-        }
-
-        // gizmo render pass
-        {
-            VkAttachmentDescription2 color_rt_attachment_description{
-                .sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
-                .pNext = nullptr,
-                .flags = 0,
-                .format = s_context.main_color_format,
-                .samples = VK_SAMPLE_COUNT_1_BIT,
-                .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
-                .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-                .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-            };
-
-            VkAttachmentDescription2 attachment_descriptions[] = {
-                color_rt_attachment_description
-            };
-
-            VkAttachmentReference2 color_rt_attachment_reference{
-                .sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
-                .pNext = nullptr,
-                .attachment = 0,
-                .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT
-            };
-
-            VkAttachmentReference2 color_attachment_references[] = {
-                color_rt_attachment_reference
-            };
-
-            VkSubpassDescription2 subpass_description{
-                .sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2,
-                .pNext = nullptr,
-                .flags = 0,
-                .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-                .viewMask = 0,
-                .inputAttachmentCount = 0,
-                .pInputAttachments = nullptr,
-                .colorAttachmentCount  = ARRAY_LEN(color_attachment_references),
-                .pColorAttachments = color_attachment_references,
-                .pResolveAttachments = nullptr,
-                .pDepthStencilAttachment = nullptr,
-                .preserveAttachmentCount = 0,
-                .pPreserveAttachments = nullptr
-            };
-
-            VkSubpassDescription2 subpass_descriptions[] = {
-                subpass_description
-            };
-
-            VkSubpassDependency2 subpass_dependency{
-                .sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
-                .pNext = nullptr,
-                .srcSubpass = VK_SUBPASS_EXTERNAL,
-                .dstSubpass = 0,
-                .srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                .dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                .srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-                .dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-                .dependencyFlags = 0,
-                .viewOffset = 0
-            };
-
-            VkSubpassDependency2 subpass_dependencies[] = {
-                subpass_dependency
-            };
-
-            VkRenderPassCreateInfo2 create_info{
-                .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2,
-                .pNext = nullptr,
-                .flags = 0,
-                .attachmentCount = ARRAY_LEN(attachment_descriptions),
-                .pAttachments = attachment_descriptions,
-                .subpassCount = ARRAY_LEN(subpass_descriptions),
-                .pSubpasses = subpass_descriptions,
-                .dependencyCount = ARRAY_LEN(subpass_dependencies),
-                .pDependencies = subpass_dependencies,
-                .correlatedViewMaskCount = 0,
-                .pCorrelatedViewMasks = nullptr
-            };
-            
-            SM_VULKAN_ASSERT(vkCreateRenderPass2(s_context.device, &create_info, nullptr, &s_gizmo_render_pass));
-        }
-
+    // imgui
+    {
 		// imgui render pass
 		{
 			VkAttachmentDescription2 color_attachment_desc{};
@@ -3052,10 +2886,7 @@ void sm::renderer_init(window_t* window)
 
 			SM_VULKAN_ASSERT(vkCreateRenderPass2(s_context.device, &create_info, nullptr, &s_imgui_render_pass));
 		}
-	}
 
-	// imgui
-	{
         IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
@@ -3426,45 +3257,130 @@ static void main_draw_pass(render_frame_t& render_frame)
 {
     SCOPED_COMMAND_BUFFER_DEBUG_LABEL(render_frame.frame_command_buffer, "Main Draw", color_gen_random());
 
+    // transition main draw render targets to attachment optimal 
+    {
+        VkImageSubresourceRange color_subresource_range{
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1
+        };
+        VkImageSubresourceRange depth_subresource_range{
+            .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1
+        };
+        VkImageMemoryBarrier transition_main_draw_color_multisample_to_color_attachment_optimal_barrier{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext = nullptr,
+            .srcAccessMask = VK_ACCESS_NONE,
+            .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = render_frame.main_draw_color_multisample_texture.image,
+            .subresourceRange = color_subresource_range
+        };
+        VkImageMemoryBarrier transition_main_draw_color_resolve_to_color_attachment_optimal_barrier{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext = nullptr,
+            .srcAccessMask = VK_ACCESS_NONE,
+            .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = render_frame.main_draw_color_resolve_texture.image,
+            .subresourceRange = color_subresource_range
+        };
+        VkImageMemoryBarrier transition_main_draw_depth_multisample_to_depth_stencil_attachment_optimal_barrier{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext = nullptr,
+            .srcAccessMask = VK_ACCESS_NONE,
+            .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = render_frame.main_draw_depth_multisample_texture.image,
+            .subresourceRange = depth_subresource_range 
+        };
+        VkImageMemoryBarrier image_barriers[] = {
+            transition_main_draw_color_multisample_to_color_attachment_optimal_barrier,
+			transition_main_draw_color_resolve_to_color_attachment_optimal_barrier,
+			transition_main_draw_depth_multisample_to_depth_stencil_attachment_optimal_barrier
+        };
+        vkCmdPipelineBarrier(render_frame.frame_command_buffer,
+                             VK_PIPELINE_STAGE_NONE, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                             0,
+                             0, nullptr,
+                             0, nullptr,
+                             ARRAY_LEN(image_barriers), image_barriers);
+    }
+
     // begin render pass
     {
-        VkRenderPassBeginInfo main_draw_render_pass_info{};
-        main_draw_render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        main_draw_render_pass_info.pNext = nullptr;
-        main_draw_render_pass_info.renderPass = s_main_draw_render_pass;
-        main_draw_render_pass_info.framebuffer = render_frame.main_draw_framebuffer;
-
-        VkRect2D render_area{};
-        render_area.extent = s_swapchain.extent;
-        render_area.offset.x = 0;
-        render_area.offset.y = 0;
-        main_draw_render_pass_info.renderArea = render_area;
-
         color_f32_t clear_color(0.0f, 1.0f, 1.0f, 1.0f);
 
-        VkClearColorValue clear_color_value{};
-        clear_color_value.float32[0] = clear_color.r;
-        clear_color_value.float32[1] = clear_color.g;
-        clear_color_value.float32[2] = clear_color.b;
-        clear_color_value.float32[3] = clear_color.a;
-
-        VkClearDepthStencilValue depth_stencil_clear_value{};
-        depth_stencil_clear_value.depth = 1.0f;
-        depth_stencil_clear_value.stencil = 0;
-
-        VkClearValue clear_value{};
-        clear_value.color = clear_color_value;
-        clear_value.depthStencil = depth_stencil_clear_value;
-
-        VkClearValue clear_values[] = {
-            clear_value,
-            clear_value,
-            clear_value
+        VkClearValue color_clear_value{
+            .color = { .float32 = { clear_color.r, clear_color.g, clear_color.b, clear_color.a } }
         };
-        main_draw_render_pass_info.clearValueCount = ARRAY_LEN(clear_values);
-        main_draw_render_pass_info.pClearValues = clear_values;
 
-        vkCmdBeginRenderPass(render_frame.frame_command_buffer, &main_draw_render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+        VkClearValue depth_stencil_clear_value{
+            .depthStencil = { .depth = 1.0f, .stencil = 0 },
+        };
+
+        VkRenderingAttachmentInfo color_multisample_attachment_info{
+			.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+			.pNext = nullptr,
+			.imageView = render_frame.main_draw_color_multisample_texture.image_view,
+			.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT,
+			.resolveImageView = render_frame.main_draw_color_resolve_texture.image_view,
+			.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+			.clearValue = color_clear_value
+        };
+        VkRenderingAttachmentInfo color_attachments[] = {
+            color_multisample_attachment_info
+        };
+
+        VkRenderingAttachmentInfo depth_stencil_multisample_attachment_info{
+			.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+			.pNext = nullptr,
+			.imageView = render_frame.main_draw_depth_multisample_texture.image_view,
+			.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+			.resolveMode = VK_RESOLVE_MODE_NONE,
+			.resolveImageView = VK_NULL_HANDLE,
+			.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+			.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+			.clearValue = depth_stencil_clear_value 
+        };
+
+        VkRect2D render_area{
+            .offset = { .x = 0, .y = 0 },
+			.extent = s_swapchain.extent
+        };
+
+        VkRenderingInfo rendering_info{
+			.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.renderArea = render_area,
+			.layerCount = 1,
+			.viewMask = 0,
+			.colorAttachmentCount = ARRAY_LEN(color_attachments),
+			.pColorAttachments = color_attachments,
+			.pDepthAttachment = &depth_stencil_multisample_attachment_info,
+			.pStencilAttachment = nullptr 
+        };
+        vkCmdBeginRendering(render_frame.frame_command_buffer, &rendering_info);
     }
 
     // main draw
@@ -3548,98 +3464,8 @@ static void main_draw_pass(render_frame_t& render_frame)
         vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)s_viking_room_mesh_data.num_indices, 1, 0, 0, 0);
     }
 
-    vkCmdEndRenderPass(render_frame.frame_command_buffer);
-}
-
-static void gizmo_pass(render_frame_t& render_frame)
-{
-    SCOPED_COMMAND_BUFFER_DEBUG_LABEL(render_frame.frame_command_buffer, "Gizmo Pass", color_gen_random());
-
-    // begin gizmo render pass
-    VkOffset2D zero_offset{
-        .x = 0,
-        .y = 0
-    };
-    VkRect2D render_area{
-        .offset = zero_offset,
-        .extent = s_swapchain.extent
-    };
-    VkRenderPassBeginInfo render_pass_begin_info{
-        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-        .pNext = nullptr,
-        .renderPass = s_gizmo_render_pass,
-        .framebuffer = render_frame.gizmo_draw_framebuffer,
-        .renderArea = render_area,
-        .clearValueCount = 0,
-        .pClearValues = nullptr
-    };
-    vkCmdBeginRenderPass(render_frame.frame_command_buffer, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
-
-    // update mesh instance buffer
-    mat44_t view = camera_get_view_transform(s_main_camera);
-    mat44_t projection = init_perspective_proj(45.0f, 0.01f, 100.0f, (f32)s_swapchain.extent.width / (f32)s_swapchain.extent.height);
-    mat44_t viking_room_model = mat44_t::IDENTITY;
-    mat44_t viking_room_mvp = viking_room_model * view * projection;
-    mesh_instance_render_data_t gizmo_mesh_instance_render_data{
-        .mvp = viking_room_mvp
-    };
-    upload_buffer_data(render_frame.mesh_instance_render_data_buffers[1].buffer, &gizmo_mesh_instance_render_data, sizeof(mesh_instance_render_data_t));
-
-    // allocate mesh instance descriptor set
-    VkDescriptorSetAllocateInfo mesh_instance_descriptor_set_alloc_info{
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-        .pNext = nullptr,
-        .descriptorPool = render_frame.mesh_instance_descriptor_pool,
-        .descriptorSetCount = 1,
-        .pSetLayouts = &s_mesh_instance_descriptor_set_layout
-    };
-    VkDescriptorSet mesh_instance_descriptor_set = VK_NULL_HANDLE;
-    vkAllocateDescriptorSets(s_context.device, &mesh_instance_descriptor_set_alloc_info, &mesh_instance_descriptor_set);
-
-    // write buffer to descriptor set
-    VkDescriptorBufferInfo mesh_instance_descriptor_buffer_info{
-        .buffer = render_frame.mesh_instance_render_data_buffers[1].buffer,
-        .offset = 0,
-        .range = sizeof(mesh_instance_render_data_t)
-    };
-    VkWriteDescriptorSet mesh_instance_descriptor_set_write{
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .pNext = nullptr,
-        .dstSet = mesh_instance_descriptor_set,
-        .dstBinding = 0,
-        .dstArrayElement = 0,
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        .pImageInfo = nullptr,
-        .pBufferInfo = &mesh_instance_descriptor_buffer_info,
-        .pTexelBufferView = nullptr
-    };
-    VkWriteDescriptorSet descriptor_writes[] = {
-        mesh_instance_descriptor_set_write
-    };
-    vkUpdateDescriptorSets(s_context.device, ARRAY_LEN(descriptor_writes), descriptor_writes, 0, nullptr);
-
-    // bind descriptor set
-    VkDescriptorSet descriptor_sets[] = {
-        mesh_instance_descriptor_set
-    };
-    vkCmdBindDescriptorSets(render_frame.frame_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_gizmo_draw_pipeline_layout, 0, ARRAY_LEN(descriptor_sets), descriptor_sets, 0, nullptr);
-
-    // bind gizmo vertex & index buffer
-    VkDeviceSize offsets[] = {
-        0
-    };
-    vkCmdBindVertexBuffers(render_frame.frame_command_buffer, 0, 1, &s_gizmo.scale_tool_gpu_mesh_data.vertex_buffer.buffer, offsets);
-    vkCmdBindIndexBuffer(render_frame.frame_command_buffer, s_gizmo.scale_tool_gpu_mesh_data.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-    // bind gizmo pipeline
-    vkCmdBindPipeline(render_frame.frame_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_gizmo_draw_pipeline);
-
-    // render using gizmo indices
-    vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)s_gizmo.scale_tool_gpu_mesh_data.num_indices, 1, 0, 0, 0);
-
-    // end gizmo render pass
-    vkCmdEndRenderPass(render_frame.frame_command_buffer);
+    //vkCmdEndRenderPass(render_frame.frame_command_buffer);
+    vkCmdEndRendering(render_frame.frame_command_buffer);
 }
 
 static void post_processing_pass(render_frame_t& render_frame)
@@ -3655,6 +3481,18 @@ static void post_processing_pass(render_frame_t& render_frame)
             .baseArrayLayer = 0,
             .layerCount = 1
         };
+        VkImageMemoryBarrier transition_main_draw_color_resolve_to_layout_general_barrier{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext = nullptr,
+            .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .newLayout = VK_IMAGE_LAYOUT_GENERAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = render_frame.main_draw_color_resolve_texture.image,
+            .subresourceRange = subresource_range
+        };
         VkImageMemoryBarrier transition_post_process_to_layout_general_barrier{
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
             .pNext = nullptr,
@@ -3667,12 +3505,16 @@ static void post_processing_pass(render_frame_t& render_frame)
             .image = render_frame.post_processing_color_texture.image,
             .subresourceRange = subresource_range
         };
+        VkImageMemoryBarrier image_barriers[] = {
+			transition_main_draw_color_resolve_to_layout_general_barrier,
+			transition_post_process_to_layout_general_barrier
+        };
         vkCmdPipelineBarrier(render_frame.frame_command_buffer,
-                             VK_PIPELINE_STAGE_NONE, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                              0,
                              0, nullptr,
                              0, nullptr,
-                             1, &transition_post_process_to_layout_general_barrier);
+                             ARRAY_LEN(image_barriers), image_barriers);
     }
 
     // update post process descriptor set
@@ -3789,6 +3631,115 @@ static void post_processing_pass(render_frame_t& render_frame)
                              0, nullptr,
                              1, &transition_post_process_to_layout_color_attachment_barrier);
     }
+}
+
+static void gizmo_pass(render_frame_t& render_frame)
+{
+    SCOPED_COMMAND_BUFFER_DEBUG_LABEL(render_frame.frame_command_buffer, "Gizmo Pass", color_gen_random());
+
+    {
+        VkRenderingAttachmentInfo color_attachment_info{
+			.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+			.pNext = nullptr,
+			.imageView = render_frame.post_processing_color_texture.image_view,
+			.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			.resolveMode = VK_RESOLVE_MODE_NONE,
+			.resolveImageView = VK_NULL_HANDLE,
+			.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+			.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+			.clearValue = 0 
+        };
+        VkRenderingAttachmentInfo color_attachments[] = {
+            color_attachment_info
+        };
+
+        VkRect2D render_area{
+            .offset = { .x = 0, .y = 0 },
+			.extent = s_swapchain.extent
+        };
+
+        VkRenderingInfo rendering_info{
+			.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.renderArea = render_area,
+			.layerCount = 1,
+			.viewMask = 0,
+			.colorAttachmentCount = ARRAY_LEN(color_attachments),
+			.pColorAttachments = color_attachments,
+			.pDepthAttachment = nullptr,
+			.pStencilAttachment = nullptr 
+        };
+        vkCmdBeginRendering(render_frame.frame_command_buffer, &rendering_info);
+    }
+
+    // update mesh instance buffer
+    mat44_t view = camera_get_view_transform(s_main_camera);
+    mat44_t projection = init_perspective_proj(45.0f, 0.01f, 100.0f, (f32)s_swapchain.extent.width / (f32)s_swapchain.extent.height);
+    mat44_t viking_room_model = mat44_t::IDENTITY;
+    mat44_t viking_room_mvp = viking_room_model * view * projection;
+    mesh_instance_render_data_t gizmo_mesh_instance_render_data{
+        .mvp = viking_room_mvp
+    };
+    upload_buffer_data(render_frame.mesh_instance_render_data_buffers[1].buffer, &gizmo_mesh_instance_render_data, sizeof(mesh_instance_render_data_t));
+
+    // allocate mesh instance descriptor set
+    VkDescriptorSetAllocateInfo mesh_instance_descriptor_set_alloc_info{
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .pNext = nullptr,
+        .descriptorPool = render_frame.mesh_instance_descriptor_pool,
+        .descriptorSetCount = 1,
+        .pSetLayouts = &s_mesh_instance_descriptor_set_layout
+    };
+    VkDescriptorSet mesh_instance_descriptor_set = VK_NULL_HANDLE;
+    vkAllocateDescriptorSets(s_context.device, &mesh_instance_descriptor_set_alloc_info, &mesh_instance_descriptor_set);
+
+    // write buffer to descriptor set
+    VkDescriptorBufferInfo mesh_instance_descriptor_buffer_info{
+        .buffer = render_frame.mesh_instance_render_data_buffers[1].buffer,
+        .offset = 0,
+        .range = sizeof(mesh_instance_render_data_t)
+    };
+    VkWriteDescriptorSet mesh_instance_descriptor_set_write{
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .pNext = nullptr,
+        .dstSet = mesh_instance_descriptor_set,
+        .dstBinding = 0,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .pImageInfo = nullptr,
+        .pBufferInfo = &mesh_instance_descriptor_buffer_info,
+        .pTexelBufferView = nullptr
+    };
+    VkWriteDescriptorSet descriptor_writes[] = {
+        mesh_instance_descriptor_set_write
+    };
+    vkUpdateDescriptorSets(s_context.device, ARRAY_LEN(descriptor_writes), descriptor_writes, 0, nullptr);
+
+    // bind descriptor set
+    VkDescriptorSet descriptor_sets[] = {
+        mesh_instance_descriptor_set
+    };
+    vkCmdBindDescriptorSets(render_frame.frame_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_gizmo_draw_pipeline_layout, 0, ARRAY_LEN(descriptor_sets), descriptor_sets, 0, nullptr);
+
+    // bind gizmo vertex & index buffer
+    VkDeviceSize offsets[] = {
+        0
+    };
+    vkCmdBindVertexBuffers(render_frame.frame_command_buffer, 0, 1, &s_gizmo.scale_tool_gpu_mesh_data.vertex_buffer.buffer, offsets);
+    vkCmdBindIndexBuffer(render_frame.frame_command_buffer, s_gizmo.scale_tool_gpu_mesh_data.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+    // bind gizmo pipeline
+    vkCmdBindPipeline(render_frame.frame_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_gizmo_draw_pipeline);
+
+    // render using gizmo indices
+    vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)s_gizmo.scale_tool_gpu_mesh_data.num_indices, 1, 0, 0, 0);
+
+    // end gizmo render pass
+    //vkCmdEndRenderPass(render_frame.frame_command_buffer);
+    vkCmdEndRendering(render_frame.frame_command_buffer);
 }
 
 static void imgui_pass(render_frame_t& render_frame)

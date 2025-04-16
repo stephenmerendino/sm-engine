@@ -27,8 +27,7 @@ static const sm::color_f32_t CLEAR_COLOR { .r = 0.20f, .g = 0.20f, .b = 0.20f, .
 	};
 
 	static const char* DEVICE_EXTENSIONS[] = {
-		"VK_KHR_swapchain",
-		"VK_KHR_dynamic_rendering"
+		"VK_KHR_swapchain"
 	};
 
 	static const bool VULKAN_VERBOSE = false;
@@ -43,8 +42,7 @@ static const sm::color_f32_t CLEAR_COLOR { .r = 0.20f, .g = 0.20f, .b = 0.20f, .
 	};
 
 	static const char* DEVICE_EXTENSIONS[] = {
-		"VK_KHR_swapchain",
-		"VK_KHR_dynamic_rendering"
+		"VK_KHR_swapchain"
 	};
 
 	static const bool VULKAN_VERBOSE = true;
