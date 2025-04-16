@@ -374,7 +374,9 @@ void sm::mesh_data_add_cylinder(mesh_data_t* mesh, const vec3_t& base_center, co
             f32 v0 = remap(p0_xy.y, -1.0f, 1.0f, 0.0f, 1.0f);
             f32 v1 = remap(p1_xy.y, -1.0f, 1.0f, 0.0f, 1.0f);
 
-            vec3_t normal = normalized(cross(p1_top_ws - p0_top_ws, top_ws - p0_top_ws));
+            vec3_t vec1 = normalized(p1_top_ws - p0_top_ws);
+            vec3_t vec2 = normalized(top_ws - p0_top_ws);
+            vec3_t normal = normalized(cross(vec1, vec2));
 
             mesh_data_add_vertex_and_index(mesh, { .pos = top_ws, .uv = vec2_t(0.5, 0.5f), .color = vertex_color_vec3, .normal = normal });
             mesh_data_add_vertex_and_index(mesh, { .pos = p0_top_ws, .uv = vec2_t(u0, v0), .color = vertex_color_vec3, .normal = normal });
@@ -418,7 +420,9 @@ void sm::mesh_data_add_cylinder(mesh_data_t* mesh, const vec3_t& base_center, co
             f32 v0 = remap(p0_xy.y, -1.0f, 1.0f, 0.0f, 1.0f);
             f32 v1 = remap(p1_xy.y, -1.0f, 1.0f, 0.0f, 1.0f);
 
-            vec3_t normal = normalized(cross(p0_bot_ws - p1_bot_ws, bot_ws - p1_bot_ws));
+            vec3_t vec1 = normalized(p0_bot_ws - p1_bot_ws);
+            vec3_t vec2 = normalized(bot_ws - p1_bot_ws);
+            vec3_t normal = normalized(cross(vec1, vec2));
 
             mesh_data_add_vertex_and_index(mesh, { .pos = bot_ws, .uv = vec2_t(0.5f, 0.5f), .color = vertex_color_vec3, .normal = normal });
             mesh_data_add_vertex_and_index(mesh, { .pos = p1_bot_ws, .uv = vec2_t(u1, v1), .color = vertex_color_vec3, .normal = normal });

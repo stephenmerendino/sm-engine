@@ -184,9 +184,9 @@ enum class gizmo_mode_t : u8
 
 struct gizmo_t
 {
-    mesh_t translate_tool_gpu_mesh_data;
-    mesh_t rotate_tool_gpu_mesh_data;
-    mesh_t scale_tool_gpu_mesh_data;
+    mesh_t translate_tool_gpu_mesh;
+    mesh_t rotate_tool_gpu_mesh;
+    mesh_t scale_tool_gpu_mesh;
     gizmo_mode_t    mode = gizmo_mode_t::INACTIVE;
 };
 
@@ -214,7 +214,7 @@ static VkRenderPass s_imgui_render_pass;
 static array_t<render_frame_t> s_render_frames;
 static gizmo_t s_gizmo;
 
-static mesh_t s_viking_room_mesh_data;
+static mesh_t s_viking_room_mesh;
 static texture_t s_viking_room_diffuse_texture;
 static VkDescriptorSet s_viking_room_material_descriptor_set = VK_NULL_HANDLE;
 static VkPipelineLayout s_viking_room_main_draw_pipeline_layout = VK_NULL_HANDLE;
@@ -2530,7 +2530,7 @@ void renderer_window_msg_handler(window_msg_type_t msg_type, u64 msg_data, void*
     }
 }
 
-static void mesh_init(arena_t* arena, mesh_t& out_mesh, mesh_data_t* mesh_data)
+static void mesh_init(mesh_t& out_mesh, mesh_data_t* mesh_data)
 {
     // vertex buffer
     {
@@ -2558,7 +2558,7 @@ static void mesh_init(arena_t* arena, mesh_t& out_mesh, mesh_data_t* mesh_data)
 static void gizmo_init(arena_t* arena)
 {
     f32 gizmo_length = 0.75f;
-    f32 gizmo_bar_thickness = 0.05f;
+    f32 gizmo_bar_thickness = 0.01f;
     f32 scale_box_thickness = 0.10f;
 
     // build translate tool mesh
@@ -2577,7 +2577,7 @@ static void gizmo_init(arena_t* arena)
     mesh_data_add_cube(scale_mesh, { .x = 0.0f, .y = gizmo_length, .z = 0.0f }, scale_box_thickness, 1, color_f32_t::GREEN);
     mesh_data_add_cylinder(scale_mesh, vec3_t::ZERO, vec3_t::WORLD_UP, gizmo_length, gizmo_bar_thickness, 32, color_f32_t::BLUE);
     mesh_data_add_cube(scale_mesh, { .x = 0.0f, .y = 0.0f, .z = gizmo_length }, scale_box_thickness, 1, color_f32_t::BLUE);
-    mesh_init(arena, s_gizmo.scale_tool_gpu_mesh_data, scale_mesh);
+    mesh_init(s_gizmo.scale_tool_gpu_mesh, scale_mesh);
 }
 
 void sm::renderer_init(window_t* window)
@@ -3031,7 +3031,7 @@ void sm::renderer_init(window_t* window)
 		// viking room
 		{
             mesh_data_t* viking_room_obj = mesh_data_init_from_obj(startup_arena, "viking_room.obj");
-            mesh_init(startup_arena, s_viking_room_mesh_data, viking_room_obj);
+            mesh_init(s_viking_room_mesh, viking_room_obj);
 
 			// viking room diffuse texture
 			{
@@ -3435,7 +3435,7 @@ static void main_draw_pass(render_frame_t& render_frame)
 
         // bind everything needed to draw
         VkBuffer vertex_buffers[] = {
-            s_viking_room_mesh_data.vertex_buffer.buffer
+            s_viking_room_mesh.vertex_buffer.buffer
         };
         VkDeviceSize offset = 0;
         VkDeviceSize offsets[] = {
@@ -3443,7 +3443,7 @@ static void main_draw_pass(render_frame_t& render_frame)
         };
         vkCmdBindVertexBuffers(render_frame.frame_command_buffer, 0, 1, vertex_buffers, offsets);
 
-        vkCmdBindIndexBuffer(render_frame.frame_command_buffer, s_viking_room_mesh_data.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindIndexBuffer(render_frame.frame_command_buffer, s_viking_room_mesh.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
         VkDescriptorSet descriptor_sets[] = {
             s_global_descriptor_set,
@@ -3461,7 +3461,7 @@ static void main_draw_pass(render_frame_t& render_frame)
         vkCmdBindPipeline(render_frame.frame_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_viking_room_main_draw_pipeline);
 
         // draw mesh
-        vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)s_viking_room_mesh_data.num_indices, 1, 0, 0, 0);
+        vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)s_viking_room_mesh.num_indices, 1, 0, 0, 0);
     }
 
     //vkCmdEndRenderPass(render_frame.frame_command_buffer);
@@ -3728,14 +3728,14 @@ static void gizmo_pass(render_frame_t& render_frame)
     VkDeviceSize offsets[] = {
         0
     };
-    vkCmdBindVertexBuffers(render_frame.frame_command_buffer, 0, 1, &s_gizmo.scale_tool_gpu_mesh_data.vertex_buffer.buffer, offsets);
-    vkCmdBindIndexBuffer(render_frame.frame_command_buffer, s_gizmo.scale_tool_gpu_mesh_data.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindVertexBuffers(render_frame.frame_command_buffer, 0, 1, &s_gizmo.scale_tool_gpu_mesh.vertex_buffer.buffer, offsets);
+    vkCmdBindIndexBuffer(render_frame.frame_command_buffer, s_gizmo.scale_tool_gpu_mesh.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
     // bind gizmo pipeline
     vkCmdBindPipeline(render_frame.frame_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_gizmo_draw_pipeline);
 
     // render using gizmo indices
-    vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)s_gizmo.scale_tool_gpu_mesh_data.num_indices, 1, 0, 0, 0);
+    vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)s_gizmo.scale_tool_gpu_mesh.num_indices, 1, 0, 0, 0);
 
     // end gizmo render pass
     //vkCmdEndRenderPass(render_frame.frame_command_buffer);
