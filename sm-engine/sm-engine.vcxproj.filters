@@ -28,9 +28,6 @@
     <Filter Include="src\third_party\imgui\vulkan">
       <UniqueIdentifier>{67899d9e-31c4-49c2-b5f7-d7263b031cba}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\third_party\imgui\backends">
-      <UniqueIdentifier>{cf60dc9e-72ad-49fe-830a-fe87ed0d3128}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\third_party\vulkan\utility">
       <UniqueIdentifier>{6ba4ee89-8f85-452d-a452-f2b7250484fd}</UniqueIdentifier>
     </Filter>
@@ -89,12 +86,6 @@
     </ClCompile>
     <ClCompile Include="src\third_party\imgui\imgui_widgets.cpp">
       <Filter>src\third_party\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="src\third_party\imgui\backends\imgui_impl_vulkan.cpp">
-      <Filter>src\third_party\imgui\backends</Filter>
-    </ClCompile>
-    <ClCompile Include="src\third_party\imgui\backends\imgui_impl_win32.cpp">
-      <Filter>src\third_party\imgui\backends</Filter>
     </ClCompile>
     <ClCompile Include="src\sm\memory\arena.cpp">
       <Filter>src\sm\memory</Filter>
@@ -177,6 +168,12 @@
     <ClCompile Include="src\sm\render\ui.cpp">
       <Filter>src\sm\render</Filter>
     </ClCompile>
+    <ClCompile Include="src\third_party\imgui\imgui_impl_vulkan.cpp">
+      <Filter>src\third_party\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\third_party\imgui\imgui_impl_win32.cpp">
+      <Filter>src\third_party\imgui</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\third_party\dxc\dxcapi.h">
@@ -202,12 +199,6 @@
     </ClInclude>
     <ClInclude Include="src\third_party\imgui\imstb_truetype.h">
       <Filter>src\third_party\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="src\third_party\imgui\backends\imgui_impl_vulkan.h">
-      <Filter>src\third_party\imgui\backends</Filter>
-    </ClInclude>
-    <ClInclude Include="src\third_party\imgui\backends\imgui_impl_win32.h">
-      <Filter>src\third_party\imgui\backends</Filter>
     </ClInclude>
     <ClInclude Include="src\third_party\vulkan\vk_enum_string_helper.h">
       <Filter>src\third_party\vulkan</Filter>
@@ -445,6 +436,12 @@
     </ClInclude>
     <ClInclude Include="src\sm\render\ui.h">
       <Filter>src\sm\render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\imgui\imgui_impl_vulkan.h">
+      <Filter>src\third_party\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\third_party\imgui\imgui_impl_win32.h">
+      <Filter>src\third_party\imgui</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

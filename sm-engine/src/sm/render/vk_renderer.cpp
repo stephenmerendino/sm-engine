@@ -13,8 +13,8 @@
 #include "sm/render/vk_include.h"
 
 #include "third_party/imgui/imgui.h"
-#include "third_party/imgui/backends/imgui_impl_win32.h"
-#include "third_party/imgui/backends/imgui_impl_vulkan.h"
+#include "third_party/imgui/imgui_impl_win32.h"
+#include "third_party/imgui/imgui_impl_vulkan.h"
 
 #pragma warning(push)
 #pragma warning(disable:4244)
@@ -2898,7 +2898,7 @@ void sm::renderer_init(window_t* window)
 		HWND hwnd = get_handle<HWND>(s_window->handle);
 
         ImGui_ImplWin32_Init(hwnd);
-        ImGui_ImplVulkan_LoadFunctions(imgui_vulkan_func_loader, &s_context.instance);
+        ImGui_ImplVulkan_LoadFunctions(VK_API_VERSION_1_3, imgui_vulkan_func_loader, &s_context.instance);
         ImGui_ImplVulkan_InitInfo init_info{};
         init_info.Instance = s_context.instance;
         init_info.PhysicalDevice = s_context.phys_device;
@@ -2913,7 +2913,8 @@ void sm::renderer_init(window_t* window)
         init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
         init_info.Allocator = VK_NULL_HANDLE;
         init_info.CheckVkResultFn = imgui_check_vulkan_result;
-        ImGui_ImplVulkan_Init(&init_info, s_imgui_render_pass);
+        init_info.RenderPass = s_imgui_render_pass;
+        ImGui_ImplVulkan_Init(&init_info);
 
         f32 dpi_scale = ImGui_ImplWin32_GetDpiScaleForHwnd(hwnd);
         debug_printf("Setting ImGui DPI Scale to %f\n", dpi_scale);
@@ -2926,32 +2927,32 @@ void sm::renderer_init(window_t* window)
 
         // Upload Fonts
         {
-			VkCommandBuffer command_buffer = VK_NULL_HANDLE;
+			//VkCommandBuffer command_buffer = VK_NULL_HANDLE;
 
-			VkCommandBufferAllocateInfo alloc_info{};
-			alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            alloc_info.commandPool = s_graphics_command_pool;
-			alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-			alloc_info.commandBufferCount = 1;
-			
-			SM_VULKAN_ASSERT(vkAllocateCommandBuffers(s_context.device, &alloc_info, &command_buffer));
+			//VkCommandBufferAllocateInfo alloc_info{};
+			//alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            //alloc_info.commandPool = s_graphics_command_pool;
+			//alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+			//alloc_info.commandBufferCount = 1;
+			//
+			//SM_VULKAN_ASSERT(vkAllocateCommandBuffers(s_context.device, &alloc_info, &command_buffer));
 
-			VkCommandBufferBeginInfo begin_info{};
-			begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-            begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-			vkBeginCommandBuffer(command_buffer, &begin_info);
-            ImGui_ImplVulkan_CreateFontsTexture(command_buffer);
-			vkEndCommandBuffer(command_buffer);
+			//VkCommandBufferBeginInfo begin_info{};
+			//begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            //begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+			//vkBeginCommandBuffer(command_buffer, &begin_info);
+            ImGui_ImplVulkan_CreateFontsTexture();
+			//vkEndCommandBuffer(command_buffer);
 
-            VkSubmitInfo submit_info{};
-            submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-            submit_info.commandBufferCount = 1;
-            submit_info.pCommandBuffers = &command_buffer;
-            vkQueueSubmit(s_context.graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
-            vkQueueWaitIdle(s_context.graphics_queue);
+            //VkSubmitInfo submit_info{};
+            //submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            //submit_info.commandBufferCount = 1;
+            //submit_info.pCommandBuffers = &command_buffer;
+            //vkQueueSubmit(s_context.graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
+            //vkQueueWaitIdle(s_context.graphics_queue);
 
-			vkFreeCommandBuffers(s_context.device, s_graphics_command_pool, 1, &command_buffer);
-            ImGui_ImplVulkan_DestroyFontUploadObjects();
+			//vkFreeCommandBuffers(s_context.device, s_graphics_command_pool, 1, &command_buffer);
+            //ImGui_ImplVulkan_DestroyFontUploadObjects();
         }
 	}
 
