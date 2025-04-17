@@ -2506,11 +2506,18 @@ static void gizmo_init(arena_t* arena)
 
     // build translate tool mesh
     mesh_data_t* translate_mesh = mesh_init(arena);
-    //mesh_data_init(arena, s_gizmo.translate_tool_gpu_mesh_data, translate_mesh);
+    mesh_data_add_cylinder(translate_mesh, vec3_t::ZERO, vec3_t::WORLD_FORWARD, gizmo_length, gizmo_bar_thickness, 32, color_f32_t::RED);
+    mesh_data_add_cone(translate_mesh, { .x = gizmo_length, .y = 0.0f, .z = 0.0f }, vec3_t::WORLD_FORWARD, 0.5f, 0.5f, 32, color_f32_t::RED);
+    mesh_data_add_cylinder(translate_mesh, vec3_t::ZERO, vec3_t::WORLD_LEFT, gizmo_length, gizmo_bar_thickness, 32, color_f32_t::GREEN);
+    mesh_data_add_cylinder(translate_mesh, vec3_t::ZERO, vec3_t::WORLD_UP, gizmo_length, gizmo_bar_thickness, 32, color_f32_t::BLUE);
+    mesh_init(s_gizmo.rotate_tool_gpu_mesh, translate_mesh);
 
     // build rotate tool mesh
     mesh_data_t* rotate_mesh = mesh_init(arena);
-    //gpu_mesh_data_init(arena, s_gizmo.rotate_tool_gpu_mesh_data, rotate_mesh);
+    mesh_data_add_torus(rotate_mesh, vec3_t::ZERO, vec3_t::WORLD_FORWARD, 0.65f, 0.025f, 32, color_f32_t::RED);
+    mesh_data_add_torus(rotate_mesh, vec3_t::ZERO, vec3_t::WORLD_LEFT, 0.65f, 0.025f, 32, color_f32_t::GREEN);
+    mesh_data_add_torus(rotate_mesh, vec3_t::ZERO, vec3_t::WORLD_UP, 0.65f, 0.025f, 32, color_f32_t::BLUE);
+    mesh_init(s_gizmo.rotate_tool_gpu_mesh, rotate_mesh);
 
     // build scale tool mesh
     mesh_data_t* scale_mesh = mesh_init(arena);
@@ -3593,14 +3600,14 @@ static void gizmo_pass(render_frame_t& render_frame)
     VkDeviceSize offsets[] = {
         0
     };
-    vkCmdBindVertexBuffers(render_frame.frame_command_buffer, 0, 1, &s_gizmo.scale_tool_gpu_mesh.vertex_buffer.buffer, offsets);
-    vkCmdBindIndexBuffer(render_frame.frame_command_buffer, s_gizmo.scale_tool_gpu_mesh.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindVertexBuffers(render_frame.frame_command_buffer, 0, 1, &s_gizmo.rotate_tool_gpu_mesh.vertex_buffer.buffer, offsets);
+    vkCmdBindIndexBuffer(render_frame.frame_command_buffer, s_gizmo.rotate_tool_gpu_mesh.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
     // bind gizmo pipeline
     vkCmdBindPipeline(render_frame.frame_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_gizmo_draw_pipeline);
 
     // render using gizmo indices
-    vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)s_gizmo.scale_tool_gpu_mesh.num_indices, 1, 0, 0, 0);
+    vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)s_gizmo.rotate_tool_gpu_mesh.num_indices, 1, 0, 0, 0);
 
     // end gizmo render pass
     //vkCmdEndRenderPass(render_frame.frame_command_buffer);

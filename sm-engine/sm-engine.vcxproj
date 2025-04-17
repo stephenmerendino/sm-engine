@@ -29,6 +29,7 @@
     <ClCompile Include="src\sm\math\ivec2.cpp" />
     <ClCompile Include="src\sm\math\mat33.cpp" />
     <ClCompile Include="src\sm\math\mat44.cpp" />
+    <ClCompile Include="src\sm\math\primitives.cpp" />
     <ClCompile Include="src\sm\math\vec2.cpp" />
     <ClCompile Include="src\sm\math\vec3.cpp" />
     <ClCompile Include="src\sm\math\vec4.cpp" />
@@ -90,6 +91,7 @@
     <ClInclude Include="src\sm\math\ivec2.h" />
     <ClInclude Include="src\sm\math\mat33.h" />
     <ClInclude Include="src\sm\math\mat44.h" />
+    <ClInclude Include="src\sm\math\primitives.h" />
     <ClInclude Include="src\sm\math\vec2.h" />
     <ClInclude Include="src\sm\math\vec3.h" />
     <ClInclude Include="src\sm\math\vec4.h" />

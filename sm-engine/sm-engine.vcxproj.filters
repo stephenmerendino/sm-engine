@@ -186,6 +186,9 @@
     <ClCompile Include="src\sm\platform\win32\win32_main.cpp">
       <Filter>src\sm\platform\win32</Filter>
     </ClCompile>
+    <ClCompile Include="src\sm\math\primitives.cpp">
+      <Filter>src\sm\math</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\third_party\dxc\dxcapi.h">
@@ -457,6 +460,9 @@
     </ClInclude>
     <ClInclude Include="src\sm\app.h">
       <Filter>src\sm</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\math\primitives.h">
+      <Filter>src\sm\math</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
