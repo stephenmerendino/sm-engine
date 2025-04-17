@@ -13,8 +13,8 @@
 #include "sm/render/vk_include.h"
 
 #include "third_party/imgui/imgui.h"
-#include "third_party/imgui/backends/imgui_impl_win32.h"
-#include "third_party/imgui/backends/imgui_impl_vulkan.h"
+#include "third_party/imgui/imgui_impl_win32.h"
+#include "third_party/imgui/imgui_impl_vulkan.h"
 
 #pragma warning(push)
 #pragma warning(disable:4244)
@@ -128,8 +128,6 @@ struct render_frame_t
     texture_t main_draw_color_resolve_texture;
     texture_t post_processing_color_texture;
 
-	VkFramebuffer imgui_framebuffer;
-
 	// mesh instance descriptors
 	VkDescriptorPool mesh_instance_descriptor_pool;
     buffer_t mesh_instance_render_data_buffers[MAX_NUM_MESH_INSTANCES_PER_FRAME];
@@ -208,8 +206,6 @@ static VkDescriptorSetLayout s_post_process_descriptor_set_layout = VK_NULL_HAND
 static VkDescriptorSetLayout s_infinite_grid_descriptor_set_layout = VK_NULL_HANDLE;
 static VkDescriptorSet s_global_descriptor_set = VK_NULL_HANDLE;
 static VkSampler s_linear_sampler = VK_NULL_HANDLE;
-
-static VkRenderPass s_imgui_render_pass;
 
 static array_t<render_frame_t> s_render_frames;
 static gizmo_t s_gizmo;
@@ -1449,56 +1445,6 @@ static void init_render_frames_render_targets()
                      VK_IMAGE_ASPECT_COLOR_BIT, 
                      VK_SAMPLE_COUNT_1_BIT, 
                      false);
-
-        //// main draw framebuffer
-        //{
-        //    VkFramebufferCreateInfo create_info{};
-        //    create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        //    create_info.renderPass = s_main_draw_render_pass;
-        //    VkImageView image_views[] = {
-        //        frame.main_draw_color_multisample_texture.image_view,
-        //        frame.main_draw_depth_multisample_texture.image_view,
-        //        frame.main_draw_color_resolve_texture.image_view
-        //    };
-        //    create_info.attachmentCount = ARRAY_LEN(image_views);
-        //    create_info.pAttachments = image_views;
-        //    create_info.width = s_swapchain.extent.width;
-        //    create_info.height = s_swapchain.extent.height;
-        //    create_info.layers = 1;
-        //    SM_VULKAN_ASSERT(vkCreateFramebuffer(s_context.device, &create_info, nullptr, &frame.main_draw_framebuffer));
-        //}
-
-        //// gizmo draw framebuffer
-        //{
-        //    VkFramebufferCreateInfo create_info{};
-        //    create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        //    create_info.renderPass = s_gizmo_render_pass;
-        //    VkImageView image_views[] = {
-        //        frame.post_processing_color_texture.image_view
-        //    };
-        //    create_info.attachmentCount = ARRAY_LEN(image_views);
-        //    create_info.pAttachments = image_views;
-        //    create_info.width = s_swapchain.extent.width;
-        //    create_info.height = s_swapchain.extent.height;
-        //    create_info.layers = 1;
-        //    SM_VULKAN_ASSERT(vkCreateFramebuffer(s_context.device, &create_info, nullptr, &frame.gizmo_draw_framebuffer));
-        //}
-
-        // imgui framebuffer
-        {
-            VkFramebufferCreateInfo create_info{};
-            create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            create_info.renderPass = s_imgui_render_pass;
-            VkImageView image_views[] = {
-                frame.post_processing_color_texture.image_view
-            };
-            create_info.attachmentCount = ARRAY_LEN(image_views);
-            create_info.pAttachments = image_views;
-            create_info.width = s_swapchain.extent.width;
-            create_info.height = s_swapchain.extent.height;
-            create_info.layers = 1;
-            SM_VULKAN_ASSERT(vkCreateFramebuffer(s_context.device, &create_info, nullptr, &frame.imgui_framebuffer));
-        }
 	}
 }
 
@@ -1653,9 +1599,6 @@ static void refresh_render_frames_render_targets()
         texture_release(frame.main_draw_depth_multisample_texture);
         texture_release(frame.main_draw_color_resolve_texture);
         texture_release(frame.post_processing_color_texture);
-
-		//vkDestroyFramebuffer(s_context.device, frame.main_draw_framebuffer, nullptr);
-		vkDestroyFramebuffer(s_context.device, frame.imgui_framebuffer, nullptr);
 	}
 
 	init_render_frames_render_targets();
@@ -2822,71 +2765,6 @@ void sm::renderer_init(window_t* window)
 
     // imgui
     {
-		// imgui render pass
-		{
-			VkAttachmentDescription2 color_attachment_desc{};
-			color_attachment_desc.sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2;
-			color_attachment_desc.flags = 0;
-			color_attachment_desc.format = s_context.main_color_format;
-			color_attachment_desc.samples = VK_SAMPLE_COUNT_1_BIT;
-			color_attachment_desc.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-			color_attachment_desc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-			color_attachment_desc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-			color_attachment_desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-			color_attachment_desc.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-			color_attachment_desc.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-
-			VkAttachmentDescription2 attachments[] = {
-				color_attachment_desc
-			};
-
-			VkAttachmentReference2 color_attachment_ref{};
-			color_attachment_ref.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2;
-			color_attachment_ref.attachment = 0;
-			color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-			color_attachment_ref.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-
-			VkAttachmentReference2 color_attachment_refs[] = {
-				color_attachment_ref
-			};
-
-			VkSubpassDescription2 subpass_desc{};
-			subpass_desc.sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2;
-			subpass_desc.flags = 0;
-			subpass_desc.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-			subpass_desc.pColorAttachments = color_attachment_refs;
-			subpass_desc.colorAttachmentCount = (u32)ARRAY_LEN(color_attachment_refs);
-
-			VkSubpassDescription2 subpass_descriptions[] = {
-				subpass_desc
-			};
-
-			VkSubpassDependency2 subpass_dependency{};
-			subpass_dependency.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2;
-			subpass_dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-			subpass_dependency.dstSubpass = 0;
-			subpass_dependency.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-			subpass_dependency.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-			subpass_dependency.srcAccessMask = VK_ACCESS_2_NONE;
-			subpass_dependency.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-			subpass_dependency.dependencyFlags = 0;
-
-			VkSubpassDependency2 subpass_dependencies[] = {
-				subpass_dependency
-			};
-
-			VkRenderPassCreateInfo2 create_info{};
-			create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2;
-			create_info.pAttachments = attachments;
-			create_info.attachmentCount = (u32)ARRAY_LEN(attachments);
-			create_info.pSubpasses = subpass_descriptions;
-			create_info.subpassCount = (u32)ARRAY_LEN(subpass_descriptions);
-			create_info.pDependencies = subpass_dependencies;
-			create_info.dependencyCount = (u32)ARRAY_LEN(subpass_dependencies);
-
-			SM_VULKAN_ASSERT(vkCreateRenderPass2(s_context.device, &create_info, nullptr, &s_imgui_render_pass));
-		}
-
         IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
@@ -2897,8 +2775,19 @@ void sm::renderer_init(window_t* window)
 
 		HWND hwnd = get_handle<HWND>(s_window->handle);
 
+        VkFormat imgui_render_target_format = s_context.main_color_format;
+        VkPipelineRenderingCreateInfoKHR pipeline_rendering_create_info{
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
+            .pNext = nullptr,
+            .viewMask = 0,
+            .colorAttachmentCount = 1,
+            .pColorAttachmentFormats = &imgui_render_target_format,
+            .depthAttachmentFormat = VK_FORMAT_UNDEFINED,
+            .stencilAttachmentFormat = VK_FORMAT_UNDEFINED
+        };
+
         ImGui_ImplWin32_Init(hwnd);
-        ImGui_ImplVulkan_LoadFunctions(imgui_vulkan_func_loader, &s_context.instance);
+        ImGui_ImplVulkan_LoadFunctions(VK_API_VERSION_1_3, imgui_vulkan_func_loader, &s_context.instance);
         ImGui_ImplVulkan_InitInfo init_info{};
         init_info.Instance = s_context.instance;
         init_info.PhysicalDevice = s_context.phys_device;
@@ -2913,7 +2802,10 @@ void sm::renderer_init(window_t* window)
         init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
         init_info.Allocator = VK_NULL_HANDLE;
         init_info.CheckVkResultFn = imgui_check_vulkan_result;
-        ImGui_ImplVulkan_Init(&init_info, s_imgui_render_pass);
+        init_info.RenderPass = VK_NULL_HANDLE;
+        init_info.UseDynamicRendering = true;
+        init_info.PipelineRenderingCreateInfo = pipeline_rendering_create_info;
+        ImGui_ImplVulkan_Init(&init_info);
 
         f32 dpi_scale = ImGui_ImplWin32_GetDpiScaleForHwnd(hwnd);
         debug_printf("Setting ImGui DPI Scale to %f\n", dpi_scale);
@@ -2925,34 +2817,7 @@ void sm::renderer_init(window_t* window)
         ImGui::GetStyle().ScaleAllSizes(dpi_scale);
 
         // Upload Fonts
-        {
-			VkCommandBuffer command_buffer = VK_NULL_HANDLE;
-
-			VkCommandBufferAllocateInfo alloc_info{};
-			alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            alloc_info.commandPool = s_graphics_command_pool;
-			alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-			alloc_info.commandBufferCount = 1;
-			
-			SM_VULKAN_ASSERT(vkAllocateCommandBuffers(s_context.device, &alloc_info, &command_buffer));
-
-			VkCommandBufferBeginInfo begin_info{};
-			begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-            begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-			vkBeginCommandBuffer(command_buffer, &begin_info);
-            ImGui_ImplVulkan_CreateFontsTexture(command_buffer);
-			vkEndCommandBuffer(command_buffer);
-
-            VkSubmitInfo submit_info{};
-            submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-            submit_info.commandBufferCount = 1;
-            submit_info.pCommandBuffers = &command_buffer;
-            vkQueueSubmit(s_context.graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
-            vkQueueWaitIdle(s_context.graphics_queue);
-
-			vkFreeCommandBuffers(s_context.device, s_graphics_command_pool, 1, &command_buffer);
-            ImGui_ImplVulkan_DestroyFontUploadObjects();
-        }
+        ImGui_ImplVulkan_CreateFontsTexture();
 	}
 
 	// render frames
@@ -3748,29 +3613,49 @@ static void imgui_pass(render_frame_t& render_frame)
 
     ui_render();
 
-    VkRect2D render_area{};
-    render_area.offset.x = 0;
-    render_area.offset.y = 0;
-    render_area.extent = s_swapchain.extent;
+    {
+        VkRenderingAttachmentInfo color_attachment_info{
+			.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+			.pNext = nullptr,
+			.imageView = render_frame.post_processing_color_texture.image_view,
+			.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			.resolveMode = VK_RESOLVE_MODE_NONE,
+			.resolveImageView = VK_NULL_HANDLE,
+			.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+			.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+			.clearValue = 0 
+        };
+        VkRenderingAttachmentInfo color_attachments[] = {
+            color_attachment_info
+        };
 
-    VkRenderPassBeginInfo imgui_render_pass_begin_info{};
-    imgui_render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    imgui_render_pass_begin_info.pNext = nullptr;
-    imgui_render_pass_begin_info.renderPass = s_imgui_render_pass;
-    imgui_render_pass_begin_info.framebuffer = render_frame.imgui_framebuffer;
-    imgui_render_pass_begin_info.renderArea = render_area;
-    imgui_render_pass_begin_info.clearValueCount = 0;
-    imgui_render_pass_begin_info.pClearValues = nullptr;
+        VkRect2D render_area{
+            .offset = { .x = 0, .y = 0 },
+			.extent = s_swapchain.extent
+        };
 
-    VkSubpassContents subpass_contents = VK_SUBPASS_CONTENTS_INLINE;
+        VkRenderingInfo rendering_info{
+			.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.renderArea = render_area,
+			.layerCount = 1,
+			.viewMask = 0,
+			.colorAttachmentCount = ARRAY_LEN(color_attachments),
+			.pColorAttachments = color_attachments,
+			.pDepthAttachment = nullptr,
+			.pStencilAttachment = nullptr 
+        };
 
-    vkCmdBeginRenderPass(render_frame.frame_command_buffer, &imgui_render_pass_begin_info, subpass_contents);
+        vkCmdBeginRendering(render_frame.frame_command_buffer, &rendering_info);
+    }
 
     ::ImGui::Render();
     ::ImDrawData* draw_data = ::ImGui::GetDrawData();
     ImGui_ImplVulkan_RenderDrawData(draw_data, render_frame.frame_command_buffer);
 
-    vkCmdEndRenderPass(render_frame.frame_command_buffer);
+    vkCmdEndRendering(render_frame.frame_command_buffer);
 }
 
 static void present_frame(render_frame_t& render_frame)
@@ -3781,31 +3666,50 @@ static void present_frame(render_frame_t& render_frame)
     {
         // transition swapchain image from present to transfer dst
         {
-            VkImageMemoryBarrier present_to_transfer_dst_barrier{};
-            present_to_transfer_dst_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            present_to_transfer_dst_barrier.pNext = nullptr;
-            present_to_transfer_dst_barrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-            present_to_transfer_dst_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-            present_to_transfer_dst_barrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-            present_to_transfer_dst_barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-            present_to_transfer_dst_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            present_to_transfer_dst_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            present_to_transfer_dst_barrier.image = s_swapchain.images[render_frame.swapchain_image_index];
-
             VkImageSubresourceRange subresource_range{};
             subresource_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
             subresource_range.baseMipLevel = 0;
             subresource_range.levelCount = 1;
             subresource_range.baseArrayLayer = 0;
             subresource_range.layerCount = 1;
-            present_to_transfer_dst_barrier.subresourceRange = subresource_range;
+
+            VkImageMemoryBarrier post_processing_to_transfer_src_barrier{
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                .pNext = nullptr,
+                .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+                .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image = render_frame.post_processing_color_texture.image,
+                .subresourceRange = subresource_range
+            };
+
+            VkImageMemoryBarrier present_to_transfer_dst_barrier{
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                .pNext = nullptr,
+                .srcAccessMask = VK_ACCESS_MEMORY_READ_BIT,
+                .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+                .oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image = s_swapchain.images[render_frame.swapchain_image_index],
+                .subresourceRange = subresource_range
+            };
+
+            VkImageMemoryBarrier image_memory_barriers[] = {
+                post_processing_to_transfer_src_barrier,
+                present_to_transfer_dst_barrier
+            };
 
             vkCmdPipelineBarrier(render_frame.frame_command_buffer,
-                                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
                                  0,
                                  0, nullptr,
                                  0, nullptr,
-                                 1, &present_to_transfer_dst_barrier);
+                                 ARRAY_LEN(image_memory_barriers), image_memory_barriers);
         }
 
         // blit from main draw color resolve to swapchain
