@@ -174,6 +174,12 @@
     <ClCompile Include="src\third_party\imgui\imgui_impl_win32.cpp">
       <Filter>src\third_party\imgui</Filter>
     </ClCompile>
+    <ClCompile Include="src\sm\app.cpp">
+      <Filter>src\sm</Filter>
+    </ClCompile>
+    <ClCompile Include="src\sm\platform\win32\win32_main.cpp">
+      <Filter>src\sm\platform\win32</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\third_party\dxc\dxcapi.h">
@@ -442,6 +448,9 @@
     </ClInclude>
     <ClInclude Include="src\third_party\imgui\imgui_impl_win32.h">
       <Filter>src\third_party\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\app.h">
+      <Filter>src\sm</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

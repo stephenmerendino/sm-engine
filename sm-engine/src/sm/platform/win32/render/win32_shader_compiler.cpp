@@ -5,7 +5,6 @@
 #include "sm/config.h"
 
 #include "sm/platform/win32/win32_include.h"
-//#include "Engine/Platform/WindowsUtils.h"
 #include "third_party/dxc/dxcapi.h"
 #include <atlbase.h>
 
