@@ -181,6 +181,35 @@
       <Project>{963392b4-1568-41b9-a6a8-555bb054b4bf}</Project>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\raw_assets\shaders\gizmo.ps.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="..\raw_assets\shaders\gizmo.vs.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="..\raw_assets\shaders\infinite-grid.ps.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="..\raw_assets\shaders\infinite-grid.vs.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="..\raw_assets\shaders\post-processing.cs.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="..\raw_assets\shaders\simple-material.ps.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="..\raw_assets\shaders\simple-material.vs.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="..\raw_assets\shaders\vertex-color.ps.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="..\raw_assets\shaders\vertex-color.vs.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>

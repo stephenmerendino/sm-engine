@@ -70,6 +70,12 @@
     <Filter Include="src\sm\platform\win32\io">
       <UniqueIdentifier>{16c62011-f545-48da-89a1-d885dd1fe572}</UniqueIdentifier>
     </Filter>
+    <Filter Include="raw_assets">
+      <UniqueIdentifier>{126772b3-1dd8-4d9d-a1da-e65e3f70042d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="raw_assets\shaders">
+      <UniqueIdentifier>{9ef4f6ae-988f-45db-a693-77d2d5504a7e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\third_party\imgui\imgui.cpp">
@@ -471,6 +477,33 @@
     </None>
     <None Include="src\sm\platform\win32\render\win32_vk_functions_manifest.h">
       <Filter>src\sm\platform\win32\render</Filter>
+    </None>
+    <None Include="..\raw_assets\shaders\gizmo.ps.hlsl">
+      <Filter>raw_assets\shaders</Filter>
+    </None>
+    <None Include="..\raw_assets\shaders\gizmo.vs.hlsl">
+      <Filter>raw_assets\shaders</Filter>
+    </None>
+    <None Include="..\raw_assets\shaders\infinite-grid.ps.hlsl">
+      <Filter>raw_assets\shaders</Filter>
+    </None>
+    <None Include="..\raw_assets\shaders\infinite-grid.vs.hlsl">
+      <Filter>raw_assets\shaders</Filter>
+    </None>
+    <None Include="..\raw_assets\shaders\post-processing.cs.hlsl">
+      <Filter>raw_assets\shaders</Filter>
+    </None>
+    <None Include="..\raw_assets\shaders\simple-material.ps.hlsl">
+      <Filter>raw_assets\shaders</Filter>
+    </None>
+    <None Include="..\raw_assets\shaders\simple-material.vs.hlsl">
+      <Filter>raw_assets\shaders</Filter>
+    </None>
+    <None Include="..\raw_assets\shaders\vertex-color.ps.hlsl">
+      <Filter>raw_assets\shaders</Filter>
+    </None>
+    <None Include="..\raw_assets\shaders\vertex-color.vs.hlsl">
+      <Filter>raw_assets\shaders</Filter>
     </None>
   </ItemGroup>
 </Project>
