@@ -14,6 +14,8 @@
 #include "sm/render/vk_renderer.h"
 #include "sm/thread/thread.h"
 
+#include "game/game.h"
+
 static bool s_is_running = true;
 static sm::window_t* s_app_window = nullptr;
 
@@ -85,17 +87,19 @@ int app_run()
 		sm::renderer_begin_frame();
 		//game_begin_frame();
 
-		// update
+		// engine update
         sm::window_update(s_app_window);
 		sm::input_update(ds);
 		sm::renderer_update_frame(ds);
-		//game_update();
 
-		// render
-		//game_render();
+		// game code
+		game_update(ds);
+		game_render();
+
+		// engine render
 		sm::renderer_render_frame();
 
-		// end Frame
+		// end frame
 		sm::f32 work_time_seconds = sm::stopwatch_get_elapsed_seconds(&frame_stopwatch);
 		sleep_remaining_frame(work_time_seconds);
 
