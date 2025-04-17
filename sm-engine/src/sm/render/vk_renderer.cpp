@@ -2501,8 +2501,8 @@ static void mesh_init(mesh_t& out_mesh, mesh_data_t* mesh_data)
 static void gizmo_init(arena_t* arena)
 {
     f32 gizmo_length = 0.75f;
-    f32 gizmo_bar_thickness = 0.01f;
-    f32 scale_box_thickness = 0.10f;
+    f32 gizmo_bar_thickness = 0.015f;
+    f32 scale_box_thickness = 0.05f;
 
     // build translate tool mesh
     mesh_data_t* translate_mesh = mesh_init(arena);
