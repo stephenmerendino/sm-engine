@@ -234,20 +234,20 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IntDir>$(SolutionDir)Build\$(PlatformTarget)_$(Configuration)\$(ProjectName)_Intermediate\</IntDir>
-    <OutDir>$(SolutionDir)Run\$(PlatformTarget)\</OutDir>
+    <IntDir>$(SolutionDir)build\$(PlatformTarget)_$(Configuration)\$(ProjectName)_intermediate\</IntDir>
+    <OutDir>$(SolutionDir)run\$(PlatformTarget)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IntDir>$(SolutionDir)Build\$(PlatformTarget)_$(Configuration)\$(ProjectName)_Intermediate\</IntDir>
-    <OutDir>$(SolutionDir)Run\$(PlatformTarget)\</OutDir>
+    <IntDir>$(SolutionDir)build\$(PlatformTarget)_$(Configuration)\$(ProjectName)_intermediate\</IntDir>
+    <OutDir>$(SolutionDir)run\$(PlatformTarget)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IntDir>$(SolutionDir)Build\$(PlatformTarget)_$(Configuration)\$(ProjectName)_Intermediate\</IntDir>
-    <OutDir>$(SolutionDir)Run\$(PlatformTarget)\</OutDir>
+    <IntDir>$(SolutionDir)build\$(PlatformTarget)_$(Configuration)\$(ProjectName)_intermediate\</IntDir>
+    <OutDir>$(SolutionDir)run\$(PlatformTarget)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IntDir>$(SolutionDir)Build\$(PlatformTarget)_$(Configuration)\$(ProjectName)_Intermediate\</IntDir>
-    <OutDir>$(SolutionDir)Run\$(PlatformTarget)\</OutDir>
+    <IntDir>$(SolutionDir)build\$(PlatformTarget)_$(Configuration)\$(ProjectName)_intermediate\</IntDir>
+    <OutDir>$(SolutionDir)run\$(PlatformTarget)\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -265,6 +265,9 @@
       <AdditionalDependencies>dxcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(VULKAN_SDK)\Lib\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Command>mkdir $(SolutionDir)run\$(PlatformTarget)\built_assets\ &amp; xcopy $(ProjectDir)..\raw_assets\ $(SolutionDir)run\$(PlatformTarget)\built_assets\ /E /C /I /Y</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -286,6 +289,9 @@
       <AdditionalDependencies>dxcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(VULKAN_SDK)\Lib\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Command>mkdir $(SolutionDir)run\$(PlatformTarget)\built_assets\ &amp; xcopy $(ProjectDir)..\raw_assets\ $(SolutionDir)run\$(PlatformTarget)\built_assets\ /E /C /I /Y</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -303,6 +309,9 @@
       <AdditionalDependencies>dxcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(VULKAN_SDK)\Lib\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Command>mkdir $(SolutionDir)run\$(PlatformTarget)\built_assets\ &amp; xcopy $(ProjectDir)..\raw_assets\ $(SolutionDir)run\$(PlatformTarget)\built_assets\ /E /C /I /Y</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -324,6 +333,9 @@
       <AdditionalDependencies>dxcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(VULKAN_SDK)\Lib\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Command>mkdir $(SolutionDir)run\$(PlatformTarget)\built_assets\ &amp; xcopy $(ProjectDir)..\raw_assets\ $(SolutionDir)run\$(PlatformTarget)\built_assets\ /E /C /I /Y</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

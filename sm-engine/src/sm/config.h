@@ -14,9 +14,9 @@ static const sm::u32 MAX_NUM_FRAMES_IN_FLIGHT = 2;
 static const sm::f32 FPS_CALC_TIME_INTERVAL_SECONDS = 0.1f;
 static const sm::f32 MAX_FPS = 240.0f;
 
-static const char* SHADERS_PATH = "Assets/Shaders/";
-static const char* TEXTURES_PATH = "Assets/Textures/";
-static const char* MODELS_PATH = "Assets/Models/";
+static const char* SHADERS_PATH = "built_assets/shaders/";
+static const char* TEXTURES_PATH = "built_assets/textures/";
+static const char* MODELS_PATH = "built_assets/models/";
 
 static const sm::color_f32_t CLEAR_COLOR { .r = 0.20f, .g = 0.20f, .b = 0.20f, .a = 1.0f };
 
