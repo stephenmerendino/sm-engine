@@ -15,7 +15,8 @@ struct ps_output_t
 ps_output_t main(ps_input_t IN)
 {
 	ps_output_t OUT;
-	float3 normalColor = IN.normal * 0.5f + 0.5f;
-	OUT.color = float4(normalColor, 1.0f);
+	//float3 normalColor = IN.normal * 0.5f + 0.5f;
+	//OUT.color = float4(normalColor, 1.0f);
+	OUT.color = float4(IN.color, 1.0f);
 	return OUT;
 }

@@ -126,6 +126,7 @@ struct render_frame_t
     texture_t main_draw_color_multisample_texture;
     texture_t main_draw_depth_multisample_texture;
     texture_t main_draw_color_resolve_texture;
+    texture_t main_draw_depth_resolve_texture;
     texture_t post_processing_color_texture;
 
 	// mesh instance descriptors
@@ -1408,7 +1409,7 @@ static void swapchain_init()
     vkFreeCommandBuffers(s_context.device, s_graphics_command_pool, 1, &command_buffer);
 }
 
-static void init_render_frames_render_targets()
+static void render_frames_init_render_targets()
 {
     for(size_t i = 0; i < s_render_frames.cur_size; i++)
     {
@@ -1438,6 +1439,14 @@ static void init_render_frames_render_targets()
                      VK_SAMPLE_COUNT_1_BIT, 
                      false);
 
+        texture_init(frame.main_draw_depth_resolve_texture, 
+                     s_context.depth_format, 
+                     VkExtent3D(s_swapchain.extent.width, s_swapchain.extent.height, 1), 
+                     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 
+                     VK_IMAGE_ASPECT_DEPTH_BIT, 
+                     VK_SAMPLE_COUNT_1_BIT, 
+                     false);
+
         texture_init(frame.post_processing_color_texture, 
                      s_context.main_color_format, 
                      VkExtent3D(s_swapchain.extent.width, s_swapchain.extent.height, 1), 
@@ -1448,7 +1457,7 @@ static void init_render_frames_render_targets()
 	}
 }
 
-static void init_render_frames()
+static void render_frames_init()
 {
     for(size_t render_frame_index = 0; render_frame_index < s_render_frames.cur_size; render_frame_index++)
     {
@@ -1586,25 +1595,25 @@ static void init_render_frames()
         }
     }
 
-	init_render_frames_render_targets();
+	render_frames_init_render_targets();
 }
 
-static void refresh_render_frames_render_targets()
+static void render_frames_refresh_render_targets()
 {
     for(size_t i = 0; i < s_render_frames.cur_size; i++)
     {
         render_frame_t& frame = s_render_frames[i];
-
         texture_release(frame.main_draw_color_multisample_texture);
         texture_release(frame.main_draw_depth_multisample_texture);
         texture_release(frame.main_draw_color_resolve_texture);
+        texture_release(frame.main_draw_depth_resolve_texture);
         texture_release(frame.post_processing_color_texture);
 	}
 
-	init_render_frames_render_targets();
+	render_frames_init_render_targets();
 }
 
-static void init_pipelines()
+static void pipelines_init()
 {
     arena_t* temp_shader_arena = arena_init(KiB(50));
 
@@ -2090,8 +2099,8 @@ static void init_pipelines()
         depth_stencil_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
         depth_stencil_state.pNext = nullptr;
         depth_stencil_state.flags = 0;
-        depth_stencil_state.depthTestEnable = VK_FALSE;
-        depth_stencil_state.depthWriteEnable = VK_FALSE;
+        depth_stencil_state.depthTestEnable = VK_TRUE;
+        depth_stencil_state.depthWriteEnable = VK_TRUE;
         depth_stencil_state.depthCompareOp = VK_COMPARE_OP_LESS;
         depth_stencil_state.depthBoundsTestEnable = VK_FALSE;
         depth_stencil_state.stencilTestEnable = VK_FALSE;
@@ -2160,13 +2169,15 @@ static void init_pipelines()
             s_context.main_color_format,
         };
 
+        VkFormat depth_format = s_context.depth_format;
+
         VkPipelineRenderingCreateInfo pipeline_rendering_create_info{
             .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
 			.pNext = nullptr,
             .viewMask = 0,
 			.colorAttachmentCount = ARRAY_LEN(color_formats),
 			.pColorAttachmentFormats = color_formats,
-			.depthAttachmentFormat = VK_FORMAT_UNDEFINED,
+			.depthAttachmentFormat = depth_format,
 			.stencilAttachmentFormat = VK_FORMAT_UNDEFINED
         };
 
@@ -2249,7 +2260,7 @@ static void init_pipelines()
 static void refresh_pipelines()
 {
 	vkDestroyPipeline(s_context.device, s_viking_room_main_draw_pipeline, nullptr);
-	init_pipelines();
+	pipelines_init();
 }
 
 static void refresh_swapchain()
@@ -2259,7 +2270,7 @@ static void refresh_swapchain()
 	vkDestroySwapchainKHR(s_context.device, s_swapchain.handle, nullptr);
 	swapchain_init();
 
-	refresh_render_frames_render_targets();
+	render_frames_refresh_render_targets();
 
     refresh_pipelines();
 }
@@ -2830,7 +2841,7 @@ void sm::renderer_init(window_t* window)
 	// render frames
 	{
 		s_render_frames = array_init_sized<render_frame_t>(startup_arena, MAX_NUM_FRAMES_IN_FLIGHT);
-		init_render_frames();
+		render_frames_init();
 	}
 
 	// resources
@@ -3029,7 +3040,7 @@ void sm::renderer_init(window_t* window)
 			}
 		}
 
-        init_pipelines();
+        pipelines_init();
 	}
 
 	debug_printf("Finished initializing vulkan renderer\n");
@@ -3227,9 +3238,9 @@ static void main_draw_pass(render_frame_t& render_frame)
 			.pNext = nullptr,
 			.imageView = render_frame.main_draw_depth_multisample_texture.image_view,
 			.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-			.resolveMode = VK_RESOLVE_MODE_NONE,
-			.resolveImageView = VK_NULL_HANDLE,
-			.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+			.resolveMode = VK_RESOLVE_MODE_MIN_BIT,
+			.resolveImageView = render_frame.main_draw_depth_resolve_texture.image_view,
+			.resolveImageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
 			.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
 			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
 			.clearValue = depth_stencil_clear_value 
@@ -3526,6 +3537,19 @@ static void gizmo_pass(render_frame_t& render_frame)
             color_attachment_info
         };
 
+        VkRenderingAttachmentInfo depth_attachment_info{
+			.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+			.pNext = nullptr,
+			.imageView = render_frame.main_draw_depth_resolve_texture.image_view,
+			.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+			.resolveMode = VK_RESOLVE_MODE_NONE,
+			.resolveImageView = VK_NULL_HANDLE,
+			.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+			.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+			.clearValue = 0 
+        };
+
         VkRect2D render_area{
             .offset = { .x = 0, .y = 0 },
 			.extent = s_swapchain.extent
@@ -3540,7 +3564,7 @@ static void gizmo_pass(render_frame_t& render_frame)
 			.viewMask = 0,
 			.colorAttachmentCount = ARRAY_LEN(color_attachments),
 			.pColorAttachments = color_attachments,
-			.pDepthAttachment = nullptr,
+			.pDepthAttachment = &depth_attachment_info,
 			.pStencilAttachment = nullptr 
         };
         vkCmdBeginRendering(render_frame.frame_command_buffer, &rendering_info);
