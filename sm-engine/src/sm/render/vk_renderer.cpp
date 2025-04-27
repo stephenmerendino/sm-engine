@@ -89,9 +89,10 @@ struct mesh_t
 
 struct transform_t
 {
-    vec3_t scale { .x = 1.0f, .y = 1.0f, .z = 1.0f };
-    vec4_t quaternion { .x = 0.0f, .y = 0.0f, .z = 0.0f, .w = 1.0f };
-    vec3_t translation { .x = 0.0f, .y = 0.0f, .z = 0.0f };
+    //vec3_t scale { .x = 1.0f, .y = 1.0f, .z = 1.0f };
+    //vec4_t quaternion { .x = 0.0f, .y = 0.0f, .z = 0.0f, .w = 1.0f };
+    //vec3_t translation { .x = 0.0f, .y = 0.0f, .z = 0.0f };
+    mat44_t model = mat44_t::IDENTITY;
 };
 
 struct mesh_instance_t
@@ -186,7 +187,12 @@ struct gizmo_t
     mesh_t translate_tool_gpu_mesh;
     mesh_t rotate_tool_gpu_mesh;
     mesh_t scale_tool_gpu_mesh;
-    gizmo_mode_t    mode = gizmo_mode_t::INACTIVE;
+    gizmo_mode_t mode = gizmo_mode_t::INACTIVE;
+};
+
+struct gizmo_push_constants_t
+{
+    vec3_t color;
 };
 
 static window_t* s_window = nullptr;
@@ -2525,9 +2531,9 @@ static void gizmo_init(arena_t* arena)
 
     // build rotate tool mesh
     mesh_data_t* rotate_mesh = mesh_init(arena);
-    mesh_data_add_torus(rotate_mesh, vec3_t::ZERO, vec3_t::WORLD_FORWARD, 0.65f, 0.025f, 32, color_f32_t::RED);
-    mesh_data_add_torus(rotate_mesh, vec3_t::ZERO, vec3_t::WORLD_LEFT, 0.65f, 0.025f, 32, color_f32_t::GREEN);
-    mesh_data_add_torus(rotate_mesh, vec3_t::ZERO, vec3_t::WORLD_UP, 0.65f, 0.025f, 32, color_f32_t::BLUE);
+    mesh_data_add_torus(rotate_mesh, vec3_t::ZERO, vec3_t::WORLD_FORWARD, 0.65f, 0.025f, 32);
+    //mesh_data_add_torus(rotate_mesh, vec3_t::ZERO, vec3_t::WORLD_LEFT, 0.65f, 0.025f, 32, color_f32_t::GREEN);
+    //mesh_data_add_torus(rotate_mesh, vec3_t::ZERO, vec3_t::WORLD_UP, 0.65f, 0.025f, 32, color_f32_t::BLUE);
     mesh_init(s_gizmo.rotate_tool_gpu_mesh, rotate_mesh);
 
     // build scale tool mesh
@@ -2990,14 +2996,24 @@ void sm::renderer_init(window_t* window)
                     s_mesh_instance_descriptor_set_layout
                 };
 
+                VkPushConstantRange push_constant_range{
+                    .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+                    .offset = 0,
+                    .size = sizeof(gizmo_push_constants_t)
+                };
+
+                VkPushConstantRange push_constants[] = {
+                    push_constant_range
+                };
+
                 VkPipelineLayoutCreateInfo pipeline_layout_create_info{
                     .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
                     .pNext = nullptr,
                     .flags = 0,
                     .setLayoutCount = ARRAY_LEN(pipeline_descriptor_set_layouts),
                     .pSetLayouts = pipeline_descriptor_set_layouts,
-                    .pushConstantRangeCount = 0,
-                    .pPushConstantRanges = nullptr
+                    .pushConstantRangeCount = ARRAY_LEN(push_constants),
+                    .pPushConstantRanges = push_constants 
                 };
                 SM_VULKAN_ASSERT(vkCreatePipelineLayout(s_context.device, &pipeline_layout_create_info, nullptr, &s_gizmo_draw_pipeline_layout));
             }
@@ -3570,16 +3586,6 @@ static void gizmo_pass(render_frame_t& render_frame)
         vkCmdBeginRendering(render_frame.frame_command_buffer, &rendering_info);
     }
 
-    // update mesh instance buffer
-    mat44_t view = camera_get_view_transform(s_main_camera);
-    mat44_t projection = init_perspective_proj(45.0f, 0.01f, 100.0f, (f32)s_swapchain.extent.width / (f32)s_swapchain.extent.height);
-    mat44_t viking_room_model = mat44_t::IDENTITY;
-    mat44_t viking_room_mvp = viking_room_model * view * projection;
-    mesh_instance_render_data_t gizmo_mesh_instance_render_data{
-        .mvp = viking_room_mvp
-    };
-    upload_buffer_data(render_frame.mesh_instance_render_data_buffers[1].buffer, &gizmo_mesh_instance_render_data, sizeof(mesh_instance_render_data_t));
-
     // allocate mesh instance descriptor set
     VkDescriptorSetAllocateInfo mesh_instance_descriptor_set_alloc_info{
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -3630,11 +3636,76 @@ static void gizmo_pass(render_frame_t& render_frame)
     // bind gizmo pipeline
     vkCmdBindPipeline(render_frame.frame_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_gizmo_draw_pipeline);
 
-    // render using gizmo indices
-    vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)s_gizmo.rotate_tool_gpu_mesh.num_indices, 1, 0, 0, 0);
+    // rotation tool
+    {
+        // ROTATE X
+        {
+            // update mesh instance buffer
+            mat44_t view = camera_get_view_transform(s_main_camera);
+            mat44_t projection = init_perspective_proj(45.0f, 0.01f, 100.0f, (f32)s_swapchain.extent.width / (f32)s_swapchain.extent.height);
+            mat44_t model = mat44_t::IDENTITY;
+            mat44_t mvp = model * view * projection;
+            mesh_instance_render_data_t gizmo_mesh_instance_render_data{
+                .mvp = mvp
+            };
+            upload_buffer_data(render_frame.mesh_instance_render_data_buffers[1].buffer, &gizmo_mesh_instance_render_data, sizeof(mesh_instance_render_data_t));
+
+            // push constant for color
+            gizmo_push_constants_t gizmo_push_constants{
+                .color = to_vec3(color_f32_t::RED)
+            };
+            vkCmdPushConstants(render_frame.frame_command_buffer, s_gizmo_draw_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(gizmo_push_constants_t), &gizmo_push_constants);
+
+            // render using gizmo indices
+            vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)s_gizmo.rotate_tool_gpu_mesh.num_indices, 1, 0, 0, 0);
+        }
+
+        //// ROTATE Y
+        //{
+        //    // update mesh instance buffer
+        //    mat44_t view = camera_get_view_transform(s_main_camera);
+        //    mat44_t projection = init_perspective_proj(45.0f, 0.01f, 100.0f, (f32)s_swapchain.extent.width / (f32)s_swapchain.extent.height);
+        //    mat44_t model = init_rotation_z_degs(90.0f);
+        //    mat44_t mvp = model * view * projection;
+        //    mesh_instance_render_data_t gizmo_mesh_instance_render_data{
+        //        .mvp = mvp
+        //    };
+        //    upload_buffer_data(render_frame.mesh_instance_render_data_buffers[1].buffer, &gizmo_mesh_instance_render_data, sizeof(mesh_instance_render_data_t));
+
+        //    // push constant for color
+        //    gizmo_push_constants_t gizmo_push_constants{
+        //        .color = to_vec3(color_f32_t::GREEN)
+        //    };
+        //    vkCmdPushConstants(render_frame.frame_command_buffer, s_gizmo_draw_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(gizmo_push_constants_t), &gizmo_push_constants);
+
+        //    // render using gizmo indices
+        //    vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)s_gizmo.rotate_tool_gpu_mesh.num_indices, 1, 0, 0, 0);
+        //}
+
+        //// ROTATE Z
+        //{
+        //    // update mesh instance buffer
+        //    mat44_t view = camera_get_view_transform(s_main_camera);
+        //    mat44_t projection = init_perspective_proj(45.0f, 0.01f, 100.0f, (f32)s_swapchain.extent.width / (f32)s_swapchain.extent.height);
+        //    mat44_t model = init_rotation_y_degs(90.0f);
+        //    mat44_t mvp = model * view * projection;
+        //    mesh_instance_render_data_t gizmo_mesh_instance_render_data{
+        //        .mvp = mvp
+        //    };
+        //    upload_buffer_data(render_frame.mesh_instance_render_data_buffers[1].buffer, &gizmo_mesh_instance_render_data, sizeof(mesh_instance_render_data_t));
+
+        //    // push constant for color
+        //    gizmo_push_constants_t gizmo_push_constants{
+        //        .color = to_vec3(color_f32_t::BLUE)
+        //    };
+        //    vkCmdPushConstants(render_frame.frame_command_buffer, s_gizmo_draw_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(gizmo_push_constants_t), &gizmo_push_constants);
+
+        //    // render using gizmo indices
+        //    vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)s_gizmo.rotate_tool_gpu_mesh.num_indices, 1, 0, 0, 0);
+        //}
+    }
 
     // end gizmo render pass
-    //vkCmdEndRenderPass(render_frame.frame_command_buffer);
     vkCmdEndRendering(render_frame.frame_command_buffer);
 }
 

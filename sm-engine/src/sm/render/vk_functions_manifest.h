@@ -128,6 +128,7 @@ VK_DEVICE_FUNCTION(vkCmdInsertDebugUtilsLabelEXT)
 VK_DEVICE_FUNCTION(vkCmdDispatch)
 VK_DEVICE_FUNCTION(vkCmdBeginRendering)
 VK_DEVICE_FUNCTION(vkCmdEndRendering)
+VK_DEVICE_FUNCTION(vkCmdPushConstants)
 
 #if defined _WIN32
 #include "sm/platform/win32/render/win32_vk_functions_manifest.h"
