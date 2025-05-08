@@ -22,6 +22,7 @@
     <ClCompile Include="src\sm\app.cpp" />
     <ClCompile Include="src\sm\core\color.cpp" />
     <ClCompile Include="src\sm\core\hash.cpp" />
+    <ClCompile Include="src\sm\core\primitive.cpp" />
     <ClCompile Include="src\sm\core\random.cpp" />
     <ClCompile Include="src\sm\core\string.cpp" />
     <ClCompile Include="src\sm\io\input.cpp" />
@@ -81,6 +82,7 @@
     <ClInclude Include="src\sm\core\array.h" />
     <ClInclude Include="src\sm\core\hash.h" />
     <ClInclude Include="src\sm\core\helpers.h" />
+    <ClInclude Include="src\sm\core\primitive.h" />
     <ClInclude Include="src\sm\core\random.h" />
     <ClInclude Include="src\sm\core\string.h" />
     <ClInclude Include="src\sm\core\time.h" />

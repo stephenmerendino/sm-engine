@@ -189,6 +189,9 @@
     <ClCompile Include="src\sm\math\primitives.cpp">
       <Filter>src\sm\math</Filter>
     </ClCompile>
+    <ClCompile Include="src\sm\core\primitive.cpp">
+      <Filter>src\sm\core</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\third_party\dxc\dxcapi.h">
@@ -463,6 +466,9 @@
     </ClInclude>
     <ClInclude Include="src\sm\math\primitives.h">
       <Filter>src\sm\math</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\core\primitive.h">
+      <Filter>src\sm\core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

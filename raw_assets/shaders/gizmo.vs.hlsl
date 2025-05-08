@@ -21,8 +21,8 @@ struct mesh_instance_render_data_t
 	float4x4 mvp;
 };
 
-[[vk::binding(0, 0)]]
-ConstantBuffer<mesh_instance_render_data_t> g_mesh_instance_render_data : register(b0, space0);
+[[vk::binding(0, 3)]]
+ConstantBuffer<mesh_instance_render_data_t> g_mesh_instance_render_data : register(b0, space3);
 
 vs_output_t main(vs_input_t input)
 {

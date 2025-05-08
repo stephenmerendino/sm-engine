@@ -95,20 +95,30 @@ struct transform_t
     mat44_t model = mat44_t::IDENTITY;
 };
 
+typedef u32 mesh_instance_id_t;
+static const mesh_instance_id_t INVALID_MESH_INSTANCE_ID = UINT32_MAX;
+static const u32 MAX_NUM_MESH_INSTANCES_PER_FRAME = 1024;
+static const mesh_instance_id_t s_cur_mesh_instance_id = 0;
+
+struct material_t
+{
+	VkDescriptorSet main_draw_descriptor_set = VK_NULL_HANDLE;
+	VkPipelineLayout main_draw_pipeline_layout = VK_NULL_HANDLE;
+	VkPipeline main_draw_pipeline = VK_NULL_HANDLE;
+};
+
 struct mesh_instance_t
 {
-    mesh_data_t* mesh = nullptr;
-    //material_t* material = nullptr;
+    mesh_t* mesh = nullptr;
+    material_t* material = nullptr;
     transform_t transform;
 };
 
 struct level_t 
 {
+    array_t<string_t> mesh_instance_names;
     array_t<mesh_instance_t> mesh_instances;
 };
-
-static const u32 MAX_NUM_MESH_INSTANCES_PER_FRAME = 1024;
-static constexpr u32 INVALID_OBJECT_ID = UINT32_MAX;
 
 struct render_frame_t 
 {
@@ -133,6 +143,7 @@ struct render_frame_t
 	// mesh instance descriptors
 	VkDescriptorPool mesh_instance_descriptor_pool;
     buffer_t mesh_instance_render_data_buffers[MAX_NUM_MESH_INSTANCES_PER_FRAME];
+    u32 num_allocated_mesh_instance_buffers;
 
     // gizmo
     VkDescriptorSet gizmo_descriptor_set;
@@ -205,31 +216,33 @@ static VkDescriptorPool s_global_descriptor_pool = VK_NULL_HANDLE;
 static VkDescriptorPool s_frame_descriptor_pool = VK_NULL_HANDLE;
 static VkDescriptorPool s_material_descriptor_pool = VK_NULL_HANDLE;
 static VkDescriptorPool s_imgui_descriptor_pool = VK_NULL_HANDLE;
+static VkDescriptorSetLayout s_empty_descriptor_set_layout = VK_NULL_HANDLE;
 static VkDescriptorSetLayout s_global_descriptor_set_layout = VK_NULL_HANDLE;
 static VkDescriptorSetLayout s_frame_descriptor_set_layout = VK_NULL_HANDLE;
 static VkDescriptorSetLayout s_material_descriptor_set_layout = VK_NULL_HANDLE;
 static VkDescriptorSetLayout s_mesh_instance_descriptor_set_layout = VK_NULL_HANDLE;
 static VkDescriptorSetLayout s_post_process_descriptor_set_layout = VK_NULL_HANDLE;
 static VkDescriptorSetLayout s_infinite_grid_descriptor_set_layout = VK_NULL_HANDLE;
+static VkDescriptorSet s_empty_descriptor_set = VK_NULL_HANDLE;
 static VkDescriptorSet s_global_descriptor_set = VK_NULL_HANDLE;
 static VkSampler s_linear_sampler = VK_NULL_HANDLE;
 
 static array_t<render_frame_t> s_render_frames;
-static gizmo_t s_gizmo;
 
 static mesh_t s_viking_room_mesh;
 static texture_t s_viking_room_diffuse_texture;
-static VkDescriptorSet s_viking_room_material_descriptor_set = VK_NULL_HANDLE;
-static VkPipelineLayout s_viking_room_main_draw_pipeline_layout = VK_NULL_HANDLE;
-static VkPipeline s_viking_room_main_draw_pipeline = VK_NULL_HANDLE;
-static transform_t s_viking_room_transform;
+static material_t s_viking_room_material;
 
-static VkPipelineLayout s_gizmo_draw_pipeline_layout = VK_NULL_HANDLE;
-static VkPipeline s_gizmo_draw_pipeline = VK_NULL_HANDLE;
+static gizmo_t s_gizmo;
+static material_t s_gizmo_material;
 
 static VkPipelineLayout s_infinite_grid_main_draw_pipeline_layout = VK_NULL_HANDLE;
+
 static VkPipelineLayout s_post_process_pipeline_layout = VK_NULL_HANDLE;
 static VkPipeline s_post_process_compute_pipeline = VK_NULL_HANDLE;
+
+static arena_t s_level_arena;
+static level_t s_current_level;
 
 static camera_t s_main_camera;
 static f32 s_elapsed_time_seconds = 0.0f;
@@ -1904,7 +1917,7 @@ static void pipelines_init()
         pipeline_create_info.pDepthStencilState = &depth_stencil_state;
         pipeline_create_info.pColorBlendState = &color_blend_state;
         pipeline_create_info.pDynamicState = &dynamic_state;
-        pipeline_create_info.layout = s_viking_room_main_draw_pipeline_layout;
+        pipeline_create_info.layout = s_viking_room_material.main_draw_pipeline_layout;
         pipeline_create_info.renderPass = VK_NULL_HANDLE;
         pipeline_create_info.subpass = 0;
         pipeline_create_info.basePipelineHandle = VK_NULL_HANDLE;
@@ -1913,7 +1926,7 @@ static void pipelines_init()
         VkGraphicsPipelineCreateInfo pipeline_create_infos[] = {
             pipeline_create_info
         };
-        SM_VULKAN_ASSERT(vkCreateGraphicsPipelines(s_context.device, VK_NULL_HANDLE, ARRAY_LEN(pipeline_create_infos), pipeline_create_infos, nullptr, &s_viking_room_main_draw_pipeline));
+        SM_VULKAN_ASSERT(vkCreateGraphicsPipelines(s_context.device, VK_NULL_HANDLE, ARRAY_LEN(pipeline_create_infos), pipeline_create_infos, nullptr, &s_viking_room_material.main_draw_pipeline));
 
         vkDestroyShaderModule(s_context.device, vertex_shader_module, nullptr);
         vkDestroyShaderModule(s_context.device, pixel_shader_module, nullptr);
@@ -2147,9 +2160,9 @@ static void pipelines_init()
         color_blend_attachment_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
         color_blend_attachment_state.alphaBlendOp = VK_BLEND_OP_ADD;
         color_blend_attachment_state.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
-                                                      VK_COLOR_COMPONENT_G_BIT |
-                                                      VK_COLOR_COMPONENT_B_BIT |
-                                                      VK_COLOR_COMPONENT_A_BIT;
+            VK_COLOR_COMPONENT_G_BIT |
+            VK_COLOR_COMPONENT_B_BIT |
+            VK_COLOR_COMPONENT_A_BIT;
 
         VkPipelineColorBlendAttachmentState color_blend_attachment_states[] = {
             color_blend_attachment_state
@@ -2179,12 +2192,12 @@ static void pipelines_init()
 
         VkPipelineRenderingCreateInfo pipeline_rendering_create_info{
             .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
-			.pNext = nullptr,
+            .pNext = nullptr,
             .viewMask = 0,
-			.colorAttachmentCount = ARRAY_LEN(color_formats),
-			.pColorAttachmentFormats = color_formats,
-			.depthAttachmentFormat = depth_format,
-			.stencilAttachmentFormat = VK_FORMAT_UNDEFINED
+            .colorAttachmentCount = ARRAY_LEN(color_formats),
+            .pColorAttachmentFormats = color_formats,
+            .depthAttachmentFormat = depth_format,
+            .stencilAttachmentFormat = VK_FORMAT_UNDEFINED
         };
 
         VkGraphicsPipelineCreateInfo pipeline_create_info{};
@@ -2202,7 +2215,7 @@ static void pipelines_init()
         pipeline_create_info.pDepthStencilState = &depth_stencil_state;
         pipeline_create_info.pColorBlendState = &color_blend_state;
         pipeline_create_info.pDynamicState = &dynamic_state;
-        pipeline_create_info.layout = s_gizmo_draw_pipeline_layout;
+        pipeline_create_info.layout = s_gizmo_material.main_draw_pipeline_layout;
         pipeline_create_info.renderPass = VK_NULL_HANDLE;
         pipeline_create_info.subpass = 0;
         pipeline_create_info.basePipelineHandle = VK_NULL_HANDLE;
@@ -2211,10 +2224,12 @@ static void pipelines_init()
         VkGraphicsPipelineCreateInfo pipeline_create_infos[] = {
             pipeline_create_info
         };
-        SM_VULKAN_ASSERT(vkCreateGraphicsPipelines(s_context.device, VK_NULL_HANDLE, ARRAY_LEN(pipeline_create_infos), pipeline_create_infos, nullptr, &s_gizmo_draw_pipeline));
+        SM_VULKAN_ASSERT(vkCreateGraphicsPipelines(s_context.device, VK_NULL_HANDLE, ARRAY_LEN(pipeline_create_infos), pipeline_create_infos, nullptr, &s_gizmo_material.main_draw_pipeline));
 
         vkDestroyShaderModule(s_context.device, vertex_shader_module, nullptr);
         vkDestroyShaderModule(s_context.device, pixel_shader_module, nullptr);
+
+        s_gizmo_material.main_draw_descriptor_set = s_empty_descriptor_set;
     }
 
     // post processing
@@ -2265,7 +2280,7 @@ static void pipelines_init()
 
 static void refresh_pipelines()
 {
-	vkDestroyPipeline(s_context.device, s_viking_room_main_draw_pipeline, nullptr);
+	vkDestroyPipeline(s_context.device, s_viking_room_material.main_draw_pipeline, nullptr);
 	pipelines_init();
 }
 
@@ -2532,8 +2547,8 @@ static void gizmo_init(arena_t* arena)
     // build rotate tool mesh
     mesh_data_t* rotate_mesh = mesh_init(arena);
     mesh_data_add_torus(rotate_mesh, vec3_t::ZERO, vec3_t::WORLD_FORWARD, 0.65f, 0.025f, 32);
-    //mesh_data_add_torus(rotate_mesh, vec3_t::ZERO, vec3_t::WORLD_LEFT, 0.65f, 0.025f, 32, color_f32_t::GREEN);
-    //mesh_data_add_torus(rotate_mesh, vec3_t::ZERO, vec3_t::WORLD_UP, 0.65f, 0.025f, 32, color_f32_t::BLUE);
+    mesh_data_add_torus(rotate_mesh, vec3_t::ZERO, vec3_t::WORLD_LEFT, 0.65f, 0.025f, 32, color_f32_t::GREEN);
+    mesh_data_add_torus(rotate_mesh, vec3_t::ZERO, vec3_t::WORLD_UP, 0.65f, 0.025f, 32, color_f32_t::BLUE);
     mesh_init(s_gizmo.rotate_tool_gpu_mesh, rotate_mesh);
 
     // build scale tool mesh
@@ -2591,7 +2606,7 @@ void sm::renderer_init(window_t* window)
             create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
             create_info.poolSizeCount = (u32)ARRAY_LEN(pool_sizes);
             create_info.pPoolSizes = pool_sizes;
-            create_info.maxSets = 1;
+            create_info.maxSets = 2;
             SM_VULKAN_ASSERT(vkCreateDescriptorPool(s_context.device, &create_info, nullptr, &s_global_descriptor_pool));
 		}
 
@@ -2658,6 +2673,15 @@ void sm::renderer_init(window_t* window)
 
 	// descriptor set layouts
 	{
+        {
+            VkDescriptorSetLayoutCreateInfo create_info{
+				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+				.bindingCount = 0,
+				.pBindings = nullptr,
+            };
+            SM_VULKAN_ASSERT(vkCreateDescriptorSetLayout(s_context.device, &create_info, nullptr, &s_empty_descriptor_set_layout));
+        }
+
 		// global descriptor set layout
 		{
 			VkDescriptorSetLayoutBinding sampler_binding{};
@@ -2854,6 +2878,22 @@ void sm::renderer_init(window_t* window)
 	{
 		// global resources
 		{
+            // empty descriptor set
+            {
+                VkDescriptorSetLayout descriptor_set_layouts[] = {
+                   s_empty_descriptor_set_layout 
+                };
+
+                VkDescriptorSetAllocateInfo alloc_info{
+					.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+					.descriptorPool = s_global_descriptor_pool,
+					.descriptorSetCount = ARRAY_LEN(descriptor_set_layouts),
+					.pSetLayouts = descriptor_set_layouts
+                };
+
+                SM_VULKAN_ASSERT(vkAllocateDescriptorSets(s_context.device, &alloc_info, &s_empty_descriptor_set));
+            }
+
 			// global descriptor set
 			{
                 VkDescriptorSetAllocateInfo alloc_info{};
@@ -2939,7 +2979,7 @@ void sm::renderer_init(window_t* window)
 					s_material_descriptor_set_layout
 				};
 				alloc_info.pSetLayouts = descriptor_set_layouts;
-				SM_VULKAN_ASSERT(vkAllocateDescriptorSets(s_context.device, &alloc_info, &s_viking_room_material_descriptor_set));
+				SM_VULKAN_ASSERT(vkAllocateDescriptorSets(s_context.device, &alloc_info, &s_viking_room_material.main_draw_descriptor_set));
 
 				// update
                 VkDescriptorImageInfo descriptor_set_write_image_info{};
@@ -2950,7 +2990,7 @@ void sm::renderer_init(window_t* window)
                 VkWriteDescriptorSet descriptor_set_write{};
                 descriptor_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
                 descriptor_set_write.pNext = nullptr;
-                descriptor_set_write.dstSet = s_viking_room_material_descriptor_set;
+                descriptor_set_write.dstSet = s_viking_room_material.main_draw_descriptor_set;
                 descriptor_set_write.dstBinding = 0;
                 descriptor_set_write.dstArrayElement = 0;
                 descriptor_set_write.descriptorCount = 1;
@@ -2987,12 +3027,15 @@ void sm::renderer_init(window_t* window)
                     .pushConstantRangeCount = 0,
                     .pPushConstantRanges = nullptr
                 };
-                SM_VULKAN_ASSERT(vkCreatePipelineLayout(s_context.device, &pipeline_layout_create_info, nullptr, &s_viking_room_main_draw_pipeline_layout));
+                SM_VULKAN_ASSERT(vkCreatePipelineLayout(s_context.device, &pipeline_layout_create_info, nullptr, &s_viking_room_material.main_draw_pipeline_layout));
 			}
 
             // gizmo pipeline layout
             {
                 VkDescriptorSetLayout pipeline_descriptor_set_layouts[] = {
+                    s_global_descriptor_set_layout,
+                    s_frame_descriptor_set_layout,
+                    s_empty_descriptor_set_layout,
                     s_mesh_instance_descriptor_set_layout
                 };
 
@@ -3015,10 +3058,10 @@ void sm::renderer_init(window_t* window)
                     .pushConstantRangeCount = ARRAY_LEN(push_constants),
                     .pPushConstantRanges = push_constants 
                 };
-                SM_VULKAN_ASSERT(vkCreatePipelineLayout(s_context.device, &pipeline_layout_create_info, nullptr, &s_gizmo_draw_pipeline_layout));
+                SM_VULKAN_ASSERT(vkCreatePipelineLayout(s_context.device, &pipeline_layout_create_info, nullptr, &s_gizmo_material.main_draw_pipeline_layout));
             }
 
-            // infinite grid
+            // infinite grid pipeline layout
 			{
                 VkDescriptorSetLayout pipeline_descriptor_set_layouts[] = {
 					s_infinite_grid_descriptor_set_layout
@@ -3099,6 +3142,7 @@ static void setup_new_frame(render_frame_t& render_frame)
     SM_VULKAN_ASSERT(vkResetFences(s_context.device, ARRAY_LEN(frame_completed_fences), frame_completed_fences));
     SM_VULKAN_ASSERT(vkResetCommandBuffer(render_frame.frame_command_buffer, 0));
     SM_VULKAN_ASSERT(vkResetDescriptorPool(s_context.device, render_frame.mesh_instance_descriptor_pool, 0));
+    render_frame.num_allocated_mesh_instance_buffers = 0;
     
     VkResult swapchain_image_acquisition_result = vkAcquireNextImageKHR(s_context.device, 
                                                                         s_swapchain.handle, 
@@ -3150,6 +3194,95 @@ static void setup_new_frame(render_frame_t& render_frame)
     command_buffer_begin_info.flags = 0;
     command_buffer_begin_info.pInheritanceInfo = nullptr;
     SM_VULKAN_ASSERT(vkBeginCommandBuffer(render_frame.frame_command_buffer, &command_buffer_begin_info));
+}
+
+static void render_mesh_instance(render_frame_t& render_frame, const char* mesh_instance_name, const mesh_instance_t& mesh_instance, size_t size_of_push_constants = 0, void* push_constants = nullptr)
+{
+	SCOPED_COMMAND_BUFFER_DEBUG_LABEL(render_frame.frame_command_buffer, mesh_instance_name, color_f32_t(0.0f, 0.0f, 1.0f, 1.0f));
+
+	mat44_t view = camera_get_view_transform(s_main_camera);
+	mat44_t projection = init_perspective_proj(45.0f, 0.01f, 100.0f, (f32)s_swapchain.extent.width / (f32)s_swapchain.extent.height);
+	mat44_t mvp = mesh_instance.transform.model * view * projection;
+
+	mesh_instance_render_data_t mesh_instance_render_data{};
+	mesh_instance_render_data.mvp = mvp;
+
+    buffer_t& mesh_instance_buffer = render_frame.mesh_instance_render_data_buffers[render_frame.num_allocated_mesh_instance_buffers];
+    render_frame.num_allocated_mesh_instance_buffers++;
+
+	upload_buffer_data(mesh_instance_buffer.buffer, &mesh_instance_render_data, sizeof(mesh_instance_render_data_t));
+
+	// allocate and update mesh instance descriptor set
+	VkDescriptorSetAllocateInfo mesh_instance_descriptor_set_alloc_info{
+		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+		.pNext = nullptr,
+		.descriptorPool = render_frame.mesh_instance_descriptor_pool,
+		.descriptorSetCount = 1,
+		.pSetLayouts = &s_mesh_instance_descriptor_set_layout
+    };
+
+	VkDescriptorSet mesh_instance_descriptor_set = VK_NULL_HANDLE;
+	SM_VULKAN_ASSERT(vkAllocateDescriptorSets(s_context.device, &mesh_instance_descriptor_set_alloc_info, &mesh_instance_descriptor_set));
+
+	VkDescriptorBufferInfo descriptor_buffer_info{
+		.buffer = mesh_instance_buffer.buffer,
+		.offset = 0,
+		.range = sizeof(mesh_instance_render_data_t)
+	};
+
+	VkWriteDescriptorSet write_mesh_instance_descriptor_set{
+		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+		.pNext = nullptr,
+		.dstSet = mesh_instance_descriptor_set,
+		.dstBinding = 0,
+		.dstArrayElement = 0,
+		.descriptorCount = 1,
+		.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		.pImageInfo = nullptr,
+		.pBufferInfo = &descriptor_buffer_info,
+		.pTexelBufferView = nullptr
+	};
+
+	VkWriteDescriptorSet descriptor_set_writes[] = {
+		write_mesh_instance_descriptor_set
+	};
+
+	vkUpdateDescriptorSets(s_context.device, ARRAY_LEN(descriptor_set_writes), descriptor_set_writes, 0, nullptr);
+
+	// bind everything needed to draw
+	VkBuffer vertex_buffers[] = {
+		mesh_instance.mesh->vertex_buffer.buffer
+	};
+	VkDeviceSize offset = 0;
+	VkDeviceSize offsets[] = {
+		offset
+	};
+	vkCmdBindVertexBuffers(render_frame.frame_command_buffer, 0, 1, vertex_buffers, offsets);
+
+	vkCmdBindIndexBuffer(render_frame.frame_command_buffer, mesh_instance.mesh->index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+	VkDescriptorSet descriptor_sets[] = {
+		s_global_descriptor_set,
+		render_frame.frame_descriptor_set,
+		mesh_instance.material->main_draw_descriptor_set,
+		mesh_instance_descriptor_set	
+	};
+	vkCmdBindDescriptorSets(render_frame.frame_command_buffer,
+							VK_PIPELINE_BIND_POINT_GRAPHICS,
+							mesh_instance.material->main_draw_pipeline_layout, 
+							0, 
+							ARRAY_LEN(descriptor_sets), descriptor_sets, 
+							0, nullptr);
+
+	vkCmdBindPipeline(render_frame.frame_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_instance.material->main_draw_pipeline);
+
+    if (push_constants)
+    {
+		vkCmdPushConstants(render_frame.frame_command_buffer, mesh_instance.material->main_draw_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, (u32)size_of_push_constants, push_constants);
+    }
+
+	// draw mesh
+	vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)mesh_instance.mesh->num_indices, 1, 0, 0, 0);
 }
 
 static void main_draw_pass(render_frame_t& render_frame)
@@ -3284,83 +3417,11 @@ static void main_draw_pass(render_frame_t& render_frame)
 
     // main draw
     {
-        SCOPED_COMMAND_BUFFER_DEBUG_LABEL(render_frame.frame_command_buffer, "Viking Room", color_f32_t(0.0f, 0.0f, 1.0f, 1.0f));
-
-        mat44_t view = camera_get_view_transform(s_main_camera);
-        mat44_t projection = init_perspective_proj(45.0f, 0.01f, 100.0f, (f32)s_swapchain.extent.width / (f32)s_swapchain.extent.height);
-        mat44_t viking_room_model = mat44_t::IDENTITY; // use mesh instance transform to calculate this
-        mat44_t viking_room_mvp = viking_room_model * view * projection;
-
-        mesh_instance_render_data_t mesh_instance_render_data{};
-        mesh_instance_render_data.mvp = viking_room_mvp;
-
-        upload_buffer_data(render_frame.mesh_instance_render_data_buffers[0].buffer, &mesh_instance_render_data, sizeof(mesh_instance_render_data_t));
-
-        // allocate and update mesh instance descriptor set
-        VkDescriptorSetAllocateInfo viking_room_mesh_instance_descriptor_set_alloc_info{};
-        viking_room_mesh_instance_descriptor_set_alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        viking_room_mesh_instance_descriptor_set_alloc_info.pNext = nullptr;
-        viking_room_mesh_instance_descriptor_set_alloc_info.descriptorPool = render_frame.mesh_instance_descriptor_pool;
-        viking_room_mesh_instance_descriptor_set_alloc_info.descriptorSetCount = 1;
-        viking_room_mesh_instance_descriptor_set_alloc_info.pSetLayouts = &s_mesh_instance_descriptor_set_layout;
-
-        VkDescriptorSet viking_room_mesh_instance_descriptor_set = VK_NULL_HANDLE;
-        SM_VULKAN_ASSERT(vkAllocateDescriptorSets(s_context.device, &viking_room_mesh_instance_descriptor_set_alloc_info, &viking_room_mesh_instance_descriptor_set));
-
-        VkDescriptorBufferInfo descriptor_buffer_info{
-            .buffer = render_frame.mesh_instance_render_data_buffers[0].buffer,
-            .offset = 0,
-            .range = sizeof(mesh_instance_render_data_t)
-        };
-
-        VkWriteDescriptorSet write_mesh_instance_descriptor_set{
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .pNext = nullptr,
-            .dstSet = viking_room_mesh_instance_descriptor_set,
-            .dstBinding = 0,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .pImageInfo = nullptr,
-            .pBufferInfo = &descriptor_buffer_info,
-            .pTexelBufferView = nullptr
-        };
-
-        VkWriteDescriptorSet descriptor_set_writes[] = {
-            write_mesh_instance_descriptor_set
-        };
-
-        vkUpdateDescriptorSets(s_context.device, ARRAY_LEN(descriptor_set_writes), descriptor_set_writes, 0, nullptr);
-
-        // bind everything needed to draw
-        VkBuffer vertex_buffers[] = {
-            s_viking_room_mesh.vertex_buffer.buffer
-        };
-        VkDeviceSize offset = 0;
-        VkDeviceSize offsets[] = {
-            offset
-        };
-        vkCmdBindVertexBuffers(render_frame.frame_command_buffer, 0, 1, vertex_buffers, offsets);
-
-        vkCmdBindIndexBuffer(render_frame.frame_command_buffer, s_viking_room_mesh.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-        VkDescriptorSet descriptor_sets[] = {
-            s_global_descriptor_set,
-            render_frame.frame_descriptor_set,
-            s_viking_room_material_descriptor_set,
-            viking_room_mesh_instance_descriptor_set
-        };
-        vkCmdBindDescriptorSets(render_frame.frame_command_buffer,
-                                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                s_viking_room_main_draw_pipeline_layout, 
-                                0, 
-                                ARRAY_LEN(descriptor_sets), descriptor_sets, 
-                                0, nullptr);
-
-        vkCmdBindPipeline(render_frame.frame_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_viking_room_main_draw_pipeline);
-
-        // draw mesh
-        vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)s_viking_room_mesh.num_indices, 1, 0, 0, 0);
+        mesh_instance_t viking_room_mesh_instance;
+        viking_room_mesh_instance.material = &s_viking_room_material;
+        viking_room_mesh_instance.mesh = &s_viking_room_mesh;
+        viking_room_mesh_instance.transform.model = mat44_t::IDENTITY;
+        render_mesh_instance(render_frame, "viking room", viking_room_mesh_instance);
     }
 
     //vkCmdEndRenderPass(render_frame.frame_command_buffer);
@@ -3586,124 +3647,16 @@ static void gizmo_pass(render_frame_t& render_frame)
         vkCmdBeginRendering(render_frame.frame_command_buffer, &rendering_info);
     }
 
-    // allocate mesh instance descriptor set
-    VkDescriptorSetAllocateInfo mesh_instance_descriptor_set_alloc_info{
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-        .pNext = nullptr,
-        .descriptorPool = render_frame.mesh_instance_descriptor_pool,
-        .descriptorSetCount = 1,
-        .pSetLayouts = &s_mesh_instance_descriptor_set_layout
-    };
-    VkDescriptorSet mesh_instance_descriptor_set = VK_NULL_HANDLE;
-    vkAllocateDescriptorSets(s_context.device, &mesh_instance_descriptor_set_alloc_info, &mesh_instance_descriptor_set);
+    mesh_instance_t gizmo_mesh_instance;
+    gizmo_mesh_instance.material = &s_gizmo_material;
+    gizmo_mesh_instance.mesh = &s_gizmo.rotate_tool_gpu_mesh;
+    gizmo_mesh_instance.transform.model = mat44_t::IDENTITY;
 
-    // write buffer to descriptor set
-    VkDescriptorBufferInfo mesh_instance_descriptor_buffer_info{
-        .buffer = render_frame.mesh_instance_render_data_buffers[1].buffer,
-        .offset = 0,
-        .range = sizeof(mesh_instance_render_data_t)
-    };
-    VkWriteDescriptorSet mesh_instance_descriptor_set_write{
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .pNext = nullptr,
-        .dstSet = mesh_instance_descriptor_set,
-        .dstBinding = 0,
-        .dstArrayElement = 0,
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        .pImageInfo = nullptr,
-        .pBufferInfo = &mesh_instance_descriptor_buffer_info,
-        .pTexelBufferView = nullptr
-    };
-    VkWriteDescriptorSet descriptor_writes[] = {
-        mesh_instance_descriptor_set_write
-    };
-    vkUpdateDescriptorSets(s_context.device, ARRAY_LEN(descriptor_writes), descriptor_writes, 0, nullptr);
+	gizmo_push_constants_t gizmo_push_constants{
+		.color = to_vec3(color_f32_t::YELLOW)
+	};
 
-    // bind descriptor set
-    VkDescriptorSet descriptor_sets[] = {
-        mesh_instance_descriptor_set
-    };
-    vkCmdBindDescriptorSets(render_frame.frame_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_gizmo_draw_pipeline_layout, 0, ARRAY_LEN(descriptor_sets), descriptor_sets, 0, nullptr);
-
-    // bind gizmo vertex & index buffer
-    VkDeviceSize offsets[] = {
-        0
-    };
-    vkCmdBindVertexBuffers(render_frame.frame_command_buffer, 0, 1, &s_gizmo.rotate_tool_gpu_mesh.vertex_buffer.buffer, offsets);
-    vkCmdBindIndexBuffer(render_frame.frame_command_buffer, s_gizmo.rotate_tool_gpu_mesh.index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-    // bind gizmo pipeline
-    vkCmdBindPipeline(render_frame.frame_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, s_gizmo_draw_pipeline);
-
-    // rotation tool
-    {
-        // ROTATE X
-        {
-            // update mesh instance buffer
-            mat44_t view = camera_get_view_transform(s_main_camera);
-            mat44_t projection = init_perspective_proj(45.0f, 0.01f, 100.0f, (f32)s_swapchain.extent.width / (f32)s_swapchain.extent.height);
-            mat44_t model = mat44_t::IDENTITY;
-            mat44_t mvp = model * view * projection;
-            mesh_instance_render_data_t gizmo_mesh_instance_render_data{
-                .mvp = mvp
-            };
-            upload_buffer_data(render_frame.mesh_instance_render_data_buffers[1].buffer, &gizmo_mesh_instance_render_data, sizeof(mesh_instance_render_data_t));
-
-            // push constant for color
-            gizmo_push_constants_t gizmo_push_constants{
-                .color = to_vec3(color_f32_t::RED)
-            };
-            vkCmdPushConstants(render_frame.frame_command_buffer, s_gizmo_draw_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(gizmo_push_constants_t), &gizmo_push_constants);
-
-            // render using gizmo indices
-            vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)s_gizmo.rotate_tool_gpu_mesh.num_indices, 1, 0, 0, 0);
-        }
-
-        //// ROTATE Y
-        //{
-        //    // update mesh instance buffer
-        //    mat44_t view = camera_get_view_transform(s_main_camera);
-        //    mat44_t projection = init_perspective_proj(45.0f, 0.01f, 100.0f, (f32)s_swapchain.extent.width / (f32)s_swapchain.extent.height);
-        //    mat44_t model = init_rotation_z_degs(90.0f);
-        //    mat44_t mvp = model * view * projection;
-        //    mesh_instance_render_data_t gizmo_mesh_instance_render_data{
-        //        .mvp = mvp
-        //    };
-        //    upload_buffer_data(render_frame.mesh_instance_render_data_buffers[1].buffer, &gizmo_mesh_instance_render_data, sizeof(mesh_instance_render_data_t));
-
-        //    // push constant for color
-        //    gizmo_push_constants_t gizmo_push_constants{
-        //        .color = to_vec3(color_f32_t::GREEN)
-        //    };
-        //    vkCmdPushConstants(render_frame.frame_command_buffer, s_gizmo_draw_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(gizmo_push_constants_t), &gizmo_push_constants);
-
-        //    // render using gizmo indices
-        //    vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)s_gizmo.rotate_tool_gpu_mesh.num_indices, 1, 0, 0, 0);
-        //}
-
-        //// ROTATE Z
-        //{
-        //    // update mesh instance buffer
-        //    mat44_t view = camera_get_view_transform(s_main_camera);
-        //    mat44_t projection = init_perspective_proj(45.0f, 0.01f, 100.0f, (f32)s_swapchain.extent.width / (f32)s_swapchain.extent.height);
-        //    mat44_t model = init_rotation_y_degs(90.0f);
-        //    mat44_t mvp = model * view * projection;
-        //    mesh_instance_render_data_t gizmo_mesh_instance_render_data{
-        //        .mvp = mvp
-        //    };
-        //    upload_buffer_data(render_frame.mesh_instance_render_data_buffers[1].buffer, &gizmo_mesh_instance_render_data, sizeof(mesh_instance_render_data_t));
-
-        //    // push constant for color
-        //    gizmo_push_constants_t gizmo_push_constants{
-        //        .color = to_vec3(color_f32_t::BLUE)
-        //    };
-        //    vkCmdPushConstants(render_frame.frame_command_buffer, s_gizmo_draw_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(gizmo_push_constants_t), &gizmo_push_constants);
-
-        //    // render using gizmo indices
-        //    vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)s_gizmo.rotate_tool_gpu_mesh.num_indices, 1, 0, 0, 0);
-        //}
-    }
+    render_mesh_instance(render_frame, "gizmo rotate", gizmo_mesh_instance, sizeof(gizmo_push_constants_t), &gizmo_push_constants);
 
     // end gizmo render pass
     vkCmdEndRendering(render_frame.frame_command_buffer);

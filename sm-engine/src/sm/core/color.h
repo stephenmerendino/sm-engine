@@ -18,6 +18,7 @@ namespace sm
         static const color_f32_t RED;
         static const color_f32_t GREEN;
         static const color_f32_t BLUE;
+        static const color_f32_t YELLOW;
     };
 
     struct color_u8_t
@@ -31,6 +32,7 @@ namespace sm
         static const color_u8_t RED;
         static const color_u8_t GREEN;
         static const color_u8_t BLUE;
+        static const color_u8_t YELLOW;
     };
 
     inline vec3_t to_vec3(const color_f32_t& color)
