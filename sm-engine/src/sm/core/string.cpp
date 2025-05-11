@@ -13,32 +13,30 @@ const char& string_t::operator[](size_t index) const
     return c_str[index];
 }
 
-void string_t::operator=(const char* str)
+void sm::string_set(string_t& string, const char* data)
 {
-	c_str.cur_size = 0;
-    size_t len = strlen(str);
-	array_grow_capacity(c_str, len + 1);
-	array_push(c_str, str, len);
-	c_str.data[len] = '\0';
+	string.c_str.cur_size = 0;
+    size_t len = strlen(data);
+	array_grow_capacity(string.c_str, len + 1);
+	array_push(string.c_str, data, len);
+	string.c_str.data[len] = '\0';
 }
 
-void string_t::operator=(const string_t& str)
+void sm::string_set(string_t& dst, const string_t& src)
 {
-    *this = str.c_str.data;
+	string_set(dst, src.c_str.data);
 }
 
-string_t& string_t::operator+=(const char* str)
+void sm::string_append(string_t& string, const char* data)
 {
-	size_t additional_len = strlen(str);
-	array_push(c_str, str, additional_len);
-	c_str.data[c_str.cur_size] = '\0';
-	return *this;
+	size_t additional_len = strlen(data);
+	array_push(string.c_str, data, additional_len);
+	string.c_str.data[string.c_str.cur_size] = '\0';
 }
 
-string_t& string_t::operator+=(const string_t& str)
+void sm::string_append(string_t& dst, const string_t& src)
 {
-	*this += str.c_str.data;
-	return *this;
+	string_append(dst, src.c_str.data);
 }
 
 string_t sm::string_init(sm::arena_t* arena, size_t size)

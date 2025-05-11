@@ -8,14 +8,14 @@ namespace sm
 
         char&       operator[](size_t index);
         const char& operator[](size_t index) const;
-        void        operator=(const char* str);
-        void        operator=(const string_t& str);
-        string_t&   operator+=(const char* str);
-        string_t&   operator+=(const string_t& str);
     };
 
     string_t string_init(sm::arena_t* arena, size_t initial_capacity = 64);
     size_t   string_calc_length(const string_t& str);
+    void     string_set(string_t& string, const char* data);
+    void     string_set(string_t& dst, const string_t& src);
+    void     string_append(string_t& string, const char* data);
+    void     string_append(string_t& dst, const string_t& src);
     wchar_t* string_to_wchar(sm::arena_t* arena, const string_t& s);
     wchar_t* string_to_wchar(sm::arena_t* arena, const char* s);
     void     string_to_wchar(wchar_t* wchar_string_memory, size_t max_num_chars, const string_t& s);

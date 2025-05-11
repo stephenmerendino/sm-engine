@@ -116,8 +116,8 @@ struct mesh_instance_t
 
 struct level_t 
 {
-    array_t<string_t> mesh_instance_names;
-    array_t<mesh_instance_t> mesh_instances;
+    array_t<string_t*> mesh_instance_names;
+    array_t<mesh_instance_t*> mesh_instances;
 };
 
 struct render_frame_t 
@@ -241,8 +241,8 @@ static VkPipelineLayout s_infinite_grid_main_draw_pipeline_layout = VK_NULL_HAND
 static VkPipelineLayout s_post_process_pipeline_layout = VK_NULL_HANDLE;
 static VkPipeline s_post_process_compute_pipeline = VK_NULL_HANDLE;
 
-static arena_t s_level_arena;
-static level_t s_current_level;
+static arena_t* s_level_arena;
+static level_t* s_current_level;
 
 static camera_t s_main_camera;
 static f32 s_elapsed_time_seconds = 0.0f;
@@ -912,8 +912,8 @@ static void texture_init_from_file(texture_t& out_texture, const char* filename,
 
     // load image pixels
     sm::string_t full_filepath = string_init(stack_arena);
-    full_filepath += TEXTURES_PATH;
-    full_filepath += filename;
+    string_append(full_filepath, TEXTURES_PATH);
+    string_append(full_filepath, filename);
 
     int tex_width;
     int tex_height;
@@ -2562,6 +2562,22 @@ static void gizmo_init(arena_t* arena)
     mesh_init(s_gizmo.scale_tool_gpu_mesh, scale_mesh);
 }
 
+static mesh_instance_id_t level_add_mesh_instance(arena_t* arena, level_t* level, mesh_t* mesh, material_t* material, const char* debug_name, const transform_t& initial_transform)
+{
+    string_t* debug_string_name = arena_alloc_struct(arena, string_t);
+    *debug_string_name = string_init(arena, strlen(debug_name));
+    string_set(*debug_string_name, debug_name);
+    array_push(level->mesh_instance_names, debug_string_name);
+
+    mesh_instance_t* mesh_instance = arena_alloc_struct(arena, mesh_instance_t);
+    mesh_instance->mesh = mesh;
+    mesh_instance->material = material;
+    mesh_instance->transform = initial_transform;
+    array_push(level->mesh_instances, mesh_instance);
+
+    return level->mesh_instances.cur_size - 1;
+}
+
 void sm::renderer_init(window_t* window)
 {	
 	arena_t* startup_arena = arena_init(MiB(100));
@@ -3102,6 +3118,14 @@ void sm::renderer_init(window_t* window)
         pipelines_init();
 	}
 
+    s_level_arena = arena_init(MiB(50));
+    s_current_level = arena_alloc_struct(s_level_arena, level_t);
+    s_current_level->mesh_instances = array_init<mesh_instance_t*>(s_level_arena, 1024);
+    s_current_level->mesh_instance_names = array_init<string_t*>(s_level_arena, 1024);
+    transform_t initial_transform;
+    initial_transform.model = mat44_t::IDENTITY;
+    mesh_instance_id_t viking_room_mesh_instance_id = level_add_mesh_instance(s_level_arena, s_current_level, &s_viking_room_mesh, &s_viking_room_material, "viking room", initial_transform);
+
 	debug_printf("Finished initializing vulkan renderer\n");
 }
 
@@ -3416,15 +3440,12 @@ static void main_draw_pass(render_frame_t& render_frame)
     }
 
     // main draw
-    {
-        mesh_instance_t viking_room_mesh_instance;
-        viking_room_mesh_instance.material = &s_viking_room_material;
-        viking_room_mesh_instance.mesh = &s_viking_room_mesh;
-        viking_room_mesh_instance.transform.model = mat44_t::IDENTITY;
-        render_mesh_instance(render_frame, "viking room", viking_room_mesh_instance);
-    }
+	for (int i = 0; i < s_current_level->mesh_instances.cur_size; i++)
+	{
+		const string_t* debug_name = s_current_level->mesh_instance_names[i];
+		render_mesh_instance(render_frame, debug_name->c_str.data, *s_current_level->mesh_instances[i]);
+	}
 
-    //vkCmdEndRenderPass(render_frame.frame_command_buffer);
     vkCmdEndRendering(render_frame.frame_command_buffer);
 }
 
