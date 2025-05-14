@@ -2544,25 +2544,17 @@ static void gizmo_init(arena_t* arena)
     mesh_data_t* translate_mesh = mesh_init(arena);
     mesh_data_add_cylinder(translate_mesh, vec3_t::ZERO, vec3_t::WORLD_FORWARD, gizmo_length, gizmo_bar_thickness, 32, color_f32_t::RED);
     mesh_data_add_cone(translate_mesh, { .x = gizmo_length, .y = 0.0f, .z = 0.0f }, vec3_t::WORLD_FORWARD, 0.5f, 0.5f, 32, color_f32_t::RED);
-    mesh_data_add_cylinder(translate_mesh, vec3_t::ZERO, vec3_t::WORLD_LEFT, gizmo_length, gizmo_bar_thickness, 32, color_f32_t::GREEN);
-    mesh_data_add_cylinder(translate_mesh, vec3_t::ZERO, vec3_t::WORLD_UP, gizmo_length, gizmo_bar_thickness, 32, color_f32_t::BLUE);
-    mesh_init(s_gizmo.rotate_tool_gpu_mesh, translate_mesh);
+    mesh_init(s_gizmo.translate_tool_gpu_mesh, translate_mesh);
 
     // build rotate tool mesh
     mesh_data_t* rotate_mesh = mesh_init(arena);
     mesh_data_add_torus(rotate_mesh, vec3_t::ZERO, vec3_t::WORLD_FORWARD, 0.65f, 0.025f, 32);
-    mesh_data_add_torus(rotate_mesh, vec3_t::ZERO, vec3_t::WORLD_LEFT, 0.65f, 0.025f, 32, color_f32_t::GREEN);
-    mesh_data_add_torus(rotate_mesh, vec3_t::ZERO, vec3_t::WORLD_UP, 0.65f, 0.025f, 32, color_f32_t::BLUE);
     mesh_init(s_gizmo.rotate_tool_gpu_mesh, rotate_mesh);
 
     // build scale tool mesh
     mesh_data_t* scale_mesh = mesh_init(arena);
     mesh_data_add_cylinder(scale_mesh, vec3_t::ZERO, vec3_t::WORLD_FORWARD, gizmo_length, gizmo_bar_thickness, 32, color_f32_t::RED);
     mesh_data_add_cube(scale_mesh, { .x = gizmo_length, .y = 0.0f, .z = 0.0f }, scale_box_thickness, 1, color_f32_t::RED);
-    mesh_data_add_cylinder(scale_mesh, vec3_t::ZERO, vec3_t::WORLD_LEFT, gizmo_length, gizmo_bar_thickness, 32, color_f32_t::GREEN);
-    mesh_data_add_cube(scale_mesh, { .x = 0.0f, .y = gizmo_length, .z = 0.0f }, scale_box_thickness, 1, color_f32_t::GREEN);
-    mesh_data_add_cylinder(scale_mesh, vec3_t::ZERO, vec3_t::WORLD_UP, gizmo_length, gizmo_bar_thickness, 32, color_f32_t::BLUE);
-    mesh_data_add_cube(scale_mesh, { .x = 0.0f, .y = 0.0f, .z = gizmo_length }, scale_box_thickness, 1, color_f32_t::BLUE);
     mesh_init(s_gizmo.scale_tool_gpu_mesh, scale_mesh);
 }
 
@@ -3154,17 +3146,21 @@ void sm::renderer_init(window_t* window)
     s_current_level->mesh_instances = array_init<mesh_instance_t*>(s_level_arena, 1024);
     s_current_level->mesh_instance_names = array_init<string_t*>(s_level_arena, 1024);
 
-    transform_t initial_transform;
-    initial_transform.model = mat44_t::IDENTITY;
-    mesh_instance_id_t viking_room_mesh_instance_id = level_add_mesh_instance(s_level_arena, s_current_level, &s_viking_room_mesh, &s_viking_room_material, "viking room", initial_transform);
+    u32 grid_size = 5;
+    f32 spacing = 2.0f;
+    for(int y = 0; y < grid_size; y++)
+    {
+        for(int x = 0; x < grid_size; x++)
+        {
+            transform_t initial_transform;
+            translate(initial_transform.model, vec3_t(x * spacing, y * spacing, 0.0f));
 
-    initial_transform.model = mat44_t::IDENTITY;
-    translate(initial_transform.model, vec3_t(2.0f, 0.0f, 0.0f));
-    mesh_instance_id_t viking_room_mesh_instance_id2 = level_add_mesh_instance(s_level_arena, s_current_level, &s_viking_room_mesh, &s_viking_room_material, "viking room 2", initial_transform);
+            char name_string[64];
+            sprintf_s(name_string, 64, "viking room %i", y* grid_size + x);
 
-    initial_transform.model = mat44_t::IDENTITY;
-    translate(initial_transform.model, vec3_t(0.0f, 2.0f, 0.0f));
-    mesh_instance_id_t viking_room_mesh_instance_id3 = level_add_mesh_instance(s_level_arena, s_current_level, &s_viking_room_mesh, &s_viking_room_material, "viking room 3", initial_transform);
+            level_add_mesh_instance(s_level_arena, s_current_level, &s_viking_room_mesh, &s_viking_room_material, name_string, initial_transform);
+        }
+    }
 
 	debug_printf("Finished initializing vulkan renderer\n");
 }
@@ -3718,13 +3714,23 @@ static void gizmo_pass(render_frame_t& render_frame)
     gizmo_mesh_instance.mesh = &s_gizmo.rotate_tool_gpu_mesh;
 
     transform_t transform = s_current_level->mesh_instances[s_selected_scene_item]->transform;
-    gizmo_mesh_instance.transform.model = transform.model;
+    gizmo_push_constants_t gizmo_push_constants;
 
-	gizmo_push_constants_t gizmo_push_constants{
-		.color = to_vec3(color_f32_t::YELLOW)
-	};
+    set_translation(gizmo_mesh_instance.transform.model, transform.model.tx, transform.model.ty, transform.model.tz);
+    gizmo_push_constants.color = to_vec3(color_f32_t::RED);
+    render_mesh_instance(render_frame, "gizmo rotate x", gizmo_mesh_instance, sizeof(gizmo_push_constants_t), &gizmo_push_constants);
 
-    render_mesh_instance(render_frame, "gizmo rotate", gizmo_mesh_instance, sizeof(gizmo_push_constants_t), &gizmo_push_constants);
+    gizmo_mesh_instance.transform.model = mat44_t::IDENTITY;
+    rotate_z_degs(gizmo_mesh_instance.transform.model, 90.0f);
+    set_translation(gizmo_mesh_instance.transform.model, transform.model.tx, transform.model.ty, transform.model.tz);
+    gizmo_push_constants.color = to_vec3(color_f32_t::BLUE);
+    render_mesh_instance(render_frame, "gizmo rotate y", gizmo_mesh_instance, sizeof(gizmo_push_constants_t), &gizmo_push_constants);
+
+    gizmo_mesh_instance.transform.model = mat44_t::IDENTITY;
+    rotate_y_degs(gizmo_mesh_instance.transform.model, 90.0f);
+    set_translation(gizmo_mesh_instance.transform.model, transform.model.tx, transform.model.ty, transform.model.tz);
+    gizmo_push_constants.color = to_vec3(color_f32_t::GREEN);
+    render_mesh_instance(render_frame, "gizmo rotate z", gizmo_mesh_instance, sizeof(gizmo_push_constants_t), &gizmo_push_constants);
 
     // end gizmo render pass
     vkCmdEndRendering(render_frame.frame_command_buffer);
