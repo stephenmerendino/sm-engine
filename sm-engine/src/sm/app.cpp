@@ -75,6 +75,8 @@ int app_run()
 	sm::input_init(s_app_window);
 	sm::renderer_init(s_app_window);
 
+	game_init();
+
 	sm::f32 ds = 0.016f; // default to delta seconds of 60 fps frame time
 
     sm::stopwatch_t frame_stopwatch;

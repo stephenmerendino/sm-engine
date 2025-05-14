@@ -95,8 +95,7 @@ struct transform_t
     mat44_t model = mat44_t::IDENTITY;
 };
 
-typedef u32 mesh_instance_id_t;
-static const mesh_instance_id_t INVALID_MESH_INSTANCE_ID = UINT32_MAX;
+const mesh_instance_id_t sm::INVALID_MESH_INSTANCE_ID = UINT32_MAX;
 static const u32 MAX_NUM_MESH_INSTANCES_PER_FRAME = 1024;
 static const mesh_instance_id_t s_cur_mesh_instance_id = 0;
 
@@ -109,6 +108,7 @@ struct material_t
 
 struct mesh_instance_t
 {
+    mesh_instance_id_t id = INVALID_MESH_INSTANCE_ID;
     mesh_t* mesh = nullptr;
     material_t* material = nullptr;
     transform_t transform;
@@ -116,6 +116,7 @@ struct mesh_instance_t
 
 struct level_t 
 {
+    mesh_instance_id_t next_mesh_instance_id = 0;
     array_t<string_t*> mesh_instance_names;
     array_t<mesh_instance_t*> mesh_instances;
 };
@@ -249,6 +250,9 @@ static f32 s_elapsed_time_seconds = 0.0f;
 static f32 s_delta_time_seconds = 0.0f;
 static u64 s_cur_frame_number = 0;
 static u8 s_cur_render_frame_index = 0;
+
+// ui
+static int s_selected_scene_item = -1;
 
 static void begin_queue_debug_label(VkQueue queue, const char* label, const color_f32_t& color)
 {
@@ -2570,12 +2574,37 @@ static mesh_instance_id_t level_add_mesh_instance(arena_t* arena, level_t* level
     array_push(level->mesh_instance_names, debug_string_name);
 
     mesh_instance_t* mesh_instance = arena_alloc_struct(arena, mesh_instance_t);
+    mesh_instance->id = level->next_mesh_instance_id;
+    level->next_mesh_instance_id++;
+
     mesh_instance->mesh = mesh;
     mesh_instance->material = material;
     mesh_instance->transform = initial_transform;
     array_push(level->mesh_instances, mesh_instance);
 
-    return level->mesh_instances.cur_size - 1;
+    return mesh_instance->id;
+}
+
+static void build_scene_window_ui()
+{
+    ImGui::Text("Scene\n");
+
+    int item_highlighted_idx = -1; // Here we store our highlighted data as an index.
+    if (ImGui::BeginListBox("##scene list", ImVec2(-FLT_MIN, 25 * ImGui::GetTextLineHeightWithSpacing())))
+    {
+        for (int i = 0; i < s_current_level->mesh_instance_names.cur_size; i++)
+        {
+            bool is_selected = (s_selected_scene_item == i);
+            ImGuiSelectableFlags flags = (item_highlighted_idx == i) ? ImGuiSelectableFlags_Highlight : 0;
+            if (ImGui::Selectable(s_current_level->mesh_instance_names[i]->c_str.data, is_selected, flags))
+                s_selected_scene_item = i;
+
+            // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+            if (is_selected)
+                ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndListBox();
+    }
 }
 
 void sm::renderer_init(window_t* window)
@@ -3118,13 +3147,24 @@ void sm::renderer_init(window_t* window)
         pipelines_init();
 	}
 
+    ui_set_build_scene_window_callback(build_scene_window_ui);
+
     s_level_arena = arena_init(MiB(50));
     s_current_level = arena_alloc_struct(s_level_arena, level_t);
     s_current_level->mesh_instances = array_init<mesh_instance_t*>(s_level_arena, 1024);
     s_current_level->mesh_instance_names = array_init<string_t*>(s_level_arena, 1024);
+
     transform_t initial_transform;
     initial_transform.model = mat44_t::IDENTITY;
     mesh_instance_id_t viking_room_mesh_instance_id = level_add_mesh_instance(s_level_arena, s_current_level, &s_viking_room_mesh, &s_viking_room_material, "viking room", initial_transform);
+
+    initial_transform.model = mat44_t::IDENTITY;
+    translate(initial_transform.model, vec3_t(2.0f, 0.0f, 0.0f));
+    mesh_instance_id_t viking_room_mesh_instance_id2 = level_add_mesh_instance(s_level_arena, s_current_level, &s_viking_room_mesh, &s_viking_room_material, "viking room 2", initial_transform);
+
+    initial_transform.model = mat44_t::IDENTITY;
+    translate(initial_transform.model, vec3_t(0.0f, 2.0f, 0.0f));
+    mesh_instance_id_t viking_room_mesh_instance_id3 = level_add_mesh_instance(s_level_arena, s_current_level, &s_viking_room_mesh, &s_viking_room_material, "viking room 3", initial_transform);
 
 	debug_printf("Finished initializing vulkan renderer\n");
 }
@@ -3616,6 +3656,11 @@ static void post_processing_pass(render_frame_t& render_frame)
 
 static void gizmo_pass(render_frame_t& render_frame)
 {
+    if (s_selected_scene_item == -1)
+    {
+        return;
+    }
+
     SCOPED_COMMAND_BUFFER_DEBUG_LABEL(render_frame.frame_command_buffer, "Gizmo Pass", color_gen_random());
 
     {
@@ -3671,7 +3716,9 @@ static void gizmo_pass(render_frame_t& render_frame)
     mesh_instance_t gizmo_mesh_instance;
     gizmo_mesh_instance.material = &s_gizmo_material;
     gizmo_mesh_instance.mesh = &s_gizmo.rotate_tool_gpu_mesh;
-    gizmo_mesh_instance.transform.model = mat44_t::IDENTITY;
+
+    transform_t transform = s_current_level->mesh_instances[s_selected_scene_item]->transform;
+    gizmo_mesh_instance.transform.model = transform.model;
 
 	gizmo_push_constants_t gizmo_push_constants{
 		.color = to_vec3(color_f32_t::YELLOW)
