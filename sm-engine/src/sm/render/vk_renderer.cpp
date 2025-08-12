@@ -1,5 +1,6 @@
 #include "sm/render/vk_renderer.h"
 #include "sm/config.h"
+#include "sm/core/bits.h"
 #include "sm/core/debug.h"
 #include "sm/core/helpers.h"
 #include "sm/core/string.h"
@@ -28,9 +29,10 @@ struct queue_indices_t
 {
 	static const i32 INVALID_QUEUE_INDEX = -1;
 
-	i32 graphics_and_compute	= INVALID_QUEUE_INDEX;
+	i32 graphics	            = INVALID_QUEUE_INDEX;
 	i32 async_compute			= INVALID_QUEUE_INDEX;
 	i32 presentation			= INVALID_QUEUE_INDEX;
+	i32 transfer	            = INVALID_QUEUE_INDEX;
 };
 
 struct context_t
@@ -46,9 +48,10 @@ struct context_t
     VkQueue graphics_queue = VK_NULL_HANDLE;
     VkQueue async_compute_queue = VK_NULL_HANDLE;
     VkQueue present_queue = VK_NULL_HANDLE;
+    VkQueue transfer_queue = VK_NULL_HANDLE;
     VkSampleCountFlagBits max_msaa_samples = VK_SAMPLE_COUNT_1_BIT;
-    VkFormat main_color_format = VK_FORMAT_R8G8B8A8_UNORM;
-    VkFormat depth_format = VK_FORMAT_UNDEFINED;
+    VkFormat default_color_format = VK_FORMAT_R8G8B8A8_UNORM;
+    VkFormat default_depth_format = VK_FORMAT_UNDEFINED;
 };
 
 struct swapchain_info_t
@@ -448,16 +451,24 @@ static queue_indices_t find_queue_indices(arena_t* arena, VkPhysicalDevice devic
 	for (int i = 0; i < (int)queue_family_props.cur_size; i++)
 	{
 		const VkQueueFamilyProperties& props = queue_family_props[i];
-		if (indices.graphics_and_compute == queue_indices_t::INVALID_QUEUE_INDEX && 
-			(props.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)) == (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT))
+		if (indices.graphics == queue_indices_t::INVALID_QUEUE_INDEX && 
+            is_bit_set(props.queueFlags, VK_QUEUE_GRAPHICS_BIT))
 		{
-			indices.graphics_and_compute = i;
+			indices.graphics = i;
 		}
 
 		if (indices.async_compute == queue_indices_t::INVALID_QUEUE_INDEX && 
-			(props.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)) == VK_QUEUE_COMPUTE_BIT)
+            is_bit_set(props.queueFlags, VK_QUEUE_COMPUTE_BIT)  && 
+            !is_bit_set(props.queueFlags, VK_QUEUE_GRAPHICS_BIT))
 		{
 			indices.async_compute = i;
+		}
+
+		if (indices.transfer == queue_indices_t::INVALID_QUEUE_INDEX && 
+            is_bit_set(props.queueFlags, VK_QUEUE_TRANSFER_BIT) &&
+            !is_bit_set(props.queueFlags, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT))
+		{
+			indices.transfer = i;
 		}
 
 		VkBool32 can_present = false;
@@ -468,9 +479,10 @@ static queue_indices_t find_queue_indices(arena_t* arena, VkPhysicalDevice devic
 		}
 
 		// check if no more families to find
-		if (indices.graphics_and_compute != queue_indices_t::INVALID_QUEUE_INDEX && 
+		if (indices.graphics != queue_indices_t::INVALID_QUEUE_INDEX && 
 			indices.async_compute != queue_indices_t::INVALID_QUEUE_INDEX &&
-			indices.presentation != queue_indices_t::INVALID_QUEUE_INDEX)
+			indices.presentation != queue_indices_t::INVALID_QUEUE_INDEX &&
+            indices.transfer != queue_indices_t::INVALID_QUEUE_INDEX)
 		{
 			break;
 		}
@@ -481,7 +493,7 @@ static queue_indices_t find_queue_indices(arena_t* arena, VkPhysicalDevice devic
 
 static bool has_required_queues(const queue_indices_t& queue_indices)
 {
-	return queue_indices.graphics_and_compute != queue_indices_t::INVALID_QUEUE_INDEX && 
+	return queue_indices.graphics != queue_indices_t::INVALID_QUEUE_INDEX && 
 		   queue_indices.presentation != queue_indices_t::INVALID_QUEUE_INDEX;
 }
 
@@ -766,7 +778,7 @@ static void upload_buffer_data(VkBuffer dst_buffer, void* src_data, size_t src_d
     staging_buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
     u32 queue_families[] = {
-        (u32)s_context.queue_indices.graphics_and_compute
+        (u32)s_context.queue_indices.graphics
     };
     staging_buffer_create_info.pQueueFamilyIndices = queue_families;
     staging_buffer_create_info.queueFamilyIndexCount = ARRAY_LEN(queue_families);
@@ -832,8 +844,8 @@ static void upload_buffer_data(VkBuffer dst_buffer, void* src_data, size_t src_d
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit_info.pNext = nullptr;
     submit_info.waitSemaphoreCount = 0;
+    submit_info.pWaitSemaphores = nullptr;
     submit_info.pWaitDstStageMask = nullptr;
-    submit_info.pWaitDstStageMask = 0;
     VkCommandBuffer commands_to_submit[] = {
         buffer_copy_command_buffer
     };
@@ -949,7 +961,7 @@ static void texture_init_from_file(texture_t& out_texture, const char* filename,
         image_create_info.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
         image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         u32 queue_family_indices[] = {
-            (u32)s_context.queue_indices.graphics_and_compute
+            (u32)s_context.queue_indices.graphics
         };
         image_create_info.queueFamilyIndexCount = ARRAY_LEN(queue_family_indices);
         image_create_info.pQueueFamilyIndices = queue_family_indices;
@@ -1007,7 +1019,7 @@ static void texture_init_from_file(texture_t& out_texture, const char* filename,
         staging_buffer_create_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
         staging_buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         u32 queue_family_indices[] = {
-            (u32)s_context.queue_indices.graphics_and_compute
+            (u32)s_context.queue_indices.graphics
         };
         staging_buffer_create_info.queueFamilyIndexCount = ARRAY_LEN(queue_family_indices);
         staging_buffer_create_info.pQueueFamilyIndices = queue_family_indices;
@@ -1246,7 +1258,7 @@ static void buffer_init(buffer_t& out_buffer, size_t size, VkBufferUsageFlags us
 {
     // buffer
     u32 queue_families[] = {
-        (u32)s_context.queue_indices.graphics_and_compute
+        (u32)s_context.queue_indices.graphics
     };
 
     VkBufferCreateInfo create_info{
@@ -1348,9 +1360,9 @@ static void swapchain_init()
     create_info.imageArrayLayers = 1;
     create_info.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-    u32 queueFamilyIndices[] = { (u32)s_context.queue_indices.graphics_and_compute, (u32)s_context.queue_indices.presentation };
+    u32 queueFamilyIndices[] = { (u32)s_context.queue_indices.graphics, (u32)s_context.queue_indices.presentation };
 
-    if (s_context.queue_indices.graphics_and_compute != s_context.queue_indices.presentation)
+    if (s_context.queue_indices.graphics != s_context.queue_indices.presentation)
     {
         create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
         create_info.queueFamilyIndexCount = 2;
@@ -1439,7 +1451,7 @@ static void render_frames_init_render_targets()
         render_frame_t& frame = s_render_frames[i];
 
         texture_init(frame.main_draw_color_multisample_texture, 
-                     s_context.main_color_format, 
+                     s_context.default_color_format, 
                      VkExtent3D(s_swapchain.extent.width, s_swapchain.extent.height, 1), 
                      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 
                      VK_IMAGE_ASPECT_COLOR_BIT, 
@@ -1447,7 +1459,7 @@ static void render_frames_init_render_targets()
                      false);
 
         texture_init(frame.main_draw_depth_multisample_texture, 
-                     s_context.depth_format, 
+                     s_context.default_depth_format, 
                      VkExtent3D(s_swapchain.extent.width, s_swapchain.extent.height, 1), 
                      VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 
                      VK_IMAGE_ASPECT_DEPTH_BIT, 
@@ -1455,7 +1467,7 @@ static void render_frames_init_render_targets()
                      false);
 
         texture_init(frame.main_draw_color_resolve_texture, 
-                     s_context.main_color_format, 
+                     s_context.default_color_format, 
                      VkExtent3D(s_swapchain.extent.width, s_swapchain.extent.height, 1), 
                      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT, 
                      VK_IMAGE_ASPECT_COLOR_BIT, 
@@ -1463,7 +1475,7 @@ static void render_frames_init_render_targets()
                      false);
 
         texture_init(frame.main_draw_depth_resolve_texture, 
-                     s_context.depth_format, 
+                     s_context.default_depth_format, 
                      VkExtent3D(s_swapchain.extent.width, s_swapchain.extent.height, 1), 
                      VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 
                      VK_IMAGE_ASPECT_DEPTH_BIT, 
@@ -1471,7 +1483,7 @@ static void render_frames_init_render_targets()
                      false);
 
         texture_init(frame.post_processing_color_texture, 
-                     s_context.main_color_format, 
+                     s_context.default_color_format, 
                      VkExtent3D(s_swapchain.extent.width, s_swapchain.extent.height, 1), 
                      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, 
                      VK_IMAGE_ASPECT_COLOR_BIT, 
@@ -1893,7 +1905,7 @@ static void pipelines_init()
         dynamic_state.pDynamicStates = nullptr;
 
         VkFormat color_formats[] = {
-            s_context.main_color_format
+            s_context.default_color_format
         };
 
         VkPipelineRenderingCreateInfo pipeline_rendering_create_info{
@@ -1902,7 +1914,7 @@ static void pipelines_init()
             .viewMask = 0,
 			.colorAttachmentCount = ARRAY_LEN(color_formats),
 			.pColorAttachmentFormats = color_formats,
-			.depthAttachmentFormat = s_context.depth_format,
+			.depthAttachmentFormat = s_context.default_depth_format,
 			.stencilAttachmentFormat = VK_FORMAT_UNDEFINED 
         };
 
@@ -2189,10 +2201,10 @@ static void pipelines_init()
         dynamic_state.pDynamicStates = nullptr;
 
         VkFormat color_formats[] = {
-            s_context.main_color_format,
+            s_context.default_color_format,
         };
 
-        VkFormat depth_format = s_context.depth_format;
+        VkFormat depth_format = s_context.default_depth_format;
 
         VkPipelineRenderingCreateInfo pipeline_rendering_create_info{
             .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
@@ -2304,6 +2316,7 @@ static void context_init(arena_t* arena)
 {
 	// vk instance
 	{
+
         vulkan_global_funcs_load();
         print_instance_info(arena);
 
@@ -2430,7 +2443,7 @@ static void context_init(arena_t* arena)
 
 			VkDeviceQueueCreateInfo queue_create_infos[3] = {};
 			queue_create_infos[num_queues].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-			queue_create_infos[num_queues].queueFamilyIndex = queue_indices.graphics_and_compute;
+			queue_create_infos[num_queues].queueFamilyIndex = queue_indices.graphics;
 			queue_create_infos[num_queues].queueCount = 1;
 			queue_create_infos[num_queues].pQueuePriorities = &priority;
 			num_queues++;
@@ -2441,10 +2454,19 @@ static void context_init(arena_t* arena)
 			queue_create_infos[num_queues].pQueuePriorities = &priority;
 			num_queues++;
 
-			if(queue_indices.graphics_and_compute != queue_indices.presentation)
+			if(queue_indices.graphics != queue_indices.presentation)
 			{
 				queue_create_infos[num_queues].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 				queue_create_infos[num_queues].queueFamilyIndex = queue_indices.presentation;
+				queue_create_infos[num_queues].queueCount = 1;
+				queue_create_infos[num_queues].pQueuePriorities = &priority;
+				num_queues++;
+			}
+
+			if(queue_indices.transfer != queue_indices_t::INVALID_QUEUE_INDEX)
+			{
+				queue_create_infos[num_queues].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+				queue_create_infos[num_queues].queueFamilyIndex = queue_indices.transfer;
 				queue_create_infos[num_queues].queueCount = 1;
 				queue_create_infos[num_queues].pQueuePriorities = &priority;
 				num_queues++;
@@ -2476,16 +2498,23 @@ static void context_init(arena_t* arena)
 
 			SM_VULKAN_ASSERT(vkCreateDevice(selected_phy_device, &create_info, nullptr, &logical_device));
 
+
 			vulkan_device_funcs_load(logical_device);
 		}
+
 
 		VkQueue graphics_queue = VK_NULL_HANDLE;
 		VkQueue async_compute_queue = VK_NULL_HANDLE;
 		VkQueue present_queue = VK_NULL_HANDLE;
+		VkQueue transfer_queue = VK_NULL_HANDLE;
 		{
-			vkGetDeviceQueue(logical_device, queue_indices.graphics_and_compute, 0, &graphics_queue);
+			vkGetDeviceQueue(logical_device, queue_indices.graphics, 0, &graphics_queue);
 			vkGetDeviceQueue(logical_device, queue_indices.async_compute, 0, &async_compute_queue);
 			vkGetDeviceQueue(logical_device, queue_indices.presentation, 0, &present_queue);
+            if(queue_indices.transfer != queue_indices_t::INVALID_QUEUE_INDEX)
+            {
+                vkGetDeviceQueue(logical_device, queue_indices.transfer, 0, &transfer_queue);
+            }
 		}
 
 		s_context.phys_device = selected_phy_device;
@@ -2496,9 +2525,11 @@ static void context_init(arena_t* arena)
 		s_context.graphics_queue = graphics_queue;
 		s_context.async_compute_queue = async_compute_queue;
 		s_context.present_queue = present_queue;
+		s_context.transfer_queue = transfer_queue;
 		s_context.max_msaa_samples = max_num_msaa_samples;
-		s_context.depth_format = find_supported_depth_format(s_context.phys_device);
+		s_context.default_depth_format = find_supported_depth_format(s_context.phys_device);
 	}
+
 }
 
 void renderer_window_msg_handler(window_msg_type_t msg_type, u64 msg_data, void* user_args)
@@ -2604,6 +2635,7 @@ void sm::renderer_init(window_t* window)
 	arena_t* startup_arena = arena_init(MiB(100));
 
 	s_window = window;
+
     window_add_msg_cb(s_window, renderer_window_msg_handler, nullptr);
 
 	shader_compiler_init();
@@ -2620,7 +2652,7 @@ void sm::renderer_init(window_t* window)
 		create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		create_info.pNext = nullptr;
 		create_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-		create_info.queueFamilyIndex = s_context.queue_indices.graphics_and_compute;
+		create_info.queueFamilyIndex = s_context.queue_indices.graphics;
 		SM_VULKAN_ASSERT(vkCreateCommandPool(s_context.device, &create_info, nullptr, &s_graphics_command_pool));
 	}
 
@@ -2860,7 +2892,7 @@ void sm::renderer_init(window_t* window)
 
 		HWND hwnd = get_handle<HWND>(s_window->handle);
 
-        VkFormat imgui_render_target_format = s_context.main_color_format;
+        VkFormat imgui_render_target_format = s_context.default_color_format;
         VkPipelineRenderingCreateInfoKHR pipeline_rendering_create_info{
             .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
             .pNext = nullptr,
@@ -2877,7 +2909,7 @@ void sm::renderer_init(window_t* window)
         init_info.Instance = s_context.instance;
         init_info.PhysicalDevice = s_context.phys_device;
         init_info.Device = s_context.device;
-        init_info.QueueFamily = s_context.queue_indices.graphics_and_compute;
+        init_info.QueueFamily = s_context.queue_indices.graphics;
         init_info.Queue = s_context.graphics_queue;
         init_info.PipelineCache = VK_NULL_HANDLE;
         init_info.DescriptorPool = s_imgui_descriptor_pool;
