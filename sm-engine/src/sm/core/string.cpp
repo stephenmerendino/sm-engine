@@ -17,9 +17,7 @@ void sm::string_set(string_t& string, const char* data)
 {
 	string.c_str.cur_size = 0;
     size_t len = strlen(data);
-	array_grow_capacity(string.c_str, len + 1);
-	array_push(string.c_str, data, len);
-	string.c_str.data[len] = '\0';
+	array_push(string.c_str, data, len + 1);
 }
 
 void sm::string_set(string_t& dst, const string_t& src)
@@ -30,8 +28,9 @@ void sm::string_set(string_t& dst, const string_t& src)
 void sm::string_append(string_t& string, const char* data)
 {
 	size_t additional_len = strlen(data);
+	array_grow_capacity(string.c_str, additional_len + 1);
 	array_push(string.c_str, data, additional_len);
-	string.c_str.data[string.c_str.cur_size] = '\0';
+	string.c_str.data[string.c_str.cur_size + 1] = '\0';
 }
 
 void sm::string_append(string_t& dst, const string_t& src)
@@ -46,9 +45,9 @@ string_t sm::string_init(sm::arena_t* arena, size_t size)
     return str;
 }
 
-size_t sm::string_calc_length(const string_t& str)
+size_t sm::string_length(const string_t& str)
 {
-	return strlen(str.c_str.data);
+	return str.c_str.cur_size;
 }
 
 wchar_t* sm::string_to_wchar(sm::arena_t* arena, const string_t& s)

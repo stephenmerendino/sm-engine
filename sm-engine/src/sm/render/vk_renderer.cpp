@@ -25,6 +25,13 @@
 
 using namespace sm;
 
+enum class render_pass_t : u64
+{
+    FORWARD,
+    DEBUG,
+    NUM_RENDER_PASSES
+};
+
 struct queue_indices_t
 {
 	static const i32 INVALID_QUEUE_INDEX = -1;
@@ -99,7 +106,9 @@ struct transform_t
 };
 
 const mesh_instance_id_t sm::INVALID_MESH_INSTANCE_ID = UINT32_MAX;
-static const u32 MAX_NUM_MESH_INSTANCES_PER_FRAME = 1024;
+const u32 INVALID_MESH_INSTANCE_INDEX = UINT32_MAX;
+static const u32 MAX_NUM_MESH_INSTANCES_PER_LEVEL = 1024;
+static const u32 MAX_NUM_MESH_INSTANCES_PER_FRAME = 4096;
 static const mesh_instance_id_t s_cur_mesh_instance_id = 0;
 
 struct material_t
@@ -107,25 +116,55 @@ struct material_t
 	VkDescriptorSet main_draw_descriptor_set = VK_NULL_HANDLE;
 	VkPipelineLayout main_draw_pipeline_layout = VK_NULL_HANDLE;
 	VkPipeline main_draw_pipeline = VK_NULL_HANDLE;
+
+	VkDescriptorSet descriptor_sets[(u32)render_pass_t::NUM_RENDER_PASSES];
+	VkPipelineLayout pipeline_layouts[(u32)render_pass_t::NUM_RENDER_PASSES];
+	VkPipeline pipelines[(u32)render_pass_t::NUM_RENDER_PASSES];
 };
 
-struct mesh_instance_t
+struct push_constants_t
 {
-    mesh_instance_id_t id = INVALID_MESH_INSTANCE_ID;
-    mesh_t* mesh = nullptr;
-    material_t* material = nullptr;
-    transform_t transform;
+    size_t size = 0;
+    void* data = nullptr;
+};
+
+enum class mesh_instance_flags_t : u32
+{
+    NONE     = 0x00000000,
+    IS_DEBUG = 0x00000001
+};
+
+struct mesh_instance_name_registry_t
+{
+    mesh_instance_id_t ids[MAX_NUM_MESH_INSTANCES_PER_FRAME];
+    string_t* names[MAX_NUM_MESH_INSTANCES_PER_FRAME];
+};
+
+struct mesh_instances_t
+{
+    mesh_instance_id_t ids[MAX_NUM_MESH_INSTANCES_PER_FRAME];
+    mesh_instance_flags_t flags[MAX_NUM_MESH_INSTANCES_PER_FRAME];
+    mesh_t* meshes[MAX_NUM_MESH_INSTANCES_PER_FRAME];
+    material_t* materials[MAX_NUM_MESH_INSTANCES_PER_FRAME];
+    push_constants_t push_constants[MAX_NUM_MESH_INSTANCES_PER_FRAME];
+    transform_t transforms[MAX_NUM_MESH_INSTANCES_PER_FRAME];
 };
 
 struct level_t 
 {
-    mesh_instance_id_t next_mesh_instance_id = 0;
-    array_t<string_t*> mesh_instance_names;
-    array_t<mesh_instance_t*> mesh_instances;
+    string_t* mesh_instance_names[MAX_NUM_MESH_INSTANCES_PER_FRAME];
+    mesh_instances_t mesh_instances;
+};
+
+struct debug_draws_t
+{
+    mesh_instances_t mesh_instances;
 };
 
 struct render_frame_t 
 {
+    arena_t* frame_arena;
+
 	// swapchain
 	u32	swapchain_image_index = UINT32_MAX;
 	VkSemaphore swapchain_image_is_ready_semaphore;
@@ -145,9 +184,10 @@ struct render_frame_t
     texture_t post_processing_color_texture;
 
 	// mesh instance descriptors
+    buffer_t mesh_instance_render_data_staging_buffer;
 	VkDescriptorPool mesh_instance_descriptor_pool;
     buffer_t mesh_instance_render_data_buffers[MAX_NUM_MESH_INSTANCES_PER_FRAME];
-    u32 num_allocated_mesh_instance_buffers;
+    mesh_instances_t mesh_instances;
 
     // gizmo
     VkDescriptorSet gizmo_descriptor_set;
@@ -245,8 +285,10 @@ static VkPipelineLayout s_infinite_grid_main_draw_pipeline_layout = VK_NULL_HAND
 static VkPipelineLayout s_post_process_pipeline_layout = VK_NULL_HANDLE;
 static VkPipeline s_post_process_compute_pipeline = VK_NULL_HANDLE;
 
-static arena_t* s_level_arena;
-static level_t* s_current_level;
+static arena_t* s_level_arena = nullptr;
+static level_t* s_current_level = nullptr;
+
+static mesh_instance_id_t s_next_mesh_instance_id = 0;
 
 static camera_t s_main_camera;
 static f32 s_elapsed_time_seconds = 0.0f;
@@ -254,8 +296,32 @@ static f32 s_delta_time_seconds = 0.0f;
 static u64 s_cur_frame_number = 0;
 static u8 s_cur_render_frame_index = 0;
 
+static mesh_instance_name_registry_t s_mesh_instance_registry;
+
 // ui
-static int s_selected_scene_item = -1;
+static mesh_instance_id_t s_selected_mesh_instance_id = INVALID_MESH_INSTANCE_ID;
+
+void mesh_instance_name_registry_init(mesh_instance_name_registry_t* registry)
+{
+    memset(registry->ids, INVALID_MESH_INSTANCE_ID, sizeof(mesh_instance_id_t) * MAX_NUM_MESH_INSTANCES_PER_FRAME);
+    memset(registry->names, 0, sizeof(string_t*) * MAX_NUM_MESH_INSTANCES_PER_FRAME);
+}
+
+void mesh_instances_init(mesh_instances_t* mesh_instances)
+{
+    memset(mesh_instances->ids, INVALID_MESH_INSTANCE_ID, sizeof(mesh_instance_id_t) * MAX_NUM_MESH_INSTANCES_PER_FRAME);
+    memset(mesh_instances->flags, (int)mesh_instance_flags_t::NONE, sizeof(mesh_instance_flags_t) * MAX_NUM_MESH_INSTANCES_PER_FRAME);
+    memset(mesh_instances->meshes, 0, sizeof(mesh_t*) * MAX_NUM_MESH_INSTANCES_PER_FRAME);
+    memset(mesh_instances->materials, 0, sizeof(material_t*) * MAX_NUM_MESH_INSTANCES_PER_FRAME);
+    memset(mesh_instances->push_constants, 0, sizeof(push_constants_t) * MAX_NUM_MESH_INSTANCES_PER_FRAME);
+    memset(mesh_instances->transforms, 0, sizeof(transform_t) * MAX_NUM_MESH_INSTANCES_PER_FRAME);
+}
+
+void level_init(level_t* level)
+{
+    memset(level->mesh_instance_names, 0, sizeof(string_t*) * MAX_NUM_MESH_INSTANCES_PER_FRAME);
+    mesh_instances_init(&level->mesh_instances);
+}
 
 static void begin_queue_debug_label(VkQueue queue, const char* label, const color_f32_t& color)
 {
@@ -1498,6 +1564,11 @@ static void render_frames_init()
     {
         render_frame_t& frame = s_render_frames[render_frame_index];
 
+        // frame arena for per-frame allocations
+        {
+            frame.frame_arena = arena_init(MiB(1));
+        }
+
 		// swapchain image is ready semaphore
         {
             VkSemaphoreCreateInfo create_info{};
@@ -1576,6 +1647,11 @@ static void render_frames_init()
 
         // mesh instance render data buffers
         {
+            buffer_init(frame.mesh_instance_render_data_staging_buffer,
+                        sizeof(mesh_instance_render_data_t) * MAX_NUM_MESH_INSTANCES_PER_FRAME,
+                        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
             for(u32 mesh_instance_index = 0; mesh_instance_index < MAX_NUM_MESH_INSTANCES_PER_FRAME; ++mesh_instance_index)
             {
                 buffer_init(frame.mesh_instance_render_data_buffers[mesh_instance_index], 
@@ -1584,6 +1660,8 @@ static void render_frames_init()
                             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
             }
         }
+
+        mesh_instances_init(&frame.mesh_instances);
 
 		// post processing descriptor set
         {
@@ -2589,38 +2667,111 @@ static void gizmo_init(arena_t* arena)
     mesh_init(s_gizmo.scale_tool_gpu_mesh, scale_mesh);
 }
 
-static mesh_instance_id_t level_add_mesh_instance(arena_t* arena, level_t* level, mesh_t* mesh, material_t* material, const char* debug_name, const transform_t& initial_transform)
+static u32 mesh_instance_id_provision()
 {
-    string_t* debug_string_name = arena_alloc_struct(arena, string_t);
-    *debug_string_name = string_init(arena, strlen(debug_name));
-    string_set(*debug_string_name, debug_name);
-    array_push(level->mesh_instance_names, debug_string_name);
+    return s_next_mesh_instance_id++;
+}
 
-    mesh_instance_t* mesh_instance = arena_alloc_struct(arena, mesh_instance_t);
-    mesh_instance->id = level->next_mesh_instance_id;
-    level->next_mesh_instance_id++;
+static u32 mesh_instances_get_index(mesh_instances_t* mesh_instances, mesh_instance_id_t id)
+{
+    for (int i = 0; i < MAX_NUM_MESH_INSTANCES_PER_FRAME; i++)
+    {
+        if (mesh_instances->ids[i] == id)
+        {
+            return i;
+        }
+    }
 
-    mesh_instance->mesh = mesh;
-    mesh_instance->material = material;
-    mesh_instance->transform = initial_transform;
-    array_push(level->mesh_instances, mesh_instance);
+    return INVALID_MESH_INSTANCE_INDEX;
+}
 
-    return mesh_instance->id;
+static mesh_instance_id_t mesh_instances_add(arena_t* arena, mesh_instances_t* mesh_instances, mesh_t* mesh, material_t* material, const transform_t& initial_transform)
+{
+    // loop through mesh instances ids until you find an empty slot
+    int slot = -1;
+    for(int i = 0; i < MAX_NUM_MESH_INSTANCES_PER_FRAME; i++)
+    {
+        if (mesh_instances->ids[i] == sm::INVALID_MESH_INSTANCE_ID)
+        {
+            slot = i;
+            break;
+        }
+    }
+
+    SM_ASSERT(slot != -1);
+
+    mesh_instances->ids[slot] = mesh_instance_id_provision();
+    mesh_instances->meshes[slot] = mesh;
+    mesh_instances->materials[slot] = material;
+    mesh_instances->transforms[slot] = initial_transform;
+
+    return mesh_instances->ids[slot];
+}
+
+static void mesh_instance_register_name(mesh_instance_id_t id, string_t* name)
+{
+    int empty_slot = -1;
+    for(int i = 0; i < MAX_NUM_MESH_INSTANCES_PER_FRAME; i++)
+    {
+        if(s_mesh_instance_registry.ids[i] == INVALID_MESH_INSTANCE_ID)
+        {
+            empty_slot = i;
+            break;
+        }
+    }
+
+    SM_ASSERT(empty_slot != -1);
+
+    s_mesh_instance_registry.ids[empty_slot] = id;
+    s_mesh_instance_registry.names[empty_slot] = name;
+}
+
+string_t* mesh_instances_look_up_name(mesh_instance_id_t id)
+{
+    for(int i = 0; i < MAX_NUM_MESH_INSTANCES_PER_FRAME; i++)
+    {
+        if(s_mesh_instance_registry.ids[i] == id)
+        {
+            return s_mesh_instance_registry.names[i];
+        }
+    }
+
+    return nullptr;
 }
 
 static void build_scene_window_ui()
 {
     ImGui::Text("Scene\n");
 
+    render_frame_t& render_frame = s_render_frames[s_cur_render_frame_index];
+
     int item_highlighted_idx = -1; // Here we store our highlighted data as an index.
     if (ImGui::BeginListBox("##scene list", ImVec2(-FLT_MIN, 25 * ImGui::GetTextLineHeightWithSpacing())))
     {
-        for (int i = 0; i < s_current_level->mesh_instance_names.cur_size; i++)
+        for (int i = 0; i < MAX_NUM_MESH_INSTANCES_PER_FRAME; i++)
         {
-            bool is_selected = (s_selected_scene_item == i);
+            mesh_instance_id_t cur_id = render_frame.mesh_instances.ids[i];
+            if (cur_id == INVALID_MESH_INSTANCE_ID)
+            {
+                continue;
+            }
+
+            bool is_selected = (s_selected_mesh_instance_id == cur_id);
             ImGuiSelectableFlags flags = (item_highlighted_idx == i) ? ImGuiSelectableFlags_Highlight : 0;
-            if (ImGui::Selectable(s_current_level->mesh_instance_names[i]->c_str.data, is_selected, flags))
-                s_selected_scene_item = i;
+
+            string_t* mesh_instance_name = mesh_instances_look_up_name(cur_id);
+            if(mesh_instance_name)
+            {
+                if (ImGui::Selectable(mesh_instance_name->c_str.data, is_selected, flags))
+                    s_selected_mesh_instance_id = render_frame.mesh_instances.ids[i];
+            }
+            else
+            {
+                char display_name[32];
+                sprintf_s(display_name, "mesh id %i", cur_id);
+                if (ImGui::Selectable(display_name, is_selected, flags))
+                    s_selected_mesh_instance_id = render_frame.mesh_instances.ids[i];
+            }
 
             // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
             if (is_selected)
@@ -3175,22 +3326,29 @@ void sm::renderer_init(window_t* window)
 
     s_level_arena = arena_init(MiB(50));
     s_current_level = arena_alloc_struct(s_level_arena, level_t);
-    s_current_level->mesh_instances = array_init<mesh_instance_t*>(s_level_arena, 1024);
-    s_current_level->mesh_instance_names = array_init<string_t*>(s_level_arena, 1024);
+    level_init(s_current_level);
+    mesh_instance_name_registry_init(&s_mesh_instance_registry);
 
     u32 grid_size = 5;
     f32 spacing = 2.0f;
-    for(int y = 0; y < grid_size; y++)
+    for(u32 y = 0; y < grid_size; y++)
     {
-        for(int x = 0; x < grid_size; x++)
+        for(u32 x = 0; x < grid_size; x++)
         {
             transform_t initial_transform;
             translate(initial_transform.model, vec3_t(x * spacing, y * spacing, 0.0f));
 
+            mesh_instance_id_t added_mesh_instance = mesh_instances_add(s_level_arena, &s_current_level->mesh_instances, &s_viking_room_mesh, &s_viking_room_material, initial_transform);
+
+            // set debug name
             char name_string[64];
             sprintf_s(name_string, 64, "viking room %i", y* grid_size + x);
 
-            level_add_mesh_instance(s_level_arena, s_current_level, &s_viking_room_mesh, &s_viking_room_material, name_string, initial_transform);
+            string_t* debug_string_name = arena_alloc_struct(s_level_arena, string_t);
+            *debug_string_name = string_init(s_level_arena, strlen(name_string));
+            string_set(*debug_string_name, name_string);
+
+            mesh_instance_register_name(added_mesh_instance, debug_string_name);
         }
     }
 
@@ -3208,7 +3366,7 @@ void sm::renderer_begin_frame()
     ui_begin_frame();
 }
 
-void sm::renderer_update_frame(f32 ds)
+void sm::renderer_update(f32 ds)
 {
 	s_elapsed_time_seconds += ds;
 	s_delta_time_seconds = ds;
@@ -3234,7 +3392,8 @@ static void setup_new_frame(render_frame_t& render_frame)
     SM_VULKAN_ASSERT(vkResetFences(s_context.device, ARRAY_LEN(frame_completed_fences), frame_completed_fences));
     SM_VULKAN_ASSERT(vkResetCommandBuffer(render_frame.frame_command_buffer, 0));
     SM_VULKAN_ASSERT(vkResetDescriptorPool(s_context.device, render_frame.mesh_instance_descriptor_pool, 0));
-    render_frame.num_allocated_mesh_instance_buffers = 0;
+
+    arena_reset(render_frame.frame_arena);
     
     VkResult swapchain_image_acquisition_result = vkAcquireNextImageKHR(s_context.device, 
                                                                         s_swapchain.handle, 
@@ -3288,93 +3447,181 @@ static void setup_new_frame(render_frame_t& render_frame)
     SM_VULKAN_ASSERT(vkBeginCommandBuffer(render_frame.frame_command_buffer, &command_buffer_begin_info));
 }
 
-static void render_mesh_instance(render_frame_t& render_frame, const char* mesh_instance_name, const mesh_instance_t& mesh_instance, size_t size_of_push_constants = 0, void* push_constants = nullptr)
+static void upload_mesh_instance_data(render_frame_t& render_frame)
 {
-	SCOPED_COMMAND_BUFFER_DEBUG_LABEL(render_frame.frame_command_buffer, mesh_instance_name, color_f32_t(0.0f, 0.0f, 1.0f, 1.0f));
-
-	mat44_t view = camera_get_view_transform(s_main_camera);
-	mat44_t projection = init_perspective_proj(45.0f, 0.01f, 100.0f, (f32)s_swapchain.extent.width / (f32)s_swapchain.extent.height);
-	mat44_t mvp = mesh_instance.transform.model * view * projection;
-
-	mesh_instance_render_data_t mesh_instance_render_data{};
-	mesh_instance_render_data.mvp = mvp;
-
-    buffer_t& mesh_instance_buffer = render_frame.mesh_instance_render_data_buffers[render_frame.num_allocated_mesh_instance_buffers];
-    render_frame.num_allocated_mesh_instance_buffers++;
-
-	upload_buffer_data(mesh_instance_buffer.buffer, &mesh_instance_render_data, sizeof(mesh_instance_render_data_t));
-
-	// allocate and update mesh instance descriptor set
-	VkDescriptorSetAllocateInfo mesh_instance_descriptor_set_alloc_info{
-		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-		.pNext = nullptr,
-		.descriptorPool = render_frame.mesh_instance_descriptor_pool,
-		.descriptorSetCount = 1,
-		.pSetLayouts = &s_mesh_instance_descriptor_set_layout
-    };
-
-	VkDescriptorSet mesh_instance_descriptor_set = VK_NULL_HANDLE;
-	SM_VULKAN_ASSERT(vkAllocateDescriptorSets(s_context.device, &mesh_instance_descriptor_set_alloc_info, &mesh_instance_descriptor_set));
-
-	VkDescriptorBufferInfo descriptor_buffer_info{
-		.buffer = mesh_instance_buffer.buffer,
-		.offset = 0,
-		.range = sizeof(mesh_instance_render_data_t)
-	};
-
-	VkWriteDescriptorSet write_mesh_instance_descriptor_set{
-		.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-		.pNext = nullptr,
-		.dstSet = mesh_instance_descriptor_set,
-		.dstBinding = 0,
-		.dstArrayElement = 0,
-		.descriptorCount = 1,
-		.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-		.pImageInfo = nullptr,
-		.pBufferInfo = &descriptor_buffer_info,
-		.pTexelBufferView = nullptr
-	};
-
-	VkWriteDescriptorSet descriptor_set_writes[] = {
-		write_mesh_instance_descriptor_set
-	};
-
-	vkUpdateDescriptorSets(s_context.device, ARRAY_LEN(descriptor_set_writes), descriptor_set_writes, 0, nullptr);
-
-	// bind everything needed to draw
-	VkBuffer vertex_buffers[] = {
-		mesh_instance.mesh->vertex_buffer.buffer
-	};
-	VkDeviceSize offset = 0;
-	VkDeviceSize offsets[] = {
-		offset
-	};
-	vkCmdBindVertexBuffers(render_frame.frame_command_buffer, 0, 1, vertex_buffers, offsets);
-
-	vkCmdBindIndexBuffer(render_frame.frame_command_buffer, mesh_instance.mesh->index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-	VkDescriptorSet descriptor_sets[] = {
-		s_global_descriptor_set,
-		render_frame.frame_descriptor_set,
-		mesh_instance.material->main_draw_descriptor_set,
-		mesh_instance_descriptor_set	
-	};
-	vkCmdBindDescriptorSets(render_frame.frame_command_buffer,
-							VK_PIPELINE_BIND_POINT_GRAPHICS,
-							mesh_instance.material->main_draw_pipeline_layout, 
-							0, 
-							ARRAY_LEN(descriptor_sets), descriptor_sets, 
-							0, nullptr);
-
-	vkCmdBindPipeline(render_frame.frame_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mesh_instance.material->main_draw_pipeline);
-
-    if (push_constants)
+    size_t num_mesh_instances = 0;
+    for(int i = 0; i < MAX_NUM_MESH_INSTANCES_PER_FRAME; i++)
     {
-		vkCmdPushConstants(render_frame.frame_command_buffer, mesh_instance.material->main_draw_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, (u32)size_of_push_constants, push_constants);
+        if(i == INVALID_MESH_INSTANCE_ID)
+        {
+            break; 
+        }
+
+        num_mesh_instances++;
     }
 
-	// draw mesh
-	vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)mesh_instance.mesh->num_indices, 1, 0, 0, 0);
+    size_t upload_size = sizeof(mesh_instance_render_data_t) * num_mesh_instances;
+
+    // setup cpu side data
+    mat44_t view = camera_get_view_transform(s_main_camera);
+    mat44_t projection = init_perspective_proj(45.0f, 0.01f, 100.0f, (f32)s_swapchain.extent.width / (f32)s_swapchain.extent.height);
+
+    array_t<mesh_instance_render_data_t> mesh_instance_render_data_to_upload = array_init_sized<mesh_instance_render_data_t>(render_frame.frame_arena, num_mesh_instances);
+    for (int i = 0; i < num_mesh_instances; i++)
+    {
+        mat44_t mvp = render_frame.mesh_instances.transforms[i].model * view * projection;
+        mesh_instance_render_data_t mesh_instance_render_data{
+            .mvp = mvp
+        };
+
+        mesh_instance_render_data_to_upload[i] = mesh_instance_render_data;
+    }
+
+    // transfer from cpu to staging buffer
+    void* data = nullptr;
+    vkMapMemory(s_context.device,
+                render_frame.mesh_instance_render_data_staging_buffer.memory,
+                0,
+                upload_size,
+                0,
+                &data);
+
+    memcpy(data, mesh_instance_render_data_to_upload.data, upload_size);
+
+    vkUnmapMemory(s_context.device, render_frame.mesh_instance_render_data_staging_buffer.memory);
+
+    // transfer from staging buffer to fast gpu buffer for each mesh instance
+    for (int i = 0; i < num_mesh_instances; i++)
+    {
+        VkBufferCopy buffer_copy{
+            .srcOffset = sizeof(mesh_instance_render_data_t) * i,
+            .dstOffset = 0,
+            .size = sizeof(mesh_instance_render_data_t)
+        };
+
+        vkCmdCopyBuffer(render_frame.frame_command_buffer,
+                        render_frame.mesh_instance_render_data_staging_buffer.buffer,
+                        render_frame.mesh_instance_render_data_buffers[i].buffer,
+                        1,
+                        &buffer_copy);
+    }
+
+    VkBufferMemoryBarrier memory_barrier{
+        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+        .pNext = nullptr,
+        .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+        .dstAccessMask = VK_ACCESS_UNIFORM_READ_BIT,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .buffer = render_frame.mesh_instance_render_data_staging_buffer.buffer,
+        .offset = 0,
+        .size = upload_size
+    };
+
+    vkCmdPipelineBarrier(render_frame.frame_command_buffer,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
+        0,
+        0, nullptr,
+        1, &memory_barrier,
+        0, nullptr);
+}
+
+static void render_mesh_instances(render_frame_t& render_frame)
+{
+    for(int i = 0; i < MAX_NUM_MESH_INSTANCES_PER_FRAME; i++)
+    {
+        if(render_frame.mesh_instances.ids[i] == INVALID_MESH_INSTANCE_ID)
+        {
+            continue;
+        }
+
+        mesh_instance_id_t id = render_frame.mesh_instances.ids[i];
+        mesh_t* mesh = render_frame.mesh_instances.meshes[i];
+        material_t* material = render_frame.mesh_instances.materials[i];
+        push_constants_t push_constants = render_frame.mesh_instances.push_constants[i];
+        transform_t transform = render_frame.mesh_instances.transforms[i];
+
+        string_t* debug_name = mesh_instances_look_up_name(id);
+        if(debug_name)
+        {
+            SCOPED_COMMAND_BUFFER_DEBUG_LABEL(render_frame.frame_command_buffer, debug_name->c_str.data, color_f32_t(0.0f, 0.0f, 1.0f, 1.0f));
+        }
+
+        buffer_t& mesh_instance_buffer = render_frame.mesh_instance_render_data_buffers[i];
+
+        // allocate and update mesh instance descriptor set
+        VkDescriptorSetAllocateInfo mesh_instance_descriptor_set_alloc_info{
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .pNext = nullptr,
+            .descriptorPool = render_frame.mesh_instance_descriptor_pool,
+            .descriptorSetCount = 1,
+            .pSetLayouts = &s_mesh_instance_descriptor_set_layout
+        };
+
+        VkDescriptorSet mesh_instance_descriptor_set = VK_NULL_HANDLE;
+        SM_VULKAN_ASSERT(vkAllocateDescriptorSets(s_context.device, &mesh_instance_descriptor_set_alloc_info, &mesh_instance_descriptor_set));
+
+        VkDescriptorBufferInfo descriptor_buffer_info{
+            .buffer = mesh_instance_buffer.buffer,
+            .offset = 0,
+            .range = sizeof(mesh_instance_render_data_t)
+        };
+
+        VkWriteDescriptorSet write_mesh_instance_descriptor_set{
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .pNext = nullptr,
+            .dstSet = mesh_instance_descriptor_set,
+            .dstBinding = 0,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .pImageInfo = nullptr,
+            .pBufferInfo = &descriptor_buffer_info,
+            .pTexelBufferView = nullptr
+        };
+
+        VkWriteDescriptorSet descriptor_set_writes[] = {
+            write_mesh_instance_descriptor_set
+        };
+
+        vkUpdateDescriptorSets(s_context.device, ARRAY_LEN(descriptor_set_writes), descriptor_set_writes, 0, nullptr);
+
+        // bind everything needed to draw
+        VkBuffer vertex_buffers[] = {
+            mesh->vertex_buffer.buffer
+        };
+        VkDeviceSize offset = 0;
+        VkDeviceSize offsets[] = {
+            offset
+        };
+        vkCmdBindVertexBuffers(render_frame.frame_command_buffer, 0, 1, vertex_buffers, offsets);
+
+        vkCmdBindIndexBuffer(render_frame.frame_command_buffer, mesh->index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+        VkDescriptorSet descriptor_sets[] = {
+            s_global_descriptor_set,
+            render_frame.frame_descriptor_set,
+            material->main_draw_descriptor_set,
+            mesh_instance_descriptor_set	
+        };
+        vkCmdBindDescriptorSets(render_frame.frame_command_buffer,
+                                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                material->main_draw_pipeline_layout, 
+                                0, 
+                                ARRAY_LEN(descriptor_sets), descriptor_sets, 
+                                0, nullptr);
+
+        vkCmdBindPipeline(render_frame.frame_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->main_draw_pipeline);
+
+        if (push_constants.size > 0)
+        {
+            vkCmdPushConstants(render_frame.frame_command_buffer, material->main_draw_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, (u32)push_constants.size, push_constants.data);
+        }
+
+        // draw mesh
+        vkCmdDrawIndexed(render_frame.frame_command_buffer, (u32)mesh->num_indices, 1, 0, 0, 0);
+    }
 }
 
 static void main_draw_pass(render_frame_t& render_frame)
@@ -3508,11 +3755,7 @@ static void main_draw_pass(render_frame_t& render_frame)
     }
 
     // main draw
-	for (int i = 0; i < s_current_level->mesh_instances.cur_size; i++)
-	{
-		const string_t* debug_name = s_current_level->mesh_instance_names[i];
-		render_mesh_instance(render_frame, debug_name->c_str.data, *s_current_level->mesh_instances[i]);
-	}
+    render_mesh_instances(render_frame);
 
     vkCmdEndRendering(render_frame.frame_command_buffer);
 }
@@ -3684,7 +3927,7 @@ static void post_processing_pass(render_frame_t& render_frame)
 
 static void gizmo_pass(render_frame_t& render_frame)
 {
-    if (s_selected_scene_item == -1)
+    if (s_selected_mesh_instance_id == INVALID_MESH_INSTANCE_ID)
     {
         return;
     }
@@ -3741,28 +3984,28 @@ static void gizmo_pass(render_frame_t& render_frame)
         vkCmdBeginRendering(render_frame.frame_command_buffer, &rendering_info);
     }
 
-    mesh_instance_t gizmo_mesh_instance;
-    gizmo_mesh_instance.material = &s_gizmo_material;
-    gizmo_mesh_instance.mesh = &s_gizmo.rotate_tool_gpu_mesh;
+    //mesh_instance_t gizmo_mesh_instance;
+    //gizmo_mesh_instance.material = &s_gizmo_material;
+    //gizmo_mesh_instance.mesh = &s_gizmo.rotate_tool_gpu_mesh;
 
-    transform_t transform = s_current_level->mesh_instances[s_selected_scene_item]->transform;
-    gizmo_push_constants_t gizmo_push_constants;
+    //transform_t transform = s_current_level->mesh_instances[s_selected_scene_item]->transform;
+    //gizmo_push_constants_t gizmo_push_constants;
 
-    set_translation(gizmo_mesh_instance.transform.model, transform.model.tx, transform.model.ty, transform.model.tz);
-    gizmo_push_constants.color = to_vec3(color_f32_t::RED);
-    render_mesh_instance(render_frame, "gizmo rotate x", gizmo_mesh_instance, sizeof(gizmo_push_constants_t), &gizmo_push_constants);
+    //set_translation(gizmo_mesh_instance.transform.model, transform.model.tx, transform.model.ty, transform.model.tz);
+    //gizmo_push_constants.color = to_vec3(color_f32_t::RED);
+    //render_mesh_instance(render_frame, "gizmo rotate x", gizmo_mesh_instance, sizeof(gizmo_push_constants_t), &gizmo_push_constants);
 
-    gizmo_mesh_instance.transform.model = mat44_t::IDENTITY;
-    rotate_z_degs(gizmo_mesh_instance.transform.model, 90.0f);
-    set_translation(gizmo_mesh_instance.transform.model, transform.model.tx, transform.model.ty, transform.model.tz);
-    gizmo_push_constants.color = to_vec3(color_f32_t::BLUE);
-    render_mesh_instance(render_frame, "gizmo rotate y", gizmo_mesh_instance, sizeof(gizmo_push_constants_t), &gizmo_push_constants);
+    //gizmo_mesh_instance.transform.model = mat44_t::IDENTITY;
+    //rotate_z_degs(gizmo_mesh_instance.transform.model, 90.0f);
+    //set_translation(gizmo_mesh_instance.transform.model, transform.model.tx, transform.model.ty, transform.model.tz);
+    //gizmo_push_constants.color = to_vec3(color_f32_t::BLUE);
+    //render_mesh_instance(render_frame, "gizmo rotate y", gizmo_mesh_instance, sizeof(gizmo_push_constants_t), &gizmo_push_constants);
 
-    gizmo_mesh_instance.transform.model = mat44_t::IDENTITY;
-    rotate_y_degs(gizmo_mesh_instance.transform.model, 90.0f);
-    set_translation(gizmo_mesh_instance.transform.model, transform.model.tx, transform.model.ty, transform.model.tz);
-    gizmo_push_constants.color = to_vec3(color_f32_t::GREEN);
-    render_mesh_instance(render_frame, "gizmo rotate z", gizmo_mesh_instance, sizeof(gizmo_push_constants_t), &gizmo_push_constants);
+    //gizmo_mesh_instance.transform.model = mat44_t::IDENTITY;
+    //rotate_y_degs(gizmo_mesh_instance.transform.model, 90.0f);
+    //set_translation(gizmo_mesh_instance.transform.model, transform.model.tx, transform.model.ty, transform.model.tz);
+    //gizmo_push_constants.color = to_vec3(color_f32_t::GREEN);
+    //render_mesh_instance(render_frame, "gizmo rotate z", gizmo_mesh_instance, sizeof(gizmo_push_constants_t), &gizmo_push_constants);
 
     // end gizmo render pass
     vkCmdEndRendering(render_frame.frame_command_buffer);
@@ -4011,7 +4254,43 @@ static void present_frame(render_frame_t& render_frame)
     }
 }
 
-void sm::renderer_render_frame()
+static void mesh_instances_add_copy(mesh_instances_t* dst, mesh_instances_t* src)
+{
+    int start_dst_search_index = 0;
+
+    for(int i = 0; i < MAX_NUM_MESH_INSTANCES_PER_FRAME; i++)
+    {
+        if(src->ids[i] == INVALID_MESH_INSTANCE_ID)
+        {
+            continue;
+        }
+
+        for(int j = start_dst_search_index; j < MAX_NUM_MESH_INSTANCES_PER_FRAME; j++)
+        {
+            if(dst->ids[j] != INVALID_MESH_INSTANCE_ID)
+            {
+                continue;
+            }
+
+            dst->ids[j] = src->ids[i];
+            dst->flags[j] = src->flags[i];
+            dst->meshes[j] = src->meshes[i];
+            dst->materials[j] = src->materials[i];
+            dst->push_constants[j] = src->push_constants[i];
+            dst->transforms[j] = src->transforms[i];
+            start_dst_search_index = j + 1;
+            break;
+        }
+    }
+}
+
+static void collect_mesh_instances(render_frame_t& render_frame)
+{
+    mesh_instances_init(&render_frame.mesh_instances);
+    mesh_instances_add_copy(&render_frame.mesh_instances, &s_current_level->mesh_instances);
+}
+
+void sm::renderer_render()
 {
     if(s_close_window || window_is_minimized(s_window))
     {
@@ -4024,7 +4303,9 @@ void sm::renderer_render_frame()
 
     SCOPED_QUEUE_DEBUG_LABEL(s_context.graphics_queue, "Graphics Queue", color_f32_t(1.0f, 0.0f, 0.0f, 1.0f));
 
+    collect_mesh_instances(render_frame);
     setup_new_frame(render_frame);
+    upload_mesh_instance_data(render_frame);
     main_draw_pass(render_frame);
     post_processing_pass(render_frame);
     gizmo_pass(render_frame);
