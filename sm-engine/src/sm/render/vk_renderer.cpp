@@ -27,8 +27,8 @@ using namespace sm;
 
 enum class render_pass_t : u64
 {
-    FORWARD,
-    DEBUG,
+    FORWARD_PASS,
+    DEBUG_PASS,
     NUM_RENDER_PASSES
 };
 
@@ -143,11 +143,11 @@ struct mesh_instance_name_registry_t
 struct mesh_instances_t
 {
     mesh_instance_id_t ids[MAX_NUM_MESH_INSTANCES_PER_FRAME];
-    mesh_instance_flags_t flags[MAX_NUM_MESH_INSTANCES_PER_FRAME];
     mesh_t* meshes[MAX_NUM_MESH_INSTANCES_PER_FRAME];
     material_t* materials[MAX_NUM_MESH_INSTANCES_PER_FRAME];
     push_constants_t push_constants[MAX_NUM_MESH_INSTANCES_PER_FRAME];
     transform_t transforms[MAX_NUM_MESH_INSTANCES_PER_FRAME];
+    u32 flags[MAX_NUM_MESH_INSTANCES_PER_FRAME];
 };
 
 struct level_t 
@@ -2685,7 +2685,7 @@ static u32 mesh_instances_get_index(mesh_instances_t* mesh_instances, mesh_insta
     return INVALID_MESH_INSTANCE_INDEX;
 }
 
-static mesh_instance_id_t mesh_instances_add(arena_t* arena, mesh_instances_t* mesh_instances, mesh_t* mesh, material_t* material, const transform_t& initial_transform)
+static mesh_instance_id_t mesh_instances_add(arena_t* arena, mesh_instances_t* mesh_instances, mesh_t* mesh, material_t* material, const transform_t& initial_transform, u32 flags)
 {
     // loop through mesh instances ids until you find an empty slot
     int slot = -1;
@@ -2704,6 +2704,7 @@ static mesh_instance_id_t mesh_instances_add(arena_t* arena, mesh_instances_t* m
     mesh_instances->meshes[slot] = mesh;
     mesh_instances->materials[slot] = material;
     mesh_instances->transforms[slot] = initial_transform;
+    mesh_instances->flags[slot] = flags;
 
     return mesh_instances->ids[slot];
 }
@@ -2726,6 +2727,19 @@ static void mesh_instance_register_name(mesh_instance_id_t id, string_t* name)
     s_mesh_instance_registry.names[empty_slot] = name;
 }
 
+static void mesh_instance_register_name(mesh_instance_id_t id)
+{
+    for(int i = 0; i < MAX_NUM_MESH_INSTANCES_PER_FRAME; i++)
+    {
+        if(s_mesh_instance_registry.ids[i] == id)
+        {
+            s_mesh_instance_registry.ids[i] = INVALID_MESH_INSTANCE_ID;
+            s_mesh_instance_registry.names[i] = nullptr;
+            break;
+        }
+    }
+}
+
 string_t* mesh_instances_look_up_name(mesh_instance_id_t id)
 {
     for(int i = 0; i < MAX_NUM_MESH_INSTANCES_PER_FRAME; i++)
@@ -2739,7 +2753,7 @@ string_t* mesh_instances_look_up_name(mesh_instance_id_t id)
     return nullptr;
 }
 
-static void build_scene_window_ui()
+static void ui_build_scene_window()
 {
     ImGui::Text("Scene\n");
 
@@ -2752,6 +2766,11 @@ static void build_scene_window_ui()
         {
             mesh_instance_id_t cur_id = render_frame.mesh_instances.ids[i];
             if (cur_id == INVALID_MESH_INSTANCE_ID)
+            {
+                continue;
+            }
+
+            if (((u32)render_frame.mesh_instances.flags[i] & (u32)mesh_instance_flags_t::IS_DEBUG) != 0)
             {
                 continue;
             }
@@ -3322,14 +3341,14 @@ void sm::renderer_init(window_t* window)
         pipelines_init();
 	}
 
-    ui_set_build_scene_window_callback(build_scene_window_ui);
+    ui_set_build_scene_window_callback(ui_build_scene_window);
 
     s_level_arena = arena_init(MiB(50));
     s_current_level = arena_alloc_struct(s_level_arena, level_t);
     level_init(s_current_level);
     mesh_instance_name_registry_init(&s_mesh_instance_registry);
 
-    u32 grid_size = 5;
+    u32 grid_size = 2;
     f32 spacing = 2.0f;
     for(u32 y = 0; y < grid_size; y++)
     {
@@ -3338,7 +3357,7 @@ void sm::renderer_init(window_t* window)
             transform_t initial_transform;
             translate(initial_transform.model, vec3_t(x * spacing, y * spacing, 0.0f));
 
-            mesh_instance_id_t added_mesh_instance = mesh_instances_add(s_level_arena, &s_current_level->mesh_instances, &s_viking_room_mesh, &s_viking_room_material, initial_transform);
+            mesh_instance_id_t added_mesh_instance = mesh_instances_add(s_level_arena, &s_current_level->mesh_instances, &s_viking_room_mesh, &s_viking_room_material, initial_transform, (u32)mesh_instance_flags_t::NONE);
 
             // set debug name
             char name_string[64];
@@ -3452,13 +3471,15 @@ static void upload_mesh_instance_data(render_frame_t& render_frame)
     size_t num_mesh_instances = 0;
     for(int i = 0; i < MAX_NUM_MESH_INSTANCES_PER_FRAME; i++)
     {
-        if(i == INVALID_MESH_INSTANCE_ID)
+        if(render_frame.mesh_instances.ids[i] == INVALID_MESH_INSTANCE_ID)
         {
             break; 
         }
 
         num_mesh_instances++;
     }
+
+    if (num_mesh_instances == 0) return;
 
     size_t upload_size = sizeof(mesh_instance_render_data_t) * num_mesh_instances;
 
@@ -3527,11 +3548,23 @@ static void upload_mesh_instance_data(render_frame_t& render_frame)
         0, nullptr);
 }
 
-static void render_mesh_instances(render_frame_t& render_frame)
+static void render_mesh_instances(render_frame_t& render_frame, bool is_debug = false)
 {
     for(int i = 0; i < MAX_NUM_MESH_INSTANCES_PER_FRAME; i++)
     {
         if(render_frame.mesh_instances.ids[i] == INVALID_MESH_INSTANCE_ID)
+        {
+            continue;
+        }
+
+        // skip debug mesh instances if we are drawing non-debug meshes
+        if (!is_debug && ((u32)render_frame.mesh_instances.flags[i] & (u32)mesh_instance_flags_t::IS_DEBUG) != 0)
+        {
+            continue;
+        }
+
+        // skip normal mesh instances if we are rendering debug
+        if (is_debug && ((u32)render_frame.mesh_instances.flags[i] & (u32)mesh_instance_flags_t::IS_DEBUG) == 0)
         {
             continue;
         }
@@ -3925,14 +3958,14 @@ static void post_processing_pass(render_frame_t& render_frame)
     }
 }
 
-static void gizmo_pass(render_frame_t& render_frame)
+static void debug_pass(render_frame_t& render_frame)
 {
     if (s_selected_mesh_instance_id == INVALID_MESH_INSTANCE_ID)
     {
         return;
     }
 
-    SCOPED_COMMAND_BUFFER_DEBUG_LABEL(render_frame.frame_command_buffer, "Gizmo Pass", color_gen_random());
+    SCOPED_COMMAND_BUFFER_DEBUG_LABEL(render_frame.frame_command_buffer, "Debug Pass", color_gen_random());
 
     {
         VkRenderingAttachmentInfo color_attachment_info{
@@ -3984,28 +4017,7 @@ static void gizmo_pass(render_frame_t& render_frame)
         vkCmdBeginRendering(render_frame.frame_command_buffer, &rendering_info);
     }
 
-    //mesh_instance_t gizmo_mesh_instance;
-    //gizmo_mesh_instance.material = &s_gizmo_material;
-    //gizmo_mesh_instance.mesh = &s_gizmo.rotate_tool_gpu_mesh;
-
-    //transform_t transform = s_current_level->mesh_instances[s_selected_scene_item]->transform;
-    //gizmo_push_constants_t gizmo_push_constants;
-
-    //set_translation(gizmo_mesh_instance.transform.model, transform.model.tx, transform.model.ty, transform.model.tz);
-    //gizmo_push_constants.color = to_vec3(color_f32_t::RED);
-    //render_mesh_instance(render_frame, "gizmo rotate x", gizmo_mesh_instance, sizeof(gizmo_push_constants_t), &gizmo_push_constants);
-
-    //gizmo_mesh_instance.transform.model = mat44_t::IDENTITY;
-    //rotate_z_degs(gizmo_mesh_instance.transform.model, 90.0f);
-    //set_translation(gizmo_mesh_instance.transform.model, transform.model.tx, transform.model.ty, transform.model.tz);
-    //gizmo_push_constants.color = to_vec3(color_f32_t::BLUE);
-    //render_mesh_instance(render_frame, "gizmo rotate y", gizmo_mesh_instance, sizeof(gizmo_push_constants_t), &gizmo_push_constants);
-
-    //gizmo_mesh_instance.transform.model = mat44_t::IDENTITY;
-    //rotate_y_degs(gizmo_mesh_instance.transform.model, 90.0f);
-    //set_translation(gizmo_mesh_instance.transform.model, transform.model.tx, transform.model.ty, transform.model.tz);
-    //gizmo_push_constants.color = to_vec3(color_f32_t::GREEN);
-    //render_mesh_instance(render_frame, "gizmo rotate z", gizmo_mesh_instance, sizeof(gizmo_push_constants_t), &gizmo_push_constants);
+    render_mesh_instances(render_frame, true);
 
     // end gizmo render pass
     vkCmdEndRendering(render_frame.frame_command_buffer);
@@ -4284,10 +4296,56 @@ static void mesh_instances_add_copy(mesh_instances_t* dst, mesh_instances_t* src
     }
 }
 
+static void gizmo_collect_mesh_instances(render_frame_t& render_frame)
+{
+    if (s_selected_mesh_instance_id == INVALID_MESH_INSTANCE_ID)
+    {
+        return;
+    }
+
+    mesh_instances_t mesh_instances;
+    mesh_instances_init(&mesh_instances);
+
+
+    //mesh_instance_t gizmo_mesh_instance;
+    //gizmo_mesh_instance.material = &s_gizmo_material;
+    //gizmo_mesh_instance.mesh = &s_gizmo.rotate_tool_gpu_mesh;
+
+
+    transform_t selected_mesh_instance_transform = s_current_level->mesh_instances.transforms[s_selected_mesh_instance_id];
+
+    transform_t gizmo_transform;
+    set_translation(gizmo_transform.model, selected_mesh_instance_transform.model.tx, selected_mesh_instance_transform.model.ty, selected_mesh_instance_transform.model.tz);
+
+    gizmo_push_constants_t gizmo_push_constants;
+    gizmo_push_constants.color = to_vec3(color_f32_t::RED);
+
+    mesh_instances_add(render_frame.frame_arena, &mesh_instances, &s_gizmo.rotate_tool_gpu_mesh, &s_gizmo_material, gizmo_transform, (u32)mesh_instance_flags_t::IS_DEBUG);
+    mesh_instances_add_copy(&render_frame.mesh_instances, &mesh_instances);
+
+    //gizmo_mesh_instance.transform.model = mat44_t::IDENTITY;
+    //rotate_z_degs(gizmo_mesh_instance.transform.model, 90.0f);
+    //set_translation(gizmo_mesh_instance.transform.model, transform.model.tx, transform.model.ty, transform.model.tz);
+    //gizmo_push_constants.color = to_vec3(color_f32_t::BLUE);
+    //render_mesh_instance(render_frame, "gizmo rotate y", gizmo_mesh_instance, sizeof(gizmo_push_constants_t), &gizmo_push_constants);
+
+    //gizmo_mesh_instance.transform.model = mat44_t::IDENTITY;
+    //rotate_y_degs(gizmo_mesh_instance.transform.model, 90.0f);
+    //set_translation(gizmo_mesh_instance.transform.model, transform.model.tx, transform.model.ty, transform.model.tz);
+    //gizmo_push_constants.color = to_vec3(color_f32_t::GREEN);
+    //render_mesh_instance(render_frame, "gizmo rotate z", gizmo_mesh_instance, sizeof(gizmo_push_constants_t), &gizmo_push_constants);
+}
+
+static void debug_draw_system_collect_mesh_instances(render_frame_t& render_frame)
+{
+    gizmo_collect_mesh_instances(render_frame);
+}
+
 static void collect_mesh_instances(render_frame_t& render_frame)
 {
     mesh_instances_init(&render_frame.mesh_instances);
     mesh_instances_add_copy(&render_frame.mesh_instances, &s_current_level->mesh_instances);
+    debug_draw_system_collect_mesh_instances(render_frame);
 }
 
 void sm::renderer_render()
@@ -4308,7 +4366,7 @@ void sm::renderer_render()
     upload_mesh_instance_data(render_frame);
     main_draw_pass(render_frame);
     post_processing_pass(render_frame);
-    gizmo_pass(render_frame);
+    debug_pass(render_frame);
     imgui_pass(render_frame);
     present_frame(render_frame);
 }
