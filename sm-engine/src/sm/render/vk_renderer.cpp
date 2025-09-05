@@ -2685,7 +2685,7 @@ static u32 mesh_instances_get_index(mesh_instances_t* mesh_instances, mesh_insta
     return INVALID_MESH_INSTANCE_INDEX;
 }
 
-static mesh_instance_id_t mesh_instances_add(arena_t* arena, mesh_instances_t* mesh_instances, mesh_t* mesh, material_t* material, const transform_t& initial_transform, u32 flags)
+static mesh_instance_id_t mesh_instances_add(arena_t* arena, mesh_instances_t* mesh_instances, mesh_t* mesh, material_t* material, const push_constants_t& push_constants, const transform_t& initial_transform, u32 flags)
 {
     // loop through mesh instances ids until you find an empty slot
     int slot = -1;
@@ -2703,6 +2703,7 @@ static mesh_instance_id_t mesh_instances_add(arena_t* arena, mesh_instances_t* m
     mesh_instances->ids[slot] = mesh_instance_id_provision();
     mesh_instances->meshes[slot] = mesh;
     mesh_instances->materials[slot] = material;
+    mesh_instances->push_constants[slot] = push_constants;
     mesh_instances->transforms[slot] = initial_transform;
     mesh_instances->flags[slot] = flags;
 
@@ -3357,7 +3358,8 @@ void sm::renderer_init(window_t* window)
             transform_t initial_transform;
             translate(initial_transform.model, vec3_t(x * spacing, y * spacing, 0.0f));
 
-            mesh_instance_id_t added_mesh_instance = mesh_instances_add(s_level_arena, &s_current_level->mesh_instances, &s_viking_room_mesh, &s_viking_room_material, initial_transform, (u32)mesh_instance_flags_t::NONE);
+            push_constants_t push_constants;
+            mesh_instance_id_t added_mesh_instance = mesh_instances_add(s_level_arena, &s_current_level->mesh_instances, &s_viking_room_mesh, &s_viking_room_material, push_constants, initial_transform, (u32)mesh_instance_flags_t::NONE);
 
             // set debug name
             char name_string[64];
@@ -4306,34 +4308,53 @@ static void gizmo_collect_mesh_instances(render_frame_t& render_frame)
     mesh_instances_t mesh_instances;
     mesh_instances_init(&mesh_instances);
 
-
-    //mesh_instance_t gizmo_mesh_instance;
-    //gizmo_mesh_instance.material = &s_gizmo_material;
-    //gizmo_mesh_instance.mesh = &s_gizmo.rotate_tool_gpu_mesh;
-
-
     transform_t selected_mesh_instance_transform = s_current_level->mesh_instances.transforms[s_selected_mesh_instance_id];
 
-    transform_t gizmo_transform;
-    set_translation(gizmo_transform.model, selected_mesh_instance_transform.model.tx, selected_mesh_instance_transform.model.ty, selected_mesh_instance_transform.model.tz);
+    {
+		transform_t gizmo_transform;
+		set_translation(gizmo_transform.model, selected_mesh_instance_transform.model.tx, selected_mesh_instance_transform.model.ty, selected_mesh_instance_transform.model.tz);
 
-    gizmo_push_constants_t gizmo_push_constants;
-    gizmo_push_constants.color = to_vec3(color_f32_t::RED);
+		gizmo_push_constants_t* gizmo_push_constants = arena_alloc_struct(render_frame.frame_arena, gizmo_push_constants_t);
+		gizmo_push_constants->color = to_vec3(color_f32_t::RED);
 
-    mesh_instances_add(render_frame.frame_arena, &mesh_instances, &s_gizmo.rotate_tool_gpu_mesh, &s_gizmo_material, gizmo_transform, (u32)mesh_instance_flags_t::IS_DEBUG);
+		push_constants_t push_constants;
+		push_constants.data = gizmo_push_constants;
+		push_constants.size = sizeof(gizmo_push_constants_t);
+
+		mesh_instances_add(render_frame.frame_arena, &mesh_instances, &s_gizmo.rotate_tool_gpu_mesh, &s_gizmo_material, push_constants, gizmo_transform, (u32)mesh_instance_flags_t::IS_DEBUG);
+    }
+
+    {
+		transform_t gizmo_transform;
+		rotate_z_degs(gizmo_transform.model, 90.0f);
+		set_translation(gizmo_transform.model, selected_mesh_instance_transform.model.tx, selected_mesh_instance_transform.model.ty, selected_mesh_instance_transform.model.tz);
+
+		gizmo_push_constants_t* gizmo_push_constants = arena_alloc_struct(render_frame.frame_arena, gizmo_push_constants_t);
+		gizmo_push_constants->color = to_vec3(color_f32_t::GREEN);
+
+		push_constants_t push_constants;
+		push_constants.data = gizmo_push_constants;
+		push_constants.size = sizeof(gizmo_push_constants_t);
+
+		mesh_instances_add(render_frame.frame_arena, &mesh_instances, &s_gizmo.rotate_tool_gpu_mesh, &s_gizmo_material, push_constants, gizmo_transform, (u32)mesh_instance_flags_t::IS_DEBUG);
+    }
+
+    {
+		transform_t gizmo_transform;
+		rotate_y_degs(gizmo_transform.model, 90.0f);
+		set_translation(gizmo_transform.model, selected_mesh_instance_transform.model.tx, selected_mesh_instance_transform.model.ty, selected_mesh_instance_transform.model.tz);
+
+		gizmo_push_constants_t* gizmo_push_constants = arena_alloc_struct(render_frame.frame_arena, gizmo_push_constants_t);
+		gizmo_push_constants->color = to_vec3(color_f32_t::BLUE);
+
+		push_constants_t push_constants;
+		push_constants.data = gizmo_push_constants;
+		push_constants.size = sizeof(gizmo_push_constants_t);
+
+		mesh_instances_add(render_frame.frame_arena, &mesh_instances, &s_gizmo.rotate_tool_gpu_mesh, &s_gizmo_material, push_constants, gizmo_transform, (u32)mesh_instance_flags_t::IS_DEBUG);
+    }
+
     mesh_instances_add_copy(&render_frame.mesh_instances, &mesh_instances);
-
-    //gizmo_mesh_instance.transform.model = mat44_t::IDENTITY;
-    //rotate_z_degs(gizmo_mesh_instance.transform.model, 90.0f);
-    //set_translation(gizmo_mesh_instance.transform.model, transform.model.tx, transform.model.ty, transform.model.tz);
-    //gizmo_push_constants.color = to_vec3(color_f32_t::BLUE);
-    //render_mesh_instance(render_frame, "gizmo rotate y", gizmo_mesh_instance, sizeof(gizmo_push_constants_t), &gizmo_push_constants);
-
-    //gizmo_mesh_instance.transform.model = mat44_t::IDENTITY;
-    //rotate_y_degs(gizmo_mesh_instance.transform.model, 90.0f);
-    //set_translation(gizmo_mesh_instance.transform.model, transform.model.tx, transform.model.ty, transform.model.tz);
-    //gizmo_push_constants.color = to_vec3(color_f32_t::GREEN);
-    //render_mesh_instance(render_frame, "gizmo rotate z", gizmo_mesh_instance, sizeof(gizmo_push_constants_t), &gizmo_push_constants);
 }
 
 static void debug_draw_system_collect_mesh_instances(render_frame_t& render_frame)
