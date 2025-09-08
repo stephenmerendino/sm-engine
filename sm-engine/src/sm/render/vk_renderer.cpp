@@ -113,10 +113,6 @@ static const mesh_instance_id_t s_cur_mesh_instance_id = 0;
 
 struct material_t
 {
-	VkDescriptorSet main_draw_descriptor_set = VK_NULL_HANDLE;
-	VkPipelineLayout main_draw_pipeline_layout = VK_NULL_HANDLE;
-	VkPipeline main_draw_pipeline = VK_NULL_HANDLE;
-
 	VkDescriptorSet descriptor_sets[(u32)render_pass_t::NUM_RENDER_PASSES];
 	VkPipelineLayout pipeline_layouts[(u32)render_pass_t::NUM_RENDER_PASSES];
 	VkPipeline pipelines[(u32)render_pass_t::NUM_RENDER_PASSES];
@@ -177,10 +173,10 @@ struct render_frame_t
     buffer_t frame_descriptor_buffer;
 	VkDescriptorSet frame_descriptor_set;
 
-    texture_t main_draw_color_multisample_texture;
-    texture_t main_draw_depth_multisample_texture;
-    texture_t main_draw_color_resolve_texture;
-    texture_t main_draw_depth_resolve_texture;
+    texture_t forward_pass_draw_color_multisample_texture;
+    texture_t forward_pass_depth_multisample_texture;
+    texture_t forward_pass_color_resolve_texture;
+    texture_t forward_pass_depth_resolve_texture;
     texture_t post_processing_color_texture;
 
 	// mesh instance descriptors
@@ -231,7 +227,6 @@ struct post_processing_params_t
 // gizmo
 enum class gizmo_mode_t : u8
 {
-    INACTIVE,
     TRANSLATE,
     ROTATE,
     SCALE
@@ -242,7 +237,7 @@ struct gizmo_t
     mesh_t translate_tool_gpu_mesh;
     mesh_t rotate_tool_gpu_mesh;
     mesh_t scale_tool_gpu_mesh;
-    gizmo_mode_t mode = gizmo_mode_t::INACTIVE;
+    gizmo_mode_t mode = gizmo_mode_t::TRANSLATE;
 };
 
 struct gizmo_push_constants_t
@@ -280,7 +275,7 @@ static material_t s_viking_room_material;
 static gizmo_t s_gizmo;
 static material_t s_gizmo_material;
 
-static VkPipelineLayout s_infinite_grid_main_draw_pipeline_layout = VK_NULL_HANDLE;
+static VkPipelineLayout s_infinite_grid_forward_pass_pipeline_layout = VK_NULL_HANDLE;
 
 static VkPipelineLayout s_post_process_pipeline_layout = VK_NULL_HANDLE;
 static VkPipeline s_post_process_compute_pipeline = VK_NULL_HANDLE;
@@ -1516,7 +1511,7 @@ static void render_frames_init_render_targets()
     {
         render_frame_t& frame = s_render_frames[i];
 
-        texture_init(frame.main_draw_color_multisample_texture, 
+        texture_init(frame.forward_pass_draw_color_multisample_texture, 
                      s_context.default_color_format, 
                      VkExtent3D(s_swapchain.extent.width, s_swapchain.extent.height, 1), 
                      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 
@@ -1524,7 +1519,7 @@ static void render_frames_init_render_targets()
                      s_context.max_msaa_samples, 
                      false);
 
-        texture_init(frame.main_draw_depth_multisample_texture, 
+        texture_init(frame.forward_pass_depth_multisample_texture, 
                      s_context.default_depth_format, 
                      VkExtent3D(s_swapchain.extent.width, s_swapchain.extent.height, 1), 
                      VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 
@@ -1532,7 +1527,7 @@ static void render_frames_init_render_targets()
                      s_context.max_msaa_samples, 
                      false);
 
-        texture_init(frame.main_draw_color_resolve_texture, 
+        texture_init(frame.forward_pass_color_resolve_texture, 
                      s_context.default_color_format, 
                      VkExtent3D(s_swapchain.extent.width, s_swapchain.extent.height, 1), 
                      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT, 
@@ -1540,7 +1535,7 @@ static void render_frames_init_render_targets()
                      VK_SAMPLE_COUNT_1_BIT, 
                      false);
 
-        texture_init(frame.main_draw_depth_resolve_texture, 
+        texture_init(frame.forward_pass_depth_resolve_texture, 
                      s_context.default_depth_format, 
                      VkExtent3D(s_swapchain.extent.width, s_swapchain.extent.height, 1), 
                      VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 
@@ -1716,10 +1711,10 @@ static void render_frames_refresh_render_targets()
     for(size_t i = 0; i < s_render_frames.cur_size; i++)
     {
         render_frame_t& frame = s_render_frames[i];
-        texture_release(frame.main_draw_color_multisample_texture);
-        texture_release(frame.main_draw_depth_multisample_texture);
-        texture_release(frame.main_draw_color_resolve_texture);
-        texture_release(frame.main_draw_depth_resolve_texture);
+        texture_release(frame.forward_pass_draw_color_multisample_texture);
+        texture_release(frame.forward_pass_depth_multisample_texture);
+        texture_release(frame.forward_pass_color_resolve_texture);
+        texture_release(frame.forward_pass_depth_resolve_texture);
         texture_release(frame.post_processing_color_texture);
 	}
 
@@ -2011,7 +2006,7 @@ static void pipelines_init()
         pipeline_create_info.pDepthStencilState = &depth_stencil_state;
         pipeline_create_info.pColorBlendState = &color_blend_state;
         pipeline_create_info.pDynamicState = &dynamic_state;
-        pipeline_create_info.layout = s_viking_room_material.main_draw_pipeline_layout;
+        pipeline_create_info.layout = s_viking_room_material.pipeline_layouts[(u32)render_pass_t::FORWARD_PASS];
         pipeline_create_info.renderPass = VK_NULL_HANDLE;
         pipeline_create_info.subpass = 0;
         pipeline_create_info.basePipelineHandle = VK_NULL_HANDLE;
@@ -2020,7 +2015,14 @@ static void pipelines_init()
         VkGraphicsPipelineCreateInfo pipeline_create_infos[] = {
             pipeline_create_info
         };
-        SM_VULKAN_ASSERT(vkCreateGraphicsPipelines(s_context.device, VK_NULL_HANDLE, ARRAY_LEN(pipeline_create_infos), pipeline_create_infos, nullptr, &s_viking_room_material.main_draw_pipeline));
+        SM_VULKAN_ASSERT(
+            vkCreateGraphicsPipelines(s_context.device, 
+                                      VK_NULL_HANDLE, 
+                                      ARRAY_LEN(pipeline_create_infos), 
+                                      pipeline_create_infos, 
+                                      nullptr, 
+                                      &s_viking_room_material.pipelines[(u32)render_pass_t::FORWARD_PASS])
+        );
 
         vkDestroyShaderModule(s_context.device, vertex_shader_module, nullptr);
         vkDestroyShaderModule(s_context.device, pixel_shader_module, nullptr);
@@ -2309,7 +2311,7 @@ static void pipelines_init()
         pipeline_create_info.pDepthStencilState = &depth_stencil_state;
         pipeline_create_info.pColorBlendState = &color_blend_state;
         pipeline_create_info.pDynamicState = &dynamic_state;
-        pipeline_create_info.layout = s_gizmo_material.main_draw_pipeline_layout;
+        pipeline_create_info.layout = s_gizmo_material.pipeline_layouts[(u32)render_pass_t::DEBUG_PASS];
         pipeline_create_info.renderPass = VK_NULL_HANDLE;
         pipeline_create_info.subpass = 0;
         pipeline_create_info.basePipelineHandle = VK_NULL_HANDLE;
@@ -2318,12 +2320,12 @@ static void pipelines_init()
         VkGraphicsPipelineCreateInfo pipeline_create_infos[] = {
             pipeline_create_info
         };
-        SM_VULKAN_ASSERT(vkCreateGraphicsPipelines(s_context.device, VK_NULL_HANDLE, ARRAY_LEN(pipeline_create_infos), pipeline_create_infos, nullptr, &s_gizmo_material.main_draw_pipeline));
+        SM_VULKAN_ASSERT(vkCreateGraphicsPipelines(s_context.device, VK_NULL_HANDLE, ARRAY_LEN(pipeline_create_infos), pipeline_create_infos, nullptr, &s_gizmo_material.pipelines[(u32)render_pass_t::DEBUG_PASS]));
 
         vkDestroyShaderModule(s_context.device, vertex_shader_module, nullptr);
         vkDestroyShaderModule(s_context.device, pixel_shader_module, nullptr);
 
-        s_gizmo_material.main_draw_descriptor_set = s_empty_descriptor_set;
+        s_gizmo_material.descriptor_sets[(u32)render_pass_t::DEBUG_PASS] = s_empty_descriptor_set;
     }
 
     // post processing
@@ -2374,7 +2376,8 @@ static void pipelines_init()
 
 static void refresh_pipelines()
 {
-	vkDestroyPipeline(s_context.device, s_viking_room_material.main_draw_pipeline, nullptr);
+	vkDestroyPipeline(s_context.device, s_viking_room_material.pipelines[(u32)render_pass_t::FORWARD_PASS], nullptr);
+	vkDestroyPipeline(s_context.device, s_gizmo_material.pipelines[(u32)render_pass_t::DEBUG_PASS], nullptr);
 	pipelines_init();
 }
 
@@ -2647,12 +2650,12 @@ static void gizmo_init(arena_t* arena)
 {
     f32 gizmo_length = 0.75f;
     f32 gizmo_bar_thickness = 0.015f;
-    f32 scale_box_thickness = 0.05f;
+    f32 scale_box_thickness = 0.075f;
 
     // build translate tool mesh
     mesh_data_t* translate_mesh = mesh_init(arena);
     mesh_data_add_cylinder(translate_mesh, vec3_t::ZERO, vec3_t::WORLD_FORWARD, gizmo_length, gizmo_bar_thickness, 32, color_f32_t::RED);
-    mesh_data_add_cone(translate_mesh, { .x = gizmo_length, .y = 0.0f, .z = 0.0f }, vec3_t::WORLD_FORWARD, 0.5f, 0.5f, 32, color_f32_t::RED);
+    mesh_data_add_cone(translate_mesh, { .x = gizmo_length, .y = 0.0f, .z = 0.0f }, vec3_t::WORLD_FORWARD, 0.25f, 0.1f, 32, color_f32_t::RED);
     mesh_init(s_gizmo.translate_tool_gpu_mesh, translate_mesh);
 
     // build rotate tool mesh
@@ -2757,6 +2760,10 @@ string_t* mesh_instances_look_up_name(mesh_instance_id_t id)
 static void ui_build_scene_window()
 {
     ImGui::Text("Scene\n");
+
+	ImGui::RadioButton("Translate", (i32*)&s_gizmo.mode, (i32)gizmo_mode_t::TRANSLATE); ImGui::SameLine();
+	ImGui::RadioButton("Rotate", (i32*)&s_gizmo.mode, (i32)gizmo_mode_t::ROTATE); ImGui::SameLine();
+	ImGui::RadioButton("Scale", (i32*)&s_gizmo.mode, (i32)gizmo_mode_t::SCALE);
 
     render_frame_t& render_frame = s_render_frames[s_cur_render_frame_index];
 
@@ -3219,7 +3226,7 @@ void sm::renderer_init(window_t* window)
 					s_material_descriptor_set_layout
 				};
 				alloc_info.pSetLayouts = descriptor_set_layouts;
-				SM_VULKAN_ASSERT(vkAllocateDescriptorSets(s_context.device, &alloc_info, &s_viking_room_material.main_draw_descriptor_set));
+				SM_VULKAN_ASSERT(vkAllocateDescriptorSets(s_context.device, &alloc_info, &s_viking_room_material.descriptor_sets[(u32)render_pass_t::FORWARD_PASS]));
 
 				// update
                 VkDescriptorImageInfo descriptor_set_write_image_info{};
@@ -3230,7 +3237,7 @@ void sm::renderer_init(window_t* window)
                 VkWriteDescriptorSet descriptor_set_write{};
                 descriptor_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
                 descriptor_set_write.pNext = nullptr;
-                descriptor_set_write.dstSet = s_viking_room_material.main_draw_descriptor_set;
+                descriptor_set_write.dstSet = s_viking_room_material.descriptor_sets[(u32)render_pass_t::FORWARD_PASS];
                 descriptor_set_write.dstBinding = 0;
                 descriptor_set_write.dstArrayElement = 0;
                 descriptor_set_write.descriptorCount = 1;
@@ -3267,7 +3274,7 @@ void sm::renderer_init(window_t* window)
                     .pushConstantRangeCount = 0,
                     .pPushConstantRanges = nullptr
                 };
-                SM_VULKAN_ASSERT(vkCreatePipelineLayout(s_context.device, &pipeline_layout_create_info, nullptr, &s_viking_room_material.main_draw_pipeline_layout));
+                SM_VULKAN_ASSERT(vkCreatePipelineLayout(s_context.device, &pipeline_layout_create_info, nullptr, &s_viking_room_material.pipeline_layouts[(u32)render_pass_t::FORWARD_PASS]));
 			}
 
             // gizmo pipeline layout
@@ -3298,7 +3305,7 @@ void sm::renderer_init(window_t* window)
                     .pushConstantRangeCount = ARRAY_LEN(push_constants),
                     .pPushConstantRanges = push_constants 
                 };
-                SM_VULKAN_ASSERT(vkCreatePipelineLayout(s_context.device, &pipeline_layout_create_info, nullptr, &s_gizmo_material.main_draw_pipeline_layout));
+                SM_VULKAN_ASSERT(vkCreatePipelineLayout(s_context.device, &pipeline_layout_create_info, nullptr, &s_gizmo_material.pipeline_layouts[(u32)render_pass_t::DEBUG_PASS]));
             }
 
             // infinite grid pipeline layout
@@ -3316,7 +3323,7 @@ void sm::renderer_init(window_t* window)
                     .pushConstantRangeCount = 0,
                     .pPushConstantRanges = nullptr
                 };
-                SM_VULKAN_ASSERT(vkCreatePipelineLayout(s_context.device, &pipeline_layout_create_info, nullptr, &s_infinite_grid_main_draw_pipeline_layout));
+                SM_VULKAN_ASSERT(vkCreatePipelineLayout(s_context.device, &pipeline_layout_create_info, nullptr, &s_infinite_grid_forward_pass_pipeline_layout));
 			}
 
             // post processing pipeline layout
@@ -3550,23 +3557,11 @@ static void upload_mesh_instance_data(render_frame_t& render_frame)
         0, nullptr);
 }
 
-static void render_mesh_instances(render_frame_t& render_frame, bool is_debug = false)
+static void render_mesh_instances(render_frame_t& render_frame, render_pass_t render_pass)
 {
     for(int i = 0; i < MAX_NUM_MESH_INSTANCES_PER_FRAME; i++)
     {
         if(render_frame.mesh_instances.ids[i] == INVALID_MESH_INSTANCE_ID)
-        {
-            continue;
-        }
-
-        // skip debug mesh instances if we are drawing non-debug meshes
-        if (!is_debug && ((u32)render_frame.mesh_instances.flags[i] & (u32)mesh_instance_flags_t::IS_DEBUG) != 0)
-        {
-            continue;
-        }
-
-        // skip normal mesh instances if we are rendering debug
-        if (is_debug && ((u32)render_frame.mesh_instances.flags[i] & (u32)mesh_instance_flags_t::IS_DEBUG) == 0)
         {
             continue;
         }
@@ -3576,6 +3571,12 @@ static void render_mesh_instances(render_frame_t& render_frame, bool is_debug = 
         material_t* material = render_frame.mesh_instances.materials[i];
         push_constants_t push_constants = render_frame.mesh_instances.push_constants[i];
         transform_t transform = render_frame.mesh_instances.transforms[i];
+
+        // this material doesn't have a pipeline setup for this render pass, so skip
+        if (material->pipelines[(u32)render_pass] == VK_NULL_HANDLE)
+        {
+            continue;
+        }
 
         string_t* debug_name = mesh_instances_look_up_name(id);
         if(debug_name)
@@ -3637,21 +3638,21 @@ static void render_mesh_instances(render_frame_t& render_frame, bool is_debug = 
         VkDescriptorSet descriptor_sets[] = {
             s_global_descriptor_set,
             render_frame.frame_descriptor_set,
-            material->main_draw_descriptor_set,
+            material->descriptor_sets[(u32)render_pass],
             mesh_instance_descriptor_set	
         };
         vkCmdBindDescriptorSets(render_frame.frame_command_buffer,
                                 VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                material->main_draw_pipeline_layout, 
+                                material->pipeline_layouts[(u32)render_pass],
                                 0, 
                                 ARRAY_LEN(descriptor_sets), descriptor_sets, 
                                 0, nullptr);
 
-        vkCmdBindPipeline(render_frame.frame_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->main_draw_pipeline);
+        vkCmdBindPipeline(render_frame.frame_command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material->pipelines[(u32)render_pass]);
 
         if (push_constants.size > 0)
         {
-            vkCmdPushConstants(render_frame.frame_command_buffer, material->main_draw_pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, (u32)push_constants.size, push_constants.data);
+            vkCmdPushConstants(render_frame.frame_command_buffer, material->pipeline_layouts[(u32)render_pass], VK_SHADER_STAGE_FRAGMENT_BIT, 0, (u32)push_constants.size, push_constants.data);
         }
 
         // draw mesh
@@ -3659,11 +3660,11 @@ static void render_mesh_instances(render_frame_t& render_frame, bool is_debug = 
     }
 }
 
-static void main_draw_pass(render_frame_t& render_frame)
+static void forward_pass(render_frame_t& render_frame)
 {
-    SCOPED_COMMAND_BUFFER_DEBUG_LABEL(render_frame.frame_command_buffer, "Main Draw", color_gen_random());
+    SCOPED_COMMAND_BUFFER_DEBUG_LABEL(render_frame.frame_command_buffer, "Forward Pass", color_gen_random());
 
-    // transition main draw render targets to attachment optimal 
+    // transition forward pass render targets to attachment optimal 
     {
         VkImageSubresourceRange color_subresource_range{
             .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -3679,7 +3680,7 @@ static void main_draw_pass(render_frame_t& render_frame)
             .baseArrayLayer = 0,
             .layerCount = 1
         };
-        VkImageMemoryBarrier transition_main_draw_color_multisample_to_color_attachment_optimal_barrier{
+        VkImageMemoryBarrier transition_forward_pass_color_multisample_to_color_attachment_optimal_barrier{
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
             .pNext = nullptr,
             .srcAccessMask = VK_ACCESS_NONE,
@@ -3688,10 +3689,10 @@ static void main_draw_pass(render_frame_t& render_frame)
             .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .image = render_frame.main_draw_color_multisample_texture.image,
+            .image = render_frame.forward_pass_draw_color_multisample_texture.image,
             .subresourceRange = color_subresource_range
         };
-        VkImageMemoryBarrier transition_main_draw_color_resolve_to_color_attachment_optimal_barrier{
+        VkImageMemoryBarrier transition_forward_pass_color_resolve_to_color_attachment_optimal_barrier{
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
             .pNext = nullptr,
             .srcAccessMask = VK_ACCESS_NONE,
@@ -3700,10 +3701,10 @@ static void main_draw_pass(render_frame_t& render_frame)
             .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .image = render_frame.main_draw_color_resolve_texture.image,
+            .image = render_frame.forward_pass_color_resolve_texture.image,
             .subresourceRange = color_subresource_range
         };
-        VkImageMemoryBarrier transition_main_draw_depth_multisample_to_depth_stencil_attachment_optimal_barrier{
+        VkImageMemoryBarrier transition_forward_pass_depth_multisample_to_depth_stencil_attachment_optimal_barrier{
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
             .pNext = nullptr,
             .srcAccessMask = VK_ACCESS_NONE,
@@ -3712,13 +3713,13 @@ static void main_draw_pass(render_frame_t& render_frame)
             .newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .image = render_frame.main_draw_depth_multisample_texture.image,
+            .image = render_frame.forward_pass_depth_multisample_texture.image,
             .subresourceRange = depth_subresource_range 
         };
         VkImageMemoryBarrier image_barriers[] = {
-            transition_main_draw_color_multisample_to_color_attachment_optimal_barrier,
-			transition_main_draw_color_resolve_to_color_attachment_optimal_barrier,
-			transition_main_draw_depth_multisample_to_depth_stencil_attachment_optimal_barrier
+            transition_forward_pass_color_multisample_to_color_attachment_optimal_barrier,
+			transition_forward_pass_color_resolve_to_color_attachment_optimal_barrier,
+			transition_forward_pass_depth_multisample_to_depth_stencil_attachment_optimal_barrier
         };
         vkCmdPipelineBarrier(render_frame.frame_command_buffer,
                              VK_PIPELINE_STAGE_NONE, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -3743,10 +3744,10 @@ static void main_draw_pass(render_frame_t& render_frame)
         VkRenderingAttachmentInfo color_multisample_attachment_info{
 			.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
 			.pNext = nullptr,
-			.imageView = render_frame.main_draw_color_multisample_texture.image_view,
+			.imageView = render_frame.forward_pass_draw_color_multisample_texture.image_view,
 			.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 			.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT,
-			.resolveImageView = render_frame.main_draw_color_resolve_texture.image_view,
+			.resolveImageView = render_frame.forward_pass_color_resolve_texture.image_view,
 			.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 			.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
 			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -3759,10 +3760,10 @@ static void main_draw_pass(render_frame_t& render_frame)
         VkRenderingAttachmentInfo depth_stencil_multisample_attachment_info{
 			.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
 			.pNext = nullptr,
-			.imageView = render_frame.main_draw_depth_multisample_texture.image_view,
+			.imageView = render_frame.forward_pass_depth_multisample_texture.image_view,
 			.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
 			.resolveMode = VK_RESOLVE_MODE_MIN_BIT,
-			.resolveImageView = render_frame.main_draw_depth_resolve_texture.image_view,
+			.resolveImageView = render_frame.forward_pass_depth_resolve_texture.image_view,
 			.resolveImageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
 			.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
 			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -3789,8 +3790,7 @@ static void main_draw_pass(render_frame_t& render_frame)
         vkCmdBeginRendering(render_frame.frame_command_buffer, &rendering_info);
     }
 
-    // main draw
-    render_mesh_instances(render_frame);
+    render_mesh_instances(render_frame, render_pass_t::FORWARD_PASS);
 
     vkCmdEndRendering(render_frame.frame_command_buffer);
 }
@@ -3808,7 +3808,7 @@ static void post_processing_pass(render_frame_t& render_frame)
             .baseArrayLayer = 0,
             .layerCount = 1
         };
-        VkImageMemoryBarrier transition_main_draw_color_resolve_to_layout_general_barrier{
+        VkImageMemoryBarrier transition_forward_pass_color_resolve_to_layout_general_barrier{
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
             .pNext = nullptr,
             .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
@@ -3817,7 +3817,7 @@ static void post_processing_pass(render_frame_t& render_frame)
             .newLayout = VK_IMAGE_LAYOUT_GENERAL,
             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .image = render_frame.main_draw_color_resolve_texture.image,
+            .image = render_frame.forward_pass_color_resolve_texture.image,
             .subresourceRange = subresource_range
         };
         VkImageMemoryBarrier transition_post_process_to_layout_general_barrier{
@@ -3833,7 +3833,7 @@ static void post_processing_pass(render_frame_t& render_frame)
             .subresourceRange = subresource_range
         };
         VkImageMemoryBarrier image_barriers[] = {
-			transition_main_draw_color_resolve_to_layout_general_barrier,
+			transition_forward_pass_color_resolve_to_layout_general_barrier,
 			transition_post_process_to_layout_general_barrier
         };
         vkCmdPipelineBarrier(render_frame.frame_command_buffer,
@@ -3852,13 +3852,13 @@ static void post_processing_pass(render_frame_t& render_frame)
         };
         upload_buffer_data(render_frame.post_processing_params_buffer.buffer, &post_process_params, sizeof(post_process_params));
 
-        VkDescriptorImageInfo main_draw_color_storage_image_descriptor_info{
+        VkDescriptorImageInfo forward_pass_color_storage_image_descriptor_info{
             .sampler = VK_NULL_HANDLE,
-            .imageView = render_frame.main_draw_color_resolve_texture.image_view,
+            .imageView = render_frame.forward_pass_color_resolve_texture.image_view,
             .imageLayout = VK_IMAGE_LAYOUT_GENERAL
         };
 
-        VkWriteDescriptorSet main_draw_color_storage_image_descriptor_set_write{
+        VkWriteDescriptorSet forward_pass_color_storage_image_descriptor_set_write{
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
             .pNext = nullptr,
             .dstSet = render_frame.post_processing_descriptor_set,
@@ -3866,7 +3866,7 @@ static void post_processing_pass(render_frame_t& render_frame)
             .dstArrayElement = 0,
             .descriptorCount = 1,
             .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-            .pImageInfo = &main_draw_color_storage_image_descriptor_info,
+            .pImageInfo = &forward_pass_color_storage_image_descriptor_info,
             .pBufferInfo = nullptr,
             .pTexelBufferView = nullptr
         };
@@ -3909,7 +3909,7 @@ static void post_processing_pass(render_frame_t& render_frame)
         
 
         VkWriteDescriptorSet descriptor_set_writes[] = {
-            main_draw_color_storage_image_descriptor_set_write,
+            forward_pass_color_storage_image_descriptor_set_write,
             post_process_storage_image_descriptor_set_write,
             post_process_params_buffer_write
         };
@@ -3989,7 +3989,7 @@ static void debug_pass(render_frame_t& render_frame)
         VkRenderingAttachmentInfo depth_attachment_info{
 			.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
 			.pNext = nullptr,
-			.imageView = render_frame.main_draw_depth_resolve_texture.image_view,
+			.imageView = render_frame.forward_pass_depth_resolve_texture.image_view,
 			.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
 			.resolveMode = VK_RESOLVE_MODE_NONE,
 			.resolveImageView = VK_NULL_HANDLE,
@@ -4019,7 +4019,7 @@ static void debug_pass(render_frame_t& render_frame)
         vkCmdBeginRendering(render_frame.frame_command_buffer, &rendering_info);
     }
 
-    render_mesh_instances(render_frame, true);
+    render_mesh_instances(render_frame, render_pass_t::DEBUG_PASS);
 
     // end gizmo render pass
     vkCmdEndRendering(render_frame.frame_command_buffer);
@@ -4130,7 +4130,7 @@ static void present_frame(render_frame_t& render_frame)
                                  ARRAY_LEN(image_memory_barriers), image_memory_barriers);
         }
 
-        // blit from main draw color resolve to swapchain
+        // blit from forward pass color resolve to swapchain
         {
             VkImageSubresourceLayers src_subresource{};
             src_subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -4310,6 +4310,14 @@ static void gizmo_collect_mesh_instances(render_frame_t& render_frame)
 
     transform_t selected_mesh_instance_transform = s_current_level->mesh_instances.transforms[s_selected_mesh_instance_id];
 
+    mesh_t* gizmo_mesh_to_render = nullptr;
+    switch (s_gizmo.mode)
+    {
+		case gizmo_mode_t::TRANSLATE: gizmo_mesh_to_render = &s_gizmo.translate_tool_gpu_mesh; break;
+		case gizmo_mode_t::ROTATE: gizmo_mesh_to_render = &s_gizmo.rotate_tool_gpu_mesh; break;
+		case gizmo_mode_t::SCALE: gizmo_mesh_to_render = &s_gizmo.scale_tool_gpu_mesh; break;
+    }
+
     {
 		transform_t gizmo_transform;
 		set_translation(gizmo_transform.model, selected_mesh_instance_transform.model.tx, selected_mesh_instance_transform.model.ty, selected_mesh_instance_transform.model.tz);
@@ -4321,7 +4329,7 @@ static void gizmo_collect_mesh_instances(render_frame_t& render_frame)
 		push_constants.data = gizmo_push_constants;
 		push_constants.size = sizeof(gizmo_push_constants_t);
 
-		mesh_instances_add(render_frame.frame_arena, &mesh_instances, &s_gizmo.rotate_tool_gpu_mesh, &s_gizmo_material, push_constants, gizmo_transform, (u32)mesh_instance_flags_t::IS_DEBUG);
+		mesh_instances_add(render_frame.frame_arena, &mesh_instances, gizmo_mesh_to_render, &s_gizmo_material, push_constants, gizmo_transform, (u32)mesh_instance_flags_t::IS_DEBUG);
     }
 
     {
@@ -4336,12 +4344,12 @@ static void gizmo_collect_mesh_instances(render_frame_t& render_frame)
 		push_constants.data = gizmo_push_constants;
 		push_constants.size = sizeof(gizmo_push_constants_t);
 
-		mesh_instances_add(render_frame.frame_arena, &mesh_instances, &s_gizmo.rotate_tool_gpu_mesh, &s_gizmo_material, push_constants, gizmo_transform, (u32)mesh_instance_flags_t::IS_DEBUG);
+		mesh_instances_add(render_frame.frame_arena, &mesh_instances, gizmo_mesh_to_render, &s_gizmo_material, push_constants, gizmo_transform, (u32)mesh_instance_flags_t::IS_DEBUG);
     }
 
     {
 		transform_t gizmo_transform;
-		rotate_y_degs(gizmo_transform.model, 90.0f);
+		rotate_y_degs(gizmo_transform.model, -90.0f);
 		set_translation(gizmo_transform.model, selected_mesh_instance_transform.model.tx, selected_mesh_instance_transform.model.ty, selected_mesh_instance_transform.model.tz);
 
 		gizmo_push_constants_t* gizmo_push_constants = arena_alloc_struct(render_frame.frame_arena, gizmo_push_constants_t);
@@ -4351,7 +4359,7 @@ static void gizmo_collect_mesh_instances(render_frame_t& render_frame)
 		push_constants.data = gizmo_push_constants;
 		push_constants.size = sizeof(gizmo_push_constants_t);
 
-		mesh_instances_add(render_frame.frame_arena, &mesh_instances, &s_gizmo.rotate_tool_gpu_mesh, &s_gizmo_material, push_constants, gizmo_transform, (u32)mesh_instance_flags_t::IS_DEBUG);
+		mesh_instances_add(render_frame.frame_arena, &mesh_instances, gizmo_mesh_to_render, &s_gizmo_material, push_constants, gizmo_transform, (u32)mesh_instance_flags_t::IS_DEBUG);
     }
 
     mesh_instances_add_copy(&render_frame.mesh_instances, &mesh_instances);
@@ -4385,7 +4393,7 @@ void sm::renderer_render()
     collect_mesh_instances(render_frame);
     setup_new_frame(render_frame);
     upload_mesh_instance_data(render_frame);
-    main_draw_pass(render_frame);
+    forward_pass(render_frame);
     post_processing_pass(render_frame);
     debug_pass(render_frame);
     imgui_pass(render_frame);
