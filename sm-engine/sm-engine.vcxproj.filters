@@ -76,6 +76,9 @@
     <Filter Include="raw_assets\shaders">
       <UniqueIdentifier>{9ef4f6ae-988f-45db-a693-77d2d5504a7e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\sm\render\vulkan">
+      <UniqueIdentifier>{18fccd1d-2f37-4405-be45-83025363959c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\third_party\imgui\imgui.cpp">
@@ -153,9 +156,6 @@
     <ClCompile Include="src\sm\platform\win32\io\win32_input.cpp">
       <Filter>src\sm\platform\win32\io</Filter>
     </ClCompile>
-    <ClCompile Include="src\sm\render\vk_renderer.cpp">
-      <Filter>src\sm\render</Filter>
-    </ClCompile>
     <ClCompile Include="src\sm\platform\win32\render\win32_vk_functions.cpp">
       <Filter>src\sm\platform\win32\render</Filter>
     </ClCompile>
@@ -189,8 +189,8 @@
     <ClCompile Include="src\sm\math\primitives.cpp">
       <Filter>src\sm\math</Filter>
     </ClCompile>
-    <ClCompile Include="src\sm\core\primitive.cpp">
-      <Filter>src\sm\core</Filter>
+    <ClCompile Include="src\sm\render\vulkan\vk_renderer.cpp">
+      <Filter>src\sm\render\vulkan</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -437,15 +437,6 @@
     <ClInclude Include="src\sm\render\shader_compiler.h">
       <Filter>src\sm\render</Filter>
     </ClInclude>
-    <ClInclude Include="src\sm\render\vk_renderer.h">
-      <Filter>src\sm\render</Filter>
-    </ClInclude>
-    <ClInclude Include="src\sm\render\vk_functions.h">
-      <Filter>src\sm\render</Filter>
-    </ClInclude>
-    <ClInclude Include="src\sm\render\vk_include.h">
-      <Filter>src\sm\render</Filter>
-    </ClInclude>
     <ClInclude Include="src\sm\render\mesh.h">
       <Filter>src\sm\render</Filter>
     </ClInclude>
@@ -467,8 +458,17 @@
     <ClInclude Include="src\sm\math\primitives.h">
       <Filter>src\sm\math</Filter>
     </ClInclude>
-    <ClInclude Include="src\sm\core\primitive.h">
-      <Filter>src\sm\core</Filter>
+    <ClInclude Include="src\sm\render\vulkan\vk_functions.h">
+      <Filter>src\sm\render\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\render\vulkan\vk_functions_manifest.h">
+      <Filter>src\sm\render\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\render\vulkan\vk_include.h">
+      <Filter>src\sm\render\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\render\vulkan\vk_renderer.h">
+      <Filter>src\sm\render\vulkan</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -483,9 +483,6 @@
     </None>
     <None Include="src\third_party\vulkan\vulkan.cppm">
       <Filter>src\third_party\vulkan</Filter>
-    </None>
-    <None Include="src\sm\render\vk_functions_manifest.h">
-      <Filter>src\sm\render</Filter>
     </None>
     <None Include="src\sm\platform\win32\render\win32_vk_functions_manifest.h">
       <Filter>src\sm\platform\win32\render</Filter>

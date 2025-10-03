@@ -15,4 +15,4 @@ namespace sm
 #define VK_INSTANCE_FUNCTION(func)	extern PFN_##func func;
 #define VK_DEVICE_FUNCTION(func)	extern PFN_##func func;
 
-#include "sm/render/vk_functions_manifest.h"
+#include "sm/render/vulkan/vk_functions_manifest.h"

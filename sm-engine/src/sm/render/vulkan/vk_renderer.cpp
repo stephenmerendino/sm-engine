@@ -1,4 +1,4 @@
-#include "sm/render/vk_renderer.h"
+#include "sm/render/vulkan/vk_renderer.h"
 #include "sm/config.h"
 #include "sm/core/bits.h"
 #include "sm/core/debug.h"
@@ -11,7 +11,7 @@
 #include "sm/render/shader_compiler.h"
 #include "sm/render/ui.h"
 #include "sm/render/window.h"
-#include "sm/render/vk_include.h"
+#include "sm/render/vulkan/vk_include.h"
 
 #include "third_party/imgui/imgui.h"
 #include "third_party/imgui/imgui_impl_win32.h"
@@ -138,18 +138,24 @@ struct mesh_instance_name_registry_t
 
 struct mesh_instances_t
 {
-    mesh_instance_id_t ids[MAX_NUM_MESH_INSTANCES_PER_FRAME];
-    mesh_t* meshes[MAX_NUM_MESH_INSTANCES_PER_FRAME];
-    material_t* materials[MAX_NUM_MESH_INSTANCES_PER_FRAME];
-    push_constants_t push_constants[MAX_NUM_MESH_INSTANCES_PER_FRAME];
-    transform_t transforms[MAX_NUM_MESH_INSTANCES_PER_FRAME];
-    u32 flags[MAX_NUM_MESH_INSTANCES_PER_FRAME];
+    mesh_instance_id_t* ids             = nullptr;
+    mesh_t** meshes                     = nullptr;
+    material_t** materials              = nullptr;
+    push_constants_t* push_constants    = nullptr;
+    transform_t* transforms             = nullptr;
+    u32* flags                          = nullptr;
+    size_t capacity                     = 0;
 };
 
 struct level_t 
 {
     string_t* mesh_instance_names[MAX_NUM_MESH_INSTANCES_PER_FRAME];
     mesh_instances_t mesh_instances;
+};
+
+struct debug_draw_params_t
+{
+    u32 num_frames_to_draw;
 };
 
 struct debug_draws_t
@@ -302,7 +308,7 @@ void mesh_instance_name_registry_init(mesh_instance_name_registry_t* registry)
     memset(registry->names, 0, sizeof(string_t*) * MAX_NUM_MESH_INSTANCES_PER_FRAME);
 }
 
-void mesh_instances_init(mesh_instances_t* mesh_instances)
+void mesh_instances_init(arena_t* arena, mesh_instances_t* mesh_instances, size_t capacity)
 {
     memset(mesh_instances->ids, INVALID_MESH_INSTANCE_ID, sizeof(mesh_instance_id_t) * MAX_NUM_MESH_INSTANCES_PER_FRAME);
     memset(mesh_instances->flags, (int)mesh_instance_flags_t::NONE, sizeof(mesh_instance_flags_t) * MAX_NUM_MESH_INSTANCES_PER_FRAME);

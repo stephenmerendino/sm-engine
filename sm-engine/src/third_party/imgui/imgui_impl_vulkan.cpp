@@ -89,7 +89,7 @@
  #pragma warning(disable : 4211)
 
 //(smerendino) include my own vulkan header for function prototypes
-#include "sm/render/vk_include.h"
+#include "sm/render/vulkan/vk_include.h"
 
 #include "imgui.h"
 #ifndef IMGUI_DISABLE

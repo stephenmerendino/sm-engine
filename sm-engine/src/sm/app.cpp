@@ -11,10 +11,10 @@
 #include "sm/io/input.h"
 #include "sm/memory/arena.h"
 #include "sm/render/window.h"
-#include "sm/render/vk_renderer.h"
+#include "sm/render/vulkan/vk_renderer.h"
 #include "sm/thread/thread.h"
 
-#include "game/game.h"
+//#include "game/game.h"
 
 static bool s_is_running = true;
 static sm::window_t* s_app_window = nullptr;
@@ -75,7 +75,7 @@ int app_run()
 	sm::input_init(s_app_window);
 	sm::renderer_init(s_app_window);
 
-	game_init();
+	//game_init();
 
 	sm::f32 ds = 0.016f; // default to delta seconds of 60 fps frame time
 
@@ -87,7 +87,7 @@ int app_run()
 		// begin frame
 		sm::input_begin_frame();
 		sm::renderer_begin_frame();
-		game_begin_frame();
+		//game_begin_frame();
 
 		// engine update
         sm::window_update(s_app_window);
@@ -95,8 +95,8 @@ int app_run()
 		sm::renderer_update(ds);
 
 		// game code
-		game_update(ds);
-		game_render();
+		//game_update(ds);
+		//game_render();
 
 		// engine render
 		sm::renderer_render();

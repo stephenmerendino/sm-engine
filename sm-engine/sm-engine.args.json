@@ -1,0 +1,60 @@
+{
+  "FileVersion": 2,
+  "Id": "209789dc-738b-44e2-ab63-4f98d20afbb8",
+  "Items": [
+    {
+      "Id": "6f282331-3e2d-4389-8351-c9ad7cd9e0b8",
+      "Command": "Debug|Win32",
+      "ProjectConfig": "Debug",
+      "ProjectPlatform": "Win32",
+      "Items": [
+        {
+          "Id": "7b3d4455-8c27-439c-ad7d-050a0ee6c1e8",
+          "Command": "WindowsLocalDebugger",
+          "Items": [
+            {
+              "Id": "6462d76e-c01c-4ba4-9e72-0baeff4d4db3",
+              "Command": "-dll sm-workbench.dll"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Id": "2bda811b-7055-471c-86c5-671f0870b79f",
+      "Command": "Release|Win32",
+      "ProjectConfig": "Release",
+      "ProjectPlatform": "Win32",
+      "Items": [
+        {
+          "Id": "0c73ba74-22a8-4fab-9aec-bf7842e367b0",
+          "Command": "WindowsLocalDebugger",
+          "Items": [
+            {
+              "Id": "77bb6c8e-2fae-4a30-b104-69c7a8a6b8ef",
+              "Command": "-dll sm-workbench.dll"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Id": "4bcc0ffb-f96e-4b26-b9bd-590025c2f317",
+      "Command": "Release|x64",
+      "ProjectConfig": "Release",
+      "ProjectPlatform": "x64",
+      "Items": [
+        {
+          "Id": "01670d22-2bd1-43c8-98b2-816797794b2d",
+          "Command": "WindowsLocalDebugger",
+          "Items": [
+            {
+              "Id": "a45d8636-5859-4f6b-afaa-cc52e8f211e6",
+              "Command": "-dll sm-workbench.dll"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -22,7 +22,6 @@
     <ClCompile Include="src\sm\app.cpp" />
     <ClCompile Include="src\sm\core\color.cpp" />
     <ClCompile Include="src\sm\core\hash.cpp" />
-    <ClCompile Include="src\sm\core\primitive.cpp" />
     <ClCompile Include="src\sm\core\random.cpp" />
     <ClCompile Include="src\sm\core\string.cpp" />
     <ClCompile Include="src\sm\io\input.cpp" />
@@ -57,7 +56,7 @@
     <ClCompile Include="src\sm\render\camera.cpp" />
     <ClCompile Include="src\sm\render\mesh.cpp" />
     <ClCompile Include="src\sm\render\ui.cpp" />
-    <ClCompile Include="src\sm\render\vk_renderer.cpp" />
+    <ClCompile Include="src\sm\render\vulkan\vk_renderer.cpp" />
     <ClCompile Include="src\sm\render\window.cpp" />
     <ClCompile Include="src\third_party\imgui\imgui.cpp" />
     <ClCompile Include="src\third_party\imgui\imgui_demo.cpp" />
@@ -67,7 +66,6 @@
     <ClCompile Include="src\third_party\imgui\imgui_tables.cpp" />
     <ClCompile Include="src\third_party\imgui\imgui_widgets.cpp" />
     <None Include="src\sm\platform\win32\render\win32_vk_functions_manifest.h" />
-    <None Include="src\sm\render\vk_functions_manifest.h" />
     <None Include="src\third_party\vulkan\vulkan.cppm">
       <FileType>Document</FileType>
     </None>
@@ -82,7 +80,6 @@
     <ClInclude Include="src\sm\core\array.h" />
     <ClInclude Include="src\sm\core\hash.h" />
     <ClInclude Include="src\sm\core\helpers.h" />
-    <ClInclude Include="src\sm\core\primitive.h" />
     <ClInclude Include="src\sm\core\random.h" />
     <ClInclude Include="src\sm\core\string.h" />
     <ClInclude Include="src\sm\core\time.h" />
@@ -103,10 +100,11 @@
     <ClInclude Include="src\sm\render\camera.h" />
     <ClInclude Include="src\sm\render\mesh.h" />
     <ClInclude Include="src\sm\render\ui.h" />
-    <ClInclude Include="src\sm\render\vk_renderer.h" />
     <ClInclude Include="src\sm\render\shader_compiler.h" />
-    <ClInclude Include="src\sm\render\vk_functions.h" />
-    <ClInclude Include="src\sm\render\vk_include.h" />
+    <ClInclude Include="src\sm\render\vulkan\vk_functions.h" />
+    <ClInclude Include="src\sm\render\vulkan\vk_functions_manifest.h" />
+    <ClInclude Include="src\sm\render\vulkan\vk_include.h" />
+    <ClInclude Include="src\sm\render\vulkan\vk_renderer.h" />
     <ClInclude Include="src\sm\render\window.h" />
     <ClInclude Include="src\sm\thread\thread.h" />
     <ClInclude Include="src\third_party\dxc\dxcapi.h" />
@@ -179,11 +177,6 @@
       </ExcludedFromBuild>
     </None>
     <None Include="src\third_party\imgui\vulkan\glsl_shader.vert" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\sm-workbench\sm-workbench\sm-workbench.vcxproj">
-      <Project>{963392b4-1568-41b9-a6a8-555bb054b4bf}</Project>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\raw_assets\shaders\gizmo.ps.hlsl">
