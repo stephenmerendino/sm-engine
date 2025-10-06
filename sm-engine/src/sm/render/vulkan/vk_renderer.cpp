@@ -107,6 +107,7 @@ struct transform_t
 
 const mesh_instance_id_t sm::INVALID_MESH_INSTANCE_ID = UINT32_MAX;
 const u32 INVALID_MESH_INSTANCE_INDEX = UINT32_MAX;
+static const u32 MAX_NUM_MESH_INSTANCES_DEBUG = 1024;
 static const u32 MAX_NUM_MESH_INSTANCES_PER_LEVEL = 1024;
 static const u32 MAX_NUM_MESH_INSTANCES_PER_FRAME = 4096;
 static const mesh_instance_id_t s_cur_mesh_instance_id = 0;
@@ -310,18 +311,20 @@ void mesh_instance_name_registry_init(mesh_instance_name_registry_t* registry)
 
 void mesh_instances_init(arena_t* arena, mesh_instances_t* mesh_instances, size_t capacity)
 {
-    memset(mesh_instances->ids, INVALID_MESH_INSTANCE_ID, sizeof(mesh_instance_id_t) * MAX_NUM_MESH_INSTANCES_PER_FRAME);
-    memset(mesh_instances->flags, (int)mesh_instance_flags_t::NONE, sizeof(mesh_instance_flags_t) * MAX_NUM_MESH_INSTANCES_PER_FRAME);
-    memset(mesh_instances->meshes, 0, sizeof(mesh_t*) * MAX_NUM_MESH_INSTANCES_PER_FRAME);
-    memset(mesh_instances->materials, 0, sizeof(material_t*) * MAX_NUM_MESH_INSTANCES_PER_FRAME);
-    memset(mesh_instances->push_constants, 0, sizeof(push_constants_t) * MAX_NUM_MESH_INSTANCES_PER_FRAME);
-    memset(mesh_instances->transforms, 0, sizeof(transform_t) * MAX_NUM_MESH_INSTANCES_PER_FRAME);
+    mesh_instances->ids = (mesh_instance_id_t*)arena_alloc_array_zero(arena, mesh_instance_id_t, capacity);
+    mesh_instances->flags = (u32*)arena_alloc_array_zero(arena, mesh_instance_flags_t, capacity);
+    mesh_instances->meshes = (mesh_t**)arena_alloc_array_zero(arena, mesh_t*, capacity);
+    mesh_instances->materials = (material_t**)arena_alloc_array_zero(arena, material_t*, capacity);
+    mesh_instances->push_constants = (push_constants_t*)arena_alloc_array_zero(arena, push_constants_t, capacity);
+    mesh_instances->transforms = (transform_t*)arena_alloc_array_zero(arena, transform_t, capacity);
+    mesh_instances->capacity = capacity;
 }
 
-void level_init(level_t* level)
+void level_init(arena_t* arena, level_t* level)
 {
-    memset(level->mesh_instance_names, 0, sizeof(string_t*) * MAX_NUM_MESH_INSTANCES_PER_FRAME);
-    mesh_instances_init(&level->mesh_instances);
+    size_t mesh_instance_capacity = MAX_NUM_MESH_INSTANCES_PER_LEVEL;
+    memset(level->mesh_instance_names, 0, sizeof(string_t*) * mesh_instance_capacity);
+    mesh_instances_init(arena, &level->mesh_instances, mesh_instance_capacity);
 }
 
 static void begin_queue_debug_label(VkQueue queue, const char* label, const color_f32_t& color)
@@ -1661,8 +1664,6 @@ static void render_frames_init()
                             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
             }
         }
-
-        mesh_instances_init(&frame.mesh_instances);
 
 		// post processing descriptor set
         {
@@ -3359,7 +3360,7 @@ void sm::renderer_init(window_t* window)
 
     s_level_arena = arena_init(MiB(50));
     s_current_level = arena_alloc_struct(s_level_arena, level_t);
-    level_init(s_current_level);
+    level_init(s_level_arena, s_current_level);
     mesh_instance_name_registry_init(&s_mesh_instance_registry);
 
     u32 grid_size = 2;
@@ -4274,7 +4275,7 @@ static void present_frame(render_frame_t& render_frame)
     }
 }
 
-static void mesh_instances_add_copy(mesh_instances_t* dst, mesh_instances_t* src)
+static void mesh_instances_append(mesh_instances_t* dst, mesh_instances_t* src)
 {
     int start_dst_search_index = 0;
 
@@ -4312,7 +4313,7 @@ static void gizmo_collect_mesh_instances(render_frame_t& render_frame)
     }
 
     mesh_instances_t mesh_instances;
-    mesh_instances_init(&mesh_instances);
+    mesh_instances_init(render_frame.frame_arena, &mesh_instances, 3);
 
     transform_t selected_mesh_instance_transform = s_current_level->mesh_instances.transforms[s_selected_mesh_instance_id];
 
@@ -4368,7 +4369,7 @@ static void gizmo_collect_mesh_instances(render_frame_t& render_frame)
 		mesh_instances_add(render_frame.frame_arena, &mesh_instances, gizmo_mesh_to_render, &s_gizmo_material, push_constants, gizmo_transform, (u32)mesh_instance_flags_t::IS_DEBUG);
     }
 
-    mesh_instances_add_copy(&render_frame.mesh_instances, &mesh_instances);
+    mesh_instances_append(&render_frame.mesh_instances, &mesh_instances);
 }
 
 static void debug_draw_system_collect_mesh_instances(render_frame_t& render_frame)
@@ -4378,8 +4379,8 @@ static void debug_draw_system_collect_mesh_instances(render_frame_t& render_fram
 
 static void collect_mesh_instances(render_frame_t& render_frame)
 {
-    mesh_instances_init(&render_frame.mesh_instances);
-    mesh_instances_add_copy(&render_frame.mesh_instances, &s_current_level->mesh_instances);
+    mesh_instances_init(render_frame.frame_arena, &render_frame.mesh_instances, MAX_NUM_MESH_INSTANCES_PER_FRAME);
+    mesh_instances_append(&render_frame.mesh_instances, &s_current_level->mesh_instances);
     debug_draw_system_collect_mesh_instances(render_frame);
 }
 
