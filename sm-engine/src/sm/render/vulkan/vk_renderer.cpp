@@ -60,7 +60,6 @@ namespace sm
     static const u32 MAX_NUM_MESH_INSTANCES_DEBUG = 1024;
     static const u32 MAX_NUM_MESH_INSTANCES_PER_LEVEL = 1024;
     static const u32 MAX_NUM_MESH_INSTANCES_PER_FRAME = 4096;
-    static const mesh_instance_id_t s_cur_mesh_instance_id = 0;
 
     struct material_t
     {
