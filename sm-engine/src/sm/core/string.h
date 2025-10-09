@@ -21,4 +21,7 @@ namespace sm
     wchar_t* string_to_wchar(sm::arena_t* arena, const char* s);
     void     string_to_wchar(wchar_t* wchar_string_memory, size_t max_num_chars, const string_t& s);
     void     string_to_wchar(wchar_t* wchar_string_memory, size_t max_num_chars, const char* s);
+
+    #define CONCATENATE_DIRECT(s1, s2) s1##s2
+    #define CONCATENATE(s1, s2) CONCATENATE_DIRECT(s1, s2)
 }

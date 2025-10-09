@@ -192,6 +192,15 @@
     <ClCompile Include="src\sm\render\vulkan\vk_renderer.cpp">
       <Filter>src\sm\render\vulkan</Filter>
     </ClCompile>
+    <ClCompile Include="src\sm\render\vulkan\vk_mesh_instances.cpp">
+      <Filter>src\sm\render\vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\sm\render\vulkan\vk_debug_draw.cpp">
+      <Filter>src\sm\render\vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\sm\render\vulkan\vk_context.cpp">
+      <Filter>src\sm\render\vulkan</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\third_party\dxc\dxcapi.h">
@@ -468,6 +477,15 @@
       <Filter>src\sm\render\vulkan</Filter>
     </ClInclude>
     <ClInclude Include="src\sm\render\vulkan\vk_renderer.h">
+      <Filter>src\sm\render\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\render\vulkan\vk_mesh_instances.h">
+      <Filter>src\sm\render\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\render\vulkan\vk_debug_draw.h">
+      <Filter>src\sm\render\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\render\vulkan\vk_context.h">
       <Filter>src\sm\render\vulkan</Filter>
     </ClInclude>
   </ItemGroup>

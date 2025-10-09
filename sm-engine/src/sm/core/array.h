@@ -111,4 +111,15 @@ namespace sm
     {
         array_push(arr, new_values.data, new_values.cur_size);
     }
+
+    template<typename T>
+    void array_back_swap_delete(array_t<T>& arr, u32 index)
+    {
+        SM_ASSERT(arr.cur_size > 0 && index < arr.cur_size);
+        arr[index] = arr[arr.cur_size - 1];
+        arr.cur_size--;
+    }
+
+    #define ARRAY_LEN(x) (sizeof(x) / sizeof(x[0]))
+
 }
