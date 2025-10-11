@@ -5,6 +5,13 @@
 
 namespace sm
 {
+    enum class render_pass_t : u64
+    {
+        FORWARD_PASS,
+        DEBUG_PASS,
+        NUM_RENDER_PASSES
+    };
+
     struct arena_t;
 	struct window_t;
 

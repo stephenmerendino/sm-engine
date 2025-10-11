@@ -18,7 +18,7 @@ static void collect_mesh_instances(arena_t* frame_allocator, mesh_instances_t* f
 {
 	for (int i = 0; i < s_debug_spheres.cur_size; i++)
 	{
-		//mesh_t* mesh = mesh_get;
+		//mesh_t* mesh = mesh_get_primitive(SPHERE);
         //material_t* material;
         //push_constants_t push_constants;
         //transform_t initial_transform;

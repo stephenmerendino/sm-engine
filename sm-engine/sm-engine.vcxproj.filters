@@ -201,6 +201,9 @@
     <ClCompile Include="src\sm\render\vulkan\vk_context.cpp">
       <Filter>src\sm\render\vulkan</Filter>
     </ClCompile>
+    <ClCompile Include="src\sm\render\vulkan\vk_resources.cpp">
+      <Filter>src\sm\render\vulkan</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\third_party\dxc\dxcapi.h">
@@ -486,6 +489,9 @@
       <Filter>src\sm\render\vulkan</Filter>
     </ClInclude>
     <ClInclude Include="src\sm\render\vulkan\vk_context.h">
+      <Filter>src\sm\render\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sm\render\vulkan\vk_resources.h">
       <Filter>src\sm\render\vulkan</Filter>
     </ClInclude>
   </ItemGroup>

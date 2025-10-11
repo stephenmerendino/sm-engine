@@ -60,6 +60,7 @@
     <ClCompile Include="src\sm\render\vulkan\vk_debug_draw.cpp" />
     <ClCompile Include="src\sm\render\vulkan\vk_mesh_instances.cpp" />
     <ClCompile Include="src\sm\render\vulkan\vk_renderer.cpp" />
+    <ClCompile Include="src\sm\render\vulkan\vk_resources.cpp" />
     <ClCompile Include="src\sm\render\window.cpp" />
     <ClCompile Include="src\third_party\imgui\imgui.cpp" />
     <ClCompile Include="src\third_party\imgui\imgui_demo.cpp" />
@@ -111,6 +112,7 @@
     <ClInclude Include="src\sm\render\vulkan\vk_include.h" />
     <ClInclude Include="src\sm\render\vulkan\vk_mesh_instances.h" />
     <ClInclude Include="src\sm\render\vulkan\vk_renderer.h" />
+    <ClInclude Include="src\sm\render\vulkan\vk_resources.h" />
     <ClInclude Include="src\sm\render\window.h" />
     <ClInclude Include="src\sm\thread\thread.h" />
     <ClInclude Include="src\third_party\dxc\dxcapi.h" />

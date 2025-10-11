@@ -1,0 +1,58 @@
+#pragma once
+
+#include "sm/core/types.h"
+#include "sm/render/vulkan/vk_include.h"
+#include "sm/render/vulkan/vk_renderer.h"
+#include "sm/render/vulkan/vk_context.h"
+
+namespace sm
+{
+    struct buffer_t
+    {
+        VkBuffer buffer = VK_NULL_HANDLE;
+        VkDeviceMemory memory = VK_NULL_HANDLE;
+    };
+
+    struct texture_t
+    {
+        VkImage image = VK_NULL_HANDLE;
+        VkDeviceMemory memory = VK_NULL_HANDLE;
+        VkImageView image_view = VK_NULL_HANDLE;
+        u32 num_mips = 0;
+    };
+
+    struct mesh_t 
+    {
+        buffer_t vertex_buffer;
+        buffer_t index_buffer;
+        u32 num_indices = 0;
+    };
+
+    struct material_t
+    {
+        VkDescriptorSet descriptor_sets[(u32)render_pass_t::NUM_RENDER_PASSES];
+        VkPipelineLayout pipeline_layouts[(u32)render_pass_t::NUM_RENDER_PASSES];
+        VkPipeline pipelines[(u32)render_pass_t::NUM_RENDER_PASSES];
+    };
+
+    u32 calculate_num_mips(u32 width, u32 height, u32 depth);
+    u32 calculate_num_mips(VkExtent3D size);
+
+    void texture_init(texture_t& out_texture,
+					  VkFormat format,
+					  VkExtent3D size,
+					  VkImageUsageFlags usage_flags,
+					  VkImageAspectFlags image_aspect,
+					  VkSampleCountFlagBits sample_count,
+					  bool with_mips_enabled);
+    void texture_init_from_file(texture_t& out_texture, 
+                                const char* filename, 
+                                bool generate_mips = true);
+    void texture_release(texture_t& texture);
+
+    void buffer_init(buffer_t& out_buffer,
+                     size_t size,
+                     VkBufferUsageFlags usage_flags,
+                     VkMemoryPropertyFlags memory_flags);
+    void buffer_release(buffer_t& buffer);
+};
