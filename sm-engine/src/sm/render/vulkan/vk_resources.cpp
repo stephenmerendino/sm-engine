@@ -1,4 +1,14 @@
 #include "sm/render/vulkan/vk_resources.h"
+#include "sm/render/vulkan/vk_debug.h"
+#include "sm/config.h"
+#include "sm/core/string.h"
+
+#pragma warning(push)
+#pragma warning(disable:4244)
+#define STB_IMAGE_IMPLEMENTATION
+#include "third_party/stb/stb_image.h"
+#pragma warning(pop)
+
 
 using namespace sm;
 
@@ -13,7 +23,8 @@ u32 sm::calculate_num_mips(VkExtent3D size)
     return calculate_num_mips(size.width, size.height, size.depth);
 }
 
-void sm::texture_init(texture_t& out_texture, 
+void sm::texture_init(render_context_t& context, 
+                      texture_t& out_texture, 
                       VkFormat format, 
                       VkExtent3D size, 
                       VkImageUsageFlags usage_flags, 
@@ -37,19 +48,19 @@ void sm::texture_init(texture_t& out_texture,
     image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     image_create_info.samples = sample_count;
     image_create_info.flags = 0;
-    SM_VULKAN_ASSERT(vkCreateImage(s_context.device, &image_create_info, nullptr, &out_texture.image));
+    SM_VULKAN_ASSERT(vkCreateImage(context.device, &image_create_info, nullptr, &out_texture.image));
 
     // VkDeviceMemory
     VkMemoryRequirements mem_requirements;
-    vkGetImageMemoryRequirements(s_context.device, out_texture.image, &mem_requirements);
+    vkGetImageMemoryRequirements(context.device, out_texture.image, &mem_requirements);
 
     VkMemoryAllocateInfo alloc_info{};
     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     alloc_info.allocationSize = mem_requirements.size;
-    alloc_info.memoryTypeIndex = find_supported_memory_type_index(s_context, mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    SM_VULKAN_ASSERT(vkAllocateMemory(s_context.device, &alloc_info, nullptr, &out_texture.memory));
+    alloc_info.memoryTypeIndex = find_supported_memory_type_index(context, mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    SM_VULKAN_ASSERT(vkAllocateMemory(context.device, &alloc_info, nullptr, &out_texture.memory));
 
-    vkBindImageMemory(s_context.device, out_texture.image, out_texture.memory, 0);
+    vkBindImageMemory(context.device, out_texture.image, out_texture.memory, 0);
 
     // VkImageView
     VkImageViewCreateInfo image_view_create_info{};
@@ -62,10 +73,10 @@ void sm::texture_init(texture_t& out_texture,
     image_view_create_info.subresourceRange.levelCount = out_texture.num_mips;
     image_view_create_info.subresourceRange.baseArrayLayer = 0;
     image_view_create_info.subresourceRange.layerCount = 1;
-    SM_VULKAN_ASSERT(vkCreateImageView(s_context.device, &image_view_create_info, nullptr, &out_texture.image_view));
+    SM_VULKAN_ASSERT(vkCreateImageView(context.device, &image_view_create_info, nullptr, &out_texture.image_view));
 }
 
-void sm::texture_init_from_file(texture_t& out_texture, const char* filename, bool generate_mips)
+void sm::texture_init_from_file(render_context_t& context, texture_t& out_texture, const char* filename, bool generate_mips)
 {
     arena_t* stack_arena = nullptr;
     arena_stack_init(stack_arena, 256);
@@ -105,42 +116,42 @@ void sm::texture_init_from_file(texture_t& out_texture, const char* filename, bo
         image_create_info.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
         image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         u32 queue_family_indices[] = {
-            (u32)s_context.queue_indices.graphics
+            (u32)context.queue_indices.graphics
         };
         image_create_info.queueFamilyIndexCount = ARRAY_LEN(queue_family_indices);
         image_create_info.pQueueFamilyIndices = queue_family_indices;
         image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-        SM_VULKAN_ASSERT(vkCreateImage(s_context.device, &image_create_info, nullptr, &out_texture.image));
+        SM_VULKAN_ASSERT(vkCreateImage(context.device, &image_create_info, nullptr, &out_texture.image));
 
-        set_debug_name(VK_OBJECT_TYPE_IMAGE, (u64)out_texture.image, filename);
+        set_debug_name(context, VK_OBJECT_TYPE_IMAGE, (u64)out_texture.image, filename);
     }
 
     // image memory
     {
         VkMemoryRequirements image_mem_requirements;
-        vkGetImageMemoryRequirements(s_context.device, out_texture.image, &image_mem_requirements);
+        vkGetImageMemoryRequirements(context.device, out_texture.image, &image_mem_requirements);
 
         VkMemoryAllocateInfo alloc_info{};
         alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         alloc_info.pNext = nullptr;
         alloc_info.allocationSize = image_mem_requirements.size;
-        alloc_info.memoryTypeIndex = find_supported_memory_type_index(s_context, image_mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-        SM_VULKAN_ASSERT(vkAllocateMemory(s_context.device, &alloc_info, nullptr, &out_texture.memory));
+        alloc_info.memoryTypeIndex = find_supported_memory_type_index(context, image_mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        SM_VULKAN_ASSERT(vkAllocateMemory(context.device, &alloc_info, nullptr, &out_texture.memory));
 
-        SM_VULKAN_ASSERT(vkBindImageMemory(s_context.device, out_texture.image, out_texture.memory, 0));
+        SM_VULKAN_ASSERT(vkBindImageMemory(context.device, out_texture.image, out_texture.memory, 0));
     }
 
     // allocate command buffer
     VkCommandBufferAllocateInfo command_buffer_alloc_info{};
     command_buffer_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     command_buffer_alloc_info.pNext = nullptr;
-    command_buffer_alloc_info.commandPool = s_context.graphics_command_pool;
+    command_buffer_alloc_info.commandPool = context.graphics_command_pool;
     command_buffer_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     command_buffer_alloc_info.commandBufferCount = 1;
 
     VkCommandBuffer command_buffer = VK_NULL_HANDLE;
-    SM_VULKAN_ASSERT(vkAllocateCommandBuffers(s_context.device, &command_buffer_alloc_info, &command_buffer));
+    SM_VULKAN_ASSERT(vkAllocateCommandBuffers(context.device, &command_buffer_alloc_info, &command_buffer));
 
     // begin command buffer
     VkCommandBufferBeginInfo command_buffer_begin_info{};
@@ -163,28 +174,28 @@ void sm::texture_init_from_file(texture_t& out_texture, const char* filename, bo
         staging_buffer_create_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
         staging_buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         u32 queue_family_indices[] = {
-            (u32)s_context.queue_indices.graphics
+            (u32)context.queue_indices.graphics
         };
         staging_buffer_create_info.queueFamilyIndexCount = ARRAY_LEN(queue_family_indices);
         staging_buffer_create_info.pQueueFamilyIndices = queue_family_indices;
-        SM_VULKAN_ASSERT(vkCreateBuffer(s_context.device, &staging_buffer_create_info, nullptr, &staging_buffer));
+        SM_VULKAN_ASSERT(vkCreateBuffer(context.device, &staging_buffer_create_info, nullptr, &staging_buffer));
 
         VkMemoryRequirements staging_buffer_mem_requirements;
-        vkGetBufferMemoryRequirements(s_context.device, staging_buffer, &staging_buffer_mem_requirements);
+        vkGetBufferMemoryRequirements(context.device, staging_buffer, &staging_buffer_mem_requirements);
 
         VkMemoryAllocateInfo alloc_info{};
         alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         alloc_info.pNext = nullptr;
         alloc_info.allocationSize = staging_buffer_mem_requirements.size;
-        alloc_info.memoryTypeIndex = find_supported_memory_type_index(s_context, staging_buffer_mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-        SM_VULKAN_ASSERT(vkAllocateMemory(s_context.device, &alloc_info, nullptr, &staging_buffer_memory));
+        alloc_info.memoryTypeIndex = find_supported_memory_type_index(context, staging_buffer_mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        SM_VULKAN_ASSERT(vkAllocateMemory(context.device, &alloc_info, nullptr, &staging_buffer_memory));
 
-        SM_VULKAN_ASSERT(vkBindBufferMemory(s_context.device, staging_buffer, staging_buffer_memory, 0));
+        SM_VULKAN_ASSERT(vkBindBufferMemory(context.device, staging_buffer, staging_buffer_memory, 0));
 
         void* mapped_memory = nullptr;
-        SM_VULKAN_ASSERT(vkMapMemory(s_context.device, staging_buffer_memory, 0, image_size, 0, &mapped_memory));
+        SM_VULKAN_ASSERT(vkMapMemory(context.device, staging_buffer_memory, 0, image_size, 0, &mapped_memory));
         memcpy(mapped_memory, pixels, image_size);
-        vkUnmapMemory(s_context.device, staging_buffer_memory);
+        vkUnmapMemory(context.device, staging_buffer_memory);
 
         // transition the image to transfer dst
         VkImageMemoryBarrier image_memory_barrier{};
@@ -361,7 +372,7 @@ void sm::texture_init_from_file(texture_t& out_texture, const char* filename, bo
     command_submit_info.signalSemaphoreCount = 0;
     command_submit_info.pSignalSemaphores = nullptr;
 
-    SM_VULKAN_ASSERT(vkQueueSubmit(s_context.graphics_queue, 1, &command_submit_info, VK_NULL_HANDLE));
+    SM_VULKAN_ASSERT(vkQueueSubmit(context.graphics_queue, 1, &command_submit_info, VK_NULL_HANDLE));
 
     // image view
     {
@@ -387,25 +398,26 @@ void sm::texture_init_from_file(texture_t& out_texture, const char* filename, bo
         image_view_create_info.format = VK_FORMAT_R8G8B8A8_SRGB;
         image_view_create_info.components = components;
         image_view_create_info.subresourceRange = subresource_range;
-        SM_VULKAN_ASSERT(vkCreateImageView(s_context.device, &image_view_create_info, nullptr, &out_texture.image_view));
+        SM_VULKAN_ASSERT(vkCreateImageView(context.device, &image_view_create_info, nullptr, &out_texture.image_view));
     }
 }
 
-void sm::texture_release(texture_t& texture)
+void sm::texture_release(render_context_t& context, texture_t& texture)
 {
-    vkDestroyImageView(s_context.device, texture.image_view, nullptr);
-    vkDestroyImage(s_context.device, texture.image, nullptr);
-    vkFreeMemory(s_context.device, texture.memory, nullptr);
+    vkDestroyImageView(context.device, texture.image_view, nullptr);
+    vkDestroyImage(context.device, texture.image, nullptr);
+    vkFreeMemory(context.device, texture.memory, nullptr);
 }
 
-void sm::buffer_init(buffer_t& out_buffer,
+void sm::buffer_init(render_context_t& context, 
+                     buffer_t& out_buffer,
                      size_t size,
                      VkBufferUsageFlags usage_flags,
                      VkMemoryPropertyFlags memory_flags)
 {
     // buffer
     u32 queue_families[] = {
-        (u32)s_context.queue_indices.graphics
+        (u32)context.queue_indices.graphics
     };
 
     VkBufferCreateInfo create_info{
@@ -418,13 +430,13 @@ void sm::buffer_init(buffer_t& out_buffer,
         .queueFamilyIndexCount = ARRAY_LEN(queue_families),
         .pQueueFamilyIndices = queue_families
     };
-    SM_VULKAN_ASSERT(vkCreateBuffer(s_context.device, &create_info, nullptr, &out_buffer.buffer));
+    SM_VULKAN_ASSERT(vkCreateBuffer(context.device, &create_info, nullptr, &out_buffer.buffer));
 
     // memory
     VkMemoryRequirements mem_requirements{};
-    vkGetBufferMemoryRequirements(s_context.device, out_buffer.buffer, &mem_requirements);
+    vkGetBufferMemoryRequirements(context.device, out_buffer.buffer, &mem_requirements);
 
-    u32 memory_type_index = find_supported_memory_type_index(s_context, mem_requirements.memoryTypeBits, memory_flags);
+    u32 memory_type_index = find_supported_memory_type_index(context, mem_requirements.memoryTypeBits, memory_flags);
 
     VkMemoryAllocateInfo alloc_info{
         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
@@ -432,14 +444,113 @@ void sm::buffer_init(buffer_t& out_buffer,
         .allocationSize = mem_requirements.size,
         .memoryTypeIndex = memory_type_index
     };
-    SM_VULKAN_ASSERT(vkAllocateMemory(s_context.device, &alloc_info, nullptr, &out_buffer.memory));
+    SM_VULKAN_ASSERT(vkAllocateMemory(context.device, &alloc_info, nullptr, &out_buffer.memory));
 
     // bind together
-    SM_VULKAN_ASSERT(vkBindBufferMemory(s_context.device, out_buffer.buffer, out_buffer.memory, 0));
+    SM_VULKAN_ASSERT(vkBindBufferMemory(context.device, out_buffer.buffer, out_buffer.memory, 0));
 }
 
-void sm::buffer_release(buffer_t& buffer)
+void sm::buffer_upload_data(render_context_t& context, VkBuffer dst_buffer, void* src_data, size_t src_data_size)
 {
-    vkFreeMemory(s_context.device, buffer.memory, nullptr);
-    vkDestroyBuffer(s_context.device, buffer.buffer, nullptr);
+    VkBuffer staging_buffer = VK_NULL_HANDLE;
+
+    VkBufferCreateInfo staging_buffer_create_info{};
+    staging_buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    staging_buffer_create_info.pNext = nullptr;
+    staging_buffer_create_info.flags = 0;
+    staging_buffer_create_info.size = src_data_size;
+    staging_buffer_create_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    staging_buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    u32 queue_families[] = {
+        (u32)context.queue_indices.graphics
+    };
+    staging_buffer_create_info.pQueueFamilyIndices = queue_families;
+    staging_buffer_create_info.queueFamilyIndexCount = ARRAY_LEN(queue_families);
+
+    SM_VULKAN_ASSERT(vkCreateBuffer(context.device, &staging_buffer_create_info, nullptr, &staging_buffer));
+
+    VkMemoryRequirements staging_buffer_mem_requirements{};
+    vkGetBufferMemoryRequirements(context.device, staging_buffer, &staging_buffer_mem_requirements);
+
+    VkDeviceMemory staging_buffer_memory = VK_NULL_HANDLE;
+
+    // allocate staging memory
+    VkMemoryAllocateInfo staging_alloc_info{};
+    staging_alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    staging_alloc_info.pNext = nullptr;
+    staging_alloc_info.allocationSize = staging_buffer_mem_requirements.size;
+    staging_alloc_info.memoryTypeIndex = find_supported_memory_type_index(context, staging_buffer_mem_requirements.memoryTypeBits,
+                                                                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    SM_VULKAN_ASSERT(vkAllocateMemory(context.device, &staging_alloc_info, nullptr, &staging_buffer_memory));
+    SM_VULKAN_ASSERT(vkBindBufferMemory(context.device, staging_buffer, staging_buffer_memory, 0));
+
+    // map staging memory and memcpy data into it
+    void* gpu_staging_memory = nullptr;
+    vkMapMemory(context.device, staging_buffer_memory, 0, staging_buffer_mem_requirements.size, 0, &gpu_staging_memory);
+    memcpy(gpu_staging_memory, src_data, src_data_size);
+    vkUnmapMemory(context.device, staging_buffer_memory);
+
+    // transfer data to actual buffer
+    VkCommandBufferAllocateInfo command_buffer_alloc_info{};
+    command_buffer_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    command_buffer_alloc_info.pNext = nullptr;
+    command_buffer_alloc_info.commandPool = context.graphics_command_pool;
+    command_buffer_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    command_buffer_alloc_info.commandBufferCount = 1;
+
+    VkCommandBuffer buffer_copy_command_buffer = VK_NULL_HANDLE;
+    SM_VULKAN_ASSERT(vkAllocateCommandBuffers(context.device, &command_buffer_alloc_info, &buffer_copy_command_buffer));
+
+    {
+        VkCommandBufferBeginInfo buffer_copy_command_buffer_begin_info{};
+        buffer_copy_command_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        buffer_copy_command_buffer_begin_info.pNext = nullptr;
+        buffer_copy_command_buffer_begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        buffer_copy_command_buffer_begin_info.pInheritanceInfo = nullptr;
+        SM_VULKAN_ASSERT(vkBeginCommandBuffer(buffer_copy_command_buffer, &buffer_copy_command_buffer_begin_info));
+
+        SCOPED_QUEUE_DEBUG_LABEL(context.graphics_queue, "Staging Buffer Upload", color_gen_random());
+
+        VkBufferCopy buffer_copy{};
+        buffer_copy.srcOffset = 0;
+        buffer_copy.dstOffset = 0;
+        buffer_copy.size = src_data_size;
+
+        VkBufferCopy copy_regions[] = {
+            buffer_copy
+        };
+        vkCmdCopyBuffer(buffer_copy_command_buffer, staging_buffer, dst_buffer, ARRAY_LEN(copy_regions), copy_regions);
+
+        vkEndCommandBuffer(buffer_copy_command_buffer);
+    }
+
+    VkSubmitInfo submit_info{};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.pNext = nullptr;
+    submit_info.waitSemaphoreCount = 0;
+    submit_info.pWaitSemaphores = nullptr;
+    submit_info.pWaitDstStageMask = nullptr;
+    VkCommandBuffer commands_to_submit[] = {
+        buffer_copy_command_buffer
+    };
+    submit_info.commandBufferCount = ARRAY_LEN(commands_to_submit);
+    submit_info.pCommandBuffers = commands_to_submit;
+    submit_info.signalSemaphoreCount = 0;
+    submit_info.pSignalSemaphores = nullptr;
+
+    VkSubmitInfo submit_infos[] = {
+        submit_info
+    };
+    SM_VULKAN_ASSERT(vkQueueSubmit(context.graphics_queue, ARRAY_LEN(submit_infos), submit_infos, nullptr));
+    vkQueueWaitIdle(context.graphics_queue);
+
+    vkDestroyBuffer(context.device, staging_buffer, nullptr);
+    vkFreeCommandBuffers(context.device, context.graphics_command_pool, ARRAY_LEN(commands_to_submit), commands_to_submit);
+}
+
+void sm::buffer_release(render_context_t& context, buffer_t& buffer)
+{
+    vkFreeMemory(context.device, buffer.memory, nullptr);
+    vkDestroyBuffer(context.device, buffer.buffer, nullptr);
 }

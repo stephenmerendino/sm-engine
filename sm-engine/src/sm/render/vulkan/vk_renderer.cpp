@@ -12,6 +12,7 @@
 #include "sm/render/ui.h"
 #include "sm/render/window.h"
 #include "sm/render/vulkan/vk_context.h"
+#include "sm/render/vulkan/vk_debug.h"
 #include "sm/render/vulkan/vk_debug_draw.h"
 #include "sm/render/vulkan/vk_include.h"
 #include "sm/render/vulkan/vk_resources.h"
@@ -19,12 +20,6 @@
 #include "third_party/imgui/imgui.h"
 #include "third_party/imgui/imgui_impl_win32.h"
 #include "third_party/imgui/imgui_impl_vulkan.h"
-
-#pragma warning(push)
-#pragma warning(disable:4244)
-#define STB_IMAGE_IMPLEMENTATION
-#include "third_party/stb/stb_image.h"
-#pragma warning(pop)
 
 using namespace sm;
 
@@ -182,136 +177,6 @@ void level_init(arena_t* arena, level_t* level)
     mesh_instances_init(arena, &level->mesh_instances, mesh_instance_capacity);
 }
 
-static void begin_queue_debug_label(VkQueue queue, const char* label, const color_f32_t& color)
-{
-    if (!is_running_in_debug())
-    {
-        return;
-    }
-
-    VkDebugUtilsLabelEXT queue_label{
-        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
-        .pNext = nullptr,
-        .pLabelName = label,
-        .color = { color.r, color.g, color.b, color.a }
-    };
-
-    vkQueueBeginDebugUtilsLabelEXT(queue, &queue_label);
-}
-
-static void end_queue_debug_label(VkQueue queue)
-{
-    if(!is_running_in_debug())
-    {
-        return;
-    }
-
-    vkQueueEndDebugUtilsLabelEXT(queue);
-}
-
-static void insert_queue_debug_label(VkQueue queue, const char* label, const color_f32_t& color)
-{
-    if (!is_running_in_debug())
-    {
-        return;
-    }
-
-    VkDebugUtilsLabelEXT queue_label{
-        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
-        .pNext = nullptr,
-        .pLabelName = label,
-        .color = { color.r, color.g, color.b, color.a }
-    };
-
-    vkQueueInsertDebugUtilsLabelEXT(queue, &queue_label);
-}
-
-static void begin_command_buffer_debug_label(VkCommandBuffer command_buffer, const char* label, const color_f32_t& color)
-{
-    if (!is_running_in_debug())
-    {
-        return;
-    }
-
-    VkDebugUtilsLabelEXT queue_label{
-        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
-        .pNext = nullptr,
-        .pLabelName = label,
-        .color = { color.r, color.g, color.b, color.a }
-    };
-
-    vkCmdBeginDebugUtilsLabelEXT(command_buffer, &queue_label);
-}
-
-static void end_command_buffer_debug_label(VkCommandBuffer command_buffer)
-{
-    if(!is_running_in_debug())
-    {
-        return;
-    }
-
-    vkCmdEndDebugUtilsLabelEXT(command_buffer);
-}
-
-static void insert_command_buffer_debug_label(VkCommandBuffer command_buffer, const char* label, const color_f32_t& color)
-{
-    if (!is_running_in_debug())
-    {
-        return;
-    }
-
-    VkDebugUtilsLabelEXT queue_label{
-        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
-        .pNext = nullptr,
-        .pLabelName = label,
-        .color = { color.r, color.g, color.b, color.a }
-    };
-
-    vkCmdInsertDebugUtilsLabelEXT(command_buffer, &queue_label);
-}
-
-class auto_queue_debug_label_t
-{
-public:
-    auto_queue_debug_label_t() = delete;
-    auto_queue_debug_label_t(VkQueue _queue, const char* label, const color_f32_t& color)
-        :queue(_queue)
-    {
-        begin_queue_debug_label(queue, label, color);
-    }
-
-    ~auto_queue_debug_label_t()
-    {
-        end_queue_debug_label(queue);
-    }
-
-    VkQueue queue;
-};
-
-class auto_command_buffer_debug_label_t
-{
-public:
-    auto_command_buffer_debug_label_t() = delete;
-    auto_command_buffer_debug_label_t(VkCommandBuffer _command_buffer, const char* label, const color_f32_t& color)
-        :command_buffer(_command_buffer)
-    {
-        begin_command_buffer_debug_label(command_buffer, label, color);
-    }
-
-    ~auto_command_buffer_debug_label_t()
-    {
-        end_command_buffer_debug_label(command_buffer);
-    }
-
-    VkCommandBuffer command_buffer;
-};
-
-#define SCOPED_QUEUE_DEBUG_LABEL(queue, label, color) \
-    auto_queue_debug_label_t CONCATENATE(auto_queue_debug_label, __LINE__)(queue, label, color);
-
-#define SCOPED_COMMAND_BUFFER_DEBUG_LABEL(command_buffer, label, color) \
-    auto_command_buffer_debug_label_t CONCATENATE(auto_command_buffer_debug_label, __LINE__) (command_buffer, label, color)
-
 static void imgui_check_vulkan_result(VkResult result)
 {
     SM_VULKAN_ASSERT(result);
@@ -323,129 +188,14 @@ static PFN_vkVoidFunction imgui_vulkan_func_loader(const char* functionName, voi
     return vkGetInstanceProcAddr(instance, functionName);
 }
 
-static void set_debug_name(VkObjectType type, u64 handle, const char* debug_name)
-{
-    if (!is_running_in_debug())
-    {
-        return;
-    }
-
-    VkDebugUtilsObjectNameInfoEXT debug_name_info = {
-        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
-        .pNext = nullptr,
-        .objectType = type,
-        .objectHandle = handle,
-        .pObjectName = debug_name 
-    };
-    SM_VULKAN_ASSERT(vkSetDebugUtilsObjectNameEXT(s_context.device, &debug_name_info));
-}
-
-static void upload_buffer_data(VkBuffer dst_buffer, void* src_data, size_t src_data_size)
-{
-    VkBuffer staging_buffer = VK_NULL_HANDLE;
-
-    VkBufferCreateInfo staging_buffer_create_info{};
-    staging_buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    staging_buffer_create_info.pNext = nullptr;
-    staging_buffer_create_info.flags = 0;
-    staging_buffer_create_info.size = src_data_size;
-    staging_buffer_create_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-    staging_buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    u32 queue_families[] = {
-        (u32)s_context.queue_indices.graphics
-    };
-    staging_buffer_create_info.pQueueFamilyIndices = queue_families;
-    staging_buffer_create_info.queueFamilyIndexCount = ARRAY_LEN(queue_families);
-
-    SM_VULKAN_ASSERT(vkCreateBuffer(s_context.device, &staging_buffer_create_info, nullptr, &staging_buffer));
-
-    VkMemoryRequirements staging_buffer_mem_requirements{};
-    vkGetBufferMemoryRequirements(s_context.device, staging_buffer, &staging_buffer_mem_requirements);
-
-    VkDeviceMemory staging_buffer_memory = VK_NULL_HANDLE;
-
-    // allocate staging memory
-    VkMemoryAllocateInfo staging_alloc_info{};
-    staging_alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    staging_alloc_info.pNext = nullptr;
-    staging_alloc_info.allocationSize = staging_buffer_mem_requirements.size;
-    staging_alloc_info.memoryTypeIndex = find_supported_memory_type_index(s_context, staging_buffer_mem_requirements.memoryTypeBits,
-                                                                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    SM_VULKAN_ASSERT(vkAllocateMemory(s_context.device, &staging_alloc_info, nullptr, &staging_buffer_memory));
-    SM_VULKAN_ASSERT(vkBindBufferMemory(s_context.device, staging_buffer, staging_buffer_memory, 0));
-
-    // map staging memory and memcpy data into it
-    void* gpu_staging_memory = nullptr;
-    vkMapMemory(s_context.device, staging_buffer_memory, 0, staging_buffer_mem_requirements.size, 0, &gpu_staging_memory);
-    memcpy(gpu_staging_memory, src_data, src_data_size);
-    vkUnmapMemory(s_context.device, staging_buffer_memory);
-
-    // transfer data to actual buffer
-    VkCommandBufferAllocateInfo command_buffer_alloc_info{};
-    command_buffer_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    command_buffer_alloc_info.pNext = nullptr;
-    command_buffer_alloc_info.commandPool = s_context.graphics_command_pool;
-    command_buffer_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    command_buffer_alloc_info.commandBufferCount = 1;
-
-    VkCommandBuffer buffer_copy_command_buffer = VK_NULL_HANDLE;
-    SM_VULKAN_ASSERT(vkAllocateCommandBuffers(s_context.device, &command_buffer_alloc_info, &buffer_copy_command_buffer));
-
-    {
-        VkCommandBufferBeginInfo buffer_copy_command_buffer_begin_info{};
-        buffer_copy_command_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        buffer_copy_command_buffer_begin_info.pNext = nullptr;
-        buffer_copy_command_buffer_begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        buffer_copy_command_buffer_begin_info.pInheritanceInfo = nullptr;
-        SM_VULKAN_ASSERT(vkBeginCommandBuffer(buffer_copy_command_buffer, &buffer_copy_command_buffer_begin_info));
-
-        SCOPED_QUEUE_DEBUG_LABEL(s_context.graphics_queue, "Staging Buffer Upload", color_gen_random());
-
-        VkBufferCopy buffer_copy{};
-        buffer_copy.srcOffset = 0;
-        buffer_copy.dstOffset = 0;
-        buffer_copy.size = src_data_size;
-
-        VkBufferCopy copy_regions[] = {
-            buffer_copy
-        };
-        vkCmdCopyBuffer(buffer_copy_command_buffer, staging_buffer, dst_buffer, ARRAY_LEN(copy_regions), copy_regions);
-
-        vkEndCommandBuffer(buffer_copy_command_buffer);
-    }
-
-    VkSubmitInfo submit_info{};
-    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit_info.pNext = nullptr;
-    submit_info.waitSemaphoreCount = 0;
-    submit_info.pWaitSemaphores = nullptr;
-    submit_info.pWaitDstStageMask = nullptr;
-    VkCommandBuffer commands_to_submit[] = {
-        buffer_copy_command_buffer
-    };
-    submit_info.commandBufferCount = ARRAY_LEN(commands_to_submit);
-    submit_info.pCommandBuffers = commands_to_submit;
-    submit_info.signalSemaphoreCount = 0;
-    submit_info.pSignalSemaphores = nullptr;
-
-    VkSubmitInfo submit_infos[] = {
-        submit_info
-    };
-    SM_VULKAN_ASSERT(vkQueueSubmit(s_context.graphics_queue, ARRAY_LEN(submit_infos), submit_infos, nullptr));
-    vkQueueWaitIdle(s_context.graphics_queue);
-
-    vkDestroyBuffer(s_context.device, staging_buffer, nullptr);
-    vkFreeCommandBuffers(s_context.device, s_context.graphics_command_pool, ARRAY_LEN(commands_to_submit), commands_to_submit);
-}
-
 static void render_frames_init_render_targets()
 {
     for(size_t i = 0; i < s_render_frames.cur_size; i++)
     {
         render_frame_t& frame = s_render_frames[i];
 
-        texture_init(frame.forward_pass_draw_color_multisample_texture, 
+        texture_init(s_context, 
+                     frame.forward_pass_draw_color_multisample_texture, 
                      s_context.default_color_format, 
                      VkExtent3D(s_context.swapchain.extent.width, s_context.swapchain.extent.height, 1), 
                      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 
@@ -453,7 +203,8 @@ static void render_frames_init_render_targets()
                      s_context.max_msaa_samples, 
                      false);
 
-        texture_init(frame.forward_pass_depth_multisample_texture, 
+        texture_init(s_context,
+                     frame.forward_pass_depth_multisample_texture, 
                      s_context.default_depth_format, 
                      VkExtent3D(s_context.swapchain.extent.width, s_context.swapchain.extent.height, 1), 
                      VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 
@@ -461,7 +212,8 @@ static void render_frames_init_render_targets()
                      s_context.max_msaa_samples, 
                      false);
 
-        texture_init(frame.forward_pass_color_resolve_texture, 
+        texture_init(s_context, 
+                     frame.forward_pass_color_resolve_texture, 
                      s_context.default_color_format, 
                      VkExtent3D(s_context.swapchain.extent.width, s_context.swapchain.extent.height, 1), 
                      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT, 
@@ -469,7 +221,8 @@ static void render_frames_init_render_targets()
                      VK_SAMPLE_COUNT_1_BIT, 
                      false);
 
-        texture_init(frame.forward_pass_depth_resolve_texture, 
+        texture_init(s_context, 
+                     frame.forward_pass_depth_resolve_texture, 
                      s_context.default_depth_format, 
                      VkExtent3D(s_context.swapchain.extent.width, s_context.swapchain.extent.height, 1), 
                      VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 
@@ -477,7 +230,8 @@ static void render_frames_init_render_targets()
                      VK_SAMPLE_COUNT_1_BIT, 
                      false);
 
-        texture_init(frame.post_processing_color_texture, 
+        texture_init(s_context,
+                     frame.post_processing_color_texture, 
                      s_context.default_color_format, 
                      VkExtent3D(s_context.swapchain.extent.width, s_context.swapchain.extent.height, 1), 
                      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, 
@@ -545,7 +299,8 @@ static void render_frames_init()
 
 		// frame uniform buffer
         {
-            buffer_init(frame.frame_descriptor_buffer, 
+            buffer_init(s_context, 
+                        frame.frame_descriptor_buffer, 
                         sizeof(frame_render_data_t), 
                         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
                         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -576,14 +331,16 @@ static void render_frames_init()
 
         // mesh instance render data buffers
         {
-            buffer_init(frame.mesh_instance_render_data_staging_buffer,
+            buffer_init(s_context, 
+                        frame.mesh_instance_render_data_staging_buffer,
                         sizeof(mesh_instance_render_data_t) * MAX_NUM_MESH_INSTANCES_PER_FRAME,
                         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
             for(u32 mesh_instance_index = 0; mesh_instance_index < MAX_NUM_MESH_INSTANCES_PER_FRAME; ++mesh_instance_index)
             {
-                buffer_init(frame.mesh_instance_render_data_buffers[mesh_instance_index], 
+                buffer_init(s_context, 
+                            frame.mesh_instance_render_data_buffers[mesh_instance_index], 
                             sizeof(mesh_instance_render_data_t), 
                             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
                             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -592,7 +349,8 @@ static void render_frames_init()
 
 		// post processing descriptor set
         {
-            buffer_init(frame.post_processing_params_buffer, 
+            buffer_init(s_context, 
+                        frame.post_processing_params_buffer, 
                         sizeof(post_processing_params_t), 
                         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
                         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -612,7 +370,8 @@ static void render_frames_init()
         {
             // uniform buffer
             {
-                buffer_init(frame.infinite_grid_data_buffer, 
+                buffer_init(s_context, 
+                            frame.infinite_grid_data_buffer, 
                             sizeof(infinite_grid_data_t), 
                             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
                             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -643,11 +402,11 @@ static void render_frames_refresh_render_targets()
     for(size_t i = 0; i < s_render_frames.cur_size; i++)
     {
         render_frame_t& frame = s_render_frames[i];
-        texture_release(frame.forward_pass_draw_color_multisample_texture);
-        texture_release(frame.forward_pass_depth_multisample_texture);
-        texture_release(frame.forward_pass_color_resolve_texture);
-        texture_release(frame.forward_pass_depth_resolve_texture);
-        texture_release(frame.post_processing_color_texture);
+        texture_release(s_context, frame.forward_pass_draw_color_multisample_texture);
+        texture_release(s_context, frame.forward_pass_depth_multisample_texture);
+        texture_release(s_context, frame.forward_pass_color_resolve_texture);
+        texture_release(s_context, frame.forward_pass_depth_resolve_texture);
+        texture_release(s_context, frame.post_processing_color_texture);
 	}
 
 	render_frames_init_render_targets();
@@ -1333,21 +1092,23 @@ static void renderer_mesh_init(sm::mesh_t& out_mesh, sm::mesh_data_t* mesh_data)
     // vertex buffer
     {
         size_t vertex_buffer_size = mesh_data_calc_vertex_buffer_size(mesh_data);
-        buffer_init(out_mesh.vertex_buffer, 
+        buffer_init(s_context,
+                    out_mesh.vertex_buffer, 
                     vertex_buffer_size, 
                     VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-        upload_buffer_data(out_mesh.vertex_buffer.buffer, mesh_data->vertices.data, vertex_buffer_size);
+        buffer_upload_data(s_context, out_mesh.vertex_buffer.buffer, mesh_data->vertices.data, vertex_buffer_size);
     }
 
     // index buffer
     {
         size_t index_buffer_size = mesh_data_calc_index_buffer_size(mesh_data);
-        buffer_init(out_mesh.index_buffer, 
+        buffer_init(s_context, 
+                    out_mesh.index_buffer, 
                     index_buffer_size, 
                     VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-        upload_buffer_data(out_mesh.index_buffer.buffer, mesh_data->indices.data, index_buffer_size);
+        buffer_upload_data(s_context, out_mesh.index_buffer.buffer, mesh_data->indices.data, index_buffer_size);
     }
 
     out_mesh.num_indices = (u32)mesh_data->indices.cur_size;
@@ -1817,7 +1578,7 @@ void sm::renderer_init(window_t* window)
 
 			// viking room diffuse texture
 			{
-                texture_init_from_file(s_viking_room_diffuse_texture, "viking-room.png", true);
+                texture_init_from_file(s_context, s_viking_room_diffuse_texture, "viking-room.png", true);
 			}
 
 			// viking room descriptor set
@@ -2052,7 +1813,7 @@ static void setup_new_frame(render_frame_t& render_frame)
         frame_data.delta_time_seconds = s_delta_time_seconds;
         frame_data.elapsed_time_seconds = s_elapsed_time_seconds;
 
-        upload_buffer_data(render_frame.frame_descriptor_buffer.buffer, &frame_data, sizeof(frame_render_data_t));
+        buffer_upload_data(s_context, render_frame.frame_descriptor_buffer.buffer, &frame_data, sizeof(frame_render_data_t));
 
         VkWriteDescriptorSet descriptor_set_write{};
         descriptor_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -2462,7 +2223,7 @@ static void post_processing_pass(render_frame_t& render_frame)
             .texture_width  = s_context.swapchain.extent.width,
             .texture_height = s_context.swapchain.extent.height
         };
-        upload_buffer_data(render_frame.post_processing_params_buffer.buffer, &post_process_params, sizeof(post_process_params));
+        buffer_upload_data(s_context, render_frame.post_processing_params_buffer.buffer, &post_process_params, sizeof(post_process_params));
 
         VkDescriptorImageInfo forward_pass_color_storage_image_descriptor_info{
             .sampler = VK_NULL_HANDLE,

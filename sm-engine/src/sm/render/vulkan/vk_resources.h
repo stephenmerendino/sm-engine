@@ -38,21 +38,25 @@ namespace sm
     u32 calculate_num_mips(u32 width, u32 height, u32 depth);
     u32 calculate_num_mips(VkExtent3D size);
 
-    void texture_init(texture_t& out_texture,
+    void texture_init(render_context_t& context,
+                      texture_t& out_texture,
 					  VkFormat format,
 					  VkExtent3D size,
 					  VkImageUsageFlags usage_flags,
 					  VkImageAspectFlags image_aspect,
 					  VkSampleCountFlagBits sample_count,
 					  bool with_mips_enabled);
-    void texture_init_from_file(texture_t& out_texture, 
+    void texture_init_from_file(render_context_t& context,
+                                texture_t& out_texture, 
                                 const char* filename, 
                                 bool generate_mips = true);
-    void texture_release(texture_t& texture);
+    void texture_release(render_context_t& context, texture_t& texture);
 
-    void buffer_init(buffer_t& out_buffer,
+    void buffer_init(render_context_t& context,
+                     buffer_t& out_buffer,
                      size_t size,
                      VkBufferUsageFlags usage_flags,
                      VkMemoryPropertyFlags memory_flags);
-    void buffer_release(buffer_t& buffer);
+    void buffer_upload_data(render_context_t& context, VkBuffer dst_buffer, void* src_data, size_t src_data_size);
+    void buffer_release(render_context_t& context, buffer_t& buffer);
 };
