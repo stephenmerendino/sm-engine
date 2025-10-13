@@ -1,5 +1,6 @@
 #include "sm/render/vulkan/vk_resources.h"
 #include "sm/render/vulkan/vk_debug.h"
+#include "sm/render/mesh_data.h"
 #include "sm/config.h"
 #include "sm/core/string.h"
 
@@ -553,4 +554,31 @@ void sm::buffer_release(render_context_t& context, buffer_t& buffer)
 {
     vkFreeMemory(context.device, buffer.memory, nullptr);
     vkDestroyBuffer(context.device, buffer.buffer, nullptr);
+}
+
+void sm::gpu_mesh_init(render_context_t& context, sm::gpu_mesh_t& out_mesh, sm::mesh_data_t* mesh_data)
+{
+    // vertex buffer
+    {
+        size_t vertex_buffer_size = mesh_data_calc_vertex_buffer_size(mesh_data);
+        buffer_init(context,
+                    out_mesh.vertex_buffer, 
+                    vertex_buffer_size, 
+                    VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        buffer_upload_data(context, out_mesh.vertex_buffer.buffer, mesh_data->vertices.data, vertex_buffer_size);
+    }
+
+    // index buffer
+    {
+        size_t index_buffer_size = mesh_data_calc_index_buffer_size(mesh_data);
+        buffer_init(context, 
+                    out_mesh.index_buffer, 
+                    index_buffer_size, 
+                    VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        buffer_upload_data(context, out_mesh.index_buffer.buffer, mesh_data->indices.data, index_buffer_size);
+    }
+
+    out_mesh.num_indices = (u32)mesh_data->indices.cur_size;
 }

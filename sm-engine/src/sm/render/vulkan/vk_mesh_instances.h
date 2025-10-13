@@ -6,7 +6,7 @@
 namespace sm
 {
     struct arena_t;
-    struct mesh_t;
+    struct gpu_mesh_t;
     struct material_t;
     struct string_t;
 
@@ -37,7 +37,7 @@ namespace sm
     struct mesh_instances_t
     {
         mesh_instance_id_t* ids             = nullptr;
-        mesh_t** meshes                     = nullptr;
+        gpu_mesh_t** meshes                     = nullptr;
         material_t** materials              = nullptr;
         push_constants_t* push_constants    = nullptr;
         transform_t* transforms             = nullptr;
@@ -47,7 +47,7 @@ namespace sm
 
     void mesh_instances_init(arena_t* arena, mesh_instances_t* mesh_instances, size_t capacity);
     u32 mesh_instances_get_index(mesh_instances_t* mesh_instances, mesh_instance_id_t id);
-    mesh_instance_id_t mesh_instances_add(mesh_instances_t* mesh_instances, mesh_t* mesh, material_t* material, const push_constants_t& push_constants, const transform_t& initial_transform, u32 flags);
+    mesh_instance_id_t mesh_instances_add(mesh_instances_t* mesh_instances, gpu_mesh_t* mesh, material_t* material, const push_constants_t& push_constants, const transform_t& initial_transform, u32 flags);
     void mesh_instances_append(mesh_instances_t* dst, mesh_instances_t* src);
 
     void mesh_instances_names_init();

@@ -1,4 +1,4 @@
-#include "sm/render/mesh.h"
+#include "sm/render/mesh_data.h"
 #include "sm/math/mat44.h"
 #include "sm/config.h"
 
@@ -107,7 +107,7 @@ const mesh_data_t* sm::mesh_data_get_primitive(primitive_t shape)
 	return s_primitive_shapes[(u32)shape];
 }
 
-mesh_data_t* sm::mesh_init(arena_t* arena, mesh_topology_t topology)
+mesh_data_t* sm::mesh_data_init(arena_t* arena, mesh_topology_t topology)
 {
     mesh_data_t* mesh = arena_alloc_struct(arena, mesh_data_t);
     mesh->vertices = array_init<vertex_t>(arena, 64);
@@ -118,7 +118,7 @@ mesh_data_t* sm::mesh_init(arena_t* arena, mesh_topology_t topology)
 
 mesh_data_t* sm::mesh_data_init_from_obj(sm::arena_t* arena, const char* obj_filepath)
 {
-    mesh_data_t* mesh = mesh_init(arena);
+    mesh_data_t* mesh = mesh_data_init(arena);
 
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;

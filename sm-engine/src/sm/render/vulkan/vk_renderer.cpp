@@ -7,7 +7,7 @@
 #include "sm/math/helpers.h"
 #include "sm/math/mat44.h"
 #include "sm/render/camera.h"
-#include "sm/render/mesh.h"
+#include "sm/render/mesh_data.h"
 #include "sm/render/shader_compiler.h"
 #include "sm/render/ui.h"
 #include "sm/render/window.h"
@@ -112,9 +112,9 @@ namespace sm
 
     struct gizmo_t
     {
-        mesh_t translate_tool_gpu_mesh;
-        mesh_t rotate_tool_gpu_mesh;
-        mesh_t scale_tool_gpu_mesh;
+        gpu_mesh_t translate_tool_gpu_mesh;
+        gpu_mesh_t rotate_tool_gpu_mesh;
+        gpu_mesh_t scale_tool_gpu_mesh;
         gizmo_mode_t mode = gizmo_mode_t::TRANSLATE;
     };
 
@@ -144,7 +144,7 @@ static VkSampler s_linear_sampler = VK_NULL_HANDLE;
 
 static array_t<render_frame_t> s_render_frames;
 
-static mesh_t s_viking_room_mesh;
+static gpu_mesh_t s_viking_room_mesh;
 static texture_t s_viking_room_diffuse_texture;
 static material_t s_viking_room_material;
 
@@ -1087,33 +1087,6 @@ void renderer_window_msg_handler(window_msg_type_t msg_type, u64 msg_data, void*
     }
 }
 
-static void renderer_mesh_init(sm::mesh_t& out_mesh, sm::mesh_data_t* mesh_data)
-{
-    // vertex buffer
-    {
-        size_t vertex_buffer_size = mesh_data_calc_vertex_buffer_size(mesh_data);
-        buffer_init(s_context,
-                    out_mesh.vertex_buffer, 
-                    vertex_buffer_size, 
-                    VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
-                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-        buffer_upload_data(s_context, out_mesh.vertex_buffer.buffer, mesh_data->vertices.data, vertex_buffer_size);
-    }
-
-    // index buffer
-    {
-        size_t index_buffer_size = mesh_data_calc_index_buffer_size(mesh_data);
-        buffer_init(s_context, 
-                    out_mesh.index_buffer, 
-                    index_buffer_size, 
-                    VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
-                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-        buffer_upload_data(s_context, out_mesh.index_buffer.buffer, mesh_data->indices.data, index_buffer_size);
-    }
-
-    out_mesh.num_indices = (u32)mesh_data->indices.cur_size;
-}
-
 static void gizmo_init(arena_t* arena)
 {
     f32 gizmo_length = 0.75f;
@@ -1121,21 +1094,21 @@ static void gizmo_init(arena_t* arena)
     f32 scale_box_thickness = 0.075f;
 
     // build translate tool mesh
-    mesh_data_t* translate_mesh = mesh_init(arena);
+    mesh_data_t* translate_mesh = mesh_data_init(arena);
     mesh_data_add_cylinder(translate_mesh, vec3_t::ZERO, vec3_t::WORLD_FORWARD, gizmo_length, gizmo_bar_thickness, 32, color_f32_t::RED);
     mesh_data_add_cone(translate_mesh, { .x = gizmo_length, .y = 0.0f, .z = 0.0f }, vec3_t::WORLD_FORWARD, 0.25f, 0.1f, 32, color_f32_t::RED);
-    renderer_mesh_init(s_gizmo.translate_tool_gpu_mesh, translate_mesh);
+    gpu_mesh_init(s_context, s_gizmo.translate_tool_gpu_mesh, translate_mesh);
 
     // build rotate tool mesh
-    mesh_data_t* rotate_mesh = mesh_init(arena);
+    mesh_data_t* rotate_mesh = mesh_data_init(arena);
     mesh_data_add_torus(rotate_mesh, vec3_t::ZERO, vec3_t::WORLD_FORWARD, 0.65f, 0.025f, 32);
-    renderer_mesh_init(s_gizmo.rotate_tool_gpu_mesh, rotate_mesh);
+    gpu_mesh_init(s_context, s_gizmo.rotate_tool_gpu_mesh, rotate_mesh);
 
     // build scale tool mesh
-    mesh_data_t* scale_mesh = mesh_init(arena);
+    mesh_data_t* scale_mesh = mesh_data_init(arena);
     mesh_data_add_cylinder(scale_mesh, vec3_t::ZERO, vec3_t::WORLD_FORWARD, gizmo_length, gizmo_bar_thickness, 32, color_f32_t::RED);
     mesh_data_add_cube(scale_mesh, { .x = gizmo_length, .y = 0.0f, .z = 0.0f }, scale_box_thickness, 1, color_f32_t::RED);
-    renderer_mesh_init(s_gizmo.scale_tool_gpu_mesh, scale_mesh);
+    gpu_mesh_init(s_context, s_gizmo.scale_tool_gpu_mesh, scale_mesh);
 }
 
 static void ui_build_scene_window()
@@ -1574,7 +1547,7 @@ void sm::renderer_init(window_t* window)
 		// viking room
 		{
             mesh_data_t* viking_room_obj = mesh_data_init_from_obj(startup_arena, "viking_room.obj");
-            renderer_mesh_init(s_viking_room_mesh, viking_room_obj);
+            gpu_mesh_init(s_context, s_viking_room_mesh, viking_room_obj);
 
 			// viking room diffuse texture
 			{
@@ -1940,7 +1913,7 @@ static void render_mesh_instances(render_frame_t& render_frame, render_pass_t re
         }
 
         mesh_instance_id_t id = render_frame.mesh_instances.ids[i];
-        mesh_t* mesh = render_frame.mesh_instances.meshes[i];
+        gpu_mesh_t* mesh = render_frame.mesh_instances.meshes[i];
         material_t* material = render_frame.mesh_instances.materials[i];
         push_constants_t push_constants = render_frame.mesh_instances.push_constants[i];
         transform_t transform = render_frame.mesh_instances.transforms[i];
@@ -2653,7 +2626,7 @@ static void gizmo_collect_mesh_instances(render_frame_t& render_frame)
 
     transform_t selected_mesh_instance_transform = s_current_level->mesh_instances.transforms[s_selected_mesh_instance_id];
 
-    mesh_t* gizmo_mesh_to_render = nullptr;
+    gpu_mesh_t* gizmo_mesh_to_render = nullptr;
     switch (s_gizmo.mode)
     {
 		case gizmo_mode_t::TRANSLATE: gizmo_mesh_to_render = &s_gizmo.translate_tool_gpu_mesh; break;

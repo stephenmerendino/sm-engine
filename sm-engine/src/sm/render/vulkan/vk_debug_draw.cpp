@@ -1,6 +1,8 @@
 #include "sm/render/vulkan/vk_debug_draw.h"
 #include "sm/render/vulkan/vk_mesh_instances.h"
 #include "sm/render/vulkan/vk_renderer.h"
+#include "sm/render/vulkan/vk_resources.h"
+#include "sm/render/mesh_data.h"
 #include "sm/core/array.h"
 
 using namespace sm;
@@ -18,7 +20,7 @@ static void collect_mesh_instances(arena_t* frame_allocator, mesh_instances_t* f
 {
 	for (int i = 0; i < s_debug_spheres.cur_size; i++)
 	{
-		//mesh_t* mesh = mesh_get_primitive(SPHERE);
+		//cpu_mesh_t* mesh = mesh_get_primitive(SPHERE);
         //material_t* material;
         //push_constants_t push_constants;
         //transform_t initial_transform;
@@ -32,6 +34,9 @@ void sm::debug_draw_init()
 	s_debug_draw_arena = arena_init(MiB(1));
 	renderer_register_collect_mesh_instances_cb(collect_mesh_instances);
 	s_debug_spheres = array_init<debug_draw_sphere_t>(s_debug_draw_arena, 1024);
+
+	//mesh_t* sphere_mesh = arena_alloc_struct(s_debug_draw_arena, mesh_t);
+	//mesh_data_get_primitive(primitive_t::UV_SPHERE);
 }
 
 void sm::debug_draw_update()

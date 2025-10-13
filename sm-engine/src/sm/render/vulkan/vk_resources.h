@@ -7,6 +7,8 @@
 
 namespace sm
 {
+    struct mesh_data_t;
+
     struct buffer_t
     {
         VkBuffer buffer = VK_NULL_HANDLE;
@@ -21,7 +23,7 @@ namespace sm
         u32 num_mips = 0;
     };
 
-    struct mesh_t 
+    struct gpu_mesh_t 
     {
         buffer_t vertex_buffer;
         buffer_t index_buffer;
@@ -59,4 +61,6 @@ namespace sm
                      VkMemoryPropertyFlags memory_flags);
     void buffer_upload_data(render_context_t& context, VkBuffer dst_buffer, void* src_data, size_t src_data_size);
     void buffer_release(render_context_t& context, buffer_t& buffer);
+
+    void gpu_mesh_init(render_context_t& context, gpu_mesh_t& out_mesh, mesh_data_t* mesh_data);
 };

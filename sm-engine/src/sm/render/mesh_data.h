@@ -43,7 +43,7 @@ namespace sm
     void mesh_data_init_primitives();
     const mesh_data_t* mesh_data_get_primitive(primitive_t shape);
 
-    mesh_data_t* mesh_init(arena_t* arena, mesh_topology_t topology = mesh_topology_t::TRIANGLE_LIST);
+    mesh_data_t* mesh_data_init(arena_t* arena, mesh_topology_t topology = mesh_topology_t::TRIANGLE_LIST);
 	mesh_data_t* mesh_data_init_from_obj(arena_t* arena, const char* obj_filepath);
     u32 mesh_data_add_vertex(mesh_data_t* mesh, const vertex_t& v);
     void mesh_data_add_index(mesh_data_t* mesh, u32 index);
