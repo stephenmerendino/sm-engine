@@ -7,7 +7,7 @@
 
 namespace sm
 {
-    struct mesh_data_t;
+    struct cpu_mesh_t;
 
     struct buffer_t
     {
@@ -62,5 +62,5 @@ namespace sm
     void buffer_upload_data(render_context_t& context, VkBuffer dst_buffer, void* src_data, size_t src_data_size);
     void buffer_release(render_context_t& context, buffer_t& buffer);
 
-    void gpu_mesh_init(render_context_t& context, gpu_mesh_t& out_mesh, mesh_data_t* mesh_data);
+    void gpu_mesh_init(render_context_t& context, const cpu_mesh_t& mesh_data, gpu_mesh_t& out_mesh);
 };

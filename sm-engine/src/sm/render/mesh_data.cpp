@@ -12,7 +12,7 @@
 using namespace sm;
 
 bool s_did_init_primitive_shapes = false;
-mesh_data_t* s_primitive_shapes[(u32)primitive_t::NUM_PRIMITIVE_SHAPES];
+cpu_mesh_t* s_primitive_shapes[(u32)primitive_t::NUM_PRIMITIVE_SHAPES];
 arena_t* s_primitives_arena = nullptr;
 
 void sm::mesh_data_init_primitives()
@@ -21,7 +21,7 @@ void sm::mesh_data_init_primitives()
 
 	// axes
 	{
-		mesh_data_t* axes_mesh = arena_alloc_struct(s_primitives_arena, mesh_data_t);
+		cpu_mesh_t* axes_mesh = arena_alloc_struct(s_primitives_arena, cpu_mesh_t);
 		axes_mesh->vertices = array_init<vertex_t>(s_primitives_arena, 64);
 		axes_mesh->indices = array_init<u32>(s_primitives_arena, 64);
 		axes_mesh->topology = mesh_topology_t::LINE_LIST;
@@ -40,7 +40,7 @@ void sm::mesh_data_init_primitives()
 
     // cube
     {
-		mesh_data_t* cube_mesh = arena_alloc_struct(s_primitives_arena, mesh_data_t);
+		cpu_mesh_t* cube_mesh = arena_alloc_struct(s_primitives_arena, cpu_mesh_t);
 		cube_mesh->vertices = array_init<vertex_t>(s_primitives_arena, 64);
 		cube_mesh->indices = array_init<u32>(s_primitives_arena, 64);
 		cube_mesh->topology = mesh_topology_t::TRIANGLE_LIST;
@@ -50,7 +50,7 @@ void sm::mesh_data_init_primitives()
 
     // uv sphere
     {
-		mesh_data_t* uv_sphere_mesh = arena_alloc_struct(s_primitives_arena, mesh_data_t);
+		cpu_mesh_t* uv_sphere_mesh = arena_alloc_struct(s_primitives_arena, cpu_mesh_t);
 		uv_sphere_mesh->vertices = array_init<vertex_t>(s_primitives_arena, 64);
 		uv_sphere_mesh->indices = array_init<u32>(s_primitives_arena, 64);
 		uv_sphere_mesh->topology = mesh_topology_t::TRIANGLE_LIST;
@@ -60,7 +60,7 @@ void sm::mesh_data_init_primitives()
 
     // quad
     {
-		mesh_data_t* quad_mesh = arena_alloc_struct(s_primitives_arena, mesh_data_t);
+		cpu_mesh_t* quad_mesh = arena_alloc_struct(s_primitives_arena, cpu_mesh_t);
 		quad_mesh->vertices = array_init<vertex_t>(s_primitives_arena, 64);
 		quad_mesh->indices = array_init<u32>(s_primitives_arena, 64);
 		quad_mesh->topology = mesh_topology_t::TRIANGLE_LIST;
@@ -70,7 +70,7 @@ void sm::mesh_data_init_primitives()
 
     // cone
     {
-		mesh_data_t* cone_mesh = arena_alloc_struct(s_primitives_arena, mesh_data_t);
+		cpu_mesh_t* cone_mesh = arena_alloc_struct(s_primitives_arena, cpu_mesh_t);
 		cone_mesh->vertices = array_init<vertex_t>(s_primitives_arena, 64);
 		cone_mesh->indices = array_init<u32>(s_primitives_arena, 64);
 		cone_mesh->topology = mesh_topology_t::TRIANGLE_LIST;
@@ -80,7 +80,7 @@ void sm::mesh_data_init_primitives()
 
     // cylinder
     {
-		mesh_data_t* cylinder_mesh = arena_alloc_struct(s_primitives_arena, mesh_data_t);
+		cpu_mesh_t* cylinder_mesh = arena_alloc_struct(s_primitives_arena, cpu_mesh_t);
 		cylinder_mesh->vertices = array_init<vertex_t>(s_primitives_arena, 64);
 		cylinder_mesh->indices = array_init<u32>(s_primitives_arena, 64);
 		cylinder_mesh->topology = mesh_topology_t::TRIANGLE_LIST;
@@ -90,7 +90,7 @@ void sm::mesh_data_init_primitives()
 
     // torus
     {
-		mesh_data_t* torus_mesh = arena_alloc_struct(s_primitives_arena, mesh_data_t);
+		cpu_mesh_t* torus_mesh = arena_alloc_struct(s_primitives_arena, cpu_mesh_t);
 		torus_mesh->vertices = array_init<vertex_t>(s_primitives_arena, 64);
 		torus_mesh->indices = array_init<u32>(s_primitives_arena, 64);
 		torus_mesh->topology = mesh_topology_t::TRIANGLE_LIST;
@@ -101,24 +101,24 @@ void sm::mesh_data_init_primitives()
 	s_did_init_primitive_shapes = true;
 }
 
-const mesh_data_t* sm::mesh_data_get_primitive(primitive_t shape)
+const cpu_mesh_t* sm::mesh_data_get_primitive(primitive_t shape)
 {
 	SM_ASSERT(s_did_init_primitive_shapes);
 	return s_primitive_shapes[(u32)shape];
 }
 
-mesh_data_t* sm::mesh_data_init(arena_t* arena, mesh_topology_t topology)
+cpu_mesh_t* sm::mesh_data_init(arena_t* arena, mesh_topology_t topology)
 {
-    mesh_data_t* mesh = arena_alloc_struct(arena, mesh_data_t);
+    cpu_mesh_t* mesh = arena_alloc_struct(arena, cpu_mesh_t);
     mesh->vertices = array_init<vertex_t>(arena, 64);
     mesh->indices = array_init<u32>(arena, 64);
     mesh->topology = topology;
     return mesh;
 }
 
-mesh_data_t* sm::mesh_data_init_from_obj(sm::arena_t* arena, const char* obj_filepath)
+cpu_mesh_t* sm::mesh_data_init_from_obj(sm::arena_t* arena, const char* obj_filepath)
 {
-    mesh_data_t* mesh = mesh_data_init(arena);
+    cpu_mesh_t* mesh = mesh_data_init(arena);
 
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;
@@ -152,31 +152,31 @@ mesh_data_t* sm::mesh_data_init_from_obj(sm::arena_t* arena, const char* obj_fil
     return mesh;
 }
 
-u32 sm::mesh_data_add_vertex(mesh_data_t* mesh, const vertex_t& v)
+u32 sm::mesh_data_add_vertex(cpu_mesh_t* mesh, const vertex_t& v)
 {
     array_push(mesh->vertices, v);
     return (u32)mesh->vertices.cur_size - 1;
 }
 
-void sm::mesh_data_add_index(mesh_data_t* mesh, u32 index)
+void sm::mesh_data_add_index(cpu_mesh_t* mesh, u32 index)
 {
     array_push(mesh->indices, index);
 }
 
-void sm::mesh_data_add_vertex_and_index(mesh_data_t* mesh, const vertex_t& v)
+void sm::mesh_data_add_vertex_and_index(cpu_mesh_t* mesh, const vertex_t& v)
 {
     u32 index = mesh_data_add_vertex(mesh, v);
     mesh_data_add_index(mesh, index);
 }
 
-void sm::mesh_data_add_triangle_indices(mesh_data_t* mesh, u32 index0, u32 index1, u32 index2)
+void sm::mesh_data_add_triangle_indices(cpu_mesh_t* mesh, u32 index0, u32 index1, u32 index2)
 {
     mesh_data_add_index(mesh, index0);
     mesh_data_add_index(mesh, index1);
     mesh_data_add_index(mesh, index2);
 }
 
-void sm::mesh_data_add_cube(mesh_data_t* mesh, const vec3_t& center, f32 half_size, u32 resolution, const color_f32_t& vertex_color)
+void sm::mesh_data_add_cube(cpu_mesh_t* mesh, const vec3_t& center, f32 half_size, u32 resolution, const color_f32_t& vertex_color)
 {
     mesh_data_add_quad_3d(mesh, center + vec3_t::WORLD_FORWARD * half_size,  vec3_t::WORLD_LEFT,         vec3_t::WORLD_UP, half_size, half_size, resolution,        vertex_color);
     mesh_data_add_quad_3d(mesh, center + vec3_t::WORLD_LEFT * half_size,     vec3_t::WORLD_BACKWARD,     vec3_t::WORLD_UP, half_size, half_size, resolution,        vertex_color);
@@ -186,7 +186,7 @@ void sm::mesh_data_add_cube(mesh_data_t* mesh, const vec3_t& center, f32 half_si
     mesh_data_add_quad_3d(mesh, center + vec3_t::WORLD_DOWN * half_size,     vec3_t::WORLD_LEFT,         vec3_t::WORLD_FORWARD, half_size, half_size, resolution,   vertex_color);
 }
 
-void sm::mesh_data_add_uv_sphere(mesh_data_t* mesh, const vec3_t& origin, f32 radius, u32 resolution, const color_f32_t& vertex_color)
+void sm::mesh_data_add_uv_sphere(cpu_mesh_t* mesh, const vec3_t& origin, f32 radius, u32 resolution, const color_f32_t& vertex_color)
 {
     f32 u_delta_deg = 360.0f / (f32)resolution;
     f32 v_delta_deg = 180.0f / (f32)resolution;
@@ -228,7 +228,7 @@ void sm::mesh_data_add_uv_sphere(mesh_data_t* mesh, const vec3_t& origin, f32 ra
     }
 }
 
-void sm::mesh_data_add_quad_3d(mesh_data_t* mesh, const vec3_t& top_left, const vec3_t& top_right, const vec3_t& bottom_right, const vec3_t& bottom_left, const color_f32_t& vertex_color)
+void sm::mesh_data_add_quad_3d(cpu_mesh_t* mesh, const vec3_t& top_left, const vec3_t& top_right, const vec3_t& bottom_right, const vec3_t& bottom_left, const color_f32_t& vertex_color)
 {
     vec3_t vertex_color_vec3 = to_vec3(vertex_color);
     vec3_t normal = normalized(cross(top_right - bottom_left, top_left - bottom_left));
@@ -242,7 +242,7 @@ void sm::mesh_data_add_quad_3d(mesh_data_t* mesh, const vec3_t& top_left, const 
 	mesh_data_add_triangle_indices(mesh, top_left_index, bottom_left_index, bottom_right_index);
 }
 
-void sm::mesh_data_add_quad_3d(mesh_data_t* mesh, const vec3_t& centerPos, const vec3_t& right, const vec3_t& up, f32 half_width, f32 half_height, u32 resolution, const color_f32_t& vertex_color)
+void sm::mesh_data_add_quad_3d(cpu_mesh_t* mesh, const vec3_t& centerPos, const vec3_t& right, const vec3_t& up, f32 half_width, f32 half_height, u32 resolution, const color_f32_t& vertex_color)
 {
 	vec3_t right_norm = normalized(right);
 	vec3_t up_norm = normalized(up);
@@ -275,7 +275,7 @@ void sm::mesh_data_add_quad_3d(mesh_data_t* mesh, const vec3_t& centerPos, const
 	}
 }
 
-void sm::mesh_data_add_cone(mesh_data_t* mesh, const vec3_t& base_center, const vec3_t& dir, f32 height, f32 base_radius, u32 resolution, const color_f32_t& vertex_color)
+void sm::mesh_data_add_cone(cpu_mesh_t* mesh, const vec3_t& base_center, const vec3_t& dir, f32 height, f32 base_radius, u32 resolution, const color_f32_t& vertex_color)
 {
     vec3_t k = normalized(dir);
     mat44_t transformation = mat44_t::IDENTITY;
@@ -340,7 +340,7 @@ void sm::mesh_data_add_cone(mesh_data_t* mesh, const vec3_t& base_center, const 
     }
 }
 
-void sm::mesh_data_add_cylinder(mesh_data_t* mesh, const vec3_t& base_center, const vec3_t& dir, f32 height, f32 radius, u32 resolution, const color_f32_t& vertex_color)
+void sm::mesh_data_add_cylinder(cpu_mesh_t* mesh, const vec3_t& base_center, const vec3_t& dir, f32 height, f32 radius, u32 resolution, const color_f32_t& vertex_color)
 {
     f32 theta_deg = 360.0f / (f32)resolution;
     f32 side_u_scale = 3.0f;
@@ -431,7 +431,7 @@ void sm::mesh_data_add_cylinder(mesh_data_t* mesh, const vec3_t& base_center, co
     }
 }
 
-void sm::mesh_data_add_torus(mesh_data_t* mesh, const vec3_t& center, const vec3_t& normal, f32 radius, f32 thickness, u32 resolution, const color_f32_t& vertex_color)
+void sm::mesh_data_add_torus(cpu_mesh_t* mesh, const vec3_t& center, const vec3_t& normal, f32 radius, f32 thickness, u32 resolution, const color_f32_t& vertex_color)
 {
     f32 u_scale = 3.0f;
     f32 v_scale = 8.0f;
@@ -479,12 +479,12 @@ void sm::mesh_data_add_torus(mesh_data_t* mesh, const vec3_t& center, const vec3
     }
 }
 
-size_t sm::mesh_data_calc_vertex_buffer_size(const mesh_data_t* mesh)
+size_t sm::mesh_data_calc_vertex_buffer_size(const cpu_mesh_t& mesh)
 {
-    return mesh->vertices.cur_size * sizeof(vertex_t);
+    return mesh.vertices.cur_size * sizeof(vertex_t);
 }
 
-size_t sm::mesh_data_calc_index_buffer_size(const mesh_data_t* mesh)
+size_t sm::mesh_data_calc_index_buffer_size(const cpu_mesh_t& mesh)
 {
-    return mesh->indices.cur_size * sizeof(u32);
+    return mesh.indices.cur_size * sizeof(u32);
 }

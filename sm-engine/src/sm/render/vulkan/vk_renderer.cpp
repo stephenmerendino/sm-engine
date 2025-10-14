@@ -1094,21 +1094,21 @@ static void gizmo_init(arena_t* arena)
     f32 scale_box_thickness = 0.075f;
 
     // build translate tool mesh
-    mesh_data_t* translate_mesh = mesh_data_init(arena);
+    cpu_mesh_t* translate_mesh = mesh_data_init(arena);
     mesh_data_add_cylinder(translate_mesh, vec3_t::ZERO, vec3_t::WORLD_FORWARD, gizmo_length, gizmo_bar_thickness, 32, color_f32_t::RED);
     mesh_data_add_cone(translate_mesh, { .x = gizmo_length, .y = 0.0f, .z = 0.0f }, vec3_t::WORLD_FORWARD, 0.25f, 0.1f, 32, color_f32_t::RED);
-    gpu_mesh_init(s_context, s_gizmo.translate_tool_gpu_mesh, translate_mesh);
+    gpu_mesh_init(s_context, *translate_mesh, s_gizmo.translate_tool_gpu_mesh);
 
     // build rotate tool mesh
-    mesh_data_t* rotate_mesh = mesh_data_init(arena);
+    cpu_mesh_t* rotate_mesh = mesh_data_init(arena);
     mesh_data_add_torus(rotate_mesh, vec3_t::ZERO, vec3_t::WORLD_FORWARD, 0.65f, 0.025f, 32);
-    gpu_mesh_init(s_context, s_gizmo.rotate_tool_gpu_mesh, rotate_mesh);
+    gpu_mesh_init(s_context, *rotate_mesh, s_gizmo.rotate_tool_gpu_mesh);
 
     // build scale tool mesh
-    mesh_data_t* scale_mesh = mesh_data_init(arena);
+    cpu_mesh_t* scale_mesh = mesh_data_init(arena);
     mesh_data_add_cylinder(scale_mesh, vec3_t::ZERO, vec3_t::WORLD_FORWARD, gizmo_length, gizmo_bar_thickness, 32, color_f32_t::RED);
     mesh_data_add_cube(scale_mesh, { .x = gizmo_length, .y = 0.0f, .z = 0.0f }, scale_box_thickness, 1, color_f32_t::RED);
-    gpu_mesh_init(s_context, s_gizmo.scale_tool_gpu_mesh, scale_mesh);
+    gpu_mesh_init(s_context, *scale_mesh, s_gizmo.scale_tool_gpu_mesh);
 }
 
 static void ui_build_scene_window()
@@ -1172,7 +1172,7 @@ void sm::renderer_init(window_t* window)
 	shader_compiler_init();
 	mesh_data_init_primitives();
     mesh_instances_names_init();
-    debug_draw_init();
+    debug_draw_init(s_context);
 
     s_context = render_context_init(startup_arena, window);
 
@@ -1546,8 +1546,8 @@ void sm::renderer_init(window_t* window)
 
 		// viking room
 		{
-            mesh_data_t* viking_room_obj = mesh_data_init_from_obj(startup_arena, "viking_room.obj");
-            gpu_mesh_init(s_context, s_viking_room_mesh, viking_room_obj);
+            cpu_mesh_t* viking_room_obj = mesh_data_init_from_obj(startup_arena, "viking_room.obj");
+            gpu_mesh_init(s_context, *viking_room_obj, s_viking_room_mesh);
 
 			// viking room diffuse texture
 			{

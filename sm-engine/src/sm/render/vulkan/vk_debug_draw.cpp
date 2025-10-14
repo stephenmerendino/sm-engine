@@ -16,6 +16,9 @@ struct debug_draw_sphere_t
 arena_t* s_debug_draw_arena = nullptr;
 array_t<debug_draw_sphere_t> s_debug_spheres;
 
+static gpu_mesh_t* s_sphere_mesh = nullptr;
+material_t s_debug_material;
+
 static void collect_mesh_instances(arena_t* frame_allocator, mesh_instances_t* frame_mesh_instances)
 {
 	for (int i = 0; i < s_debug_spheres.cur_size; i++)
@@ -29,14 +32,20 @@ static void collect_mesh_instances(arena_t* frame_allocator, mesh_instances_t* f
 	}
 }
 
-void sm::debug_draw_init()
+void sm::debug_draw_init(render_context_t& context)
 {
 	s_debug_draw_arena = arena_init(MiB(1));
 	renderer_register_collect_mesh_instances_cb(collect_mesh_instances);
 	s_debug_spheres = array_init<debug_draw_sphere_t>(s_debug_draw_arena, 1024);
 
-	//mesh_t* sphere_mesh = arena_alloc_struct(s_debug_draw_arena, mesh_t);
-	//mesh_data_get_primitive(primitive_t::UV_SPHERE);
+	s_sphere_mesh = arena_alloc_struct(s_debug_draw_arena, gpu_mesh_t);
+	const cpu_mesh_t* sphere_cpu_mesh = mesh_data_get_primitive(primitive_t::UV_SPHERE);
+	gpu_mesh_init(context, *sphere_cpu_mesh, *s_sphere_mesh);
+
+	// init a debug material
+	s_debug_material.descriptor_sets[(u32)render_pass_t::DEBUG_PASS];
+	s_debug_material.pipeline_layouts[(u32)render_pass_t::DEBUG_PASS];
+	s_debug_material.pipelines[(u32)render_pass_t::DEBUG_PASS];
 }
 
 void sm::debug_draw_update()
