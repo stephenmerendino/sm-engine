@@ -30,18 +30,17 @@ static void collect_mesh_instances(arena_t* frame_allocator, mesh_instances_t* f
 	{
         const material_t* material = g_debug_draw_material;
 
-		debug_draw_push_constants_t debug_draw_push_constants{
-			.color = to_vec3(s_debug_spheres[i].color)
-		};
-		push_constants_t push_constants{
-            .size = sizeof(debug_draw_push_constants_t),
-			.data = &debug_draw_push_constants
-		};
+		debug_draw_push_constants_t* debug_draw_push_constants = arena_alloc_struct(frame_allocator, debug_draw_push_constants_t);
+		debug_draw_push_constants->color = to_vec3(color_f32_t::RED);
+
+		push_constants_t push_constants;
+		push_constants.data = debug_draw_push_constants;
+		push_constants.size = sizeof(debug_draw_push_constants_t);
 
 		transform_t t;
 		t.model = mat44_t::IDENTITY;
 
-		u32 flags = 0;
+		u32 flags = (u32)mesh_instance_flags_t::IS_DEBUG;
 
 		mesh_instances_add(&debug_mesh_instances, s_sphere_mesh, material, push_constants, t, flags);
 	}

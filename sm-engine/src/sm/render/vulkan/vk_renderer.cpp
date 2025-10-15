@@ -401,6 +401,73 @@ void renderer_window_msg_handler(window_msg_type_t msg_type, u64 msg_data, void*
     }
 }
 
+static void gizmo_collect_mesh_instances(arena_t* frame_allocator, mesh_instances_t* frame_mesh_instances)
+{
+    if (s_selected_mesh_instance_id == INVALID_MESH_INSTANCE_ID)
+    {
+        return;
+    }
+
+    mesh_instances_t mesh_instances;
+    mesh_instances_init(frame_allocator, &mesh_instances, 3);
+
+    transform_t selected_mesh_instance_transform = s_current_level->mesh_instances.transforms[s_selected_mesh_instance_id];
+
+    gpu_mesh_t* gizmo_mesh_to_render = nullptr;
+    switch (s_gizmo.mode)
+    {
+		case gizmo_mode_t::TRANSLATE: gizmo_mesh_to_render = &s_gizmo.translate_tool_gpu_mesh; break;
+		case gizmo_mode_t::ROTATE: gizmo_mesh_to_render = &s_gizmo.rotate_tool_gpu_mesh; break;
+		case gizmo_mode_t::SCALE: gizmo_mesh_to_render = &s_gizmo.scale_tool_gpu_mesh; break;
+    }
+
+    {
+		transform_t gizmo_transform;
+		set_translation(gizmo_transform.model, selected_mesh_instance_transform.model.tx, selected_mesh_instance_transform.model.ty, selected_mesh_instance_transform.model.tz);
+
+		debug_draw_push_constants_t* gizmo_push_constants = arena_alloc_struct(frame_allocator, debug_draw_push_constants_t);
+		gizmo_push_constants->color = to_vec3(color_f32_t::RED);
+
+		push_constants_t push_constants;
+		push_constants.data = gizmo_push_constants;
+		push_constants.size = sizeof(debug_draw_push_constants_t);
+
+		mesh_instances_add(&mesh_instances, gizmo_mesh_to_render, g_debug_draw_material, push_constants, gizmo_transform, (u32)mesh_instance_flags_t::IS_DEBUG);
+    }
+
+    {
+		transform_t gizmo_transform;
+		rotate_z_degs(gizmo_transform.model, 90.0f);
+		set_translation(gizmo_transform.model, selected_mesh_instance_transform.model.tx, selected_mesh_instance_transform.model.ty, selected_mesh_instance_transform.model.tz);
+
+		debug_draw_push_constants_t* gizmo_push_constants = arena_alloc_struct(frame_allocator, debug_draw_push_constants_t);
+		gizmo_push_constants->color = to_vec3(color_f32_t::GREEN);
+
+		push_constants_t push_constants;
+		push_constants.data = gizmo_push_constants;
+		push_constants.size = sizeof(debug_draw_push_constants_t);
+
+		mesh_instances_add(&mesh_instances, gizmo_mesh_to_render, g_debug_draw_material, push_constants, gizmo_transform, (u32)mesh_instance_flags_t::IS_DEBUG);
+    }
+
+    {
+		transform_t gizmo_transform;
+		rotate_y_degs(gizmo_transform.model, -90.0f);
+		set_translation(gizmo_transform.model, selected_mesh_instance_transform.model.tx, selected_mesh_instance_transform.model.ty, selected_mesh_instance_transform.model.tz);
+
+		debug_draw_push_constants_t* gizmo_push_constants = arena_alloc_struct(frame_allocator, debug_draw_push_constants_t);
+		gizmo_push_constants->color = to_vec3(color_f32_t::BLUE);
+
+		push_constants_t push_constants;
+		push_constants.data = gizmo_push_constants;
+		push_constants.size = sizeof(debug_draw_push_constants_t);
+
+		mesh_instances_add(&mesh_instances, gizmo_mesh_to_render, g_debug_draw_material, push_constants, gizmo_transform, (u32)mesh_instance_flags_t::IS_DEBUG);
+    }
+    mesh_instances_append(frame_mesh_instances, &mesh_instances);
+}
+
+
 static void gizmo_init(arena_t* arena)
 {
     f32 gizmo_length = 0.75f;
@@ -423,6 +490,8 @@ static void gizmo_init(arena_t* arena)
     mesh_data_add_cylinder(scale_mesh, vec3_t::ZERO, vec3_t::WORLD_FORWARD, gizmo_length, gizmo_bar_thickness, 32, color_f32_t::RED);
     mesh_data_add_cube(scale_mesh, { .x = gizmo_length, .y = 0.0f, .z = 0.0f }, scale_box_thickness, 1, color_f32_t::RED);
     gpu_mesh_init(s_context, *scale_mesh, s_gizmo.scale_tool_gpu_mesh);
+
+    renderer_register_collect_mesh_instances_cb(gizmo_collect_mesh_instances);
 }
 
 static void ui_build_scene_window()
@@ -1181,11 +1250,6 @@ static void post_processing_pass(render_frame_t& render_frame)
 
 static void debug_pass(render_frame_t& render_frame)
 {
-    if (s_selected_mesh_instance_id == INVALID_MESH_INSTANCE_ID)
-    {
-        return;
-    }
-
     SCOPED_COMMAND_BUFFER_DEBUG_LABEL(render_frame.frame_command_buffer, "Debug Pass", color_gen_random());
 
     {
@@ -1486,83 +1550,10 @@ static void present_frame(render_frame_t& render_frame)
         SM_VULKAN_ASSERT(present_result);
     }
 }
-
-static void gizmo_collect_mesh_instances(render_frame_t& render_frame)
-{
-    if (s_selected_mesh_instance_id == INVALID_MESH_INSTANCE_ID)
-    {
-        return;
-    }
-
-    mesh_instances_t mesh_instances;
-    mesh_instances_init(render_frame.frame_arena, &mesh_instances, 3);
-
-    transform_t selected_mesh_instance_transform = s_current_level->mesh_instances.transforms[s_selected_mesh_instance_id];
-
-    gpu_mesh_t* gizmo_mesh_to_render = nullptr;
-    switch (s_gizmo.mode)
-    {
-		case gizmo_mode_t::TRANSLATE: gizmo_mesh_to_render = &s_gizmo.translate_tool_gpu_mesh; break;
-		case gizmo_mode_t::ROTATE: gizmo_mesh_to_render = &s_gizmo.rotate_tool_gpu_mesh; break;
-		case gizmo_mode_t::SCALE: gizmo_mesh_to_render = &s_gizmo.scale_tool_gpu_mesh; break;
-    }
-
-    {
-		transform_t gizmo_transform;
-		set_translation(gizmo_transform.model, selected_mesh_instance_transform.model.tx, selected_mesh_instance_transform.model.ty, selected_mesh_instance_transform.model.tz);
-
-		debug_draw_push_constants_t* gizmo_push_constants = arena_alloc_struct(render_frame.frame_arena, debug_draw_push_constants_t);
-		gizmo_push_constants->color = to_vec3(color_f32_t::RED);
-
-		push_constants_t push_constants;
-		push_constants.data = gizmo_push_constants;
-		push_constants.size = sizeof(debug_draw_push_constants_t);
-
-		mesh_instances_add(&mesh_instances, gizmo_mesh_to_render, g_debug_draw_material, push_constants, gizmo_transform, (u32)mesh_instance_flags_t::IS_DEBUG);
-    }
-
-    {
-		transform_t gizmo_transform;
-		rotate_z_degs(gizmo_transform.model, 90.0f);
-		set_translation(gizmo_transform.model, selected_mesh_instance_transform.model.tx, selected_mesh_instance_transform.model.ty, selected_mesh_instance_transform.model.tz);
-
-		debug_draw_push_constants_t* gizmo_push_constants = arena_alloc_struct(render_frame.frame_arena, debug_draw_push_constants_t);
-		gizmo_push_constants->color = to_vec3(color_f32_t::GREEN);
-
-		push_constants_t push_constants;
-		push_constants.data = gizmo_push_constants;
-		push_constants.size = sizeof(debug_draw_push_constants_t);
-
-		mesh_instances_add(&mesh_instances, gizmo_mesh_to_render, g_debug_draw_material, push_constants, gizmo_transform, (u32)mesh_instance_flags_t::IS_DEBUG);
-    }
-
-    {
-		transform_t gizmo_transform;
-		rotate_y_degs(gizmo_transform.model, -90.0f);
-		set_translation(gizmo_transform.model, selected_mesh_instance_transform.model.tx, selected_mesh_instance_transform.model.ty, selected_mesh_instance_transform.model.tz);
-
-		debug_draw_push_constants_t* gizmo_push_constants = arena_alloc_struct(render_frame.frame_arena, debug_draw_push_constants_t);
-		gizmo_push_constants->color = to_vec3(color_f32_t::BLUE);
-
-		push_constants_t push_constants;
-		push_constants.data = gizmo_push_constants;
-		push_constants.size = sizeof(debug_draw_push_constants_t);
-
-		mesh_instances_add(&mesh_instances, gizmo_mesh_to_render, g_debug_draw_material, push_constants, gizmo_transform, (u32)mesh_instance_flags_t::IS_DEBUG);
-    }
-    mesh_instances_append(&render_frame.mesh_instances, &mesh_instances);
-}
-
-static void debug_draw_system_collect_mesh_instances(render_frame_t& render_frame)
-{
-    gizmo_collect_mesh_instances(render_frame);
-}
-
 static void collect_mesh_instances(render_frame_t& render_frame)
 {
     mesh_instances_init(render_frame.frame_arena, &render_frame.mesh_instances, MAX_NUM_MESH_INSTANCES_PER_FRAME);
     mesh_instances_append(&render_frame.mesh_instances, &s_current_level->mesh_instances);
-    debug_draw_system_collect_mesh_instances(render_frame);
 
     for (int i = 0; i < s_collect_mesh_instances_cbs.cur_size; i++)
     {
