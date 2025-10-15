@@ -29,8 +29,8 @@ void sm::mesh_instances_init(arena_t* arena, mesh_instances_t* mesh_instances, s
         mesh_instances->ids[i] = INVALID_MESH_INSTANCE_ID;
     }
     mesh_instances->flags = (u32*)arena_alloc_array_zero(arena, mesh_instance_flags_t, capacity);
-    mesh_instances->meshes = (gpu_mesh_t**)arena_alloc_array_zero(arena, gpu_mesh_t*, capacity);
-    mesh_instances->materials = (material_t**)arena_alloc_array_zero(arena, material_t*, capacity);
+    mesh_instances->meshes = (const gpu_mesh_t**)arena_alloc_array_zero(arena, gpu_mesh_t*, capacity);
+    mesh_instances->materials = (const material_t**)arena_alloc_array_zero(arena, material_t*, capacity);
     mesh_instances->push_constants = (push_constants_t*)arena_alloc_array_zero(arena, push_constants_t, capacity);
     mesh_instances->transforms = (transform_t*)arena_alloc_array_zero(arena, transform_t, capacity);
     mesh_instances->capacity = capacity;
@@ -49,7 +49,7 @@ u32 sm::mesh_instances_get_index(mesh_instances_t* mesh_instances, mesh_instance
     return INVALID_MESH_INSTANCE_INDEX;
 }
 
-mesh_instance_id_t sm::mesh_instances_add(mesh_instances_t* mesh_instances, gpu_mesh_t* mesh, material_t* material, const push_constants_t& push_constants, const transform_t& initial_transform, u32 flags)
+mesh_instance_id_t sm::mesh_instances_add(mesh_instances_t* mesh_instances, const gpu_mesh_t* mesh, const material_t* material, const push_constants_t& push_constants, const transform_t& initial_transform, u32 flags)
 {
     // loop through mesh instances ids until you find an empty slot
     int slot = -1;

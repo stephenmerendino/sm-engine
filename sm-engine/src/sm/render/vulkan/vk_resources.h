@@ -64,13 +64,35 @@ namespace sm
 
     void gpu_mesh_init(render_context_t& context, const cpu_mesh_t& mesh_data, gpu_mesh_t& out_mesh);
 
-    void material_defaults_init(const render_context_t& context);
-    extern VkPipelineVertexInputStateCreateInfo g_default_vertex_input_state;
-    extern VkPipelineInputAssemblyStateCreateInfo g_default_triangle_input_assembly;
-    extern VkPipelineTessellationStateCreateInfo g_default_no_tesselation_state;
-    extern VkPipelineViewportStateCreateInfo g_default_main_window_viewport_state;
-    extern VkPipelineRasterizationStateCreateInfo g_default_rasterization_state;
-    extern VkPipelineMultisampleStateCreateInfo g_default_multisample_state;
-    extern VkPipelineDepthStencilStateCreateInfo g_default_depth_stencil_state;
-    extern VkPipelineDynamicStateCreateInfo g_default_dynamic_state;
+    extern VkDescriptorPool g_global_descriptor_pool;
+    extern VkDescriptorPool g_frame_descriptor_pool;
+    extern VkDescriptorPool g_material_descriptor_pool;
+    extern VkDescriptorPool g_imgui_descriptor_pool;
+    extern VkDescriptorSetLayout g_empty_descriptor_set_layout;
+    extern VkDescriptorSetLayout g_global_descriptor_set_layout;
+    extern VkDescriptorSetLayout g_frame_descriptor_set_layout;
+    extern VkDescriptorSetLayout g_material_descriptor_set_layout;
+    extern VkDescriptorSetLayout g_mesh_instance_descriptor_set_layout;
+    extern VkDescriptorSetLayout g_post_process_descriptor_set_layout;
+    extern VkDescriptorSetLayout g_infinite_grid_descriptor_set_layout;
+    extern VkDescriptorSet g_empty_descriptor_set;
+    extern VkDescriptorSet g_global_descriptor_set;
+    extern VkSampler g_linear_sampler;
+
+    extern gpu_mesh_t g_viking_room_mesh;
+    extern texture_t g_viking_room_diffuse_texture;
+    extern VkPipelineLayout g_infinite_grid_forward_pass_pipeline_layout;
+    extern VkPipelineLayout g_post_process_pipeline_layout;
+    extern VkPipeline g_post_process_compute_pipeline;
+
+    extern material_t* g_viking_room_material;
+    extern material_t* g_debug_draw_material;
+
+    struct debug_draw_push_constants_t
+    {
+        vec3_t color;
+    };
+
+    void material_init(render_context_t& context);
+    void pipelines_recreate(render_context_t& context);
 };

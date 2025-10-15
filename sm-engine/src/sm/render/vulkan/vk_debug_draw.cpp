@@ -10,6 +10,7 @@ using namespace sm;
 struct debug_draw_sphere_t
 {
 	sphere_t s;
+	color_f32_t color;
 	u32 num_frames_to_draw;
 };
 
@@ -17,19 +18,35 @@ arena_t* s_debug_draw_arena = nullptr;
 array_t<debug_draw_sphere_t> s_debug_spheres;
 
 static gpu_mesh_t* s_sphere_mesh = nullptr;
-material_t s_debug_material;
+static VkDescriptorSetLayout s_debug_material_descriptor_set_layout;
+static material_t s_debug_material;
 
 static void collect_mesh_instances(arena_t* frame_allocator, mesh_instances_t* frame_mesh_instances)
 {
+	mesh_instances_t debug_mesh_instances;
+	mesh_instances_init(frame_allocator, &debug_mesh_instances, 1024);
+
 	for (int i = 0; i < s_debug_spheres.cur_size; i++)
 	{
-		//cpu_mesh_t* mesh = mesh_get_primitive(SPHERE);
-        //material_t* material;
-        //push_constants_t push_constants;
-        //transform_t initial_transform;
-		//u32 flags = 0;
-		//mesh_instances_add(frame_mesh_instances, mesh, material, push_constants, initial_transform, flags);
+        const material_t* material = g_debug_draw_material;
+
+		debug_draw_push_constants_t debug_draw_push_constants{
+			.color = to_vec3(s_debug_spheres[i].color)
+		};
+		push_constants_t push_constants{
+            .size = sizeof(debug_draw_push_constants_t),
+			.data = &debug_draw_push_constants
+		};
+
+		transform_t t;
+		t.model = mat44_t::IDENTITY;
+
+		u32 flags = 0;
+
+		mesh_instances_add(&debug_mesh_instances, s_sphere_mesh, material, push_constants, t, flags);
 	}
+
+	mesh_instances_append(frame_mesh_instances, &debug_mesh_instances);
 }
 
 void sm::debug_draw_init(render_context_t& context)
@@ -41,12 +58,6 @@ void sm::debug_draw_init(render_context_t& context)
 	s_sphere_mesh = arena_alloc_struct(s_debug_draw_arena, gpu_mesh_t);
 	const cpu_mesh_t* sphere_cpu_mesh = mesh_data_get_primitive(primitive_t::UV_SPHERE);
 	gpu_mesh_init(context, *sphere_cpu_mesh, *s_sphere_mesh);
-
-	// init a debug material
-	// descriptor set layout
-	s_debug_material.descriptor_sets[(u32)render_pass_t::DEBUG_PASS];
-	s_debug_material.pipeline_layouts[(u32)render_pass_t::DEBUG_PASS];
-	s_debug_material.pipelines[(u32)render_pass_t::DEBUG_PASS];
 }
 
 void sm::debug_draw_update()
@@ -63,7 +74,7 @@ void sm::debug_draw_update()
 	}
 }
 
-void sm::debug_draw_sphere(const sphere_t& sphere, u32 num_frames)
+void sm::debug_draw_sphere(const sphere_t& sphere, const color_f32_t& color, u32 num_frames)
 {
-	array_push<debug_draw_sphere_t>(s_debug_spheres, { .s = sphere, .num_frames_to_draw = num_frames });
+	array_push<debug_draw_sphere_t>(s_debug_spheres, { .s = sphere, .color = color, .num_frames_to_draw = num_frames });
 }

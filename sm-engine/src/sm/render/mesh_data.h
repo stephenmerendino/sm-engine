@@ -40,7 +40,7 @@ namespace sm
 		array_t<u32> indices;
 	};
 
-    void mesh_data_init_primitives();
+    void mesh_data_primitives_init();
     const cpu_mesh_t* mesh_data_get_primitive(primitive_t shape);
 
     cpu_mesh_t* mesh_data_init(arena_t* arena, mesh_topology_t topology = mesh_topology_t::TRIANGLE_LIST);

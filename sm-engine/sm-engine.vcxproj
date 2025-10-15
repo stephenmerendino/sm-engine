@@ -189,10 +189,10 @@
     <None Include="src\third_party\imgui\vulkan\glsl_shader.vert" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\raw_assets\shaders\gizmo.ps.hlsl">
+    <None Include="..\raw_assets\shaders\debug-draw.ps.hlsl">
       <FileType>Document</FileType>
     </None>
-    <None Include="..\raw_assets\shaders\gizmo.vs.hlsl">
+    <None Include="..\raw_assets\shaders\debug-draw.vs.hlsl">
       <FileType>Document</FileType>
     </None>
     <None Include="..\raw_assets\shaders\infinite-grid.ps.hlsl">

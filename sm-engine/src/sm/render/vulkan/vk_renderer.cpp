@@ -117,44 +117,13 @@ namespace sm
         gpu_mesh_t scale_tool_gpu_mesh;
         gizmo_mode_t mode = gizmo_mode_t::TRANSLATE;
     };
-
-    struct gizmo_push_constants_t
-    {
-        vec3_t color;
-    };
 }
 
 static bool s_close_window = false;
 static render_context_t s_context;
 
-static VkDescriptorPool s_global_descriptor_pool = VK_NULL_HANDLE;
-static VkDescriptorPool s_frame_descriptor_pool = VK_NULL_HANDLE;
-static VkDescriptorPool s_material_descriptor_pool = VK_NULL_HANDLE;
-static VkDescriptorPool s_imgui_descriptor_pool = VK_NULL_HANDLE;
-static VkDescriptorSetLayout s_empty_descriptor_set_layout = VK_NULL_HANDLE;
-static VkDescriptorSetLayout s_global_descriptor_set_layout = VK_NULL_HANDLE;
-static VkDescriptorSetLayout s_frame_descriptor_set_layout = VK_NULL_HANDLE;
-static VkDescriptorSetLayout s_material_descriptor_set_layout = VK_NULL_HANDLE;
-static VkDescriptorSetLayout s_mesh_instance_descriptor_set_layout = VK_NULL_HANDLE;
-static VkDescriptorSetLayout s_post_process_descriptor_set_layout = VK_NULL_HANDLE;
-static VkDescriptorSetLayout s_infinite_grid_descriptor_set_layout = VK_NULL_HANDLE;
-static VkDescriptorSet s_empty_descriptor_set = VK_NULL_HANDLE;
-static VkDescriptorSet s_global_descriptor_set = VK_NULL_HANDLE;
-static VkSampler s_linear_sampler = VK_NULL_HANDLE;
-
 static array_t<render_frame_t> s_render_frames;
-
-static gpu_mesh_t s_viking_room_mesh;
-static texture_t s_viking_room_diffuse_texture;
-static material_t s_viking_room_material;
-
 static gizmo_t s_gizmo;
-static material_t s_gizmo_material;
-
-static VkPipelineLayout s_infinite_grid_forward_pass_pipeline_layout = VK_NULL_HANDLE;
-
-static VkPipelineLayout s_post_process_pipeline_layout = VK_NULL_HANDLE;
-static VkPipeline s_post_process_compute_pipeline = VK_NULL_HANDLE;
 
 static arena_t* s_level_arena = nullptr;
 static level_t* s_current_level = nullptr;
@@ -288,9 +257,9 @@ static void render_frames_init()
         {
             VkDescriptorSetAllocateInfo alloc_info{};
             alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-            alloc_info.descriptorPool = s_frame_descriptor_pool;
+            alloc_info.descriptorPool = g_frame_descriptor_pool;
             VkDescriptorSetLayout layouts[] = {
-                s_frame_descriptor_set_layout
+                g_frame_descriptor_set_layout
             };
             alloc_info.pSetLayouts = layouts;
             alloc_info.descriptorSetCount = ARRAY_LEN(layouts);
@@ -357,9 +326,9 @@ static void render_frames_init()
 
             VkDescriptorSetAllocateInfo alloc_info{};
             alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-            alloc_info.descriptorPool = s_frame_descriptor_pool;
+            alloc_info.descriptorPool = g_frame_descriptor_pool;
             VkDescriptorSetLayout set_layouts[] = {
-                s_post_process_descriptor_set_layout
+                g_post_process_descriptor_set_layout
             };
             alloc_info.pSetLayouts = set_layouts;
             alloc_info.descriptorSetCount = ARRAY_LEN(set_layouts);
@@ -381,10 +350,10 @@ static void render_frames_init()
             {
                 VkDescriptorSetAllocateInfo alloc_info{};
                 alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-                alloc_info.descriptorPool = s_frame_descriptor_pool;
+                alloc_info.descriptorPool = g_frame_descriptor_pool;
 
                 VkDescriptorSetLayout descriptor_set_layouts[] = {
-                    s_infinite_grid_descriptor_set_layout
+                    g_infinite_grid_descriptor_set_layout
                 };
                 alloc_info.descriptorSetCount = ARRAY_LEN(descriptor_set_layouts);
                 alloc_info.pSetLayouts = descriptor_set_layouts;
@@ -412,501 +381,9 @@ static void render_frames_refresh_render_targets()
 	render_frames_init_render_targets();
 }
 
-static void pipelines_init()
-{
-    arena_t* temp_shader_arena = arena_init(KiB(50));
-
-    // viking room pipeline
-    {
-        // shaders
-        shader_t* vertex_shader = arena_alloc_struct(temp_shader_arena, shader_t);
-        SM_ASSERT(shader_compiler_compile(temp_shader_arena, shader_type_t::VERTEX, "simple-material.vs.hlsl", "main", &vertex_shader));
-
-        shader_t* pixel_shader = arena_alloc_struct(temp_shader_arena, shader_t);
-        SM_ASSERT(shader_compiler_compile(temp_shader_arena, shader_type_t::PIXEL, "simple-material.ps.hlsl", "main", &pixel_shader));
-
-        VkShaderModuleCreateInfo vertex_shader_module_create_info{};
-        vertex_shader_module_create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        vertex_shader_module_create_info.pNext = nullptr;
-        vertex_shader_module_create_info.flags = 0;
-        vertex_shader_module_create_info.codeSize = vertex_shader->bytecode.cur_size;
-        vertex_shader_module_create_info.pCode = (u32*)vertex_shader->bytecode.data;
-
-        VkShaderModule vertex_shader_module = VK_NULL_HANDLE;
-        SM_VULKAN_ASSERT(vkCreateShaderModule(s_context.device, &vertex_shader_module_create_info, nullptr, &vertex_shader_module));
-
-        VkShaderModuleCreateInfo pixel_shader_module_create_info{};
-        pixel_shader_module_create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        pixel_shader_module_create_info.pNext = nullptr;
-        pixel_shader_module_create_info.flags = 0;
-        pixel_shader_module_create_info.codeSize = pixel_shader->bytecode.cur_size;
-        pixel_shader_module_create_info.pCode = (u32*)pixel_shader->bytecode.data;
-
-        VkShaderModule pixel_shader_module = VK_NULL_HANDLE;
-        SM_VULKAN_ASSERT(vkCreateShaderModule(s_context.device, &pixel_shader_module_create_info, nullptr, &pixel_shader_module));
-
-        VkPipelineShaderStageCreateInfo vertex_stage{};
-        vertex_stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        vertex_stage.pNext = nullptr;
-        vertex_stage.flags = 0;
-        vertex_stage.stage = VK_SHADER_STAGE_VERTEX_BIT;
-        vertex_stage.module = vertex_shader_module;
-        vertex_stage.pName = vertex_shader->entry_name;
-        vertex_stage.pSpecializationInfo = nullptr;
-
-        VkPipelineShaderStageCreateInfo pixel_stage{};
-        pixel_stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        pixel_stage.pNext = nullptr;
-        pixel_stage.flags = 0;
-        pixel_stage.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        pixel_stage.module = pixel_shader_module;
-        pixel_stage.pName = pixel_shader->entry_name;
-        pixel_stage.pSpecializationInfo = nullptr;
-
-        VkPipelineShaderStageCreateInfo shader_stages[] = {
-            vertex_stage,
-            pixel_stage
-        };
-
-        // multisample state
-        VkPipelineMultisampleStateCreateInfo multisample_state = g_default_multisample_state;
-        multisample_state.rasterizationSamples = s_context.max_msaa_samples;
-
-        // color blend state
-        VkPipelineColorBlendStateCreateInfo color_blend_state{};
-        color_blend_state.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        color_blend_state.pNext = nullptr;
-        color_blend_state.flags = 0;
-        color_blend_state.logicOpEnable = VK_FALSE;
-        color_blend_state.logicOp = VK_LOGIC_OP_CLEAR;
-
-        VkPipelineColorBlendAttachmentState color_blend_attachment_state{};
-        color_blend_attachment_state.blendEnable = VK_FALSE;
-        color_blend_attachment_state.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-        color_blend_attachment_state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
-        color_blend_attachment_state.colorBlendOp = VK_BLEND_OP_ADD;
-        color_blend_attachment_state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-        color_blend_attachment_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-        color_blend_attachment_state.alphaBlendOp = VK_BLEND_OP_ADD;
-        color_blend_attachment_state.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
-                                                      VK_COLOR_COMPONENT_G_BIT |
-                                                      VK_COLOR_COMPONENT_B_BIT |
-                                                      VK_COLOR_COMPONENT_A_BIT;
-
-        VkPipelineColorBlendAttachmentState color_blend_attachment_states[] = {
-            color_blend_attachment_state
-        };
-
-        color_blend_state.attachmentCount = ARRAY_LEN(color_blend_attachment_states);
-        color_blend_state.pAttachments = color_blend_attachment_states;
-
-        color_blend_state.blendConstants[0] = 0.0f;
-        color_blend_state.blendConstants[1] = 0.0f;
-        color_blend_state.blendConstants[2] = 0.0f;
-        color_blend_state.blendConstants[3] = 0.0f;
-
-        VkFormat color_formats[] = {
-            s_context.default_color_format
-        };
-
-        VkPipelineRenderingCreateInfo pipeline_rendering_create_info{
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
-			.pNext = nullptr,
-            .viewMask = 0,
-			.colorAttachmentCount = ARRAY_LEN(color_formats),
-			.pColorAttachmentFormats = color_formats,
-			.depthAttachmentFormat = s_context.default_depth_format,
-			.stencilAttachmentFormat = VK_FORMAT_UNDEFINED 
-        };
-
-        VkGraphicsPipelineCreateInfo pipeline_create_info{};
-        pipeline_create_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        pipeline_create_info.pNext = &pipeline_rendering_create_info;
-        pipeline_create_info.flags = 0;
-        pipeline_create_info.stageCount = ARRAY_LEN(shader_stages);
-        pipeline_create_info.pStages = shader_stages;
-        pipeline_create_info.pVertexInputState = &g_default_vertex_input_state;
-        pipeline_create_info.pInputAssemblyState = &g_default_triangle_input_assembly;
-        pipeline_create_info.pTessellationState = &g_default_no_tesselation_state;
-        pipeline_create_info.pViewportState = &g_default_main_window_viewport_state;
-        pipeline_create_info.pRasterizationState = &g_default_rasterization_state;
-        pipeline_create_info.pMultisampleState = &multisample_state;
-        pipeline_create_info.pDepthStencilState = &g_default_depth_stencil_state;
-        pipeline_create_info.pColorBlendState = &color_blend_state;
-        pipeline_create_info.pDynamicState = &g_default_dynamic_state;
-        pipeline_create_info.layout = s_viking_room_material.pipeline_layouts[(u32)render_pass_t::FORWARD_PASS];
-        pipeline_create_info.renderPass = VK_NULL_HANDLE;
-        pipeline_create_info.subpass = 0;
-        pipeline_create_info.basePipelineHandle = VK_NULL_HANDLE;
-        pipeline_create_info.basePipelineIndex = 0;
-
-        VkGraphicsPipelineCreateInfo pipeline_create_infos[] = {
-            pipeline_create_info
-        };
-        SM_VULKAN_ASSERT(
-            vkCreateGraphicsPipelines(s_context.device, 
-                                      VK_NULL_HANDLE, 
-                                      ARRAY_LEN(pipeline_create_infos), 
-                                      pipeline_create_infos, 
-                                      nullptr, 
-                                      &s_viking_room_material.pipelines[(u32)render_pass_t::FORWARD_PASS])
-        );
-
-        vkDestroyShaderModule(s_context.device, vertex_shader_module, nullptr);
-        vkDestroyShaderModule(s_context.device, pixel_shader_module, nullptr);
-    }
-
-    // gizmo pipeline
-    {
-        // shaders
-        shader_t* vertex_shader = arena_alloc_struct(temp_shader_arena, shader_t);
-        SM_ASSERT(shader_compiler_compile(temp_shader_arena, shader_type_t::VERTEX, "gizmo.vs.hlsl", "main", &vertex_shader));
-
-        shader_t* pixel_shader = arena_alloc_struct(temp_shader_arena, shader_t);
-        SM_ASSERT(shader_compiler_compile(temp_shader_arena, shader_type_t::PIXEL, "gizmo.ps.hlsl", "main", &pixel_shader));
-
-        VkShaderModuleCreateInfo vertex_shader_module_create_info{};
-        vertex_shader_module_create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        vertex_shader_module_create_info.pNext = nullptr;
-        vertex_shader_module_create_info.flags = 0;
-        vertex_shader_module_create_info.codeSize = vertex_shader->bytecode.cur_size;
-        vertex_shader_module_create_info.pCode = (u32*)vertex_shader->bytecode.data;
-
-        VkShaderModule vertex_shader_module = VK_NULL_HANDLE;
-        SM_VULKAN_ASSERT(vkCreateShaderModule(s_context.device, &vertex_shader_module_create_info, nullptr, &vertex_shader_module));
-
-        VkShaderModuleCreateInfo pixel_shader_module_create_info{};
-        pixel_shader_module_create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        pixel_shader_module_create_info.pNext = nullptr;
-        pixel_shader_module_create_info.flags = 0;
-        pixel_shader_module_create_info.codeSize = pixel_shader->bytecode.cur_size;
-        pixel_shader_module_create_info.pCode = (u32*)pixel_shader->bytecode.data;
-
-        VkShaderModule pixel_shader_module = VK_NULL_HANDLE;
-        SM_VULKAN_ASSERT(vkCreateShaderModule(s_context.device, &pixel_shader_module_create_info, nullptr, &pixel_shader_module));
-
-        VkPipelineShaderStageCreateInfo vertex_stage{};
-        vertex_stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        vertex_stage.pNext = nullptr;
-        vertex_stage.flags = 0;
-        vertex_stage.stage = VK_SHADER_STAGE_VERTEX_BIT;
-        vertex_stage.module = vertex_shader_module;
-        vertex_stage.pName = vertex_shader->entry_name;
-        vertex_stage.pSpecializationInfo = nullptr;
-
-        VkPipelineShaderStageCreateInfo pixel_stage{};
-        pixel_stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        pixel_stage.pNext = nullptr;
-        pixel_stage.flags = 0;
-        pixel_stage.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        pixel_stage.module = pixel_shader_module;
-        pixel_stage.pName = pixel_shader->entry_name;
-        pixel_stage.pSpecializationInfo = nullptr;
-
-        VkPipelineShaderStageCreateInfo shader_stages[] = {
-            vertex_stage,
-            pixel_stage
-        };
-
-        // vertex input
-        VkPipelineVertexInputStateCreateInfo vertex_input_state{};
-        vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        vertex_input_state.pNext = nullptr;
-        vertex_input_state.flags = 0;
-
-        VkVertexInputBindingDescription vertex_input_binding_description{};
-        vertex_input_binding_description.binding = 0;
-        vertex_input_binding_description.stride = sizeof(vertex_t);
-        vertex_input_binding_description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-        VkVertexInputBindingDescription vertex_input_binding_descriptions[] = {
-            vertex_input_binding_description
-        };
-
-        vertex_input_state.vertexBindingDescriptionCount = ARRAY_LEN(vertex_input_binding_descriptions);
-        vertex_input_state.pVertexBindingDescriptions = vertex_input_binding_descriptions;
-
-        VkVertexInputAttributeDescription vertex_pos_attribute_description{};
-        vertex_pos_attribute_description.location = 0;
-        vertex_pos_attribute_description.binding = 0;
-        vertex_pos_attribute_description.format = VK_FORMAT_R32G32B32_SFLOAT;
-        vertex_pos_attribute_description.offset = offsetof(vertex_t, pos);
-
-        VkVertexInputAttributeDescription vertex_uv_attribute_description{};
-        vertex_uv_attribute_description.location = 1;
-        vertex_uv_attribute_description.binding = 0;
-        vertex_uv_attribute_description.format = VK_FORMAT_R32G32_SFLOAT;
-        vertex_uv_attribute_description.offset = offsetof(vertex_t, uv);
-
-        VkVertexInputAttributeDescription vertex_color_attribute_description{};
-        vertex_color_attribute_description.location = 2;
-        vertex_color_attribute_description.binding = 0;
-        vertex_color_attribute_description.format = VK_FORMAT_R32G32B32_SFLOAT;
-        vertex_color_attribute_description.offset = offsetof(vertex_t, color);
-
-        VkVertexInputAttributeDescription vertex_normal_attribute_description{};
-        vertex_normal_attribute_description.location = 3;
-        vertex_normal_attribute_description.binding = 0;
-        vertex_normal_attribute_description.format = VK_FORMAT_R32G32B32_SFLOAT;
-        vertex_normal_attribute_description.offset = offsetof(vertex_t, normal);
-
-        VkVertexInputAttributeDescription vertex_input_attributes_descriptions[] = {
-            vertex_pos_attribute_description,
-            vertex_uv_attribute_description,
-            vertex_color_attribute_description,
-            vertex_normal_attribute_description
-        };
-
-        vertex_input_state.vertexAttributeDescriptionCount = ARRAY_LEN(vertex_input_attributes_descriptions);
-        vertex_input_state.pVertexAttributeDescriptions = vertex_input_attributes_descriptions;
-
-        // input assembly
-        VkPipelineInputAssemblyStateCreateInfo input_assembly{};
-        input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-        input_assembly.pNext = nullptr;
-        input_assembly.flags = 0;
-        input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-        input_assembly.primitiveRestartEnable = VK_FALSE;
-
-        // tessellation state
-        VkPipelineTessellationStateCreateInfo tesselation_state{};
-        tesselation_state.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
-        tesselation_state.pNext = nullptr;
-        tesselation_state.flags = 0;
-        tesselation_state.patchControlPoints = 0;
-
-        // viewport state
-        VkPipelineViewportStateCreateInfo viewport_state{};
-        viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-        viewport_state.pNext = nullptr;
-        viewport_state.flags = 0;
-
-        VkViewport viewport{};
-        viewport.x = 0;
-        viewport.y = 0;
-        viewport.width = (float)s_context.swapchain.extent.width;
-        viewport.height = (float)s_context.swapchain.extent.height;
-        viewport.minDepth = 0.0f;
-        viewport.maxDepth = 1.0f;
-
-        VkViewport viewports[] = {
-            viewport
-        };
-
-        viewport_state.viewportCount = ARRAY_LEN(viewports);
-        viewport_state.pViewports = viewports;
-
-        VkRect2D scissor{};
-        scissor.offset.x = 0;
-        scissor.offset.y = 0;
-        scissor.extent.width = s_context.swapchain.extent.width;
-        scissor.extent.height = s_context.swapchain.extent.height;
-
-        VkRect2D scissors[] = {
-            scissor
-        };
-
-        viewport_state.scissorCount = ARRAY_LEN(scissors);
-        viewport_state.pScissors = scissors;
-
-        // rasterization state
-        VkPipelineRasterizationStateCreateInfo rasterization_state{};
-        rasterization_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-        rasterization_state.pNext = nullptr;
-        rasterization_state.flags = 0;
-        rasterization_state.depthClampEnable = VK_FALSE;
-        rasterization_state.rasterizerDiscardEnable = VK_FALSE;
-        rasterization_state.polygonMode = VK_POLYGON_MODE_FILL;
-        rasterization_state.cullMode = VK_CULL_MODE_BACK_BIT;
-        rasterization_state.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-        rasterization_state.depthBiasEnable = VK_FALSE;
-        rasterization_state.depthBiasConstantFactor = 0.0f;
-        rasterization_state.depthBiasClamp = 0.0f;
-        rasterization_state.depthBiasSlopeFactor = 0.0f;
-        rasterization_state.lineWidth = 1.0f;
-
-        // multisample state
-        VkPipelineMultisampleStateCreateInfo multisample_state{};
-        multisample_state.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-        multisample_state.pNext = nullptr;
-        multisample_state.flags = 0;
-        multisample_state.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-        multisample_state.sampleShadingEnable = VK_FALSE;
-        multisample_state.minSampleShading = 0.0f;
-        multisample_state.pSampleMask = nullptr;
-        multisample_state.alphaToCoverageEnable = VK_FALSE;
-        multisample_state.alphaToOneEnable = VK_FALSE;
-
-        // depth stencil state
-        VkPipelineDepthStencilStateCreateInfo depth_stencil_state{};
-        depth_stencil_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-        depth_stencil_state.pNext = nullptr;
-        depth_stencil_state.flags = 0;
-        depth_stencil_state.depthTestEnable = VK_TRUE;
-        depth_stencil_state.depthWriteEnable = VK_TRUE;
-        depth_stencil_state.depthCompareOp = VK_COMPARE_OP_LESS;
-        depth_stencil_state.depthBoundsTestEnable = VK_FALSE;
-        depth_stencil_state.stencilTestEnable = VK_FALSE;
-
-        depth_stencil_state.front.failOp = VK_STENCIL_OP_KEEP;
-        depth_stencil_state.front.passOp = VK_STENCIL_OP_KEEP;
-        depth_stencil_state.front.depthFailOp = VK_STENCIL_OP_KEEP;
-        depth_stencil_state.front.compareOp = VK_COMPARE_OP_NEVER;
-        depth_stencil_state.front.compareMask = 0;
-        depth_stencil_state.front.writeMask = 0;
-        depth_stencil_state.front.reference = 0;
-
-        depth_stencil_state.back.failOp = VK_STENCIL_OP_KEEP;
-        depth_stencil_state.back.passOp = VK_STENCIL_OP_KEEP;
-        depth_stencil_state.back.depthFailOp = VK_STENCIL_OP_KEEP;
-        depth_stencil_state.back.compareOp = VK_COMPARE_OP_NEVER;
-        depth_stencil_state.back.compareMask = 0;
-        depth_stencil_state.back.writeMask = 0;
-        depth_stencil_state.back.reference = 0;
-
-        depth_stencil_state.minDepthBounds = 0.0f;
-        depth_stencil_state.maxDepthBounds = 1.0f;
-
-        // color blend state
-        VkPipelineColorBlendStateCreateInfo color_blend_state{};
-        color_blend_state.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        color_blend_state.pNext = nullptr;
-        color_blend_state.flags = 0;
-        color_blend_state.logicOpEnable = VK_FALSE;
-        color_blend_state.logicOp = VK_LOGIC_OP_CLEAR;
-
-        VkPipelineColorBlendAttachmentState color_blend_attachment_state{};
-        color_blend_attachment_state.blendEnable = VK_FALSE;
-        color_blend_attachment_state.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-        color_blend_attachment_state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
-        color_blend_attachment_state.colorBlendOp = VK_BLEND_OP_ADD;
-        color_blend_attachment_state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-        color_blend_attachment_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-        color_blend_attachment_state.alphaBlendOp = VK_BLEND_OP_ADD;
-        color_blend_attachment_state.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
-            VK_COLOR_COMPONENT_G_BIT |
-            VK_COLOR_COMPONENT_B_BIT |
-            VK_COLOR_COMPONENT_A_BIT;
-
-        VkPipelineColorBlendAttachmentState color_blend_attachment_states[] = {
-            color_blend_attachment_state
-        };
-
-        color_blend_state.attachmentCount = ARRAY_LEN(color_blend_attachment_states);
-        color_blend_state.pAttachments = color_blend_attachment_states;
-
-        color_blend_state.blendConstants[0] = 0.0f;
-        color_blend_state.blendConstants[1] = 0.0f;
-        color_blend_state.blendConstants[2] = 0.0f;
-        color_blend_state.blendConstants[3] = 0.0f;
-
-        // dynamic state
-        VkPipelineDynamicStateCreateInfo dynamic_state{};
-        dynamic_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-        dynamic_state.pNext = nullptr;
-        dynamic_state.flags = 0;
-        dynamic_state.dynamicStateCount = 0;
-        dynamic_state.pDynamicStates = nullptr;
-
-        VkFormat color_formats[] = {
-            s_context.default_color_format,
-        };
-
-        VkFormat depth_format = s_context.default_depth_format;
-
-        VkPipelineRenderingCreateInfo pipeline_rendering_create_info{
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
-            .pNext = nullptr,
-            .viewMask = 0,
-            .colorAttachmentCount = ARRAY_LEN(color_formats),
-            .pColorAttachmentFormats = color_formats,
-            .depthAttachmentFormat = depth_format,
-            .stencilAttachmentFormat = VK_FORMAT_UNDEFINED
-        };
-
-        VkGraphicsPipelineCreateInfo pipeline_create_info{};
-        pipeline_create_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        pipeline_create_info.pNext = &pipeline_rendering_create_info;
-        pipeline_create_info.flags = 0;
-        pipeline_create_info.stageCount = ARRAY_LEN(shader_stages);
-        pipeline_create_info.pStages = shader_stages;
-        pipeline_create_info.pVertexInputState = &vertex_input_state;
-        pipeline_create_info.pInputAssemblyState = &input_assembly;
-        pipeline_create_info.pTessellationState = &tesselation_state;
-        pipeline_create_info.pViewportState = &viewport_state;
-        pipeline_create_info.pRasterizationState = &rasterization_state;
-        pipeline_create_info.pMultisampleState = &multisample_state;
-        pipeline_create_info.pDepthStencilState = &depth_stencil_state;
-        pipeline_create_info.pColorBlendState = &color_blend_state;
-        pipeline_create_info.pDynamicState = &dynamic_state;
-        pipeline_create_info.layout = s_gizmo_material.pipeline_layouts[(u32)render_pass_t::DEBUG_PASS];
-        pipeline_create_info.renderPass = VK_NULL_HANDLE;
-        pipeline_create_info.subpass = 0;
-        pipeline_create_info.basePipelineHandle = VK_NULL_HANDLE;
-        pipeline_create_info.basePipelineIndex = 0;
-
-        VkGraphicsPipelineCreateInfo pipeline_create_infos[] = {
-            pipeline_create_info
-        };
-        SM_VULKAN_ASSERT(vkCreateGraphicsPipelines(s_context.device, VK_NULL_HANDLE, ARRAY_LEN(pipeline_create_infos), pipeline_create_infos, nullptr, &s_gizmo_material.pipelines[(u32)render_pass_t::DEBUG_PASS]));
-
-        vkDestroyShaderModule(s_context.device, vertex_shader_module, nullptr);
-        vkDestroyShaderModule(s_context.device, pixel_shader_module, nullptr);
-
-        s_gizmo_material.descriptor_sets[(u32)render_pass_t::DEBUG_PASS] = s_empty_descriptor_set;
-    }
-
-    // post processing
-    {
-        shader_t* compute_shader = arena_alloc_struct(temp_shader_arena, shader_t);
-        SM_ASSERT(shader_compiler_compile(temp_shader_arena, shader_type_t::COMPUTE, "post-processing.cs.hlsl", "main", &compute_shader));
-
-        VkShaderModuleCreateInfo shader_module_create_info{
-            .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = 0,
-            .codeSize = compute_shader->bytecode.cur_size,
-            .pCode = (u32*)compute_shader->bytecode.data
-        };
-
-        VkShaderModule shader_module = VK_NULL_HANDLE;
-        SM_VULKAN_ASSERT(vkCreateShaderModule(s_context.device, &shader_module_create_info, nullptr, &shader_module));
-
-        VkPipelineShaderStageCreateInfo post_process_shader_stage_create_info{
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = 0,
-            .stage = VK_SHADER_STAGE_COMPUTE_BIT,
-            .module = shader_module,
-            .pName = compute_shader->entry_name,
-            .pSpecializationInfo = nullptr
-        };
-
-        VkComputePipelineCreateInfo post_process_create_info{
-            .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = 0,
-            .stage = post_process_shader_stage_create_info,
-            .layout = s_post_process_pipeline_layout,
-            .basePipelineHandle = VK_NULL_HANDLE,
-            .basePipelineIndex = 0 
-        };
-        VkComputePipelineCreateInfo pipeline_create_infos[] = {
-            post_process_create_info
-        };
-        SM_VULKAN_ASSERT(vkCreateComputePipelines(s_context.device, VK_NULL_HANDLE, ARRAY_LEN(pipeline_create_infos), pipeline_create_infos, nullptr, &s_post_process_compute_pipeline));
-
-        vkDestroyShaderModule(s_context.device, shader_module, nullptr);
-    }
-
-    arena_destroy(temp_shader_arena);
-}
-
 static void refresh_pipelines()
 {
-	vkDestroyPipeline(s_context.device, s_viking_room_material.pipelines[(u32)render_pass_t::FORWARD_PASS], nullptr);
-	vkDestroyPipeline(s_context.device, s_gizmo_material.pipelines[(u32)render_pass_t::DEBUG_PASS], nullptr);
-	pipelines_init();
+    pipelines_recreate(s_context);
 }
 
 static void refresh_swapchain()
@@ -1009,232 +486,14 @@ void sm::renderer_init(window_t* window)
     s_context = render_context_init(startup_arena, window);
 
 	shader_compiler_init();
-	mesh_data_init_primitives();
+	mesh_data_primitives_init();
     mesh_instances_names_init();
-    material_defaults_init(s_context);
+    material_init(s_context);
     debug_draw_init(s_context);
+    gizmo_init(startup_arena);
 
     s_main_camera.world_pos = vec3_t{ .x = 3.0f, .y = 3.0f, .z = 3.0f };
     camera_look_at(s_main_camera, vec3_t::ZERO);
-
-    gizmo_init(startup_arena);
-
-	// descriptor pools
-	{
-		// global descriptor pool
-		{
-            VkDescriptorPoolSize pool_sizes[] = { 
-				{ VK_DESCRIPTOR_TYPE_SAMPLER, 1 } 
-			};
-
-            VkDescriptorPoolCreateInfo create_info{};
-            create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-            create_info.poolSizeCount = (u32)ARRAY_LEN(pool_sizes);
-            create_info.pPoolSizes = pool_sizes;
-            create_info.maxSets = 2;
-            SM_VULKAN_ASSERT(vkCreateDescriptorPool(s_context.device, &create_info, nullptr, &s_global_descriptor_pool));
-		}
-
-		// frame descriptor pool
-		{
-            // frame render data, infinite grid, post processing
-            u32 num_uniform_buffers_per_frame = 2;
-            u32 num_storage_images_per_frame = 2; // post processing input + output
-            u32 num_sets_per_frame = 3;
-
-            VkDescriptorPoolSize pool_sizes[] = { 
-				{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_NUM_FRAMES_IN_FLIGHT * num_uniform_buffers_per_frame },
-                { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, MAX_NUM_FRAMES_IN_FLIGHT * num_storage_images_per_frame } 
-			};
-
-            VkDescriptorPoolCreateInfo create_info{};
-            create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-            create_info.poolSizeCount = (u32)ARRAY_LEN(pool_sizes);
-            create_info.pPoolSizes = pool_sizes;
-            create_info.maxSets = MAX_NUM_FRAMES_IN_FLIGHT * num_sets_per_frame;
-            SM_VULKAN_ASSERT(vkCreateDescriptorPool(s_context.device, &create_info, nullptr, &s_frame_descriptor_pool));
-		}
-
-		// material descriptor pool
-		{
-            VkDescriptorPoolSize pool_sizes[] = { 
-				{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 20 }
-			};
-
-            VkDescriptorPoolCreateInfo create_info{};
-            create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-            create_info.poolSizeCount = (u32)ARRAY_LEN(pool_sizes);
-            create_info.pPoolSizes = pool_sizes;
-            create_info.maxSets = 20;
-            SM_VULKAN_ASSERT(vkCreateDescriptorPool(s_context.device, &create_info, nullptr, &s_material_descriptor_pool));
-		}
-
-		// imgui descriptor pool
-		{
-            const i32 IMGUI_MAX_SETS = 1000;
-
-            VkDescriptorPoolSize pool_sizes[] = { 
-				{ VK_DESCRIPTOR_TYPE_SAMPLER, IMGUI_MAX_SETS },
-				{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, IMGUI_MAX_SETS },
-				{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, IMGUI_MAX_SETS },
-				{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, IMGUI_MAX_SETS },
-				{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, IMGUI_MAX_SETS },
-				{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, IMGUI_MAX_SETS },
-				{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, IMGUI_MAX_SETS },
-				{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, IMGUI_MAX_SETS },
-				{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, IMGUI_MAX_SETS },
-				{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, IMGUI_MAX_SETS },
-				{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, IMGUI_MAX_SETS }
-			};
-
-            VkDescriptorPoolCreateInfo create_info{};
-            create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-            create_info.poolSizeCount = (u32)ARRAY_LEN(pool_sizes);
-            create_info.pPoolSizes = pool_sizes;
-            create_info.maxSets = IMGUI_MAX_SETS;
-            SM_VULKAN_ASSERT(vkCreateDescriptorPool(s_context.device, &create_info, nullptr, &s_imgui_descriptor_pool));
-		}
-	}
-
-	// descriptor set layouts
-	{
-        {
-            VkDescriptorSetLayoutCreateInfo create_info{
-				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-				.bindingCount = 0,
-				.pBindings = nullptr,
-            };
-            SM_VULKAN_ASSERT(vkCreateDescriptorSetLayout(s_context.device, &create_info, nullptr, &s_empty_descriptor_set_layout));
-        }
-
-		// global descriptor set layout
-		{
-			VkDescriptorSetLayoutBinding sampler_binding{};
-			sampler_binding.binding = 0;
-			sampler_binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-			sampler_binding.descriptorCount = 1;
-			sampler_binding.stageFlags = VK_SHADER_STAGE_ALL;
-
-            VkDescriptorSetLayoutBinding layout_bindings[] = {
-				sampler_binding
-            };
-
-            VkDescriptorSetLayoutCreateInfo create_info{};
-            create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-            create_info.bindingCount = (u32)ARRAY_LEN(layout_bindings);
-            create_info.pBindings = layout_bindings;
-            SM_VULKAN_ASSERT(vkCreateDescriptorSetLayout(s_context.device, &create_info, nullptr, &s_global_descriptor_set_layout));
-		}
-
-		// frame descriptor set layout
-		{
-			VkDescriptorSetLayoutBinding uniform_binding{};
-			uniform_binding.binding = 0;
-			uniform_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			uniform_binding.descriptorCount = 1;
-			uniform_binding.stageFlags = VK_SHADER_STAGE_ALL;
-
-            VkDescriptorSetLayoutBinding layout_bindings[] = {
-				uniform_binding
-            };
-
-            VkDescriptorSetLayoutCreateInfo create_info{};
-            create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-            create_info.bindingCount = (u32)ARRAY_LEN(layout_bindings);
-            create_info.pBindings = layout_bindings;
-            SM_VULKAN_ASSERT(vkCreateDescriptorSetLayout(s_context.device, &create_info, nullptr, &s_frame_descriptor_set_layout));
-		}
-
-        // infinite grid descriptor set layout
-		{
-			VkDescriptorSetLayoutBinding uniform_binding{};
-			uniform_binding.binding = 0;
-			uniform_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			uniform_binding.descriptorCount = 1;
-			uniform_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-
-            VkDescriptorSetLayoutBinding layout_bindings[] = {
-				uniform_binding 
-            };
-
-            VkDescriptorSetLayoutCreateInfo create_info{};
-            create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-            create_info.bindingCount = (u32)ARRAY_LEN(layout_bindings);
-            create_info.pBindings = layout_bindings;
-            SM_VULKAN_ASSERT(vkCreateDescriptorSetLayout(s_context.device, &create_info, nullptr, &s_infinite_grid_descriptor_set_layout));
-		}
-
-        // post processing descriptor set layout
-		{
-			VkDescriptorSetLayoutBinding src_image_binding{};
-			src_image_binding.binding = 0;
-			src_image_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-			src_image_binding.descriptorCount = 1;
-			src_image_binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-
-			VkDescriptorSetLayoutBinding dst_image_binding{};
-			dst_image_binding.binding = 1;
-			dst_image_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-			dst_image_binding.descriptorCount = 1;
-			dst_image_binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-
-			VkDescriptorSetLayoutBinding params_buffer_binding{};
-			params_buffer_binding.binding = 2;
-			params_buffer_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			params_buffer_binding.descriptorCount = 1;
-			params_buffer_binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-
-            VkDescriptorSetLayoutBinding layout_bindings[] = {
-				src_image_binding,
-				dst_image_binding,
-                params_buffer_binding
-            };
-
-            VkDescriptorSetLayoutCreateInfo create_info{};
-            create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-            create_info.bindingCount = (u32)ARRAY_LEN(layout_bindings);
-            create_info.pBindings = layout_bindings;
-            SM_VULKAN_ASSERT(vkCreateDescriptorSetLayout(s_context.device, &create_info, nullptr, &s_post_process_descriptor_set_layout));
-		}
-
-        // materials descriptor set layout
-		{
-			VkDescriptorSetLayoutBinding diffuse_texture_binding{};
-			diffuse_texture_binding.binding = 0;
-			diffuse_texture_binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-			diffuse_texture_binding.descriptorCount = 1;
-			diffuse_texture_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-            VkDescriptorSetLayoutBinding layout_bindings[] = {
-				diffuse_texture_binding
-            };
-
-            VkDescriptorSetLayoutCreateInfo create_info{};
-            create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-            create_info.bindingCount = (u32)ARRAY_LEN(layout_bindings);
-            create_info.pBindings = layout_bindings;
-            SM_VULKAN_ASSERT(vkCreateDescriptorSetLayout(s_context.device, &create_info, nullptr, &s_material_descriptor_set_layout));
-		}
-
-        // mesh instance descriptor set layout
-		{
-			VkDescriptorSetLayoutBinding uniform_binding{};
-			uniform_binding.binding = 0;
-			uniform_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			uniform_binding.descriptorCount = 1;
-			uniform_binding.stageFlags = VK_SHADER_STAGE_ALL;
-
-            VkDescriptorSetLayoutBinding layout_bindings[] = {
-				uniform_binding
-            };
-
-            VkDescriptorSetLayoutCreateInfo create_info{};
-            create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-            create_info.bindingCount = (u32)ARRAY_LEN(layout_bindings);
-            create_info.pBindings = layout_bindings;
-            SM_VULKAN_ASSERT(vkCreateDescriptorSetLayout(s_context.device, &create_info, nullptr, &s_mesh_instance_descriptor_set_layout));
-		}
-	}
 
     // imgui
     {
@@ -1268,7 +527,7 @@ void sm::renderer_init(window_t* window)
         init_info.QueueFamily = s_context.queue_indices.graphics;
         init_info.Queue = s_context.graphics_queue;
         init_info.PipelineCache = VK_NULL_HANDLE;
-        init_info.DescriptorPool = s_imgui_descriptor_pool;
+        init_info.DescriptorPool = g_imgui_descriptor_pool;
         init_info.Subpass = 0;
         init_info.MinImageCount = (u32)s_context.swapchain.images.cur_size; 
         init_info.ImageCount = (u32)s_context.swapchain.images.cur_size;
@@ -1301,230 +560,6 @@ void sm::renderer_init(window_t* window)
 
 	// resources
 	{
-		// global resources
-		{
-            // empty descriptor set
-            {
-                VkDescriptorSetLayout descriptor_set_layouts[] = {
-                   s_empty_descriptor_set_layout 
-                };
-
-                VkDescriptorSetAllocateInfo alloc_info{
-					.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-					.descriptorPool = s_global_descriptor_pool,
-					.descriptorSetCount = ARRAY_LEN(descriptor_set_layouts),
-					.pSetLayouts = descriptor_set_layouts
-                };
-
-                SM_VULKAN_ASSERT(vkAllocateDescriptorSets(s_context.device, &alloc_info, &s_empty_descriptor_set));
-            }
-
-			// global descriptor set
-			{
-                VkDescriptorSetAllocateInfo alloc_info{};
-                alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-                alloc_info.descriptorPool = s_global_descriptor_pool;
-
-                VkDescriptorSetLayout descriptor_set_layouts[] = {
-                   s_global_descriptor_set_layout 
-                };
-                alloc_info.descriptorSetCount = ARRAY_LEN(descriptor_set_layouts);
-                alloc_info.pSetLayouts = descriptor_set_layouts;
-
-                SM_VULKAN_ASSERT(vkAllocateDescriptorSets(s_context.device, &alloc_info, &s_global_descriptor_set));
-			}
-
-			// sampler
-			{
-                VkSamplerCreateInfo create_info{};
-				create_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-				create_info.flags = 0;
-				create_info.magFilter = VK_FILTER_LINEAR;
-				create_info.minFilter = VK_FILTER_LINEAR;
-				create_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-				create_info.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-				create_info.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-				create_info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-				create_info.mipLodBias = 0.0f;
-				create_info.anisotropyEnable = VK_FALSE;
-				create_info.maxAnisotropy = 0.0f;
-				create_info.compareEnable = VK_FALSE;
-				create_info.compareOp = VK_COMPARE_OP_NEVER;
-				create_info.minLod = 0.0f;
-				create_info.maxLod = VK_LOD_CLAMP_NONE;
-				create_info.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
-				create_info.unnormalizedCoordinates = VK_FALSE;
-                SM_VULKAN_ASSERT(vkCreateSampler(s_context.device, &create_info, nullptr, &s_linear_sampler));
-			}
-
-			// write sampler to global descriptor set
-			{
-				VkWriteDescriptorSet sampler_write{};
-				sampler_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				sampler_write.dstSet = s_global_descriptor_set;
-				sampler_write.dstBinding = 0;
-				sampler_write.dstArrayElement = 0;
-				sampler_write.descriptorCount = 1;
-				sampler_write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-
-				VkDescriptorImageInfo image_info{};
-				image_info.sampler = s_linear_sampler;
-				image_info.imageView = VK_NULL_HANDLE;
-				image_info.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-				
-				sampler_write.pImageInfo = &image_info;
-
-				VkWriteDescriptorSet descriptor_set_writes[] = {
-					sampler_write
-				};
-				
-                vkUpdateDescriptorSets(s_context.device, ARRAY_LEN(descriptor_set_writes), descriptor_set_writes, 0, nullptr);
-			}
-		}
-
-		// viking room
-		{
-            cpu_mesh_t* viking_room_obj = mesh_data_init_from_obj(startup_arena, "viking_room.obj");
-            gpu_mesh_init(s_context, *viking_room_obj, s_viking_room_mesh);
-
-			// viking room diffuse texture
-			{
-                texture_init_from_file(s_context, s_viking_room_diffuse_texture, "viking-room.png", true);
-			}
-
-			// viking room descriptor set
-			{
-				// alloc
-				VkDescriptorSetAllocateInfo alloc_info{};
-				alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-				alloc_info.pNext = nullptr;
-				alloc_info.descriptorPool = s_material_descriptor_pool;
-				alloc_info.descriptorSetCount = 1;
-				VkDescriptorSetLayout descriptor_set_layouts[] = {
-					s_material_descriptor_set_layout
-				};
-				alloc_info.pSetLayouts = descriptor_set_layouts;
-				SM_VULKAN_ASSERT(vkAllocateDescriptorSets(s_context.device, &alloc_info, &s_viking_room_material.descriptor_sets[(u32)render_pass_t::FORWARD_PASS]));
-
-				// update
-                VkDescriptorImageInfo descriptor_set_write_image_info{};
-                descriptor_set_write_image_info.sampler = VK_NULL_HANDLE;
-                descriptor_set_write_image_info.imageView = s_viking_room_diffuse_texture.image_view;
-                descriptor_set_write_image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-                VkWriteDescriptorSet descriptor_set_write{};
-                descriptor_set_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                descriptor_set_write.pNext = nullptr;
-                descriptor_set_write.dstSet = s_viking_room_material.descriptor_sets[(u32)render_pass_t::FORWARD_PASS];
-                descriptor_set_write.dstBinding = 0;
-                descriptor_set_write.dstArrayElement = 0;
-                descriptor_set_write.descriptorCount = 1;
-                descriptor_set_write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-                descriptor_set_write.pImageInfo = &descriptor_set_write_image_info;
-                descriptor_set_write.pBufferInfo = nullptr;
-                descriptor_set_write.pTexelBufferView = nullptr;
-
-                VkWriteDescriptorSet ds_writes[] = {
-                    descriptor_set_write
-                };
-
-                vkUpdateDescriptorSets(s_context.device, ARRAY_LEN(ds_writes), ds_writes, 0, nullptr);
-			}
-		}
-
-		// pipeline layouts
-		{
-			// viking room pipeline layout
-			{
-                VkDescriptorSetLayout pipeline_descriptor_set_layouts[] = {
-                    s_global_descriptor_set_layout,
-                    s_frame_descriptor_set_layout,
-                    s_material_descriptor_set_layout,
-                    s_mesh_instance_descriptor_set_layout
-                };
-
-                VkPipelineLayoutCreateInfo pipeline_layout_create_info{
-                    .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-                    .pNext = nullptr,
-                    .flags = 0,
-                    .setLayoutCount = ARRAY_LEN(pipeline_descriptor_set_layouts),
-                    .pSetLayouts = pipeline_descriptor_set_layouts,
-                    .pushConstantRangeCount = 0,
-                    .pPushConstantRanges = nullptr
-                };
-                SM_VULKAN_ASSERT(vkCreatePipelineLayout(s_context.device, &pipeline_layout_create_info, nullptr, &s_viking_room_material.pipeline_layouts[(u32)render_pass_t::FORWARD_PASS]));
-			}
-
-            // gizmo pipeline layout
-            {
-                VkDescriptorSetLayout pipeline_descriptor_set_layouts[] = {
-                    s_global_descriptor_set_layout,
-                    s_frame_descriptor_set_layout,
-                    s_empty_descriptor_set_layout,
-                    s_mesh_instance_descriptor_set_layout
-                };
-
-                VkPushConstantRange push_constant_range{
-                    .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-                    .offset = 0,
-                    .size = sizeof(gizmo_push_constants_t)
-                };
-
-                VkPushConstantRange push_constants[] = {
-                    push_constant_range
-                };
-
-                VkPipelineLayoutCreateInfo pipeline_layout_create_info{
-                    .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-                    .pNext = nullptr,
-                    .flags = 0,
-                    .setLayoutCount = ARRAY_LEN(pipeline_descriptor_set_layouts),
-                    .pSetLayouts = pipeline_descriptor_set_layouts,
-                    .pushConstantRangeCount = ARRAY_LEN(push_constants),
-                    .pPushConstantRanges = push_constants 
-                };
-                SM_VULKAN_ASSERT(vkCreatePipelineLayout(s_context.device, &pipeline_layout_create_info, nullptr, &s_gizmo_material.pipeline_layouts[(u32)render_pass_t::DEBUG_PASS]));
-            }
-
-            // infinite grid pipeline layout
-			{
-                VkDescriptorSetLayout pipeline_descriptor_set_layouts[] = {
-					s_infinite_grid_descriptor_set_layout
-                };
-
-                VkPipelineLayoutCreateInfo pipeline_layout_create_info{
-                    .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-                    .pNext = nullptr,
-                    .flags = 0,
-                    .setLayoutCount = ARRAY_LEN(pipeline_descriptor_set_layouts),
-                    .pSetLayouts = pipeline_descriptor_set_layouts,
-                    .pushConstantRangeCount = 0,
-                    .pPushConstantRanges = nullptr
-                };
-                SM_VULKAN_ASSERT(vkCreatePipelineLayout(s_context.device, &pipeline_layout_create_info, nullptr, &s_infinite_grid_forward_pass_pipeline_layout));
-			}
-
-            // post processing pipeline layout
-			{
-                VkDescriptorSetLayout pipeline_descriptor_set_layouts[] = {
-                    s_post_process_descriptor_set_layout,
-                    s_frame_descriptor_set_layout
-                };
-
-                VkPipelineLayoutCreateInfo pipeline_layout_create_info{
-                    .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-                    .pNext = nullptr,
-                    .flags = 0,
-                    .setLayoutCount = ARRAY_LEN(pipeline_descriptor_set_layouts),
-                    .pSetLayouts = pipeline_descriptor_set_layouts,
-                    .pushConstantRangeCount = 0,
-                    .pPushConstantRanges = nullptr
-                };
-                SM_VULKAN_ASSERT(vkCreatePipelineLayout(s_context.device, &pipeline_layout_create_info, nullptr, &s_post_process_pipeline_layout));
-			}
-		}
-
-        pipelines_init();
 	}
 
     ui_set_build_scene_window_callback(ui_build_scene_window);
@@ -1543,7 +578,7 @@ void sm::renderer_init(window_t* window)
             translate(initial_transform.model, vec3_t(x * spacing, y * spacing, 0.0f));
 
             push_constants_t push_constants;
-            mesh_instance_id_t added_mesh_instance = mesh_instances_add(&s_current_level->mesh_instances, &s_viking_room_mesh, &s_viking_room_material, push_constants, initial_transform, (u32)mesh_instance_flags_t::NONE);
+            mesh_instance_id_t added_mesh_instance = mesh_instances_add(&s_current_level->mesh_instances, &g_viking_room_mesh, g_viking_room_material, push_constants, initial_transform, (u32)mesh_instance_flags_t::NONE);
 
             // set debug name
             char name_string[64];
@@ -1591,7 +626,7 @@ void sm::renderer_update(f32 ds)
     sphere_t s;
     s.center = vec3_t::ZERO;
     s.radius = 2.0f;
-    debug_draw_sphere(s, 1);
+    debug_draw_sphere(s, color_f32_t::RED, 1);
 }
 
 static void setup_new_frame(render_frame_t& render_frame)
@@ -1751,8 +786,8 @@ static void render_mesh_instances(render_frame_t& render_frame, render_pass_t re
         }
 
         mesh_instance_id_t id = render_frame.mesh_instances.ids[i];
-        gpu_mesh_t* mesh = render_frame.mesh_instances.meshes[i];
-        material_t* material = render_frame.mesh_instances.materials[i];
+        const gpu_mesh_t* mesh = render_frame.mesh_instances.meshes[i];
+        const material_t* material = render_frame.mesh_instances.materials[i];
         push_constants_t push_constants = render_frame.mesh_instances.push_constants[i];
         transform_t transform = render_frame.mesh_instances.transforms[i];
 
@@ -1776,7 +811,7 @@ static void render_mesh_instances(render_frame_t& render_frame, render_pass_t re
             .pNext = nullptr,
             .descriptorPool = render_frame.mesh_instance_descriptor_pool,
             .descriptorSetCount = 1,
-            .pSetLayouts = &s_mesh_instance_descriptor_set_layout
+            .pSetLayouts = &g_mesh_instance_descriptor_set_layout
         };
 
         VkDescriptorSet mesh_instance_descriptor_set = VK_NULL_HANDLE;
@@ -1820,7 +855,7 @@ static void render_mesh_instances(render_frame_t& render_frame, render_pass_t re
         vkCmdBindIndexBuffer(render_frame.frame_command_buffer, mesh->index_buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
         VkDescriptorSet descriptor_sets[] = {
-            s_global_descriptor_set,
+            g_global_descriptor_set,
             render_frame.frame_descriptor_set,
             material->descriptor_sets[(u32)render_pass],
             mesh_instance_descriptor_set	
@@ -2107,11 +1142,11 @@ static void post_processing_pass(render_frame_t& render_frame)
 
     vkCmdBindDescriptorSets(render_frame.frame_command_buffer, 
                             VK_PIPELINE_BIND_POINT_COMPUTE, 
-                            s_post_process_pipeline_layout, 
+                            g_post_process_pipeline_layout, 
                             0, 
                             ARRAY_LEN(post_processing_descriptor_sets), post_processing_descriptor_sets,
                             0, nullptr);
-    vkCmdBindPipeline(render_frame.frame_command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, s_post_process_compute_pipeline);
+    vkCmdBindPipeline(render_frame.frame_command_buffer, VK_PIPELINE_BIND_POINT_COMPUTE, g_post_process_compute_pipeline);
     vkCmdDispatch(render_frame.frame_command_buffer, s_context.swapchain.extent.width >> 3, s_context.swapchain.extent.height >> 3, 1);
 
     // transition post process storage image to VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIONAL which is needed for imgui render pass
@@ -2476,14 +1511,14 @@ static void gizmo_collect_mesh_instances(render_frame_t& render_frame)
 		transform_t gizmo_transform;
 		set_translation(gizmo_transform.model, selected_mesh_instance_transform.model.tx, selected_mesh_instance_transform.model.ty, selected_mesh_instance_transform.model.tz);
 
-		gizmo_push_constants_t* gizmo_push_constants = arena_alloc_struct(render_frame.frame_arena, gizmo_push_constants_t);
+		debug_draw_push_constants_t* gizmo_push_constants = arena_alloc_struct(render_frame.frame_arena, debug_draw_push_constants_t);
 		gizmo_push_constants->color = to_vec3(color_f32_t::RED);
 
 		push_constants_t push_constants;
 		push_constants.data = gizmo_push_constants;
-		push_constants.size = sizeof(gizmo_push_constants_t);
+		push_constants.size = sizeof(debug_draw_push_constants_t);
 
-		mesh_instances_add(&mesh_instances, gizmo_mesh_to_render, &s_gizmo_material, push_constants, gizmo_transform, (u32)mesh_instance_flags_t::IS_DEBUG);
+		mesh_instances_add(&mesh_instances, gizmo_mesh_to_render, g_debug_draw_material, push_constants, gizmo_transform, (u32)mesh_instance_flags_t::IS_DEBUG);
     }
 
     {
@@ -2491,14 +1526,14 @@ static void gizmo_collect_mesh_instances(render_frame_t& render_frame)
 		rotate_z_degs(gizmo_transform.model, 90.0f);
 		set_translation(gizmo_transform.model, selected_mesh_instance_transform.model.tx, selected_mesh_instance_transform.model.ty, selected_mesh_instance_transform.model.tz);
 
-		gizmo_push_constants_t* gizmo_push_constants = arena_alloc_struct(render_frame.frame_arena, gizmo_push_constants_t);
+		debug_draw_push_constants_t* gizmo_push_constants = arena_alloc_struct(render_frame.frame_arena, debug_draw_push_constants_t);
 		gizmo_push_constants->color = to_vec3(color_f32_t::GREEN);
 
 		push_constants_t push_constants;
 		push_constants.data = gizmo_push_constants;
-		push_constants.size = sizeof(gizmo_push_constants_t);
+		push_constants.size = sizeof(debug_draw_push_constants_t);
 
-		mesh_instances_add(&mesh_instances, gizmo_mesh_to_render, &s_gizmo_material, push_constants, gizmo_transform, (u32)mesh_instance_flags_t::IS_DEBUG);
+		mesh_instances_add(&mesh_instances, gizmo_mesh_to_render, g_debug_draw_material, push_constants, gizmo_transform, (u32)mesh_instance_flags_t::IS_DEBUG);
     }
 
     {
@@ -2506,14 +1541,14 @@ static void gizmo_collect_mesh_instances(render_frame_t& render_frame)
 		rotate_y_degs(gizmo_transform.model, -90.0f);
 		set_translation(gizmo_transform.model, selected_mesh_instance_transform.model.tx, selected_mesh_instance_transform.model.ty, selected_mesh_instance_transform.model.tz);
 
-		gizmo_push_constants_t* gizmo_push_constants = arena_alloc_struct(render_frame.frame_arena, gizmo_push_constants_t);
+		debug_draw_push_constants_t* gizmo_push_constants = arena_alloc_struct(render_frame.frame_arena, debug_draw_push_constants_t);
 		gizmo_push_constants->color = to_vec3(color_f32_t::BLUE);
 
 		push_constants_t push_constants;
 		push_constants.data = gizmo_push_constants;
-		push_constants.size = sizeof(gizmo_push_constants_t);
+		push_constants.size = sizeof(debug_draw_push_constants_t);
 
-		mesh_instances_add(&mesh_instances, gizmo_mesh_to_render, &s_gizmo_material, push_constants, gizmo_transform, (u32)mesh_instance_flags_t::IS_DEBUG);
+		mesh_instances_add(&mesh_instances, gizmo_mesh_to_render, g_debug_draw_material, push_constants, gizmo_transform, (u32)mesh_instance_flags_t::IS_DEBUG);
     }
     mesh_instances_append(&render_frame.mesh_instances, &mesh_instances);
 }
@@ -2528,6 +1563,11 @@ static void collect_mesh_instances(render_frame_t& render_frame)
     mesh_instances_init(render_frame.frame_arena, &render_frame.mesh_instances, MAX_NUM_MESH_INSTANCES_PER_FRAME);
     mesh_instances_append(&render_frame.mesh_instances, &s_current_level->mesh_instances);
     debug_draw_system_collect_mesh_instances(render_frame);
+
+    for (int i = 0; i < s_collect_mesh_instances_cbs.cur_size; i++)
+    {
+        s_collect_mesh_instances_cbs[i](render_frame.frame_arena, &render_frame.mesh_instances);
+    }
 }
 
 void sm::renderer_render()

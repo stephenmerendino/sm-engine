@@ -15,7 +15,7 @@ bool s_did_init_primitive_shapes = false;
 cpu_mesh_t* s_primitive_shapes[(u32)primitive_t::NUM_PRIMITIVE_SHAPES];
 arena_t* s_primitives_arena = nullptr;
 
-void sm::mesh_data_init_primitives()
+void sm::mesh_data_primitives_init()
 {
 	s_primitives_arena = arena_init(MiB(2));
 

@@ -12,18 +12,16 @@ struct ps_output_t
 	float4 color : SV_TARGET0;
 };
 
-struct gizmo_push_constants_t
+struct debug_draw_push_constants_t
 {
 	float3 color;
 };
 
-[[vk::push_constant]] gizmo_push_constants_t gizmo_push_constants;
+[[vk::push_constant]] debug_draw_push_constants_t debug_draw_push_constants;
 
 ps_output_t main(ps_input_t IN)
 {
 	ps_output_t OUT;
-	//float3 light_dir = normalize(float3(-.707f, -.707f, -1.0f));
-	//float3 color = (IN.color * 0.7f) + dot(IN.normal, normalize(float3(0.0f, 0.0f, 1.0f))) * IN.color;
-	OUT.color = float4(gizmo_push_constants.color, 1.0f);
+	OUT.color = float4(debug_draw_push_constants.color, 1.0f);
 	return OUT;
 }
