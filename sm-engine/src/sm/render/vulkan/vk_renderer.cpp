@@ -468,97 +468,9 @@ static void pipelines_init()
             pixel_stage
         };
 
-        // viewport state
-        VkPipelineViewportStateCreateInfo viewport_state{};
-        viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-        viewport_state.pNext = nullptr;
-        viewport_state.flags = 0;
-
-        VkViewport viewport{};
-        viewport.x = 0;
-        viewport.y = 0;
-        viewport.width = (float)s_context.swapchain.extent.width;
-        viewport.height = (float)s_context.swapchain.extent.height;
-        viewport.minDepth = 0.0f;
-        viewport.maxDepth = 1.0f;
-
-        VkViewport viewports[] = {
-            viewport
-        };
-
-        viewport_state.viewportCount = ARRAY_LEN(viewports);
-        viewport_state.pViewports = viewports;
-
-        VkRect2D scissor{};
-        scissor.offset.x = 0;
-        scissor.offset.y = 0;
-        scissor.extent.width = s_context.swapchain.extent.width;
-        scissor.extent.height = s_context.swapchain.extent.height;
-
-        VkRect2D scissors[] = {
-            scissor
-        };
-
-        viewport_state.scissorCount = ARRAY_LEN(scissors);
-        viewport_state.pScissors = scissors;
-
-        // rasterization state
-        VkPipelineRasterizationStateCreateInfo rasterization_state{};
-        rasterization_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-        rasterization_state.pNext = nullptr;
-        rasterization_state.flags = 0;
-        rasterization_state.depthClampEnable = VK_FALSE;
-        rasterization_state.rasterizerDiscardEnable = VK_FALSE;
-        rasterization_state.polygonMode = VK_POLYGON_MODE_FILL;
-        rasterization_state.cullMode = VK_CULL_MODE_BACK_BIT;
-        rasterization_state.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-        rasterization_state.depthBiasEnable = VK_FALSE;
-        rasterization_state.depthBiasConstantFactor = 0.0f;
-        rasterization_state.depthBiasClamp = 0.0f;
-        rasterization_state.depthBiasSlopeFactor = 0.0f;
-        rasterization_state.lineWidth = 1.0f;
-
         // multisample state
-        VkPipelineMultisampleStateCreateInfo multisample_state{};
-        multisample_state.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-        multisample_state.pNext = nullptr;
-        multisample_state.flags = 0;
+        VkPipelineMultisampleStateCreateInfo multisample_state = g_default_multisample_state;
         multisample_state.rasterizationSamples = s_context.max_msaa_samples;
-        multisample_state.sampleShadingEnable = VK_FALSE;
-        multisample_state.minSampleShading = 0.0f;
-        multisample_state.pSampleMask = nullptr;
-        multisample_state.alphaToCoverageEnable = VK_FALSE;
-        multisample_state.alphaToOneEnable = VK_FALSE;
-
-        // depth stencil state
-        VkPipelineDepthStencilStateCreateInfo depth_stencil_state{};
-        depth_stencil_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-        depth_stencil_state.pNext = nullptr;
-        depth_stencil_state.flags = 0;
-        depth_stencil_state.depthTestEnable = VK_TRUE;
-        depth_stencil_state.depthWriteEnable = VK_TRUE;
-        depth_stencil_state.depthCompareOp = VK_COMPARE_OP_LESS;
-        depth_stencil_state.depthBoundsTestEnable = VK_FALSE;
-        depth_stencil_state.stencilTestEnable = VK_FALSE;
-
-        depth_stencil_state.front.failOp = VK_STENCIL_OP_KEEP;
-        depth_stencil_state.front.passOp = VK_STENCIL_OP_KEEP;
-        depth_stencil_state.front.depthFailOp = VK_STENCIL_OP_KEEP;
-        depth_stencil_state.front.compareOp = VK_COMPARE_OP_NEVER;
-        depth_stencil_state.front.compareMask = 0;
-        depth_stencil_state.front.writeMask = 0;
-        depth_stencil_state.front.reference = 0;
-
-        depth_stencil_state.back.failOp = VK_STENCIL_OP_KEEP;
-        depth_stencil_state.back.passOp = VK_STENCIL_OP_KEEP;
-        depth_stencil_state.back.depthFailOp = VK_STENCIL_OP_KEEP;
-        depth_stencil_state.back.compareOp = VK_COMPARE_OP_NEVER;
-        depth_stencil_state.back.compareMask = 0;
-        depth_stencil_state.back.writeMask = 0;
-        depth_stencil_state.back.reference = 0;
-
-        depth_stencil_state.minDepthBounds = 0.0f;
-        depth_stencil_state.maxDepthBounds = 1.0f;
 
         // color blend state
         VkPipelineColorBlendStateCreateInfo color_blend_state{};
@@ -593,14 +505,6 @@ static void pipelines_init()
         color_blend_state.blendConstants[2] = 0.0f;
         color_blend_state.blendConstants[3] = 0.0f;
 
-        // dynamic state
-        VkPipelineDynamicStateCreateInfo dynamic_state{};
-        dynamic_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-        dynamic_state.pNext = nullptr;
-        dynamic_state.flags = 0;
-        dynamic_state.dynamicStateCount = 0;
-        dynamic_state.pDynamicStates = nullptr;
-
         VkFormat color_formats[] = {
             s_context.default_color_format
         };
@@ -624,12 +528,12 @@ static void pipelines_init()
         pipeline_create_info.pVertexInputState = &g_default_vertex_input_state;
         pipeline_create_info.pInputAssemblyState = &g_default_triangle_input_assembly;
         pipeline_create_info.pTessellationState = &g_default_no_tesselation_state;
-        pipeline_create_info.pViewportState = &viewport_state;
-        pipeline_create_info.pRasterizationState = &rasterization_state;
+        pipeline_create_info.pViewportState = &g_default_main_window_viewport_state;
+        pipeline_create_info.pRasterizationState = &g_default_rasterization_state;
         pipeline_create_info.pMultisampleState = &multisample_state;
-        pipeline_create_info.pDepthStencilState = &depth_stencil_state;
+        pipeline_create_info.pDepthStencilState = &g_default_depth_stencil_state;
         pipeline_create_info.pColorBlendState = &color_blend_state;
-        pipeline_create_info.pDynamicState = &dynamic_state;
+        pipeline_create_info.pDynamicState = &g_default_dynamic_state;
         pipeline_create_info.layout = s_viking_room_material.pipeline_layouts[(u32)render_pass_t::FORWARD_PASS];
         pipeline_create_info.renderPass = VK_NULL_HANDLE;
         pipeline_create_info.subpass = 0;

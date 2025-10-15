@@ -639,6 +639,83 @@ VkPipelineTessellationStateCreateInfo sm::g_default_no_tesselation_state{
     .patchControlPoints = 0
 };
 
+VkPipelineViewportStateCreateInfo sm::g_default_main_window_viewport_state;
+static VkViewport s_main_window_viewport;
+static VkViewport s_main_viewports[] = { s_main_window_viewport };
+static VkRect2D s_default_scissor;
+static VkRect2D s_default_scissors[] = { s_default_scissor };
+
+// rasterization state
+VkPipelineRasterizationStateCreateInfo sm::g_default_rasterization_state{
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+    .pNext = nullptr,
+    .flags = 0,
+    .depthClampEnable = VK_FALSE,
+    .rasterizerDiscardEnable = VK_FALSE,
+    .polygonMode = VK_POLYGON_MODE_FILL,
+    .cullMode = VK_CULL_MODE_BACK_BIT,
+    .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+    .depthBiasEnable = VK_FALSE,
+    .depthBiasConstantFactor = 0.0f,
+    .depthBiasClamp = 0.0f,
+    .depthBiasSlopeFactor = 0.0f,
+    .lineWidth = 1.0f
+};
+
+// multisample state
+VkPipelineMultisampleStateCreateInfo sm::g_default_multisample_state{
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+    .pNext = nullptr,
+    .flags = 0,
+    .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+    .sampleShadingEnable = VK_FALSE,
+    .minSampleShading = 0.0f,
+    .pSampleMask = nullptr,
+    .alphaToCoverageEnable = VK_FALSE,
+    .alphaToOneEnable = VK_FALSE
+};
+
+// depth stencil state
+VkPipelineDepthStencilStateCreateInfo sm::g_default_depth_stencil_state{
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+    .pNext = nullptr,
+    .flags = 0,
+    .depthTestEnable = VK_TRUE,
+    .depthWriteEnable = VK_TRUE,
+    .depthCompareOp = VK_COMPARE_OP_LESS,
+    .depthBoundsTestEnable = VK_FALSE,
+    .stencilTestEnable = VK_FALSE,
+    .front = {
+        .failOp = VK_STENCIL_OP_KEEP,
+        .passOp = VK_STENCIL_OP_KEEP,
+        .depthFailOp = VK_STENCIL_OP_KEEP,
+        .compareOp = VK_COMPARE_OP_NEVER,
+        .compareMask = 0,
+        .writeMask = 0,
+        .reference = 0,
+    },
+    .back = {
+        .failOp = VK_STENCIL_OP_KEEP,
+        .passOp = VK_STENCIL_OP_KEEP,
+        .depthFailOp = VK_STENCIL_OP_KEEP,
+        .compareOp = VK_COMPARE_OP_NEVER,
+        .compareMask = 0,
+        .writeMask = 0,
+        .reference = 0,
+    },
+    .minDepthBounds = 0.0f,
+    .maxDepthBounds = 1.0f,
+};
+
+// dynamic state
+VkPipelineDynamicStateCreateInfo sm::g_default_dynamic_state{
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+    .pNext = nullptr,
+    .flags = 0,
+    .dynamicStateCount = 0,
+    .pDynamicStates = nullptr
+};
+
 void sm::material_defaults_init(const render_context_t& context)
 {
     // vertex input
@@ -649,4 +726,25 @@ void sm::material_defaults_init(const render_context_t& context)
     g_default_vertex_input_state.pVertexBindingDescriptions = s_default_vertex_input_binding_descriptions;
     g_default_vertex_input_state.vertexAttributeDescriptionCount = ARRAY_LEN(s_vertex_input_attributes_descriptions);
     g_default_vertex_input_state.pVertexAttributeDescriptions = s_vertex_input_attributes_descriptions;
+
+    // viewport state
+    s_main_window_viewport.x = 0;
+    s_main_window_viewport.y = 0;
+    s_main_window_viewport.width = (float)context.swapchain.extent.width;
+    s_main_window_viewport.height = (float)context.swapchain.extent.height;
+    s_main_window_viewport.minDepth = 0.0f;
+    s_main_window_viewport.maxDepth = 1.0f;
+    s_main_viewports[0] = { s_main_window_viewport };
+    s_default_scissor.offset.x = 0;
+    s_default_scissor.offset.y = 0;
+    s_default_scissor.extent.width = context.swapchain.extent.width;
+    s_default_scissor.extent.height = context.swapchain.extent.height;
+    s_default_scissors[0] = { s_default_scissor };
+    g_default_main_window_viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    g_default_main_window_viewport_state.pNext = nullptr;
+    g_default_main_window_viewport_state.flags = 0;
+    g_default_main_window_viewport_state.viewportCount = ARRAY_LEN(s_main_viewports);
+    g_default_main_window_viewport_state.pViewports = s_main_viewports;
+    g_default_main_window_viewport_state.scissorCount = ARRAY_LEN(s_default_scissors);
+    g_default_main_window_viewport_state.pScissors = s_default_scissors;
 }

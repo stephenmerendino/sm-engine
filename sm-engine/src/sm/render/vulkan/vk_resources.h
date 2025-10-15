@@ -68,4 +68,9 @@ namespace sm
     extern VkPipelineVertexInputStateCreateInfo g_default_vertex_input_state;
     extern VkPipelineInputAssemblyStateCreateInfo g_default_triangle_input_assembly;
     extern VkPipelineTessellationStateCreateInfo g_default_no_tesselation_state;
+    extern VkPipelineViewportStateCreateInfo g_default_main_window_viewport_state;
+    extern VkPipelineRasterizationStateCreateInfo g_default_rasterization_state;
+    extern VkPipelineMultisampleStateCreateInfo g_default_multisample_state;
+    extern VkPipelineDepthStencilStateCreateInfo g_default_depth_stencil_state;
+    extern VkPipelineDynamicStateCreateInfo g_default_dynamic_state;
 };
