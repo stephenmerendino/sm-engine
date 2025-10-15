@@ -43,6 +43,7 @@ void sm::debug_draw_init(render_context_t& context)
 	gpu_mesh_init(context, *sphere_cpu_mesh, *s_sphere_mesh);
 
 	// init a debug material
+	// descriptor set layout
 	s_debug_material.descriptor_sets[(u32)render_pass_t::DEBUG_PASS];
 	s_debug_material.pipeline_layouts[(u32)render_pass_t::DEBUG_PASS];
 	s_debug_material.pipelines[(u32)render_pass_t::DEBUG_PASS];

@@ -10,7 +10,6 @@
 #include "third_party/stb/stb_image.h"
 #pragma warning(pop)
 
-
 using namespace sm;
 
 u32 sm::calculate_num_mips(u32 width, u32 height, u32 depth)
@@ -581,4 +580,73 @@ void sm::gpu_mesh_init(render_context_t& context, const sm::cpu_mesh_t& mesh_dat
     }
 
     out_mesh.num_indices = (u32)mesh_data.indices.cur_size;
+}
+
+VkPipelineVertexInputStateCreateInfo sm::g_default_vertex_input_state;
+
+static VkVertexInputBindingDescription s_default_vertex_input_binding_description{
+    .binding = 0,
+    .stride = sizeof(vertex_t),
+    .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
+};
+static VkVertexInputBindingDescription s_default_vertex_input_binding_descriptions[] = { s_default_vertex_input_binding_description };
+
+static VkVertexInputAttributeDescription s_vertex_pos_attribute_description{
+    .location = 0,
+    .binding = 0,
+    .format = VK_FORMAT_R32G32B32_SFLOAT,
+    .offset = offsetof(vertex_t, pos)
+};
+static VkVertexInputAttributeDescription s_vertex_uv_attribute_description{
+    .location = 1,
+    .binding = 0,
+    .format = VK_FORMAT_R32G32_SFLOAT,
+    .offset = offsetof(vertex_t, uv)
+};
+static VkVertexInputAttributeDescription s_vertex_color_attribute_description{
+    .location = 2,
+    .binding = 0,
+    .format = VK_FORMAT_R32G32B32_SFLOAT,
+    .offset = offsetof(vertex_t, color)
+};
+static VkVertexInputAttributeDescription s_vertex_normal_attribute_description{
+    .location = 3,
+    .binding = 0,
+    .format = VK_FORMAT_R32G32B32_SFLOAT,
+    .offset = offsetof(vertex_t, normal)
+};
+VkVertexInputAttributeDescription s_vertex_input_attributes_descriptions[] = {
+    s_vertex_pos_attribute_description,
+    s_vertex_uv_attribute_description,
+    s_vertex_color_attribute_description,
+    s_vertex_normal_attribute_description
+};
+
+// input assembly
+VkPipelineInputAssemblyStateCreateInfo sm::g_default_triangle_input_assembly{
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+    .pNext = nullptr,
+    .flags = 0,
+    .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+    .primitiveRestartEnable = VK_FALSE
+};
+
+// tessellation state
+VkPipelineTessellationStateCreateInfo sm::g_default_no_tesselation_state{
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
+    .pNext = nullptr,
+    .flags = 0,
+    .patchControlPoints = 0
+};
+
+void sm::material_defaults_init(const render_context_t& context)
+{
+    // vertex input
+    g_default_vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    g_default_vertex_input_state.pNext = nullptr;
+    g_default_vertex_input_state.flags = 0;
+    g_default_vertex_input_state.vertexBindingDescriptionCount = ARRAY_LEN(s_default_vertex_input_binding_descriptions);
+    g_default_vertex_input_state.pVertexBindingDescriptions = s_default_vertex_input_binding_descriptions;
+    g_default_vertex_input_state.vertexAttributeDescriptionCount = ARRAY_LEN(s_vertex_input_attributes_descriptions);
+    g_default_vertex_input_state.pVertexAttributeDescriptions = s_vertex_input_attributes_descriptions;
 }

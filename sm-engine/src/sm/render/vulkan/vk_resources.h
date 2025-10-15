@@ -63,4 +63,9 @@ namespace sm
     void buffer_release(render_context_t& context, buffer_t& buffer);
 
     void gpu_mesh_init(render_context_t& context, const cpu_mesh_t& mesh_data, gpu_mesh_t& out_mesh);
+
+    void material_defaults_init(const render_context_t& context);
+    extern VkPipelineVertexInputStateCreateInfo g_default_vertex_input_state;
+    extern VkPipelineInputAssemblyStateCreateInfo g_default_triangle_input_assembly;
+    extern VkPipelineTessellationStateCreateInfo g_default_no_tesselation_state;
 };

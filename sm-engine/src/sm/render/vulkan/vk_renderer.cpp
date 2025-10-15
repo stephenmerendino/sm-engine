@@ -468,73 +468,6 @@ static void pipelines_init()
             pixel_stage
         };
 
-        // vertex input
-        VkPipelineVertexInputStateCreateInfo vertex_input_state{};
-        vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        vertex_input_state.pNext = nullptr;
-        vertex_input_state.flags = 0;
-
-        VkVertexInputBindingDescription vertex_input_binding_description{};
-        vertex_input_binding_description.binding = 0;
-        vertex_input_binding_description.stride = sizeof(vertex_t);
-        vertex_input_binding_description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-        VkVertexInputBindingDescription vertex_input_binding_descriptions[] = {
-            vertex_input_binding_description
-        };
-
-        vertex_input_state.vertexBindingDescriptionCount = ARRAY_LEN(vertex_input_binding_descriptions);
-        vertex_input_state.pVertexBindingDescriptions = vertex_input_binding_descriptions;
-
-        VkVertexInputAttributeDescription vertex_pos_attribute_description{};
-        vertex_pos_attribute_description.location = 0;
-        vertex_pos_attribute_description.binding = 0;
-        vertex_pos_attribute_description.format = VK_FORMAT_R32G32B32_SFLOAT;
-        vertex_pos_attribute_description.offset = offsetof(vertex_t, pos);
-
-        VkVertexInputAttributeDescription vertex_uv_attribute_description{};
-        vertex_uv_attribute_description.location = 1;
-        vertex_uv_attribute_description.binding = 0;
-        vertex_uv_attribute_description.format = VK_FORMAT_R32G32_SFLOAT;
-        vertex_uv_attribute_description.offset = offsetof(vertex_t, uv);
-
-        VkVertexInputAttributeDescription vertex_color_attribute_description{};
-        vertex_color_attribute_description.location = 2;
-        vertex_color_attribute_description.binding = 0;
-        vertex_color_attribute_description.format = VK_FORMAT_R32G32B32_SFLOAT;
-        vertex_color_attribute_description.offset = offsetof(vertex_t, color);
-
-        VkVertexInputAttributeDescription vertex_normal_attribute_description{};
-        vertex_normal_attribute_description.location = 3;
-        vertex_normal_attribute_description.binding = 0;
-        vertex_normal_attribute_description.format = VK_FORMAT_R32G32B32_SFLOAT;
-        vertex_normal_attribute_description.offset = offsetof(vertex_t, normal);
-
-        VkVertexInputAttributeDescription vertex_input_attributes_descriptions[] = {
-            vertex_pos_attribute_description,
-            vertex_uv_attribute_description,
-            vertex_color_attribute_description,
-            vertex_normal_attribute_description
-        };
-
-        vertex_input_state.vertexAttributeDescriptionCount = ARRAY_LEN(vertex_input_attributes_descriptions);
-        vertex_input_state.pVertexAttributeDescriptions = vertex_input_attributes_descriptions;
-
-        // input assembly
-        VkPipelineInputAssemblyStateCreateInfo input_assembly{};
-        input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-        input_assembly.pNext = nullptr;
-        input_assembly.flags = 0;
-        input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-        input_assembly.primitiveRestartEnable = VK_FALSE;
-
-        // tessellation state
-        VkPipelineTessellationStateCreateInfo tesselation_state{};
-        tesselation_state.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
-        tesselation_state.pNext = nullptr;
-        tesselation_state.flags = 0;
-        tesselation_state.patchControlPoints = 0;
-
         // viewport state
         VkPipelineViewportStateCreateInfo viewport_state{};
         viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -688,9 +621,9 @@ static void pipelines_init()
         pipeline_create_info.flags = 0;
         pipeline_create_info.stageCount = ARRAY_LEN(shader_stages);
         pipeline_create_info.pStages = shader_stages;
-        pipeline_create_info.pVertexInputState = &vertex_input_state;
-        pipeline_create_info.pInputAssemblyState = &input_assembly;
-        pipeline_create_info.pTessellationState = &tesselation_state;
+        pipeline_create_info.pVertexInputState = &g_default_vertex_input_state;
+        pipeline_create_info.pInputAssemblyState = &g_default_triangle_input_assembly;
+        pipeline_create_info.pTessellationState = &g_default_no_tesselation_state;
         pipeline_create_info.pViewportState = &viewport_state;
         pipeline_create_info.pRasterizationState = &rasterization_state;
         pipeline_create_info.pMultisampleState = &multisample_state;
@@ -1169,12 +1102,13 @@ void sm::renderer_init(window_t* window)
     window_add_msg_cb(window, renderer_window_msg_handler, nullptr);
     s_collect_mesh_instances_cbs = array_init<collect_mesh_instances_cb_t>(startup_arena, 1024);
 
+    s_context = render_context_init(startup_arena, window);
+
 	shader_compiler_init();
 	mesh_data_init_primitives();
     mesh_instances_names_init();
+    material_defaults_init(s_context);
     debug_draw_init(s_context);
-
-    s_context = render_context_init(startup_arena, window);
 
     s_main_camera.world_pos = vec3_t{ .x = 3.0f, .y = 3.0f, .z = 3.0f };
     camera_look_at(s_main_camera, vec3_t::ZERO);
