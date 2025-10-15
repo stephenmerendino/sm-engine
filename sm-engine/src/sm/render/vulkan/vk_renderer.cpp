@@ -693,8 +693,8 @@ void sm::renderer_update(f32 ds)
     debug_draw_update();
 
     sphere_t s;
-    s.center = vec3_t::ZERO;
-    s.radius = 2.0f;
+    s.center = vec3_t(1.0f, 1.0f, 1.0f);
+    s.radius = 0.5f;
     debug_draw_sphere(s, color_f32_t::RED, 1);
 }
 

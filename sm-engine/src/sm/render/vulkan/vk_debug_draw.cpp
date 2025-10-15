@@ -38,7 +38,7 @@ static void collect_mesh_instances(arena_t* frame_allocator, mesh_instances_t* f
 		push_constants.size = sizeof(debug_draw_push_constants_t);
 
 		transform_t t;
-		t.model = mat44_t::IDENTITY;
+		t.model = init_scale(s_debug_spheres[i].s.radius) * init_translation(s_debug_spheres[i].s.center);
 
 		u32 flags = (u32)mesh_instance_flags_t::IS_DEBUG;
 
