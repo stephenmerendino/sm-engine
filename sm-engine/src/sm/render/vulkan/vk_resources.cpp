@@ -948,9 +948,9 @@ static void pipelines_init(render_context_t& context)
         color_blend_state.logicOp = VK_LOGIC_OP_CLEAR;
 
         VkPipelineColorBlendAttachmentState color_blend_attachment_state{};
-        color_blend_attachment_state.blendEnable = VK_FALSE;
-        color_blend_attachment_state.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-        color_blend_attachment_state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+        color_blend_attachment_state.blendEnable = VK_TRUE;
+        color_blend_attachment_state.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        color_blend_attachment_state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
         color_blend_attachment_state.colorBlendOp = VK_BLEND_OP_ADD;
         color_blend_attachment_state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
         color_blend_attachment_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;

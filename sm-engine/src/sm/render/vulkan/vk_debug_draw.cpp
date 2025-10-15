@@ -31,7 +31,7 @@ static void collect_mesh_instances(arena_t* frame_allocator, mesh_instances_t* f
         const material_t* material = g_debug_draw_material;
 
 		debug_draw_push_constants_t* debug_draw_push_constants = arena_alloc_struct(frame_allocator, debug_draw_push_constants_t);
-		debug_draw_push_constants->color = to_vec3(color_f32_t::RED);
+		debug_draw_push_constants->color = to_vec4(s_debug_spheres[i].color);
 
 		push_constants_t push_constants;
 		push_constants.data = debug_draw_push_constants;

@@ -14,7 +14,7 @@ struct ps_output_t
 
 struct debug_draw_push_constants_t
 {
-	float3 color;
+	float4 color;
 };
 
 [[vk::push_constant]] debug_draw_push_constants_t debug_draw_push_constants;
@@ -22,6 +22,6 @@ struct debug_draw_push_constants_t
 ps_output_t main(ps_input_t IN)
 {
 	ps_output_t OUT;
-	OUT.color = float4(debug_draw_push_constants.color, 1.0f);
+	OUT.color = debug_draw_push_constants.color;
 	return OUT;
 }

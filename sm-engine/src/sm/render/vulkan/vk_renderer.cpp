@@ -426,7 +426,7 @@ static void gizmo_collect_mesh_instances(arena_t* frame_allocator, mesh_instance
 		set_translation(gizmo_transform.model, selected_mesh_instance_transform.model.tx, selected_mesh_instance_transform.model.ty, selected_mesh_instance_transform.model.tz);
 
 		debug_draw_push_constants_t* gizmo_push_constants = arena_alloc_struct(frame_allocator, debug_draw_push_constants_t);
-		gizmo_push_constants->color = to_vec3(color_f32_t::RED);
+		gizmo_push_constants->color = to_vec4(color_f32_t::RED);
 
 		push_constants_t push_constants;
 		push_constants.data = gizmo_push_constants;
@@ -441,7 +441,7 @@ static void gizmo_collect_mesh_instances(arena_t* frame_allocator, mesh_instance
 		set_translation(gizmo_transform.model, selected_mesh_instance_transform.model.tx, selected_mesh_instance_transform.model.ty, selected_mesh_instance_transform.model.tz);
 
 		debug_draw_push_constants_t* gizmo_push_constants = arena_alloc_struct(frame_allocator, debug_draw_push_constants_t);
-		gizmo_push_constants->color = to_vec3(color_f32_t::GREEN);
+		gizmo_push_constants->color = to_vec4(color_f32_t::GREEN);
 
 		push_constants_t push_constants;
 		push_constants.data = gizmo_push_constants;
@@ -456,7 +456,7 @@ static void gizmo_collect_mesh_instances(arena_t* frame_allocator, mesh_instance
 		set_translation(gizmo_transform.model, selected_mesh_instance_transform.model.tx, selected_mesh_instance_transform.model.ty, selected_mesh_instance_transform.model.tz);
 
 		debug_draw_push_constants_t* gizmo_push_constants = arena_alloc_struct(frame_allocator, debug_draw_push_constants_t);
-		gizmo_push_constants->color = to_vec3(color_f32_t::BLUE);
+		gizmo_push_constants->color = to_vec4(color_f32_t::BLUE);
 
 		push_constants_t push_constants;
 		push_constants.data = gizmo_push_constants;
@@ -695,7 +695,9 @@ void sm::renderer_update(f32 ds)
     sphere_t s;
     s.center = vec3_t(1.0f, 1.0f, 1.0f);
     s.radius = 0.5f;
-    debug_draw_sphere(s, color_f32_t::RED, 1);
+    color_f32_t red = color_f32_t::RED;
+    red.a = 0.75f;
+    debug_draw_sphere(s, red, 1);
 }
 
 static void setup_new_frame(render_frame_t& render_frame)

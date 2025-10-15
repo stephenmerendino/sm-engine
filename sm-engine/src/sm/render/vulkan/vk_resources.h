@@ -90,7 +90,7 @@ namespace sm
 
     struct debug_draw_push_constants_t
     {
-        vec3_t color;
+        vec4_t color;
     };
 
     void material_init(render_context_t& context);
