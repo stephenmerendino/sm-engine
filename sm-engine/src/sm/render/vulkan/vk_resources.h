@@ -87,6 +87,7 @@ namespace sm
 
     extern material_t* g_viking_room_material;
     extern material_t* g_debug_draw_material;
+    extern material_t* g_debug_draw_material_wireframe;
 
     struct debug_draw_push_constants_t
     {

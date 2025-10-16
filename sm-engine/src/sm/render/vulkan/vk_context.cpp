@@ -522,15 +522,16 @@ render_context_t sm::render_context_init(arena_t* arena, window_t* window)
 
 			VkPhysicalDeviceFeatures device_features{};
 			device_features.samplerAnisotropy = VK_TRUE;
+			device_features.fillModeNonSolid = VK_TRUE;
 
-			VkPhysicalDeviceVulkan13Features vk13features{};
-			vk13features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-			vk13features.synchronization2 = VK_TRUE;
-            vk13features.dynamicRendering = VK_TRUE;
+			VkPhysicalDeviceVulkan13Features vk_1_3_features{};
+			vk_1_3_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+			vk_1_3_features.synchronization2 = VK_TRUE;
+            vk_1_3_features.dynamicRendering = VK_TRUE;
 
 			VkDeviceCreateInfo create_info{};
 			create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-			create_info.pNext = &vk13features;
+			create_info.pNext = &vk_1_3_features;
 			create_info.pQueueCreateInfos = queue_create_infos;
 			create_info.queueCreateInfoCount = num_queues;
 			create_info.pEnabledFeatures = &device_features;

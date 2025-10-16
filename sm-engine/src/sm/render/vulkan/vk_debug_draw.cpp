@@ -11,6 +11,7 @@ struct debug_draw_sphere_t
 {
 	sphere_t s;
 	color_f32_t color;
+	bool wireframe;
 	u32 num_frames_to_draw;
 };
 
@@ -28,7 +29,7 @@ static void collect_mesh_instances(arena_t* frame_allocator, mesh_instances_t* f
 
 	for (int i = 0; i < s_debug_spheres.cur_size; i++)
 	{
-        const material_t* material = g_debug_draw_material;
+        const material_t* material = s_debug_spheres[i].wireframe ? g_debug_draw_material_wireframe : g_debug_draw_material;
 
 		debug_draw_push_constants_t* debug_draw_push_constants = arena_alloc_struct(frame_allocator, debug_draw_push_constants_t);
 		debug_draw_push_constants->color = to_vec4(s_debug_spheres[i].color);
@@ -73,7 +74,7 @@ void sm::debug_draw_update()
 	}
 }
 
-void sm::debug_draw_sphere(const sphere_t& sphere, const color_f32_t& color, u32 num_frames)
+void sm::debug_draw_sphere(const sphere_t& sphere, const color_f32_t& color, bool wireframe, u32 num_frames)
 {
-	array_push<debug_draw_sphere_t>(s_debug_spheres, { .s = sphere, .color = color, .num_frames_to_draw = num_frames });
+	array_push<debug_draw_sphere_t>(s_debug_spheres, { .s = sphere, .color = color, .wireframe = wireframe, .num_frames_to_draw = num_frames });
 }

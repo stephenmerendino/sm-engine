@@ -742,6 +742,7 @@ VkPipeline sm::g_post_process_compute_pipeline = VK_NULL_HANDLE;
 
 material_t* sm::g_viking_room_material = nullptr;
 material_t* sm::g_debug_draw_material = nullptr;
+material_t* sm::g_debug_draw_material_wireframe = nullptr;
 
 static void pipelines_init(render_context_t& context)
 {
@@ -1009,15 +1010,51 @@ static void pipelines_init(render_context_t& context)
         pipeline_create_info.basePipelineHandle = VK_NULL_HANDLE;
         pipeline_create_info.basePipelineIndex = 0;
 
+        VkGraphicsPipelineCreateInfo pipeline_create_info_wireframe{};
+        pipeline_create_info_wireframe.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipeline_create_info_wireframe.pNext = &pipeline_rendering_create_info;
+        pipeline_create_info_wireframe.flags = 0;
+        pipeline_create_info_wireframe.stageCount = ARRAY_LEN(shader_stages);
+        pipeline_create_info_wireframe.pStages = shader_stages;
+        pipeline_create_info_wireframe.pVertexInputState = &s_default_vertex_input_state;
+        pipeline_create_info_wireframe.pInputAssemblyState = &s_default_triangle_input_assembly;
+        pipeline_create_info_wireframe.pTessellationState = &s_default_no_tesselation_state;
+        pipeline_create_info_wireframe.pViewportState = &s_default_main_window_viewport_state;
+
+        VkPipelineRasterizationStateCreateInfo wireframe_info = s_default_rasterization_state;
+        wireframe_info.polygonMode = VK_POLYGON_MODE_LINE;
+        pipeline_create_info_wireframe.pRasterizationState = &wireframe_info;
+
+        pipeline_create_info_wireframe.pMultisampleState = &s_default_multisample_state;
+        pipeline_create_info_wireframe.pDepthStencilState = &s_default_depth_stencil_state;
+        pipeline_create_info_wireframe.pColorBlendState = &color_blend_state;
+        pipeline_create_info_wireframe.pDynamicState = &s_default_dynamic_state;
+        pipeline_create_info_wireframe.layout = g_debug_draw_material->pipeline_layouts[(u32)render_pass_t::DEBUG_PASS];
+        pipeline_create_info_wireframe.renderPass = VK_NULL_HANDLE;
+        pipeline_create_info_wireframe.subpass = 0;
+        pipeline_create_info_wireframe.basePipelineHandle = VK_NULL_HANDLE;
+        pipeline_create_info_wireframe.basePipelineIndex = 0;
+
         VkGraphicsPipelineCreateInfo pipeline_create_infos[] = {
-            pipeline_create_info
+            pipeline_create_info,
+            pipeline_create_info_wireframe
         };
-        SM_VULKAN_ASSERT(vkCreateGraphicsPipelines(context.device, VK_NULL_HANDLE, ARRAY_LEN(pipeline_create_infos), pipeline_create_infos, nullptr, &g_debug_draw_material->pipelines[(u32)render_pass_t::DEBUG_PASS]));
+
+        VkPipeline debug_draw_pipeline = VK_NULL_HANDLE;
+        VkPipeline debug_draw_pipeline_wireframe = VK_NULL_HANDLE;
+        VkPipeline pipelines[] = {
+            debug_draw_pipeline,
+            debug_draw_pipeline_wireframe
+        };
+        SM_VULKAN_ASSERT(vkCreateGraphicsPipelines(context.device, VK_NULL_HANDLE, ARRAY_LEN(pipeline_create_infos), pipeline_create_infos, nullptr, pipelines));
 
         vkDestroyShaderModule(context.device, vertex_shader_module, nullptr);
         vkDestroyShaderModule(context.device, pixel_shader_module, nullptr);
 
+        g_debug_draw_material->pipelines[(u32)render_pass_t::DEBUG_PASS] = pipelines[0];
+        g_debug_draw_material_wireframe->pipelines[(u32)render_pass_t::DEBUG_PASS] = pipelines[1];
         g_debug_draw_material->descriptor_sets[(u32)render_pass_t::DEBUG_PASS] = g_empty_descriptor_set;
+        g_debug_draw_material_wireframe->descriptor_sets[(u32)render_pass_t::DEBUG_PASS] = g_empty_descriptor_set;
     }
 
     arena_destroy(temp_shader_arena);
@@ -1356,6 +1393,7 @@ void sm::material_init(render_context_t& context)
     s_materials_arena = arena_init(MiB(5));
     g_viking_room_material = arena_alloc_struct_zero(s_materials_arena, material_t);
     g_debug_draw_material = arena_alloc_struct_zero(s_materials_arena, material_t);
+    g_debug_draw_material_wireframe = arena_alloc_struct_zero(s_materials_arena, material_t);
 
     // pipeline layouts
     {
@@ -1380,7 +1418,7 @@ void sm::material_init(render_context_t& context)
             SM_VULKAN_ASSERT(vkCreatePipelineLayout(context.device, &pipeline_layout_create_info, nullptr, &g_viking_room_material->pipeline_layouts[(u32)render_pass_t::FORWARD_PASS]));
         }
 
-        // gizmo pipeline layout
+        // debug draw pipeline layout
         {
             VkDescriptorSetLayout pipeline_descriptor_set_layouts[] = {
                 g_global_descriptor_set_layout,
@@ -1409,6 +1447,9 @@ void sm::material_init(render_context_t& context)
                 .pPushConstantRanges = push_constants 
             };
             SM_VULKAN_ASSERT(vkCreatePipelineLayout(context.device, &pipeline_layout_create_info, nullptr, &g_debug_draw_material->pipeline_layouts[(u32)render_pass_t::DEBUG_PASS]));
+
+            // copy over pipeline layout to the wireframe material
+            g_debug_draw_material_wireframe->pipeline_layouts[(u32)render_pass_t::DEBUG_PASS] = g_debug_draw_material->pipeline_layouts[(u32)render_pass_t::DEBUG_PASS];
         }
 
         // infinite grid pipeline layout
@@ -1551,5 +1592,6 @@ void sm::pipelines_recreate(render_context_t& context)
 {
 	vkDestroyPipeline(context.device, g_viking_room_material->pipelines[(u32)render_pass_t::FORWARD_PASS], nullptr);
 	vkDestroyPipeline(context.device, g_debug_draw_material->pipelines[(u32)render_pass_t::DEBUG_PASS], nullptr);
+	vkDestroyPipeline(context.device, g_debug_draw_material_wireframe->pipelines[(u32)render_pass_t::DEBUG_PASS], nullptr);
     pipelines_init(context);
 }

@@ -692,12 +692,23 @@ void sm::renderer_update(f32 ds)
 
     debug_draw_update();
 
-    sphere_t s;
-    s.center = vec3_t(1.0f, 1.0f, 1.0f);
-    s.radius = 0.5f;
-    color_f32_t red = color_f32_t::RED;
-    red.a = 0.75f;
-    debug_draw_sphere(s, red, 1);
+    {
+        sphere_t s;
+        s.center = vec3_t(1.0f, 1.0f, 1.0f);
+        s.radius = 0.5f;
+        color_f32_t red = color_f32_t::RED;
+        red.a = 0.75f;
+        debug_draw_sphere(s, red, false, 1);
+    }
+
+    {
+        sphere_t s;
+        s.center = vec3_t(0.0f, 0.0f, 1.0f);
+        s.radius = 0.5f;
+        color_f32_t red = color_f32_t::RED;
+        red.a = 0.75f;
+        debug_draw_sphere(s, red, true, 1);
+    }
 }
 
 static void setup_new_frame(render_frame_t& render_frame)
