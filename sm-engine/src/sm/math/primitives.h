@@ -23,18 +23,18 @@ namespace sm
 		f32 radius = 0.0f;
 	};
 
+	struct cube_t
+	{
+		vec3_t center;
+		f32 half_width;
+	};
+
 	//struct cylinder_t
 	//{
 	//	vec3_t center;
 	//	vec3_t up_dir;
 	//	f32 height;
 	//	f32 radius;
-	//};
-
-	//struct cube_t
-	//{
-	//	vec3_t center;
-	//	f32 half_width;
 	//};
 
 	//struct aabb_t
