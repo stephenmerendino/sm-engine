@@ -4,7 +4,7 @@ SETLOCAL
 
 set BaseFilename=MainWin32
 set MainDir=%~dp0
-set SrcDir=%~dp0Src\
+set SrcDir=%~dp0Src\SM-Engine\
 set BuildDir=%MainDir%Build\
 
 mkdir %BuildDir% >nul 2>&1
