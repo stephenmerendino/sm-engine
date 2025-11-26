@@ -18,6 +18,6 @@ REM set FilesToCompile=%FilesToCompile%" "%MainDir%SomeNewFile.cpp
 
 set Libs=user32.lib
 
-cl /nologo /Zi /Od %FilesToCompile% %Libs% /Fe%ExeOutput% /Fd%PdbOutput% /Fo%ObjOutput%
+cl /Zi /Od %FilesToCompile% %Libs% /Fe%ExeOutput% /Fd%PdbOutput% /Fo%ObjOutput%
 
 ENDLOCAL
