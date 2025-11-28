@@ -1,17 +1,12 @@
 [ 
   { 
     "directory": "C:/Users/Stephen/Workspace/SM-Workbench/SM-Engine", 
-    "command": "cl.exe /ISrc /nologo /EHsc Src/SM-Engine/MainWin32.cpp", 
-    "file": "Src/SM-Engine/MainWin32.cpp" 
+    "command": "cl.exe /ISrc /nologo Src/SM/MainWin32.cpp", 
+    "file": "Src/SM/MainWin32.cpp" 
   }, 
   { 
     "directory": "C:/Users/Stephen/Workspace/SM-Workbench/SM-Engine", 
-    "command": "cl.exe /ISrc /nologo /EHsc Src/SM-Engine/Input/Test2.cpp", 
-    "file": "Src/SM-Engine/Input/Test2.cpp" 
-  }, 
-  { 
-    "directory": "C:/Users/Stephen/Workspace/SM-Workbench/SM-Engine", 
-    "command": "cl.exe /ISrc /nologo /EHsc Src/SM-Engine/Renderer/Test.cpp", 
-    "file": "Src/SM-Engine/Renderer/Test.cpp" 
+    "command": "cl.exe /ISrc /nologo Src/SM/PlatformWin32.cpp", 
+    "file": "Src/SM/PlatformWin32.cpp" 
   } 
 ] 
