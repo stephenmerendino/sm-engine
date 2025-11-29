@@ -2,7 +2,7 @@
 
 #include "SM/Platform.h"
 
-namespace sm
+namespace SM
 {
     #define MAX_ASSERT_MSG_LEN 2048
 

@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace sm
+namespace SM
 {
     typedef		uint8_t		U8;
     typedef		uint16_t	U16;
@@ -28,7 +28,7 @@ namespace sm
 
 // Engine API
 typedef void (*EngineLogFunction)(const char* format, ...);
-namespace sm
+namespace SM
 {
     struct EngineApi
     {
@@ -37,6 +37,18 @@ namespace sm
 }
 
 // Game API
-typedef void (*GameLoadedFunction)(sm::EngineApi engineApi);
+typedef void (*GameLoadedFunction)(SM::EngineApi engineApi);
 typedef void (*GameUpdateFunction)(void);
 typedef void (*GameRenderFunction)(void);
+
+#define GAME_LOADED_FUNCTION_NAME GameLoaded
+#define GAME_UPDATE_FUNCTION_NAME GameUpdate
+#define GAME_RENDER_FUNCTION_NAME GameRender
+
+#define GAME_LOADED_FUNCTION_NAME_STRING "GameLoaded" 
+#define GAME_UPDATE_FUNCTION_NAME_STRING "GameUpdate"
+#define GAME_RENDER_FUNCTION_NAME_STRING "GameRender"
+
+#define GAME_LOADED SM_DLL_EXPORT void GAME_LOADED_FUNCTION_NAME(SM::EngineApi engineApi)
+#define GAME_UPDATE SM_DLL_EXPORT void GAME_UPDATE_FUNCTION_NAME()
+#define GAME_RENDER SM_DLL_EXPORT void GAME_RENDER_FUNCTION_NAME()
