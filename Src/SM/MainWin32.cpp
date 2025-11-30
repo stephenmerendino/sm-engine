@@ -293,9 +293,9 @@ int WINAPI WinMain(HINSTANCE app,
 
     const char* dllName = "Workbench.dll";
 
-    GameApi gameApi = {};
     Win32Window window = OpenWindow("Workbench", 1600, 900);
 
+    GameApi gameApi = {};
     while(!s_bExit)
     {
         MSG msg;

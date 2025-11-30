@@ -17,7 +17,7 @@ namespace SM
     typedef		float		F32;
     typedef		double		F64;
 
-    typedef		U8			Byte;
+    typedef		U8			Byte8;
 
     #define KiB(i) i * 1024
     #define MiB(i) i * KiB(1024) 
@@ -26,7 +26,9 @@ namespace SM
 
 #define SM_DLL_EXPORT extern "C" __declspec(dllexport) 
 
+//------------------------------------------------------------------------------------------------------------------
 // Engine API
+//------------------------------------------------------------------------------------------------------------------
 typedef void (*EngineLogFunction)(const char* format, ...);
 namespace SM
 {
@@ -36,7 +38,9 @@ namespace SM
     };
 }
 
+//------------------------------------------------------------------------------------------------------------------
 // Game API
+//------------------------------------------------------------------------------------------------------------------
 typedef void (*GameLoadedFunction)(SM::EngineApi engineApi);
 typedef void (*GameUpdateFunction)(void);
 typedef void (*GameRenderFunction)(void);
