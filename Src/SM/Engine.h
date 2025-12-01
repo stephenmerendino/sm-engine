@@ -2,6 +2,39 @@
 
 #include <cstdint>
 
+//------------------------------------------------------------------------------------------------------------------
+// Engine API
+//------------------------------------------------------------------------------------------------------------------
+typedef void (*EngineLogFunction)(const char* format, ...);
+namespace SM
+{
+    struct EngineApi
+    {
+        EngineLogFunction EngineLog;
+    };
+}
+
+//------------------------------------------------------------------------------------------------------------------
+// Game API
+//------------------------------------------------------------------------------------------------------------------
+#define SM_DLL_EXPORT extern "C" __declspec(dllexport) 
+
+typedef void (*GameLoadedFunction)(SM::EngineApi engineApi);
+typedef void (*GameUpdateFunction)(void);
+typedef void (*GameRenderFunction)(void);
+
+#define GAME_LOADED_FUNCTION_NAME GameLoaded
+#define GAME_UPDATE_FUNCTION_NAME GameUpdate
+#define GAME_RENDER_FUNCTION_NAME GameRender
+
+#define GAME_LOADED_FUNCTION_NAME_STRING "GameLoaded" 
+#define GAME_UPDATE_FUNCTION_NAME_STRING "GameUpdate"
+#define GAME_RENDER_FUNCTION_NAME_STRING "GameRender"
+
+#define GAME_LOADED SM_DLL_EXPORT void GAME_LOADED_FUNCTION_NAME(SM::EngineApi engineApi)
+#define GAME_UPDATE SM_DLL_EXPORT void GAME_UPDATE_FUNCTION_NAME()
+#define GAME_RENDER SM_DLL_EXPORT void GAME_RENDER_FUNCTION_NAME()
+
 namespace SM
 {
     typedef		uint8_t		U8;
@@ -23,36 +56,3 @@ namespace SM
     #define MiB(i) i * KiB(1024) 
     #define GiB(i) i * MiB(1024) 
 }
-
-#define SM_DLL_EXPORT extern "C" __declspec(dllexport) 
-
-//------------------------------------------------------------------------------------------------------------------
-// Engine API
-//------------------------------------------------------------------------------------------------------------------
-typedef void (*EngineLogFunction)(const char* format, ...);
-namespace SM
-{
-    struct EngineApi
-    {
-        EngineLogFunction EngineLog;
-    };
-}
-
-//------------------------------------------------------------------------------------------------------------------
-// Game API
-//------------------------------------------------------------------------------------------------------------------
-typedef void (*GameLoadedFunction)(SM::EngineApi engineApi);
-typedef void (*GameUpdateFunction)(void);
-typedef void (*GameRenderFunction)(void);
-
-#define GAME_LOADED_FUNCTION_NAME GameLoaded
-#define GAME_UPDATE_FUNCTION_NAME GameUpdate
-#define GAME_RENDER_FUNCTION_NAME GameRender
-
-#define GAME_LOADED_FUNCTION_NAME_STRING "GameLoaded" 
-#define GAME_UPDATE_FUNCTION_NAME_STRING "GameUpdate"
-#define GAME_RENDER_FUNCTION_NAME_STRING "GameRender"
-
-#define GAME_LOADED SM_DLL_EXPORT void GAME_LOADED_FUNCTION_NAME(SM::EngineApi engineApi)
-#define GAME_UPDATE SM_DLL_EXPORT void GAME_UPDATE_FUNCTION_NAME()
-#define GAME_RENDER SM_DLL_EXPORT void GAME_RENDER_FUNCTION_NAME()

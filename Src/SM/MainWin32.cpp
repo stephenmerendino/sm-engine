@@ -291,6 +291,9 @@ int WINAPI WinMain(HINSTANCE app,
 {
     using namespace SM;
 
+    SYSTEM_INFO systemInfo;
+    ::GetSystemInfo(&systemInfo);
+
     const char* dllName = "Workbench.dll";
 
     Win32Window window = OpenWindow("Workbench", 1600, 900);

@@ -1,12 +1,7 @@
 [ 
   { 
-    "directory": "C:/Users/Stephen/Workspace/SM-Workbench/SM-Engine", 
+    "directory": "C:/Users/smerendino/Repos/SM-Workbench/SM-Engine", 
     "command": "cl.exe /ISrc /nologo Src/SM/MainWin32.cpp", 
     "file": "Src/SM/MainWin32.cpp" 
-  }, 
-  { 
-    "directory": "C:/Users/Stephen/Workspace/SM-Workbench/SM-Engine", 
-    "command": "cl.exe /ISrc /nologo Src/SM/PlatformWin32.cpp", 
-    "file": "Src/SM/PlatformWin32.cpp" 
   } 
 ] 
