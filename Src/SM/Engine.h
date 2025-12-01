@@ -19,9 +19,10 @@ namespace SM
 
     typedef		U8			Byte8;
 
-    #define KiB(i) i * 1024
-    #define MiB(i) i * KiB(1024) 
-    #define GiB(i) i * MiB(1024) 
+    #define KiB(i) (i * 1024)
+    #define MiB(i) (i * KiB(1024))
+    #define GiB(i) (i * MiB(1024))
+    #define TiB(i) (i * GiB(1024))
 }
 
 #define SM_DLL_EXPORT extern "C" __declspec(dllexport) 

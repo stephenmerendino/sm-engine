@@ -284,6 +284,107 @@ static Win32Window OpenWindow(const char* windowTitle, U32 width, U32 height)
     return window;
 }
 
+size_t s_pageSize;
+
+struct TestFoo
+{
+    float x;
+    float y;
+    float z;
+
+    void ChangeValues()
+    {
+        this->x = -1.0f;
+    }
+};
+
+class LinearAllocator
+{
+public:
+    enum
+    {
+        kMaxLinearAllocatorSize = MiB(16)
+    };
+
+    void* Alloc(size_t numBytes, uint32_t alignment);
+    template<typename T>
+    T* Alloc();
+
+    void* m_pMemoryStart = nullptr;
+    uint32_t m_currentPage = 0;
+    size_t m_currentPageBytesAllocated = 0;
+
+};
+
+void* LinearAllocator::Alloc(size_t numBytes, uint32_t alignment)
+{
+    if(!m_pMemoryStart)
+    {
+        m_pMemoryStart = ::VirtualAlloc(NULL, kMaxLinearAllocatorSize, MEM_RESERVE, PAGE_READWRITE);
+        ::VirtualAlloc(m_pMemoryStart, s_pageSize, MEM_COMMIT, PAGE_READWRITE);
+        m_currentPage = 0;
+        m_currentPageBytesAllocated = 0;
+    }
+
+    size_t numBytesToAllocate = numBytes;
+    if(numBytesToAllocate > (s_pageSize - m_currentPageBytesAllocated))
+    {
+        void* newPageStartAddress = (LPVOID)((uintptr_t)m_pMemoryStart + (uintptr_t)(m_currentPage * s_pageSize));
+        ::VirtualAlloc(newPageStartAddress, s_pageSize, MEM_COMMIT, PAGE_READWRITE);
+        m_currentPage++;
+        m_currentPageBytesAllocated = 0;
+    }
+
+    void* curPageStart = (LPVOID)((uintptr_t)m_pMemoryStart + (uintptr_t)(m_currentPage * s_pageSize));
+    void* memoryAllocation = (void*)((uintptr_t)curPageStart + (uintptr_t)m_currentPageBytesAllocated);
+    m_currentPageBytesAllocated += numBytesToAllocate;
+    return memoryAllocation;
+}
+
+template<typename T>
+T* LinearAllocator::Alloc()
+{
+    return (T*)Alloc(sizeof(T), __alignof(T));
+}
+
+int main(int argc, char* argv[])
+{
+    SYSTEM_INFO sysInfo = {};
+    ::GetSystemInfo(&sysInfo);
+
+    printf("# of processors: %lu\n", sysInfo.dwNumberOfProcessors);
+    printf("Page size: %lu\n", sysInfo.dwPageSize);
+    printf("Page size hex: %lx\n", sysInfo.dwPageSize);
+    printf("Allocation granularity: %lu\n", sysInfo.dwAllocationGranularity);
+    printf("Allocation granularity hex: %lx\n", sysInfo.dwAllocationGranularity);
+    printf("Minimum Application Address: %llu\n", (uintptr_t)sysInfo.lpMinimumApplicationAddress);
+    printf("Maximum Application Address: %llu\n", (uintptr_t)sysInfo.lpMaximumApplicationAddress);
+    printf("Delta Address: %llu\n", (uintptr_t)sysInfo.lpMaximumApplicationAddress - (uintptr_t)sysInfo.lpMinimumApplicationAddress);
+    printf("Delta Address(KiB): %llu\n", ((uintptr_t)sysInfo.lpMaximumApplicationAddress - (uintptr_t)sysInfo.lpMinimumApplicationAddress) / 1024);
+    printf("Delta Address(MiB): %llu\n", ((uintptr_t)sysInfo.lpMaximumApplicationAddress - (uintptr_t)sysInfo.lpMinimumApplicationAddress) / (1024 * 1024));
+    printf("Delta Address(GiB): %llu\n", ((uintptr_t)sysInfo.lpMaximumApplicationAddress - (uintptr_t)sysInfo.lpMinimumApplicationAddress) / (1024 * 1024 * 1024));
+    printf("Delta Address(TiB): %llu\n", (((uintptr_t)sysInfo.lpMaximumApplicationAddress - (uintptr_t)sysInfo.lpMinimumApplicationAddress) / (1024 * 1024 * 1024)) / 1024);
+
+    s_pageSize = sysInfo.dwPageSize;
+
+    size_t numFoos = 50;
+
+    LPVOID startingAddress = sysInfo.lpMinimumApplicationAddress;
+    SIZE_T bytesToAllocate = 1024; // rounded up to nearest page size?
+    LPVOID reservedMemory = VirtualAlloc(startingAddress, numFoos * sysInfo.dwPageSize, MEM_RESERVE, PAGE_READWRITE);
+    printf("Reserved memory address: %llu\n", (uintptr_t)reservedMemory);
+
+    LinearAllocator allocator;
+    for(int i = 0; i < numFoos; i++)
+    {
+        TestFoo* testFoo = allocator.Alloc<TestFoo>();
+        printf("TestFoo #%i memory address: %llu\n", i, (uintptr_t)testFoo);
+        testFoo->ChangeValues();
+    }
+
+    system("pause");
+}
+
 int WINAPI WinMain(HINSTANCE app, 
 				   HINSTANCE prevApp, 
 				   LPSTR args, 
