@@ -1,12 +1,63 @@
-#include "SM/Engine.h"
-#include "SM/Assert.h"
-#include "SM/Platform.h"
-
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 #include <cstdio>
 #include <cstdlib>
 
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "SM/Engine.h"
+#include "SM/Assert.h"
+#include "SM/Platform.h"
+#include "SM/Memory.h"
+
+#include "SM/Memory.cpp"
+
+//-----------------------------------------------------------------------------------------------------
+// Vulkan
+#define VK_NO_PROTOTYPES
+#include "ThirdParty/vulkan/vulkan.h"
+#include "ThirdParty/vulkan/vulkan_win32.h"
+#define VK_EXPORTED_FUNCTION(func)	PFN_##func func = VK_NULL_HANDLE;
+#define VK_GLOBAL_FUNCTION(func)	PFN_##func func = VK_NULL_HANDLE;
+#define VK_INSTANCE_FUNCTION(func)	PFN_##func func = VK_NULL_HANDLE;
+#define VK_DEVICE_FUNCTION(func)	PFN_##func func = VK_NULL_HANDLE;
+#include "SM/VulkanFunctionsManifest.inl"
+
+#if defined(NDEBUG)
+	static const char* INSTANCE_EXTENSIONS[] = {
+		"VK_KHR_surface",
+		"VK_KHR_win32_surface"
+	};
+
+	static const char* DEVICE_EXTENSIONS[] = {
+		"VK_KHR_swapchain",
+        "VK_KHR_dynamic_rendering"
+	};
+
+	static const bool VULKAN_VERBOSE = false;
+	static const bool ENABLE_VALIDATION_LAYERS = false;
+	static const bool ENABLE_VALIDATION_BEST_PRACTICES = false;
+#else
+	static const char* INSTANCE_EXTENSIONS[] = {
+		"VK_KHR_surface",
+		"VK_KHR_win32_surface",
+		"VK_EXT_debug_utils",
+		"VK_EXT_validation_features",
+	};
+
+	static const char* DEVICE_EXTENSIONS[] = {
+		"VK_KHR_swapchain",
+        "VK_KHR_dynamic_rendering"
+	};
+
+	static const bool VULKAN_VERBOSE = true;
+	static const bool ENABLE_VALIDATION_LAYERS = true;
+	static const bool ENABLE_VALIDATION_BEST_PRACTICES = false;
+#endif
+
+static const char* VALIDATION_LAYERS[] = {
+	"VK_LAYER_KHRONOS_validation"
+};
+//-----------------------------------------------------------------------------------------------------
+
 
 using namespace SM;
 
@@ -24,7 +75,7 @@ void SM::Platform::Log(const char* format, ...)
 	OutputDebugStringA(formatted_msg);
 }
 
-bool SM::Platform::AssertReportFailure(const char* expression, const char* filename, int lineNumber)
+bool SM::Platform::AssertReportFailure(const char* expression, const char* filename, I32 lineNumber)
 {
 	char assertMsg[MAX_ASSERT_MSG_LEN];
 	sprintf_s(assertMsg, "Failure triggered at File: %s\nLine %i\n\nWould you like to debug? (Cancel quits program)", filename, lineNumber);
@@ -40,7 +91,7 @@ bool SM::Platform::AssertReportFailure(const char* expression, const char* filen
 	return (userBtnPressed == IDYES);
 }
 
-bool SM::Platform::AssertReportFailureMsg(const char* expression, const char* msg, const char* filename, int lineNumber)
+bool SM::Platform::AssertReportFailureMsg(const char* expression, const char* msg, const char* filename, I32 lineNumber)
 {
 	char assertMsg[MAX_ASSERT_MSG_LEN];
 	sprintf_s(assertMsg, "%s\n\nFile: %s\nLine %i\nExpression \"%s\" failed.\n\nWould you like to debug? (Cancel quits program)", msg, filename, lineNumber, expression);
@@ -56,7 +107,7 @@ bool SM::Platform::AssertReportFailureMsg(const char* expression, const char* ms
 	return (userBtnPressed == IDYES);
 }
 
-bool SM::Platform::AssertReportError(const char* filename, int lineNumber)
+bool SM::Platform::AssertReportError(const char* filename, I32 lineNumber)
 {
 	char assertMsg[MAX_ASSERT_MSG_LEN];
 	sprintf_s(assertMsg, "Error triggered at File: %s\nLine %i\n\nWould you like to debug? (Cancel quits program)", filename, lineNumber);
@@ -72,7 +123,7 @@ bool SM::Platform::AssertReportError(const char* filename, int lineNumber)
 	return (userBtnPressed == IDYES);
 }
 
-bool SM::Platform::AssertReportErrorMsg(const char* msg, const char* filename, int lineNumber)
+bool SM::Platform::AssertReportErrorMsg(const char* msg, const char* filename, I32 lineNumber)
 {
 	char assertMsg[MAX_ASSERT_MSG_LEN];
 	sprintf_s(assertMsg, "%s\n\nError triggered at File: %s\nLine %i\n\nWould you like to debug? (Cancel quits program)", msg, filename, lineNumber);
@@ -140,18 +191,43 @@ static LRESULT EngineWinProc(HWND window, UINT message, WPARAM wParam, LPARAM lP
 
 struct GameApi
 {
-    GameLoadedFunction GameLoaded = nullptr;
+    GameBindEngineFunction GameBindEngine = nullptr;
+    GameInitFunction GameInit = nullptr;
     GameUpdateFunction GameUpdate = nullptr;
     GameRenderFunction GameRender = nullptr;
     FILETIME m_dllLastWriteTime;
     bool m_bIsLoaded = false;
 };
 
+static void ReportLastWindowsError()
+{
+    DWORD errorCode = ::GetLastError();
+    LPSTR errorString;
+    DWORD numCharsWritten = ::FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM, 
+            NULL, 
+            errorCode, 
+            LANG_USER_DEFAULT, 
+            (LPSTR)&errorString, 
+            0, 
+            NULL);
+    
+    if(numCharsWritten == 0)
+    {
+        DWORD formatError = ::GetLastError();
+        Platform::Log("[Windows Error %i] Failed to generate error message for error code %i", formatError, errorCode);
+    }
+    else
+    {
+        Platform::Log("[Windows Error %i] %s", errorCode, errorString);
+    }
+}
+
 static bool LoadGameCode(const char* dllFilename, GameApi& gameApi)
 {
     if(!gameApi.m_bIsLoaded)
     {
-        gameApi.GameLoaded = [](SM::EngineApi engineApi){ };
+        gameApi.GameBindEngine = [](SM::EngineApi engineApi){ };
+        gameApi.GameInit   = [](){ };
         gameApi.GameUpdate = [](){ };
         gameApi.GameRender = [](){ };
     }
@@ -160,6 +236,8 @@ static bool LoadGameCode(const char* dllFilename, GameApi& gameApi)
     bool gotFileInfo = ::GetFileAttributesExA(dllFilename, GetFileExInfoStandard, &fileInfo);
     if(!gotFileInfo)
     {
+        Platform::Log("[Error] Failed to get file attributes for dll %s", dllFilename);
+        ReportLastWindowsError();
         return false;
     }
 
@@ -183,10 +261,17 @@ static bool LoadGameCode(const char* dllFilename, GameApi& gameApi)
         return false;
     }
 
-    GameLoadedFunction GameLoaded = (GameLoadedFunction)::GetProcAddress(gameDLL, GAME_LOADED_FUNCTION_NAME_STRING);
-    if(GameLoaded == NULL)
+    GameBindEngineFunction GameBindEngine = (GameBindEngineFunction)::GetProcAddress(gameDLL, GAME_BIND_ENGINE_FUNCTION_NAME_STRING);
+    if(GameBindEngine == NULL)
     {
-        Platform::Log("Couldn't find %s in DLL\n", GAME_LOADED_FUNCTION_NAME_STRING);
+        Platform::Log("Couldn't find %s in DLL\n", GAME_BIND_ENGINE_FUNCTION_NAME_STRING);
+        return false;
+    }
+
+    GameInitFunction GameInit = (GameInitFunction)::GetProcAddress(gameDLL, GAME_INIT_FUNCTION_NAME_STRING);
+    if(GameInit == NULL)
+    {
+        Platform::Log("Couldn't find %s in DLL\n", GAME_INIT_FUNCTION_NAME_STRING);
         return false;
     }
 
@@ -204,7 +289,8 @@ static bool LoadGameCode(const char* dllFilename, GameApi& gameApi)
         return false;
     }
 
-    gameApi.GameLoaded = GameLoaded;
+    gameApi.GameBindEngine = GameBindEngine;
+    gameApi.GameInit = GameInit;
     gameApi.GameUpdate = GameUpdate;
     gameApi.GameRender = GameRender;
     gameApi.m_dllLastWriteTime = fileInfo.ftLastWriteTime;
@@ -212,7 +298,13 @@ static bool LoadGameCode(const char* dllFilename, GameApi& gameApi)
     EngineApi engineApi = {
         .EngineLog = &Platform::Log
     };
-    gameApi.GameLoaded(engineApi);
+    gameApi.GameBindEngine(engineApi);
+
+    if(!gameApi.m_bIsLoaded)
+    {
+        gameApi.m_bIsLoaded = true;
+        gameApi.GameInit();
+    }
 
     return true;
 }
@@ -263,7 +355,7 @@ static Win32Window OpenWindow(const char* windowTitle, U32 width, U32 height)
 	window.m_title = windowTitle;
     window.m_width = width;
     window.m_height = height;
-	window.m_hwnd = CreateWindowExA(0,
+	window.m_hwnd = ::CreateWindowExA(0,
 							          windowClassName,
 							          windowTitle,
 							          style,
@@ -275,7 +367,11 @@ static Win32Window OpenWindow(const char* windowTitle, U32 width, U32 height)
                                       NULL,
 							          GetModuleHandle(NULL),
 							          NULL); // used to pass this pointer
-	SM_ASSERT(NULL != window.m_hwnd);
+    if(window.m_hwnd == NULL)
+    {
+        ReportLastWindowsError();
+        SM_ERROR_MSG("Failed to create window\n");
+    }
 
 	// make sure to show on init
 	::ShowWindow(window.m_hwnd, SW_SHOW);
@@ -284,55 +380,68 @@ static Win32Window OpenWindow(const char* windowTitle, U32 width, U32 height)
     return window;
 }
 
-struct TestFoo
+static VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT      msgSeverity,
+													      VkDebugUtilsMessageTypeFlagsEXT             msgType,
+													      const VkDebugUtilsMessengerCallbackDataEXT* cbData,
+													      void*										  userData)
 {
-    float x;
-    float y;
-    float z;
+	UNUSED(msgType);
+	UNUSED(userData);
 
-    void ChangeValues()
-    {
-        this->x = -1.0f;
-    }
-};
+	// filter out verbose and info messages unless we explicitly want them
+	if (!VULKAN_VERBOSE)
+	{
+		if (msgSeverity & (VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT))
+		{
+			return VK_FALSE;
+		}
+	}
 
-class LinearAllocator
-{
-public:
-    void Init(size_t numBytesCapacity);
-    void* Alloc(size_t numBytes, uint32_t alignment);
-    void Reset();
+    Platform::Log("[vk");
 
-    template<typename T>
-    T* Alloc();
+	switch (msgType)
+	{
+		case VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT:		Platform::Log("-general");		break;
+		case VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT:	Platform::Log("-performance");	break;
+		case VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT:	Platform::Log("-validation");	break;
+	}
 
-    void* m_pMemoryStart = nullptr;
-    uint32_t m_allocatedBytes = 0;
-};
+	switch (msgSeverity)
+	{
+		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:	Platform::Log("-verbose]");	break;
+		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:		Platform::Log("-info]");	break;
+		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:	Platform::Log("-warning]");	break;
+		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:		Platform::Log("-error]");	break;
+		//case VK_DEBUG_UTILS_MESSAGE_SEVERITY_FLAG_BITS_MAX_ENUM_EXT:
+		default: break;
+	}
 
-void LinearAllocator::Init(size_t numBytesCapacity)
-{
-    m_pMemoryStart = malloc(numBytesCapacity);
-    m_allocatedBytes = 0;
+    Platform::Log(" %s\n", cbData->pMessage);
+
+	// returning false means we don't abort the Vulkan call that triggered the debug callback
+	return VK_FALSE;
 }
 
-template<typename T>
-T* LinearAllocator::Alloc()
+static VkDebugUtilsMessengerCreateInfoEXT SetupDebugMessengerCreateInfo(PFN_vkDebugUtilsMessengerCallbackEXT callback)
 {
-    return (T*)Alloc(sizeof(T), __alignof(T));
+	VkDebugUtilsMessengerCreateInfoEXT create_info = {};
+	create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+
+	create_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+		VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
+		VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+		VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+
+	create_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+		VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+		VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+
+	create_info.pfnUserCallback = callback;
+	create_info.pUserData = nullptr;
+
+	return 	create_info;
 }
 
-void* LinearAllocator::Alloc(size_t numBytes, uint32_t alignment)
-{
-    // round up from current allocated bytes to closest aligned address
-    // allocate the numBytes needed from that aligned address
-    // return the aligned address
-}
-
-void LinearAllocator::Reset()
-{
-    m_allocatedBytes = 0;
-}
 
 int WINAPI WinMain(HINSTANCE app, 
 				   HINSTANCE prevApp, 
@@ -340,16 +449,199 @@ int WINAPI WinMain(HINSTANCE app,
 				   int show)
 {
     using namespace SM;
-
-    SYSTEM_INFO systemInfo;
-    ::GetSystemInfo(&systemInfo);
-    U32 numProcessorso = systemInfo.dwNumberOfProcessors;
-    U32 pageSize = systemInfo.dwPageSize;
-    U32 allocationGranularity = systemInfo.dwAllocationGranularity;
-
     const char* dllName = "Workbench.dll";
 
+    /*
+       For future reference of how to ask platform for memory info
+        SYSTEM_INFO systemInfo;
+        ::GetSystemInfo(&systemInfo);
+        U32 numProcessors = systemInfo.dwNumberOfProcessors;
+        U32 pageSize = systemInfo.dwPageSize;
+        U32 allocationGranularity = systemInfo.dwAllocationGranularity;
+    */
+
+    SM::InitAllocators();
     Win32Window window = OpenWindow("Workbench", 1600, 900);
+
+    // initialize Vulkan
+    {
+        #define VK_EXPORTED_FUNCTION(func) \
+            HMODULE vulkan_lib = ::LoadLibraryA("vulkan-1.dll"); \
+            SM_ASSERT(nullptr != vulkan_lib); \
+            func = (PFN_##func)::GetProcAddress(vulkan_lib, #func); \
+            SM_ASSERT(nullptr != func);
+
+        #define VK_GLOBAL_FUNCTION(func) \
+            func = (PFN_##func)vkGetInstanceProcAddr(nullptr, #func); \
+            SM_ASSERT(nullptr != func);
+
+        #include "SM/VulkanFunctionsManifest.inl"
+
+        VkApplicationInfo appInfo = {
+            .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+            .pApplicationName = "SM Workbench",
+            .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+            .pEngineName = "SM Engine",
+            .engineVersion = VK_MAKE_VERSION(1, 0, 0),
+            .apiVersion = VK_API_VERSION_1_3
+        };
+
+        VkInstanceCreateInfo instanceCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+            .pApplicationInfo = &appInfo,
+            .enabledExtensionCount = ARRAY_LEN(INSTANCE_EXTENSIONS),
+            .ppEnabledExtensionNames = INSTANCE_EXTENSIONS
+        };
+
+        if (ENABLE_VALIDATION_LAYERS)
+        {
+            // check validation layers are supported
+            {
+                U32 numLayers;
+                vkEnumerateInstanceLayerProperties(&numLayers, nullptr);
+
+                VkLayerProperties* instanceLayers = SM::Alloc<VkLayerProperties>(kEngineGlobal, numLayers);
+                vkEnumerateInstanceLayerProperties(&numLayers, instanceLayers);
+
+                for (const char* layerName : VALIDATION_LAYERS)
+                {
+                    bool layerFound = false;
+
+                    for (U32 i = 0; i < numLayers; i++)
+                    {
+                        const VkLayerProperties& l = instanceLayers[i];
+                        if (strcmp(layerName, l.layerName) == 0)
+                        {
+                            layerFound = true;
+                            break;
+                        }
+                    }
+
+                    SM_ASSERT(layerFound);
+                }
+            }
+
+            instanceCreateInfo.ppEnabledLayerNames = VALIDATION_LAYERS;
+            instanceCreateInfo.enabledLayerCount = ARRAY_LEN(VALIDATION_LAYERS);
+
+            // this debug messenger debugs the actual instance creation
+            VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = SetupDebugMessengerCreateInfo(VulkanDebugCallback);
+            instanceCreateInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugMessengerCreateInfo;
+
+            if (ENABLE_VALIDATION_BEST_PRACTICES)
+            {
+                VkValidationFeatureEnableEXT enables[] = { VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT };
+                VkValidationFeaturesEXT features = {};
+                features.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+                features.enabledValidationFeatureCount = 1;
+                features.pEnabledValidationFeatures = enables;
+                debugMessengerCreateInfo.pNext = &features;
+            }
+        }
+
+        VkInstance instance = VK_NULL_HANDLE;
+        SM_ASSERT(vkCreateInstance(&instanceCreateInfo, nullptr, &instance) == VK_SUCCESS);
+
+        // load instance funcs
+        #define VK_INSTANCE_FUNCTION(func) \
+            func = (PFN_##func)vkGetInstanceProcAddr(instance, #func); \
+            SM_ASSERT(nullptr != func);
+
+        #include "SM/VulkanFunctionsManifest.inl"
+
+        // real debug messenger for the whole game
+        if (ENABLE_VALIDATION_LAYERS)
+        {
+            VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = SetupDebugMessengerCreateInfo(VulkanDebugCallback);
+            VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
+            SM_ASSERT(vkCreateDebugUtilsMessengerEXT(instance, &debugMessengerCreateInfo, nullptr, &debugMessenger) == VK_SUCCESS);
+        }
+
+        // vk surface
+        VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
+            .pNext = nullptr,
+            .hinstance = ::GetModuleHandle(nullptr),
+            .hwnd = window.m_hwnd
+        };
+        VkSurfaceKHR surface = VK_NULL_HANDLE;
+        SM_ASSERT(vkCreateWin32SurfaceKHR(instance, &surfaceCreateInfo, nullptr, &surface) == VK_SUCCESS);
+
+        // vk device
+        VkPhysicalDevice selectedGPU = VK_NULL_HANDLE;
+        VkPhysicalDeviceProperties gpuProperties = {};
+        VkPhysicalDeviceMemoryProperties gpuMemoryProperties = {};
+
+        static const U8 maxNumGPUs = 5; // bro do you really have more than 5 graphics cards
+
+        U32 numFoundGPUs = 0;
+        vkEnumeratePhysicalDevices(instance, &numFoundGPUs, nullptr);
+        SM_ASSERT(numFoundGPUs != 0 && numFoundGPUs <= maxNumGPUs);
+
+        VkPhysicalDevice devices[maxNumGPUs];
+        vkEnumeratePhysicalDevices(instance, &numFoundGPUs, devices);
+
+        if (IsRunningDebug())
+        {
+            Platform::Log("Physical Devices:\n");
+
+            for (U8 i = 0; i < numFoundGPUs; i++)
+            {
+                VkPhysicalDeviceProperties deviceProps;
+                vkGetPhysicalDeviceProperties(devices[i], &deviceProps);
+
+                //VkPhysicalDeviceFeatures deviceFeatures;
+                //vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+
+                Platform::Log("%s\n", deviceProps.deviceName);
+            }
+        }
+
+        for(const VkPhysicalDevice& device : devices)
+        {
+            //if(is_physical_device_suitable(arena, device, context.surface))
+            //{
+            //    selectedGPU = device;
+            //    vkGetPhysicalDeviceProperties(selectedGPU, &gpuProperties);
+            //    vkGetPhysicalDeviceMemoryProperties(selectedGPU, &gpuMemoryProperties);
+            //    queue_indices = find_queue_indices(arena, device, context.surface);
+            //    max_num_msaa_samples = get_max_msaa_samples(selected_phys_device_props);
+            //    break;
+            //}
+        }
+
+        //SM_ASSERT(selectedGPU != VK_NULL_HANDLE);
+
+        VkPhysicalDeviceFeatures deviceFeatures = {
+            .fillModeNonSolid = VK_TRUE,
+            .samplerAnisotropy = VK_TRUE
+        };
+
+        VkPhysicalDeviceVulkan13Features vk13Features = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+            .synchronization2 = VK_TRUE,
+            .dynamicRendering = VK_TRUE
+        };
+
+        VkDeviceCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        createInfo.pNext = &vk13Features;
+        //createInfo.pQueueCreateInfos = queue_create_infos;
+        //createInfo.queueCreateInfoCount = num_queues;
+        createInfo.pEnabledFeatures = &deviceFeatures;
+        createInfo.enabledExtensionCount = ARRAY_LEN(DEVICE_EXTENSIONS);
+        createInfo.ppEnabledExtensionNames = DEVICE_EXTENSIONS;
+
+        VkDevice device = VK_NULL_HANDLE;
+        //SM_ASSERT(vkCreateDevice(selectedGPU, &createInfo, nullptr, &device) == VK_SUCCESS);
+
+        // load device funcs
+        //#define VK_DEVICE_FUNCTION(func) \
+        //    func = (PFN_##func)vkGetDeviceProcAddr(device, #func); \
+        //    SM_ASSERT(nullptr != func);
+
+        //#include "SM/VulkanFunctionsManifest.inl"
+    }
 
     GameApi gameApi = {};
     while(!s_bExit)

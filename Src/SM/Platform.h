@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SM/Engine.h"
+#include "SM/StandardTypes.h"
 
 namespace SM
 { 
@@ -19,10 +19,10 @@ namespace SM
         //------------------------------------------------------------------------------------------------------------------------
         // Assertions
         //------------------------------------------------------------------------------------------------------------------------
-        bool AssertReportFailure(const char* expression, const char* filename, int lineNumber);
-        bool AssertReportFailureMsg(const char* expression, const char* msg, const char* filename, int lineNumber);
-        bool AssertReportError(const char* filename, int lineNumber);
-        bool AssertReportErrorMsg(const char* msg, const char* filename, int lineNumber);
+        bool AssertReportFailure(const char* expression, const char* filename, I32 lineNumber);
+        bool AssertReportFailureMsg(const char* expression, const char* msg, const char* filename, I32 lineNumber);
+        bool AssertReportError(const char* filename, I32 lineNumber);
+        bool AssertReportErrorMsg(const char* msg, const char* filename, I32 lineNumber);
         void TriggerDebugger();
     } 
 }
