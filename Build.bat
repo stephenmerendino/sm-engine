@@ -18,9 +18,10 @@ set LibsPath=/LIBPATH:%LibsDir%
 
 set Libs=user32.lib vulkan-1.lib dxcompiler.lib
 
-set ExeOutput=%BuildDir%%BaseFilename%.exe
-set PdbOutput=%BuildDir%%BaseFilename%.pdb
-set ObjOutput=%BuildDir%%BaseFilename%.obj
+set OutputName=SM-Engine
+set ExeOutput=%BuildDir%%OutputName%.exe
+set PdbOutput=%BuildDir%%OutputName%.pdb
+set ObjOutput=%BuildDir%%OutputName%.obj
 set OutputFiles=/Fe%ExeOutput% /Fd%PdbOutput% /Fo%ObjOutput%
 
 set LinkerFlags=-subsystem:windows

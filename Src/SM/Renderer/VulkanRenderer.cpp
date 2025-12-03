@@ -3,6 +3,7 @@
 #include "SM/Bits.h"
 #include "SM/Memory.h"
 #include "SM/Renderer/VulkanConfig.h"
+#include "ThirdParty/vulkan/vulkan_core.h"
 
 #include <cstring>
 
@@ -385,47 +386,56 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
         vkDestroySwapchainKHR(m_device, m_swapchain, nullptr);
 	}
 
-	arena_t* stack_arena;
-	arena_stack_init(stack_arena, 256);
-    swapchain_info_t swapchain_info = query_swapchain(stack_arena, context.phys_device, context.surface);
+    U32 numSurfaceFormats = 0;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, m_surface, &numSurfaceFormats, nullptr);
+    VkSurfaceFormatKHR* surfaceFormats = SM::Alloc<VkSurfaceFormatKHR>(s);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, m_surface, &numSurfaceFormats, surfaceFormats);
 
-    VkSurfaceFormatKHR swapchain_format = swapchain_info.formats[0];
-    for(int i = 0; i < swapchain_info.formats.cur_size; i++)
+    VkSurfaceFormatKHR swapchainFormat = surfaceFormats[0];
+    for(int i = 0; i < numSurfaceFormats; i++)
     {
-        const VkSurfaceFormatKHR& format = swapchain_info.formats[i];
+        const VkSurfaceFormatKHR& format = surfaceFormats[i];
         if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
         {
-            swapchain_format = format;
+            swapchainFormat = format;
         }
     }
 
-    VkPresentModeKHR swapchain_present_mode = VK_PRESENT_MODE_FIFO_KHR;
-    for(int i = 0; i < swapchain_info.present_modes.cur_size; i++)
+    U32 numPresentModes = 0;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, m_surface, &numPresentModes, nullptr);
+    VkPresentModeKHR* presentModes = SM::Alloc<VkPresentModeKHR>(s);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, m_surface, &numPresentModes, presentModes);
+
+    VkPresentModeKHR swapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
+    for(int i = 0; i < numPresentModes; i++)
     {
-        const VkPresentModeKHR& mode = swapchain_info.present_modes[i];
+        const VkPresentModeKHR& mode = presentModes[i];
         if (mode == VK_PRESENT_MODE_MAILBOX_KHR)
         {
-            swapchain_present_mode = mode;
+            swapchainPresentMode = mode;
             break;
         }
     }
 
-    VkExtent2D swapchain_extent{};
-    if (swapchain_info.capabilities.currentExtent.width != UINT32_MAX)
+    VkSurfaceCapabilitiesKHR surfaceCapabilities = {};
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physicalDevice, m_surface, &surfaceCapabilities);
+
+    VkExtent2D swapchainExtent{};
+    if (surfaceCapabilities.currentExtent.width != UINT32_MAX)
     {
-        swapchain_extent = swapchain_info.capabilities.currentExtent;
+        swapchainExtent = surfaceCapabilities.currentExtent;
     }
     else
     {
-        swapchain_extent = { context.window->width, context.window->height };
-        swapchain_extent.width = clamp(swapchain_extent.width, swapchain_info.capabilities.minImageExtent.width, swapchain_info.capabilities.maxImageExtent.width);
-        swapchain_extent.height = clamp(swapchain_extent.height, swapchain_info.capabilities.minImageExtent.height, swapchain_info.capabilities.maxImageExtent.height);
+        swapchainExtent = { context.window->width, context.window->height };
+        swapchainExtent.width = Clamp(swapchainExtent.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
+        swapchainExtent.height = Clamp(swapchainExtent.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
     }
 
-    u32 image_count = swapchain_info.capabilities.minImageCount + 1; // one extra image to prevent waiting on driver
-    if (swapchain_info.capabilities.maxImageCount > 0)
+    U32 imageCount = surfaceCapabilities.minImageCount + 1; // one extra image to prevent waiting on driver
+    if (surfaceCapabilities.maxImageCount > 0)
     {
-        image_count = min(image_count, swapchain_info.capabilities.maxImageCount);
+        imageCount = Min(imageCount, surfaceCapabilities.maxImageCount);
     }
 
     // TODO: Allow fullscreen
@@ -434,100 +444,100 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
     //fullScreenInfo.pNext = nullptr;
     //fullScreenInfo.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT;
 
-    VkSwapchainCreateInfoKHR create_info{};
-    create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    create_info.pNext = nullptr; // use full_screen_info here
-    create_info.surface = context.surface;
-    create_info.minImageCount = image_count;
-    create_info.imageFormat = swapchain_format.format;
-    create_info.imageColorSpace = swapchain_format.colorSpace;
-    create_info.presentMode = swapchain_present_mode;
-    create_info.imageExtent = swapchain_extent;
-    create_info.imageArrayLayers = 1;
-    create_info.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    //VkSwapchainCreateInfoKHR create_info{};
+    //create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    //create_info.pNext = nullptr; // use full_screen_info here
+    //create_info.surface = context.surface;
+    //create_info.minImageCount = image_count;
+    //create_info.imageFormat = swapchain_format.format;
+    //create_info.imageColorSpace = swapchain_format.colorSpace;
+    //create_info.presentMode = swapchain_present_mode;
+    //create_info.imageExtent = swapchain_extent;
+    //create_info.imageArrayLayers = 1;
+    //create_info.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-    u32 queueFamilyIndices[] = { (u32)context.queue_indices.graphics, (u32)context.queue_indices.presentation };
+    //u32 queueFamilyIndices[] = { (u32)context.queue_indices.graphics, (u32)context.queue_indices.presentation };
 
-    if (context.queue_indices.graphics != context.queue_indices.presentation)
-    {
-        create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-        create_info.queueFamilyIndexCount = 2;
-        create_info.pQueueFamilyIndices = queueFamilyIndices;
-    }
-    else
-    {
-        create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        create_info.queueFamilyIndexCount = 0;
-        create_info.pQueueFamilyIndices = nullptr;
-    }
+    //if (context.queue_indices.graphics != context.queue_indices.presentation)
+    //{
+    //    create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+    //    create_info.queueFamilyIndexCount = 2;
+    //    create_info.pQueueFamilyIndices = queueFamilyIndices;
+    //}
+    //else
+    //{
+    //    create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    //    create_info.queueFamilyIndexCount = 0;
+    //    create_info.pQueueFamilyIndices = nullptr;
+    //}
 
-    create_info.preTransform = swapchain_info.capabilities.currentTransform;
-    create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    create_info.clipped = VK_TRUE;
-    create_info.oldSwapchain = VK_NULL_HANDLE;
+    //create_info.preTransform = swapchain_info.capabilities.currentTransform;
+    //create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    //create_info.clipped = VK_TRUE;
+    //create_info.oldSwapchain = VK_NULL_HANDLE;
 
-    SM_VULKAN_ASSERT(vkCreateSwapchainKHR(context.device, &create_info, nullptr, &context.swapchain.handle));
+    //SM_VULKAN_ASSERT(vkCreateSwapchainKHR(context.device, &create_info, nullptr, &context.swapchain.handle));
 
-    u32 num_images = 0;
-    vkGetSwapchainImagesKHR(context.device, context.swapchain.handle, &num_images, nullptr);
+    //u32 num_images = 0;
+    //vkGetSwapchainImagesKHR(context.device, context.swapchain.handle, &num_images, nullptr);
 
-	array_resize(context.swapchain.images, num_images);
-    vkGetSwapchainImagesKHR(context.device, context.swapchain.handle, &num_images, context.swapchain.images.data);
+	//array_resize(context.swapchain.images, num_images);
+    //vkGetSwapchainImagesKHR(context.device, context.swapchain.handle, &num_images, context.swapchain.images.data);
 
-    context.swapchain.format = swapchain_format.format;
-    context.swapchain.extent = swapchain_extent;
+    //context.swapchain.format = swapchain_format.format;
+    //context.swapchain.extent = swapchain_extent;
 
-    VkCommandBufferAllocateInfo command_buffer_alloc_info{};
-    command_buffer_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    command_buffer_alloc_info.pNext = nullptr;
-    command_buffer_alloc_info.commandPool = context.graphics_command_pool;
-    command_buffer_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    command_buffer_alloc_info.commandBufferCount = 1;
+    //VkCommandBufferAllocateInfo command_buffer_alloc_info{};
+    //command_buffer_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    //command_buffer_alloc_info.pNext = nullptr;
+    //command_buffer_alloc_info.commandPool = context.graphics_command_pool;
+    //command_buffer_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    //command_buffer_alloc_info.commandBufferCount = 1;
 
-    VkCommandBuffer command_buffer;
-    vkAllocateCommandBuffers(context.device, &command_buffer_alloc_info, &command_buffer);
+    //VkCommandBuffer command_buffer;
+    //vkAllocateCommandBuffers(context.device, &command_buffer_alloc_info, &command_buffer);
 
-    VkCommandBufferBeginInfo begin_info{};
-    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkBeginCommandBuffer(command_buffer, &begin_info);
+    //VkCommandBufferBeginInfo begin_info{};
+    //begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    //begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    //vkBeginCommandBuffer(command_buffer, &begin_info);
 
-    // transition swapchain images to presentation layout
-    for (u32 i = 0; i < (u32)context.swapchain.images.cur_size; i++)
-    {
-        VkImageMemoryBarrier barrier{};
-        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        barrier.srcAccessMask = VK_ACCESS_NONE;
-        barrier.dstAccessMask = VK_ACCESS_NONE;
-        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.image = context.swapchain.images[i];
-        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        barrier.subresourceRange.baseMipLevel = 0;
-        barrier.subresourceRange.levelCount = 1;
-        barrier.subresourceRange.baseArrayLayer = 0;
-        barrier.subresourceRange.layerCount = 1;
+    //// transition swapchain images to presentation layout
+    //for (u32 i = 0; i < (u32)context.swapchain.images.cur_size; i++)
+    //{
+    //    VkImageMemoryBarrier barrier{};
+    //    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    //    barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    //    barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    //    barrier.srcAccessMask = VK_ACCESS_NONE;
+    //    barrier.dstAccessMask = VK_ACCESS_NONE;
+    //    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    //    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    //    barrier.image = context.swapchain.images[i];
+    //    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    //    barrier.subresourceRange.baseMipLevel = 0;
+    //    barrier.subresourceRange.levelCount = 1;
+    //    barrier.subresourceRange.baseArrayLayer = 0;
+    //    barrier.subresourceRange.layerCount = 1;
 
-        vkCmdPipelineBarrier(command_buffer,
-                             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                             0,
-                             0, nullptr,
-                             0, nullptr,
-                             1, &barrier);
-    }
-    vkEndCommandBuffer(command_buffer);
-    
-    VkSubmitInfo submit_info{};
-    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit_info.commandBufferCount = 1;
-    submit_info.pCommandBuffers = &command_buffer;
+    //    vkCmdPipelineBarrier(command_buffer,
+    //                         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+    //                         0,
+    //                         0, nullptr,
+    //                         0, nullptr,
+    //                         1, &barrier);
+    //}
+    //vkEndCommandBuffer(command_buffer);
+    //
+    //VkSubmitInfo submit_info{};
+    //submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    //submit_info.commandBufferCount = 1;
+    //submit_info.pCommandBuffers = &command_buffer;
 
-    vkQueueSubmit(context.graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
-    vkQueueWaitIdle(context.graphics_queue);
+    //vkQueueSubmit(context.graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
+    //vkQueueWaitIdle(context.graphics_queue);
 
-    vkFreeCommandBuffers(context.device, context.graphics_command_pool, 1, &command_buffer);
+    //vkFreeCommandBuffers(context.device, context.graphics_command_pool, 1, &command_buffer);
 
     return true;
 }
