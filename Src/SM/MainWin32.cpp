@@ -688,38 +688,37 @@ int WINAPI WinMain(HINSTANCE app,
             {
                 const VkQueueFamilyProperties& props = queueFamilyProperties[iQueue];
 
-                if (graphicsQueue == kInvalidQueue && 
-                    IsBitSet(props.queueFlags, VK_QUEUE_GRAPHICS_BIT))
+                if (graphicsQueue == kInvalidQueue && IsBitSet(props.queueFlags, VK_QUEUE_GRAPHICS_BIT))
                 {
                     graphicsQueue = iQueue;
                 }
 
-                if (indices.async_compute == render_queue_indices_t::INVALID_QUEUE_INDEX && 
-                    is_bit_set(props.queueFlags, VK_QUEUE_COMPUTE_BIT)  && 
-                    !is_bit_set(props.queueFlags, VK_QUEUE_GRAPHICS_BIT))
+                if (computeQueue == kInvalidQueue && 
+                    IsBitSet(props.queueFlags, VK_QUEUE_COMPUTE_BIT)  && 
+                    !IsBitSet(props.queueFlags, VK_QUEUE_GRAPHICS_BIT))
                 {
-                    indices.async_compute = i;
+                    computeQueue = iQueue;
                 }
 
-                if (indices.transfer == render_queue_indices_t::INVALID_QUEUE_INDEX && 
-                    is_bit_set(props.queueFlags, VK_QUEUE_TRANSFER_BIT) &&
-                    !is_bit_set(props.queueFlags, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT))
+                if (transferQueue == kInvalidQueue && 
+                    IsBitSet(props.queueFlags, VK_QUEUE_TRANSFER_BIT) &&
+                    !IsBitSet(props.queueFlags, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT))
                 {
-                    indices.transfer = i;
+                    transferQueue = iQueue;
                 }
 
-                VkBool32 can_present = false;
-                vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &can_present);
-                if (indices.presentation == render_queue_indices_t::INVALID_QUEUE_INDEX && can_present)
+                VkBool32 canPresent = false;
+                vkGetPhysicalDeviceSurfaceSupportKHR(candidateGPU, iQueue, surface, &canPresent);
+                if (presentationQueue == kInvalidQueue && canPresent)
                 {
-                    indices.presentation = i;
+                    presentationQueue = iQueue;
                 }
 
                 // check if no more families to find
-                if (indices.graphics != render_queue_indices_t::INVALID_QUEUE_INDEX && 
-                    indices.async_compute != render_queue_indices_t::INVALID_QUEUE_INDEX &&
-                    indices.presentation != render_queue_indices_t::INVALID_QUEUE_INDEX &&
-                    indices.transfer != render_queue_indices_t::INVALID_QUEUE_INDEX)
+                if (graphicsQueue != kInvalidQueue && 
+                    computeQueue != kInvalidQueue &&
+                    presentationQueue != kInvalidQueue &&
+                    transferQueue != kInvalidQueue)
                 {
                     break;
                 }
@@ -754,7 +753,9 @@ int WINAPI WinMain(HINSTANCE app,
             .dynamicRendering = VK_TRUE
         };
 
-        VkDeviceCreateInfo createInfo{};
+        VkDeviceCreateInfo createInfo = {
+            
+        };
         createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
         createInfo.pNext = &vk13Features;
         //createInfo.pQueueCreateInfos = queue_create_infos;
