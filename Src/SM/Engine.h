@@ -54,5 +54,4 @@ namespace SM
         return true;
         #endif
     }
-
 }

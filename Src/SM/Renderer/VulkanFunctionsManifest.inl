@@ -125,7 +125,7 @@ VK_DEVICE_FUNCTION(vkCmdBeginRendering)
 VK_DEVICE_FUNCTION(vkCmdEndRendering)
 VK_DEVICE_FUNCTION(vkCmdPushConstants)
 
-#if defined _WIN32
+#if defined VK_PLATFORM_FUNCTION && defined _WIN32
 VK_INSTANCE_FUNCTION(vkCreateWin32SurfaceKHR)
 #endif
 

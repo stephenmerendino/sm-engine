@@ -28,7 +28,14 @@ namespace SM
     };
 
     void InitAllocators();
+
     void* Alloc(MemoryArenaType arenaType, size_t numBytes, U32 alignment = kAlign1);
+
+    template<typename T>
+    T* Alloc(MemoryArenaType arenaType)
+    {
+        return (T*)Alloc(arenaType, sizeof(T), alignof(T));
+    }
 
     template<typename T>
     T* Alloc(MemoryArenaType arenaType, size_t numElements)

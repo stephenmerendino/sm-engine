@@ -3,5 +3,60 @@
     "directory": "C:/Users/smerendino/Repos/SM-Workbench/SM-Engine", 
     "command": "cl.exe /ISrc /nologo Src/SM/MainWin32.cpp", 
     "file": "Src/SM/MainWin32.cpp" 
+  }, 
+  { 
+    "directory": "C:/Users/smerendino/Repos/SM-Workbench/SM-Engine", 
+    "command": "cl.exe /ISrc /nologo Src/SM/Memory.cpp", 
+    "file": "Src/SM/Memory.cpp" 
+  }, 
+  { 
+    "directory": "C:/Users/smerendino/Repos/SM-Workbench/SM-Engine", 
+    "command": "cl.exe /ISrc /nologo Src/SM/Renderer/Renderer.cpp", 
+    "file": "Src/SM/Renderer/Renderer.cpp" 
+  }, 
+  { 
+    "directory": "C:/Users/smerendino/Repos/SM-Workbench/SM-Engine", 
+    "command": "cl.exe /ISrc /nologo Src/SM/Renderer/VulkanRenderer.cpp", 
+    "file": "Src/SM/Renderer/VulkanRenderer.cpp" 
+  }, 
+  { 
+    "directory": "C:/Users/smerendino/Repos/SM-Workbench/SM-Engine", 
+    "command": "cl.exe /ISrc /nologo Src/ThirdParty/imgui/imgui.cpp", 
+    "file": "Src/ThirdParty/imgui/imgui.cpp" 
+  }, 
+  { 
+    "directory": "C:/Users/smerendino/Repos/SM-Workbench/SM-Engine", 
+    "command": "cl.exe /ISrc /nologo Src/ThirdParty/imgui/imgui_demo.cpp", 
+    "file": "Src/ThirdParty/imgui/imgui_demo.cpp" 
+  }, 
+  { 
+    "directory": "C:/Users/smerendino/Repos/SM-Workbench/SM-Engine", 
+    "command": "cl.exe /ISrc /nologo Src/ThirdParty/imgui/imgui_draw.cpp", 
+    "file": "Src/ThirdParty/imgui/imgui_draw.cpp" 
+  }, 
+  { 
+    "directory": "C:/Users/smerendino/Repos/SM-Workbench/SM-Engine", 
+    "command": "cl.exe /ISrc /nologo Src/ThirdParty/imgui/imgui_impl_vulkan.cpp", 
+    "file": "Src/ThirdParty/imgui/imgui_impl_vulkan.cpp" 
+  }, 
+  { 
+    "directory": "C:/Users/smerendino/Repos/SM-Workbench/SM-Engine", 
+    "command": "cl.exe /ISrc /nologo Src/ThirdParty/imgui/imgui_impl_win32.cpp", 
+    "file": "Src/ThirdParty/imgui/imgui_impl_win32.cpp" 
+  }, 
+  { 
+    "directory": "C:/Users/smerendino/Repos/SM-Workbench/SM-Engine", 
+    "command": "cl.exe /ISrc /nologo Src/ThirdParty/imgui/imgui_tables.cpp", 
+    "file": "Src/ThirdParty/imgui/imgui_tables.cpp" 
+  }, 
+  { 
+    "directory": "C:/Users/smerendino/Repos/SM-Workbench/SM-Engine", 
+    "command": "cl.exe /ISrc /nologo Src/ThirdParty/imgui/imgui_widgets.cpp", 
+    "file": "Src/ThirdParty/imgui/imgui_widgets.cpp" 
+  }, 
+  { 
+    "directory": "C:/Users/smerendino/Repos/SM-Workbench/SM-Engine", 
+    "command": "cl.exe /ISrc /nologo Src/ThirdParty/vulkan/vulkan.cppm", 
+    "file": "Src/ThirdParty/vulkan/vulkan.cppm" 
   } 
 ] 
