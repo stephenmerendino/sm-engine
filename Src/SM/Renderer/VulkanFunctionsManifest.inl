@@ -37,6 +37,10 @@ VK_INSTANCE_FUNCTION(vkCreateDevice)
 VK_INSTANCE_FUNCTION(vkGetDeviceProcAddr)
 VK_INSTANCE_FUNCTION(vkDestroySurfaceKHR)
 
+#if defined VK_PLATFORM_FUNCTIONS
+VK_INSTANCE_FUNCTION(vkCreateWin32SurfaceKHR)
+#endif
+
 //---------------------------------------------------------------
 #if !defined(VK_DEVICE_FUNCTION)
 #define VK_DEVICE_FUNCTION(fun)
@@ -124,10 +128,6 @@ VK_DEVICE_FUNCTION(vkCmdDispatch)
 VK_DEVICE_FUNCTION(vkCmdBeginRendering)
 VK_DEVICE_FUNCTION(vkCmdEndRendering)
 VK_DEVICE_FUNCTION(vkCmdPushConstants)
-
-#if defined VK_PLATFORM_FUNCTION && defined _WIN32
-VK_INSTANCE_FUNCTION(vkCreateWin32SurfaceKHR)
-#endif
 
 #undef VK_EXPORTED_FUNCTION
 #undef VK_GLOBAL_FUNCTION

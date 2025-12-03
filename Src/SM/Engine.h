@@ -1,14 +1,14 @@
 #pragma once
 
-//------------------------------------------------------------------------------------------------------------------
-// Engine API
-//------------------------------------------------------------------------------------------------------------------
-typedef void (*EngineLogFunction)(const char* format, ...);
 namespace SM
 {
+    //------------------------------------------------------------------------------------------------------------------
+    // Engine API
+    //------------------------------------------------------------------------------------------------------------------
+    typedef void (*EngineLogFunction)(const char* format, ...);
     struct EngineApi
     {
-        EngineLogFunction EngineLog;
+        EngineLogFunction Log;
     };
 
     //------------------------------------------------------------------------------------------------------------------
@@ -20,6 +20,14 @@ namespace SM
     typedef void (*GameInitFunction)();
     typedef void (*GameUpdateFunction)();
     typedef void (*GameRenderFunction)();
+
+    struct GameApi
+    {
+        GameBindEngineFunction GameBindEngine = nullptr;
+        GameInitFunction GameInit = nullptr;
+        GameUpdateFunction GameUpdate = nullptr;
+        GameRenderFunction GameRender = nullptr;
+    };
 
     #define GAME_BIND_ENGINE_FUNCTION_NAME GameBindEngine
     #define GAME_INIT_FUNCTION_NAME GameInit
@@ -42,16 +50,16 @@ namespace SM
     #define ARRAY_LEN(x) (sizeof(x) / sizeof(x[0]))
     #define UNUSED(x) (void*)&x
     
-    #ifndef SM_DEBUG
-    #define SM_DEBUG NDEBUG
-    #endif
-
     inline constexpr bool IsRunningDebugBuild()
     {
-        #if SM_DEBUG
+        #if NDEBUG
         return false;
         #else
         return true;
         #endif
     }
+
+    void EngineInit(const char* dllName);
+    void EngineMainLoop();
+    void EngineExit();
 }

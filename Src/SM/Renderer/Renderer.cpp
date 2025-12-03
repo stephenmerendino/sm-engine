@@ -4,7 +4,7 @@
 
 using namespace SM;
 
-Renderer* SM::InitRenderer(RendererType type)
+Renderer* SM::CreateRenderer(RendererType type)
 {
     switch(type)
     {

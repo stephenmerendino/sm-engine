@@ -1,70 +1,18 @@
 #include "SM/Renderer/VulkanRenderer.h"
+#include "SM/Assert.h"
+#include "SM/Bits.h"
 #include "SM/Memory.h"
+#include "SM/Renderer/VulkanConfig.h"
+
+#include <cstring>
 
 using namespace SM;
 
-//-----------------------------------------------------------------------------------------------------
-// Vulkan
-#define VK_NO_PROTOTYPES
-#include "ThirdParty/vulkan/vulkan.h"
-#include "ThirdParty/vulkan/vulkan_win32.h"
-#define VK_EXPORTED_FUNCTION(func)	PFN_##func func = VK_NULL_HANDLE;
-#define VK_GLOBAL_FUNCTION(func)	PFN_##func func = VK_NULL_HANDLE;
-#define VK_INSTANCE_FUNCTION(func)	PFN_##func func = VK_NULL_HANDLE;
-#define VK_DEVICE_FUNCTION(func)	PFN_##func func = VK_NULL_HANDLE;
-#include "SM/Renderer/VulkanFunctionsManifest.inl"
-
-#if defined(NDEBUG)
-	static const char* INSTANCE_EXTENSIONS[] = {
-		"VK_KHR_surface",
-		"VK_KHR_win32_surface"
-	};
-
-	static const char* DEVICE_EXTENSIONS[] = {
-		"VK_KHR_swapchain",
-        "VK_KHR_dynamic_rendering"
-	};
-
-	static const bool VULKAN_VERBOSE = false;
-	static const bool ENABLE_VALIDATION_LAYERS = false;
-	static const bool ENABLE_VALIDATION_BEST_PRACTICES = false;
-#else
-	static const char* INSTANCE_EXTENSIONS[] = {
-		"VK_KHR_surface",
-		"VK_KHR_win32_surface",
-		"VK_EXT_debug_utils",
-		"VK_EXT_validation_features",
-	};
-
-	static const char* DEVICE_EXTENSIONS[] = {
-		"VK_KHR_swapchain",
-        "VK_KHR_dynamic_rendering"
-	};
-
-	static const bool VULKAN_VERBOSE = true;
-	static const bool ENABLE_VALIDATION_LAYERS = true;
-	static const bool ENABLE_VALIDATION_BEST_PRACTICES = false;
-#endif
-
-static const char* VALIDATION_LAYERS[] = {
-	"VK_LAYER_KHRONOS_validation"
-};
-//-----------------------------------------------------------------------------------------------------
-
-bool VulkanRenderer::Init()
+bool VulkanRenderer::Init(Platform::Window* pWindow)
 {
-    #define VK_EXPORTED_FUNCTION(func) \
-        HMODULE vulkan_lib = ::LoadLibraryA("vulkan-1.dll"); \
-        SM_ASSERT(nullptr != vulkan_lib); \
-        func = (PFN_##func)::GetProcAddress(vulkan_lib, #func); \
-        SM_ASSERT(nullptr != func);
-
-    #define VK_GLOBAL_FUNCTION(func) \
-        func = (PFN_##func)vkGetInstanceProcAddr(nullptr, #func); \
-        SM_ASSERT(nullptr != func);
-
-    #include "SM/Renderer/VulkanFunctionsManifest.inl"
-
+    //------------------------------------------------------------------------------------------------------------------------
+    // Instance
+    //------------------------------------------------------------------------------------------------------------------------
     VkApplicationInfo appInfo = {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pApplicationName = "SM Workbench",
@@ -125,7 +73,7 @@ bool VulkanRenderer::Init()
                 VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
                 VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
 
-            .pfnUserCallback = VulkanDebugCallback,
+            .pfnUserCallback = Platform::GetVulkanDebugCallback(),
             .pUserData = nullptr
         };
         instanceCreateInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugMessengerCreateInfo;
@@ -141,17 +89,12 @@ bool VulkanRenderer::Init()
         }
     }
 
-    VkInstance instance = VK_NULL_HANDLE;
-    SM_ASSERT(vkCreateInstance(&instanceCreateInfo, nullptr, &instance) == VK_SUCCESS);
+    SM_ASSERT(vkCreateInstance(&instanceCreateInfo, nullptr, &m_instance) == VK_SUCCESS);
+    Platform::LoadVulkanInstanceFuncs(m_instance);
 
-    // load instance funcs
-    #define VK_INSTANCE_FUNCTION(func) \
-        func = (PFN_##func)vkGetInstanceProcAddr(instance, #func); \
-        SM_ASSERT(nullptr != func);
-
-    #include "SM/VulkanFunctionsManifest.inl"
-
-    // real debug messenger for the whole game
+    //------------------------------------------------------------------------------------------------------------------------
+    // Debug Messenger
+    //------------------------------------------------------------------------------------------------------------------------
     if (ENABLE_VALIDATION_LAYERS)
     {
         VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = {
@@ -166,40 +109,24 @@ bool VulkanRenderer::Init()
                 VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
                 VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
 
-            .pfnUserCallback = VulkanDebugCallback,
+            .pfnUserCallback = Platform::GetVulkanDebugCallback(),
             .pUserData = nullptr
         };
         VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
-        SM_ASSERT(vkCreateDebugUtilsMessengerEXT(instance, &debugMessengerCreateInfo, nullptr, &debugMessenger) == VK_SUCCESS);
+        SM_ASSERT(vkCreateDebugUtilsMessengerEXT(m_instance, &debugMessengerCreateInfo, nullptr, &debugMessenger) == VK_SUCCESS);
     }
 
-    // vk surface
-    VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
-        .pNext = nullptr,
-        .hinstance = ::GetModuleHandle(nullptr),
-        .hwnd = window.m_hwnd
-    };
-    VkSurfaceKHR surface = VK_NULL_HANDLE;
-    SM_ASSERT(vkCreateWin32SurfaceKHR(instance, &surfaceCreateInfo, nullptr, &surface) == VK_SUCCESS);
+    VkSurfaceKHR surface = Platform::CreateVulkanSurface(m_instance, pWindow);
 
-    // vk device
-    VkPhysicalDevice selectedGPU = VK_NULL_HANDLE;
-    VkPhysicalDeviceProperties gpuProperties = {};
-    VkPhysicalDeviceMemoryProperties gpuMemoryProperties = {};
-
-    static const I32 kInvalidQueueIndex = -1;
-    I32 graphicsQueueIndex = kInvalidQueueIndex;
-    I32 computeQueueIndex = kInvalidQueueIndex;
-    I32 transferQueueIndex = kInvalidQueueIndex;
-    I32 presentationQueueIndex = kInvalidQueueIndex;
-
+    //------------------------------------------------------------------------------------------------------------------------
+    // Physical Device
+    //------------------------------------------------------------------------------------------------------------------------
     U32 numFoundGPUs = 0;
-    vkEnumeratePhysicalDevices(instance, &numFoundGPUs, nullptr);
+    vkEnumeratePhysicalDevices(m_instance, &numFoundGPUs, nullptr);
     SM_ASSERT(numFoundGPUs != 0);
 
     VkPhysicalDevice* foundGPUs = SM::Alloc<VkPhysicalDevice>(kEngineGlobal, numFoundGPUs);
-    vkEnumeratePhysicalDevices(instance, &numFoundGPUs, foundGPUs);
+    vkEnumeratePhysicalDevices(m_instance, &numFoundGPUs, foundGPUs);
 
     if (IsRunningDebugBuild())
     {
@@ -217,6 +144,11 @@ bool VulkanRenderer::Init()
         }
     }
 
+    static const I32 kInvalidQueueIndex = -1;
+    I32 graphicsQueueIndex = kInvalidQueueIndex;
+    I32 computeQueueIndex = kInvalidQueueIndex;
+    I32 transferQueueIndex = kInvalidQueueIndex;
+    I32 presentationQueueIndex = kInvalidQueueIndex;
     for(int iGPU = 0; iGPU < numFoundGPUs; iGPU++)
     {
         const VkPhysicalDevice& candidateGPU = foundGPUs[iGPU];
@@ -340,13 +272,16 @@ bool VulkanRenderer::Init()
             continue;
         }
 
-        selectedGPU = candidateGPU;
-        vkGetPhysicalDeviceProperties(selectedGPU, &gpuProperties);
-        vkGetPhysicalDeviceMemoryProperties(selectedGPU, &gpuMemoryProperties);
+        m_physicalDevice = candidateGPU;
+        vkGetPhysicalDeviceProperties(m_physicalDevice, &m_physicalDeviceProperties);
+        vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &m_physicalDeviceMemoryProperties);
     }
 
-    SM_ASSERT(selectedGPU != VK_NULL_HANDLE);
+    SM_ASSERT(m_physicalDevice != VK_NULL_HANDLE);
 
+    //------------------------------------------------------------------------------------------------------------------------
+    // Logical Device
+    //------------------------------------------------------------------------------------------------------------------------
     VkPhysicalDeviceFeatures deviceFeatures = {
         .fillModeNonSolid = VK_TRUE,
         .samplerAnisotropy = VK_TRUE
@@ -403,37 +338,218 @@ bool VulkanRenderer::Init()
         .pEnabledFeatures = &deviceFeatures
     };
 
-    VkDevice device = VK_NULL_HANDLE;
-    SM_ASSERT(vkCreateDevice(selectedGPU, &createInfo, nullptr, &device) == VK_SUCCESS);
+    SM_ASSERT(vkCreateDevice(m_physicalDevice, &createInfo, nullptr, &m_device) == VK_SUCCESS);
+    Platform::LoadVulkanDeviceFuncs(m_device);
 
-    // load device funcs
-    #define VK_DEVICE_FUNCTION(func) \
-        func = (PFN_##func)vkGetDeviceProcAddr(device, #func); \
-        SM_ASSERT(nullptr != func);
-
-    #include "SM/VulkanFunctionsManifest.inl"
-
-    // calculate max number of msaa samples we can use
-    VkSampleCountFlagBits maxMsaaSamples = VK_SAMPLE_COUNT_1_BIT;
-    VkSampleCountFlags msaaCounts = gpuProperties.limits.framebufferColorSampleCounts & gpuProperties.limits.framebufferDepthSampleCounts;
-    if (msaaCounts & VK_SAMPLE_COUNT_2_BIT) maxMsaaSamples = VK_SAMPLE_COUNT_2_BIT;
-    if (msaaCounts & VK_SAMPLE_COUNT_4_BIT) maxMsaaSamples = VK_SAMPLE_COUNT_4_BIT;
-    if (msaaCounts & VK_SAMPLE_COUNT_8_BIT) maxMsaaSamples = VK_SAMPLE_COUNT_8_BIT;
-    if (msaaCounts & VK_SAMPLE_COUNT_16_BIT) maxMsaaSamples = VK_SAMPLE_COUNT_16_BIT;
-    if (msaaCounts & VK_SAMPLE_COUNT_32_BIT) maxMsaaSamples = VK_SAMPLE_COUNT_32_BIT;
-    if (msaaCounts & VK_SAMPLE_COUNT_64_BIT) maxMsaaSamples = VK_SAMPLE_COUNT_64_BIT;
-
+    //------------------------------------------------------------------------------------------------------------------------
+    // Queues
+    //------------------------------------------------------------------------------------------------------------------------
     VkQueue graphicsQueue = VK_NULL_HANDLE;
     VkQueue computeQueue = VK_NULL_HANDLE;
     VkQueue presentationQueue = VK_NULL_HANDLE;
     VkQueue transferQueue = VK_NULL_HANDLE;
     {
-        vkGetDeviceQueue(device, graphicsQueueIndex, 0, &graphicsQueue);
-        vkGetDeviceQueue(device, computeQueueIndex, 0, &computeQueue);
-        vkGetDeviceQueue(device, presentationQueueIndex, 0, &presentationQueue);
+        vkGetDeviceQueue(m_device, graphicsQueueIndex, 0, &m_graphicsQueue);
+        vkGetDeviceQueue(m_device, computeQueueIndex, 0, &m_computeQueue);
+        vkGetDeviceQueue(m_device, presentationQueueIndex, 0, &m_presentationQueue);
         if(transferQueueIndex != kInvalidQueueIndex)
         {
-            vkGetDeviceQueue(device, transferQueueIndex, 0, &transferQueue);
+            vkGetDeviceQueue(m_device, transferQueueIndex, 0, &transferQueue);
         }
     }
+
+    //------------------------------------------------------------------------------------------------------------------------
+    // Random Precalculated Values
+    //------------------------------------------------------------------------------------------------------------------------
+
+    // calculate max number of msaa samples we can use
+    VkSampleCountFlags msaaCounts = m_physicalDeviceProperties.limits.framebufferColorSampleCounts & m_physicalDeviceProperties.limits.framebufferDepthSampleCounts;
+    if (msaaCounts & VK_SAMPLE_COUNT_2_BIT) m_maxMsaaSamples = VK_SAMPLE_COUNT_2_BIT;
+    if (msaaCounts & VK_SAMPLE_COUNT_4_BIT) m_maxMsaaSamples = VK_SAMPLE_COUNT_4_BIT;
+    if (msaaCounts & VK_SAMPLE_COUNT_8_BIT) m_maxMsaaSamples = VK_SAMPLE_COUNT_8_BIT;
+    if (msaaCounts & VK_SAMPLE_COUNT_16_BIT) m_maxMsaaSamples = VK_SAMPLE_COUNT_16_BIT;
+    if (msaaCounts & VK_SAMPLE_COUNT_32_BIT) m_maxMsaaSamples = VK_SAMPLE_COUNT_32_BIT;
+    if (msaaCounts & VK_SAMPLE_COUNT_64_BIT) m_maxMsaaSamples = VK_SAMPLE_COUNT_64_BIT;
+
+    // default depth format
+	VkFormat candidateDepthFormats[] = { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT };
+	m_defaultDepthFormat = FindSupportedFormat(candidateDepthFormats, ARRAY_LEN(candidateDepthFormats), VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+	SM_ASSERT(m_defaultDepthFormat != VK_FORMAT_UNDEFINED);
+
+    //------------------------------------------------------------------------------------------------------------------------
+    // Swapchain
+    //------------------------------------------------------------------------------------------------------------------------
+	if (m_swapchain != VK_NULL_HANDLE)
+	{
+        vkQueueWaitIdle(m_graphicsQueue);
+        vkDestroySwapchainKHR(m_device, m_swapchain, nullptr);
+	}
+
+	arena_t* stack_arena;
+	arena_stack_init(stack_arena, 256);
+    swapchain_info_t swapchain_info = query_swapchain(stack_arena, context.phys_device, context.surface);
+
+    VkSurfaceFormatKHR swapchain_format = swapchain_info.formats[0];
+    for(int i = 0; i < swapchain_info.formats.cur_size; i++)
+    {
+        const VkSurfaceFormatKHR& format = swapchain_info.formats[i];
+        if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+        {
+            swapchain_format = format;
+        }
+    }
+
+    VkPresentModeKHR swapchain_present_mode = VK_PRESENT_MODE_FIFO_KHR;
+    for(int i = 0; i < swapchain_info.present_modes.cur_size; i++)
+    {
+        const VkPresentModeKHR& mode = swapchain_info.present_modes[i];
+        if (mode == VK_PRESENT_MODE_MAILBOX_KHR)
+        {
+            swapchain_present_mode = mode;
+            break;
+        }
+    }
+
+    VkExtent2D swapchain_extent{};
+    if (swapchain_info.capabilities.currentExtent.width != UINT32_MAX)
+    {
+        swapchain_extent = swapchain_info.capabilities.currentExtent;
+    }
+    else
+    {
+        swapchain_extent = { context.window->width, context.window->height };
+        swapchain_extent.width = clamp(swapchain_extent.width, swapchain_info.capabilities.minImageExtent.width, swapchain_info.capabilities.maxImageExtent.width);
+        swapchain_extent.height = clamp(swapchain_extent.height, swapchain_info.capabilities.minImageExtent.height, swapchain_info.capabilities.maxImageExtent.height);
+    }
+
+    u32 image_count = swapchain_info.capabilities.minImageCount + 1; // one extra image to prevent waiting on driver
+    if (swapchain_info.capabilities.maxImageCount > 0)
+    {
+        image_count = min(image_count, swapchain_info.capabilities.maxImageCount);
+    }
+
+    // TODO: Allow fullscreen
+    //VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = {};
+    //fullScreenInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
+    //fullScreenInfo.pNext = nullptr;
+    //fullScreenInfo.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT;
+
+    VkSwapchainCreateInfoKHR create_info{};
+    create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    create_info.pNext = nullptr; // use full_screen_info here
+    create_info.surface = context.surface;
+    create_info.minImageCount = image_count;
+    create_info.imageFormat = swapchain_format.format;
+    create_info.imageColorSpace = swapchain_format.colorSpace;
+    create_info.presentMode = swapchain_present_mode;
+    create_info.imageExtent = swapchain_extent;
+    create_info.imageArrayLayers = 1;
+    create_info.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+
+    u32 queueFamilyIndices[] = { (u32)context.queue_indices.graphics, (u32)context.queue_indices.presentation };
+
+    if (context.queue_indices.graphics != context.queue_indices.presentation)
+    {
+        create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+        create_info.queueFamilyIndexCount = 2;
+        create_info.pQueueFamilyIndices = queueFamilyIndices;
+    }
+    else
+    {
+        create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        create_info.queueFamilyIndexCount = 0;
+        create_info.pQueueFamilyIndices = nullptr;
+    }
+
+    create_info.preTransform = swapchain_info.capabilities.currentTransform;
+    create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    create_info.clipped = VK_TRUE;
+    create_info.oldSwapchain = VK_NULL_HANDLE;
+
+    SM_VULKAN_ASSERT(vkCreateSwapchainKHR(context.device, &create_info, nullptr, &context.swapchain.handle));
+
+    u32 num_images = 0;
+    vkGetSwapchainImagesKHR(context.device, context.swapchain.handle, &num_images, nullptr);
+
+	array_resize(context.swapchain.images, num_images);
+    vkGetSwapchainImagesKHR(context.device, context.swapchain.handle, &num_images, context.swapchain.images.data);
+
+    context.swapchain.format = swapchain_format.format;
+    context.swapchain.extent = swapchain_extent;
+
+    VkCommandBufferAllocateInfo command_buffer_alloc_info{};
+    command_buffer_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    command_buffer_alloc_info.pNext = nullptr;
+    command_buffer_alloc_info.commandPool = context.graphics_command_pool;
+    command_buffer_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    command_buffer_alloc_info.commandBufferCount = 1;
+
+    VkCommandBuffer command_buffer;
+    vkAllocateCommandBuffers(context.device, &command_buffer_alloc_info, &command_buffer);
+
+    VkCommandBufferBeginInfo begin_info{};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(command_buffer, &begin_info);
+
+    // transition swapchain images to presentation layout
+    for (u32 i = 0; i < (u32)context.swapchain.images.cur_size; i++)
+    {
+        VkImageMemoryBarrier barrier{};
+        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        barrier.srcAccessMask = VK_ACCESS_NONE;
+        barrier.dstAccessMask = VK_ACCESS_NONE;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.image = context.swapchain.images[i];
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        barrier.subresourceRange.baseMipLevel = 0;
+        barrier.subresourceRange.levelCount = 1;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount = 1;
+
+        vkCmdPipelineBarrier(command_buffer,
+                             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                             0,
+                             0, nullptr,
+                             0, nullptr,
+                             1, &barrier);
+    }
+    vkEndCommandBuffer(command_buffer);
+    
+    VkSubmitInfo submit_info{};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &command_buffer;
+
+    vkQueueSubmit(context.graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
+    vkQueueWaitIdle(context.graphics_queue);
+
+    vkFreeCommandBuffers(context.device, context.graphics_command_pool, 1, &command_buffer);
+
+    return true;
+}
+
+VkFormat VulkanRenderer::FindSupportedFormat(VkFormat* candidates, U32 numCandidates, VkImageTiling tiling, VkFormatFeatureFlags features)
+{
+	for(U32 i = 0; i < numCandidates; i++)
+	{
+		const VkFormat& format = candidates[i];
+
+		VkFormatProperties props;
+		vkGetPhysicalDeviceFormatProperties(m_physicalDevice, format, &props);
+
+		if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
+		{
+			return format;
+		}
+		else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
+		{
+			return format;
+		}
+	}
+
+	return VK_FORMAT_UNDEFINED;
 }

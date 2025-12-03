@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SM/Platform.h"
+
 namespace SM
 {
     enum RendererType
@@ -11,8 +13,8 @@ namespace SM
     class Renderer
     {
         public:
-            virtual bool Init() = 0;
+            virtual bool Init(Platform::Window* pWindow) = 0;
     };
 
-    Renderer* InitRenderer(RendererType type);
+    Renderer* CreateRenderer(RendererType type);
 }

@@ -1,15 +1,19 @@
 #pragma once
 
+#include "SM/Engine.h"
 #include "SM/StandardTypes.h"
+
+#define VK_NO_PROTOTYPES
+#include "ThirdParty/vulkan/vulkan.h"
 
 namespace SM
 { 
     namespace Platform
     {
         //------------------------------------------------------------------------------------------------------------------------
-        // General
+        // Game
         //------------------------------------------------------------------------------------------------------------------------
-        void Exit();
+        GameApi LoadGameDll(const char* gameDll);
 
         //------------------------------------------------------------------------------------------------------------------------
         // Logging
@@ -24,5 +28,21 @@ namespace SM
         bool AssertReportError(const char* filename, I32 lineNumber);
         bool AssertReportErrorMsg(const char* msg, const char* filename, I32 lineNumber);
         void TriggerDebugger();
+
+        //------------------------------------------------------------------------------------------------------------------------
+        // Window
+        //------------------------------------------------------------------------------------------------------------------------
+        struct Window;
+        Window* OpenWindow(const char* title, U32 width, U32 height);
+        void UpdateWindow(Window* pWindow);
+
+        //------------------------------------------------------------------------------------------------------------------------
+        // Rendering
+        //------------------------------------------------------------------------------------------------------------------------
+        void LoadVulkanGlobalFuncs();
+        void LoadVulkanInstanceFuncs(VkInstance instance);
+        void LoadVulkanDeviceFuncs(VkDevice device);
+        PFN_vkDebugUtilsMessengerCallbackEXT GetVulkanDebugCallback();
+        VkSurfaceKHR CreateVulkanSurface(VkInstance instance, Window* platformWindow);
     } 
 }
