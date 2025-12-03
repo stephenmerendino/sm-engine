@@ -3,6 +3,7 @@
 #include "SM/Engine.h"
 #include "SM/Memory.h"
 
+#define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <cstdio>
@@ -336,6 +337,21 @@ void Platform::UpdateWindow(Platform::Window* pWindow)
         ::TranslateMessage(&msg);
         ::DispatchMessage(&msg);
     }
+}
+
+void Platform::GetWindowDimensions(Window* pWindow, U32& width, U32& height)
+{
+    RECT clientArea;
+    BOOL success = ::GetClientRect(pWindow->m_hwnd, &clientArea);
+    if(!success)
+    {
+        ReportLastWindowsError();
+        width = 0;
+        height = 0;
+        return;
+    }
+    width = clientArea.right - clientArea.left;
+    height = clientArea.bottom - clientArea.top;
 }
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL Win32VulkanDebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT msgSeverity,

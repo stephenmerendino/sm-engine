@@ -35,6 +35,7 @@ namespace SM
         struct Window;
         Window* OpenWindow(const char* title, U32 width, U32 height);
         void UpdateWindow(Window* pWindow);
+        void GetWindowDimensions(Window* pWindow, U32& width, U32& height);
 
         //------------------------------------------------------------------------------------------------------------------------
         // Rendering

@@ -19,6 +19,8 @@ namespace SM
         // main renderer interface
         virtual bool Init(Platform::Window* pWindow) final;
 
+        Platform::Window* m_pWindow = nullptr;
+
         // vulkan specific
         VkFormat FindSupportedFormat(VkFormat* candidates, U32 numCandidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 

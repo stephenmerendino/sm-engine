@@ -11,6 +11,8 @@ using namespace SM;
 
 bool VulkanRenderer::Init(Platform::Window* pWindow)
 {
+    m_pWindow = pWindow;
+
     //------------------------------------------------------------------------------------------------------------------------
     // Instance
     //------------------------------------------------------------------------------------------------------------------------
@@ -388,7 +390,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
 
     U32 numSurfaceFormats = 0;
     vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, m_surface, &numSurfaceFormats, nullptr);
-    VkSurfaceFormatKHR* surfaceFormats = SM::Alloc<VkSurfaceFormatKHR>(s);
+    VkSurfaceFormatKHR* surfaceFormats = SM::Alloc<VkSurfaceFormatKHR>(kEngineGlobal, numSurfaceFormats);
     vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, m_surface, &numSurfaceFormats, surfaceFormats);
 
     VkSurfaceFormatKHR swapchainFormat = surfaceFormats[0];
@@ -403,7 +405,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
 
     U32 numPresentModes = 0;
     vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, m_surface, &numPresentModes, nullptr);
-    VkPresentModeKHR* presentModes = SM::Alloc<VkPresentModeKHR>(s);
+    VkPresentModeKHR* presentModes = SM::Alloc<VkPresentModeKHR>(kEngineGlobal, numPresentModes);
     vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, m_surface, &numPresentModes, presentModes);
 
     VkPresentModeKHR swapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
@@ -427,7 +429,10 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
     }
     else
     {
-        swapchainExtent = { context.window->width, context.window->height };
+        U32 width;
+        U32 height;
+        Platform::GetWindowDimensions(m_pWindow, width, height);
+        swapchainExtent = { width, height };
         swapchainExtent.width = Clamp(swapchainExtent.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
         swapchainExtent.height = Clamp(swapchainExtent.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
     }
@@ -444,17 +449,18 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
     //fullScreenInfo.pNext = nullptr;
     //fullScreenInfo.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT;
 
-    //VkSwapchainCreateInfoKHR create_info{};
-    //create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    //create_info.pNext = nullptr; // use full_screen_info here
-    //create_info.surface = context.surface;
-    //create_info.minImageCount = image_count;
-    //create_info.imageFormat = swapchain_format.format;
-    //create_info.imageColorSpace = swapchain_format.colorSpace;
-    //create_info.presentMode = swapchain_present_mode;
-    //create_info.imageExtent = swapchain_extent;
-    //create_info.imageArrayLayers = 1;
-    //create_info.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    VkSwapchainCreateInfoKHR swapchainCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+        .pNext = nullptr, // use full_screenInfo here
+        .surface = m_surface,
+        .minImageCount = imageCount,
+        .imageFormat = swapchainFormat.format,
+        .imageColorSpace = swapchainFormat.colorSpace,
+        .imageExtent = swapchainExtent,
+        .imageArrayLayers = 1,
+        .imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+        .presentMode = swapchainPresentMode
+    };
 
     //u32 queueFamilyIndices[] = { (u32)context.queue_indices.graphics, (u32)context.queue_indices.presentation };
 

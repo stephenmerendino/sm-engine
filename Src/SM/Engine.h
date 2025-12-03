@@ -47,8 +47,9 @@ namespace SM
     //------------------------------------------------------------------------------------------------------------------
     // Common
     //------------------------------------------------------------------------------------------------------------------
-    #define ARRAY_LEN(x) (sizeof(x) / sizeof(x[0]))
-    #define UNUSED(x) (void*)&x
+    void EngineInit(const char* dllName);
+    void EngineMainLoop();
+    void EngineExit();
     
     inline constexpr bool IsRunningDebugBuild()
     {
@@ -59,7 +60,26 @@ namespace SM
         #endif
     }
 
-    void EngineInit(const char* dllName);
-    void EngineMainLoop();
-    void EngineExit();
+    #define ARRAY_LEN(x) (sizeof(x) / sizeof(x[0]))
+    #define UNUSED(x) (void*)&x
+
+    template<typename T>
+    inline T Min(T a, T b)
+    {
+        return (a < b) ? a : b;
+    }
+
+    template<typename T>
+    inline T Max(T a, T b)
+    {
+        return (a > b) ? a : b;
+    }
+
+    template<typename T>
+    inline T Clamp(T value, T min, T max)
+    {
+        if(value < min) return min;
+        if(value > max) return max;
+        return value;
+    }
 }
