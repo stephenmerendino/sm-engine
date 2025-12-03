@@ -7,6 +7,7 @@
 #include "SM/Assert.h"
 #include "SM/Platform.h"
 #include "SM/Memory.h"
+#include "SM/Bits.h"
 
 #include "SM/Memory.cpp"
 
@@ -422,27 +423,6 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(VkDebugUtilsMessageSev
 	return VK_FALSE;
 }
 
-static VkDebugUtilsMessengerCreateInfoEXT SetupDebugMessengerCreateInfo(PFN_vkDebugUtilsMessengerCallbackEXT callback)
-{
-	VkDebugUtilsMessengerCreateInfoEXT create_info = {};
-	create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-
-	create_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-		VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
-		VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-		VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-
-	create_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-		VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-		VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-
-	create_info.pfnUserCallback = callback;
-	create_info.pUserData = nullptr;
-
-	return 	create_info;
-}
-
-
 int WINAPI WinMain(HINSTANCE app, 
 				   HINSTANCE prevApp, 
 				   LPSTR args, 
@@ -525,7 +505,21 @@ int WINAPI WinMain(HINSTANCE app,
             instanceCreateInfo.enabledLayerCount = ARRAY_LEN(VALIDATION_LAYERS);
 
             // this debug messenger debugs the actual instance creation
-            VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = SetupDebugMessengerCreateInfo(VulkanDebugCallback);
+            VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = {
+                .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+
+                .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+                    VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
+                    VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                    VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+
+                .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                    VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                    VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+
+                .pfnUserCallback = VulkanDebugCallback,
+                .pUserData = nullptr
+            };
             instanceCreateInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugMessengerCreateInfo;
 
             if (ENABLE_VALIDATION_BEST_PRACTICES)
@@ -552,7 +546,21 @@ int WINAPI WinMain(HINSTANCE app,
         // real debug messenger for the whole game
         if (ENABLE_VALIDATION_LAYERS)
         {
-            VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = SetupDebugMessengerCreateInfo(VulkanDebugCallback);
+            VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = {
+                .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+
+                .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+                    VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
+                    VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                    VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+
+                .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                    VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                    VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+
+                .pfnUserCallback = VulkanDebugCallback,
+                .pUserData = nullptr
+            };
             VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
             SM_ASSERT(vkCreateDebugUtilsMessengerEXT(instance, &debugMessengerCreateInfo, nullptr, &debugMessenger) == VK_SUCCESS);
         }
@@ -578,17 +586,17 @@ int WINAPI WinMain(HINSTANCE app,
         vkEnumeratePhysicalDevices(instance, &numFoundGPUs, nullptr);
         SM_ASSERT(numFoundGPUs != 0 && numFoundGPUs <= maxNumGPUs);
 
-        VkPhysicalDevice devices[maxNumGPUs];
-        vkEnumeratePhysicalDevices(instance, &numFoundGPUs, devices);
+        VkPhysicalDevice foundGPUs[maxNumGPUs];
+        vkEnumeratePhysicalDevices(instance, &numFoundGPUs, foundGPUs);
 
-        if (IsRunningDebug())
+        if (IsRunningDebugBuild())
         {
             Platform::Log("Physical Devices:\n");
 
             for (U8 i = 0; i < numFoundGPUs; i++)
             {
                 VkPhysicalDeviceProperties deviceProps;
-                vkGetPhysicalDeviceProperties(devices[i], &deviceProps);
+                vkGetPhysicalDeviceProperties(foundGPUs[i], &deviceProps);
 
                 //VkPhysicalDeviceFeatures deviceFeatures;
                 //vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
@@ -597,8 +605,131 @@ int WINAPI WinMain(HINSTANCE app,
             }
         }
 
-        for(const VkPhysicalDevice& device : devices)
+        for(const VkPhysicalDevice& candidateGPU : foundGPUs)
         {
+            VkPhysicalDeviceProperties props;
+            vkGetPhysicalDeviceProperties(candidateGPU, &props);
+
+            VkPhysicalDeviceFeatures features;
+            vkGetPhysicalDeviceFeatures(candidateGPU, &features);
+
+            // must be a dedicated gpu
+            if (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
+            {
+                continue;
+            }
+
+            // must have anisotrophic filtering... I don't remember why tho
+            if (features.samplerAnisotropy == VK_FALSE)
+            {
+                continue;
+            }
+
+            U32 numFoundExtensions = 0;
+            vkEnumerateDeviceExtensionProperties(candidateGPU, nullptr, &numFoundExtensions, nullptr);
+
+            VkExtensionProperties* extensions = SM::Alloc<VkExtensionProperties>(kEngineGlobal, numFoundExtensions);
+            vkEnumerateDeviceExtensionProperties(candidateGPU, nullptr, &numFoundExtensions, extensions);
+
+            U8 numRequiredExtensions = ARRAY_LEN(DEVICE_EXTENSIONS);
+            U8 hasExtensionCounter = 0;
+
+            for(U32 i = 0; i < numFoundExtensions; i++)
+            {
+                const VkExtensionProperties& props = extensions[i];
+
+                for(U32 j = 0; j < numRequiredExtensions; j++)
+                {
+                    const char* extensionName = props.extensionName;
+                    const char* requiredExtension = DEVICE_EXTENSIONS[j];
+                    if(strcmp(extensionName, requiredExtension) == 0)
+                    {
+                        hasExtensionCounter++;
+                        break;
+                    }
+                }
+            }
+
+            // must have all extensions I need
+            if(hasExtensionCounter != numRequiredExtensions)
+            {
+                continue;
+            }
+
+            U32 numSurfaceFormats = 0;
+            vkGetPhysicalDeviceSurfaceFormatsKHR(candidateGPU, surface, &numSurfaceFormats, nullptr);
+            if(numSurfaceFormats == 0)
+            {
+                continue;
+            }
+
+            U32 numPresentModes = 0;
+            vkGetPhysicalDeviceSurfacePresentModesKHR(candidateGPU, surface, &numPresentModes, nullptr);
+            if(numPresentModes == 0)
+            {
+                continue;
+            }
+
+            //render_queue_indices_t queue_indices = find_queue_indices(arena, device, surface);
+            //return has_required_queues(queue_indices);
+
+            U32 numQueueFamilies = 0;
+            vkGetPhysicalDeviceQueueFamilyProperties(candidateGPU, &numQueueFamilies, nullptr);
+
+            VkQueueFamilyProperties* queueFamilyProperties = SM::Alloc<VkQueueFamilyProperties>(kEngineGlobal, numQueueFamilies);
+            vkGetPhysicalDeviceQueueFamilyProperties(candidateGPU, &numQueueFamilies, queueFamilyProperties);
+
+            static const I32 kInvalidQueue = -1;
+            I32 graphicsQueue = kInvalidQueue;
+            I32 computeQueue = kInvalidQueue;
+            I32 transferQueue = kInvalidQueue;
+            I32 presentationQueue = kInvalidQueue;
+            for (int iQueue = 0; iQueue < numQueueFamilies; iQueue++)
+            {
+                const VkQueueFamilyProperties& props = queueFamilyProperties[iQueue];
+
+                if (graphicsQueue == kInvalidQueue && 
+                    IsBitSet(props.queueFlags, VK_QUEUE_GRAPHICS_BIT))
+                {
+                    graphicsQueue = iQueue;
+                }
+
+                if (indices.async_compute == render_queue_indices_t::INVALID_QUEUE_INDEX && 
+                    is_bit_set(props.queueFlags, VK_QUEUE_COMPUTE_BIT)  && 
+                    !is_bit_set(props.queueFlags, VK_QUEUE_GRAPHICS_BIT))
+                {
+                    indices.async_compute = i;
+                }
+
+                if (indices.transfer == render_queue_indices_t::INVALID_QUEUE_INDEX && 
+                    is_bit_set(props.queueFlags, VK_QUEUE_TRANSFER_BIT) &&
+                    !is_bit_set(props.queueFlags, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT))
+                {
+                    indices.transfer = i;
+                }
+
+                VkBool32 can_present = false;
+                vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &can_present);
+                if (indices.presentation == render_queue_indices_t::INVALID_QUEUE_INDEX && can_present)
+                {
+                    indices.presentation = i;
+                }
+
+                // check if no more families to find
+                if (indices.graphics != render_queue_indices_t::INVALID_QUEUE_INDEX && 
+                    indices.async_compute != render_queue_indices_t::INVALID_QUEUE_INDEX &&
+                    indices.presentation != render_queue_indices_t::INVALID_QUEUE_INDEX &&
+                    indices.transfer != render_queue_indices_t::INVALID_QUEUE_INDEX)
+                {
+                    break;
+                }
+            }
+
+            if(graphicsQueue == -1 || presentationQueue == -1)
+            {
+                continue;
+            }
+
             //if(is_physical_device_suitable(arena, device, context.surface))
             //{
             //    selectedGPU = device;

@@ -46,7 +46,7 @@ namespace SM
     #define SM_DEBUG NDEBUG
     #endif
 
-    inline constexpr bool IsRunningDebug()
+    inline constexpr bool IsRunningDebugBuild()
     {
         #if SM_DEBUG
         return false;
