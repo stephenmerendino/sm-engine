@@ -50,7 +50,7 @@ namespace SM
     void EngineInit(const char* dllName);
     void EngineMainLoop();
     void EngineExit();
-    
+
     inline constexpr bool IsRunningDebugBuild()
     {
         #if NDEBUG

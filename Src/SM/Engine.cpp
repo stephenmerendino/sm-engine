@@ -32,7 +32,9 @@ void SM::EngineMainLoop()
 
         GameApi game = Platform::LoadGameDll(s_dllName);
         game.GameUpdate();
+
         game.GameRender();
+        //s_renderer->RenderFrame();
     }
 }
 

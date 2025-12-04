@@ -1,6 +1,9 @@
+// platform specific includes
+#include "SM/PlatformWin32.cpp"
+
+// common cpps to include
 #include "SM/Engine.cpp"
 #include "SM/Memory.cpp"
-#include "SM/PlatformWin32.cpp"
 #include "SM/Renderer/Renderer.cpp"
 #include "SM/Renderer/VulkanRenderer.cpp"
 
