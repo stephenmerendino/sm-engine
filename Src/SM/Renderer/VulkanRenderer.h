@@ -13,9 +13,8 @@
 
 namespace SM
 {
-    class VulkanRenderer : public Renderer
+    struct VulkanRenderer : public Renderer
     {
-        public:
         // main renderer interface
         virtual bool Init(Platform::Window* pWindow) final;
 
@@ -31,17 +30,26 @@ namespace SM
         VkDevice m_device = VK_NULL_HANDLE;
         VkSurfaceKHR m_surface = VK_NULL_HANDLE;
 
+        static const I32 kInvalidQueueIndex = -1;
+        I32 m_graphicsQueueIndex = kInvalidQueueIndex;
+        I32 m_computeQueueIndex = kInvalidQueueIndex;
+        I32 m_transferQueueIndex = kInvalidQueueIndex;
+        I32 m_presentationQueueIndex = kInvalidQueueIndex;
         VkQueue m_graphicsQueue = VK_NULL_HANDLE;
         VkQueue m_computeQueue = VK_NULL_HANDLE;
         VkQueue m_presentationQueue = VK_NULL_HANDLE;
         VkQueue m_transferQueue = VK_NULL_HANDLE;
 
-        VkSampleCountFlagBits m_maxMsaaSamples = VK_SAMPLE_COUNT_1_BIT;
-        VkFormat m_defaultDepthFormat = VK_FORMAT_UNDEFINED;
+        VkCommandPool m_graphicsCommandPool = VK_NULL_HANDLE;
 
         VkSwapchainKHR m_swapchain = VK_NULL_HANDLE;
-        static const int kMaxNumSwapchainImages = 3;
+        VkSurfaceFormatKHR m_swapchainFormat;
+        VkExtent2D m_swapchainExtent;
+        static const U32 kMaxNumSwapchainImages = 3;
         VkImage m_swapchainImages[kMaxNumSwapchainImages];
         U32 m_numSwapchainImages = 0;
+
+        VkSampleCountFlagBits m_maxMsaaSamples = VK_SAMPLE_COUNT_1_BIT;
+        VkFormat m_defaultDepthFormat = VK_FORMAT_UNDEFINED;
     };
 }

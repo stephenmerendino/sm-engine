@@ -3,6 +3,7 @@
 
 // common cpps to include
 #include "SM/Engine.cpp"
+#include "SM/Math.cpp"
 #include "SM/Memory.cpp"
 #include "SM/Renderer/Renderer.cpp"
 #include "SM/Renderer/VulkanRenderer.cpp"

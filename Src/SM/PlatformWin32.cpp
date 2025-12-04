@@ -5,22 +5,33 @@
 
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
+#pragma warning(disable : 5039) // Disable weird 'TpSetCallbackCleanupGroup' windows error
 #include <windows.h>
-#include <cstdio>
-#include <cstdlib>
 
 #define VK_PLATFORM_FUNCTIONS
-
 #include "ThirdParty/vulkan/vulkan_win32.h"
 #define VK_EXPORTED_FUNCTION(func)	PFN_##func func = VK_NULL_HANDLE;
 #define VK_GLOBAL_FUNCTION(func)	PFN_##func func = VK_NULL_HANDLE;
 #define VK_INSTANCE_FUNCTION(func)	PFN_##func func = VK_NULL_HANDLE;
 #define VK_DEVICE_FUNCTION(func)	PFN_##func func = VK_NULL_HANDLE;
 #include "SM/Renderer/VulkanFunctionsManifest.inl"
-
 #include "SM/Renderer/VulkanConfig.h"
 
+#include <combaseapi.h>
+#include "ThirdParty/dxc/dxcapi.h"
+#include <atlbase.h>
+#include <cstdio>
+#include <cstdlib>
+
 using namespace SM;
+
+// timing
+static I64 s_timingFreqPerSec = 0;
+
+// shader compiler
+CComPtr<IDxcLibrary> s_dxcShaderCompilerLibrary;
+CComPtr<IDxcCompiler3> s_dcxShaderCompiler;
+CComPtr<IDxcUtils> s_dcxUtils;
 
 /*
    For future reference of how to ask platform for memory info
@@ -54,7 +65,22 @@ static void ReportLastWindowsError()
     }
 }
 
-void SM::Platform::Log(const char* format, ...)
+
+void Platform::Init()
+{
+    // timing
+    LARGE_INTEGER freq;
+    BOOL res = ::QueryPerformanceFrequency(&freq);
+    SM_ASSERT(res);
+    s_timingFreqPerSec = freq.QuadPart;
+
+    // dxc shader compiler
+	SM_ASSERT(SUCCEEDED(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(&s_dxcShaderCompilerLibrary))));
+	SM_ASSERT(SUCCEEDED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&s_dcxShaderCompiler))));
+	SM_ASSERT(SUCCEEDED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&s_dcxUtils))));
+}
+
+void Platform::Log(const char* format, ...)
 {
 	va_list args;
 	va_start(args, format);
@@ -446,4 +472,165 @@ VkSurfaceKHR Platform::CreateVulkanSurface(VkInstance instance, Window* platform
     VkSurfaceKHR surface = VK_NULL_HANDLE;
     SM_ASSERT(vkCreateWin32SurfaceKHR(instance, &surfaceCreateInfo, nullptr, &surface) == VK_SUCCESS);
     return surface;
+}
+
+void Platform::CompileShader()
+{
+	//HRESULT hres;
+
+	//// append on the root shader directory
+	//// todo: move this out of platform specific code
+	//string_t full_filepath = string_init(arena);
+	//string_append(full_filepath, SHADERS_PATH);
+	//string_append(full_filepath, file_name);
+
+	//// need to convert filepath from const char * to LPCWSTR
+	//wchar_t* full_filepath_w = string_to_wchar(arena, full_filepath);
+	//wchar_t* entry_name_w = string_to_wchar(arena, entry_name);
+
+	//// Load the HLSL text shader from disk
+	//uint32_t code_page = DXC_CP_ACP;
+	//CComPtr<IDxcBlobEncoding> source_blob;
+	//hres = s_utils->LoadFile(full_filepath_w, &code_page, &source_blob);
+	//SM_ASSERT(SUCCEEDED(hres));
+
+	//LPCWSTR target_profile;
+	//switch (shader_type)
+	//{
+    //    case shader_type_t::VERTEX: target_profile = L"vs_6_6"; break;
+    //    case shader_type_t::PIXEL: target_profile = L"ps_6_6"; break;
+	//	case shader_type_t::COMPUTE: target_profile = L"cs_6_6"; break;
+    //    default: target_profile = L"unknown"; break;
+	//}
+
+	//// configure the compiler arguments for compiling the HLSL shader to SPIR-V
+	//array_t<LPCWSTR> arguments = array_init<LPCWSTR>(arena, 8);
+	//array_push(arguments, (LPCWSTR)full_filepath_w);
+	//array_push(arguments, L"-E");
+	//array_push(arguments, (LPCWSTR)entry_name_w);
+	//array_push(arguments, L"-T");
+	//array_push(arguments, target_profile);
+	//array_push(arguments, L"-spirv");
+
+	//if(is_running_in_debug())
+	//{
+    //    array_push(arguments, L"-Zi");
+    //    array_push(arguments, L"-Od");
+	//}
+
+	//// Compile shader
+	//DxcBuffer buffer{};
+	//buffer.Encoding = DXC_CP_ACP;
+	//buffer.Ptr = source_blob->GetBufferPointer();
+	//buffer.Size = source_blob->GetBufferSize();
+
+	//CComPtr<IDxcResult> result{ nullptr };
+	//hres = s_compiler->Compile(&buffer, arguments.data, (uint32_t)arguments.cur_size, nullptr, IID_PPV_ARGS(&result));
+
+	//if (SUCCEEDED(hres)) 
+	//{
+	//	result->GetStatus(&hres);
+	//}
+
+	//// Output error if compilation failed
+	//if (FAILED(hres) && (result)) 
+	//{
+	//	CComPtr<IDxcBlobEncoding> error_blob;
+	//	hres = result->GetErrorBuffer(&error_blob);
+	//	if (SUCCEEDED(hres) && error_blob) 
+	//	{
+	//		debug_printf("Shader compilation failed for %s\n%s\n", file_name, (const char*)error_blob->GetBufferPointer());
+	//		return false;
+	//	}
+	//}
+
+	//// Get compilation result
+	//CComPtr<IDxcBlob> code;
+	//result->GetResult(&code);
+
+	//(*out_shader)->file_name = file_name;
+	//(*out_shader)->entry_name = entry_name;
+	//(*out_shader)->shader_type = shader_type;
+
+	//(*out_shader)->bytecode = array_init<byte_t>(arena, code->GetBufferSize());
+	//array_push((*out_shader)->bytecode, (byte_t*)code->GetBufferPointer(), code->GetBufferSize());
+
+	//return true;
+}
+
+F32 Platform::GetMillisecondsSinceAppStart()
+{
+    return GetSecondsSinceAppStart() * 1000.0f;
+}
+
+F32 Platform::GetSecondsSinceAppStart()
+{
+	LARGE_INTEGER perfCounter;
+	SM_ASSERT(::QueryPerformanceCounter(&perfCounter));
+	I64 curTick = perfCounter.QuadPart;
+	F32 secondsElapsed = (F32)(curTick) / (F32)(s_timingFreqPerSec);
+    return secondsElapsed;
+}
+
+void Platform::YieldThread()
+{
+	::SwitchToThread();
+}
+
+void Platform::SleepThreadSeconds(F32 seconds)
+{
+	SleepThreadMilliseconds(seconds * 1000.0f);
+}
+
+void Platform::SleepThreadMilliseconds(F32 ms)
+{
+	while (ms > 1000.0f)
+	{
+		::Sleep((DWORD)ms);
+		ms -= 1000.0f;
+	}
+
+	while (ms > 100.0f)
+	{
+		::Sleep((DWORD)ms);
+		ms -= 100.0f;
+	}
+
+	// spin down the last bit of time since calling the Win32 Sleep function is too inaccurate
+    F32 msStart = GetMillisecondsSinceAppStart();
+	while (GetMillisecondsSinceAppStart() - msStart < ms) { YieldThread(); }
+}
+
+bool Platform::LoadFileBytes(const char* filename, Byte* outBytes, size_t outNumBytes)
+{
+	//array_t<byte_t> data;
+
+	//// open file for read and binary
+	//FILE* p_file = NULL;
+	//fopen_s(&p_file, filename, "rb");
+	//if (NULL == p_file)
+	//{
+	//	debug_printf("Failed to open file [%s] to read bytes\n", filename);
+	//	return data;
+	//}
+
+	//// measure size
+	//fseek(p_file, 0, SEEK_END);
+	//long file_len = ftell(p_file);
+	//rewind(p_file);
+
+	//// alloc buffer
+	//data = array_init_sized<byte_t>(arena, file_len);
+
+	//// read into buffer
+	//size_t bytes_read = fread(data.data, sizeof(byte_t), file_len, p_file);
+	//SM_ASSERT(bytes_read == (size_t)file_len);
+
+	//// close file
+	//fclose(p_file);
+
+	//// return buffer
+	//return data;
+
+    return false;
 }

@@ -1,8 +1,5 @@
 #pragma once
 
-#define VK_NO_PROTOTYPES
-#include "ThirdParty/vulkan/vulkan.h"
-
 #if defined(NDEBUG)
 	static const char* INSTANCE_EXTENSIONS[] = {
 		"VK_KHR_surface",

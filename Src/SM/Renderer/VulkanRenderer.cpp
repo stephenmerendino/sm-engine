@@ -1,6 +1,7 @@
 #include "SM/Renderer/VulkanRenderer.h"
 #include "SM/Assert.h"
 #include "SM/Bits.h"
+#include "SM/Math.h"
 #include "SM/Memory.h"
 #include "SM/Renderer/VulkanConfig.h"
 #include "ThirdParty/vulkan/vulkan_core.h"
@@ -16,7 +17,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
     //------------------------------------------------------------------------------------------------------------------------
     // Instance
     //------------------------------------------------------------------------------------------------------------------------
-    VkApplicationInfo appInfo = {
+    VkApplicationInfo appInfo {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pApplicationName = "SM Workbench",
         .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
@@ -25,7 +26,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
         .apiVersion = VK_API_VERSION_1_3
     };
 
-    VkInstanceCreateInfo instanceCreateInfo = {
+    VkInstanceCreateInfo instanceCreateInfo {
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pApplicationInfo = &appInfo,
         .enabledExtensionCount = ARRAY_LEN(INSTANCE_EXTENSIONS),
@@ -64,7 +65,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
         instanceCreateInfo.enabledLayerCount = ARRAY_LEN(VALIDATION_LAYERS);
 
         // this debug messenger debugs the actual instance creation
-        VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = {
+        VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo {
             .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
 
             .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
@@ -84,7 +85,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
         if (ENABLE_VALIDATION_BEST_PRACTICES)
         {
             VkValidationFeatureEnableEXT enables[] = { VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT };
-            VkValidationFeaturesEXT features = {};
+            VkValidationFeaturesEXT features {};
             features.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
             features.enabledValidationFeatureCount = 1;
             features.pEnabledValidationFeatures = enables;
@@ -100,7 +101,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
     //------------------------------------------------------------------------------------------------------------------------
     if (ENABLE_VALIDATION_LAYERS)
     {
-        VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = {
+        VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo {
             .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
 
             .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
@@ -147,11 +148,6 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
         }
     }
 
-    static const I32 kInvalidQueueIndex = -1;
-    I32 graphicsQueueIndex = kInvalidQueueIndex;
-    I32 computeQueueIndex = kInvalidQueueIndex;
-    I32 transferQueueIndex = kInvalidQueueIndex;
-    I32 presentationQueueIndex = kInvalidQueueIndex;
     for(int iGPU = 0; iGPU < numFoundGPUs; iGPU++)
     {
         const VkPhysicalDevice& candidateGPU = foundGPUs[iGPU];
@@ -225,52 +221,52 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
         VkQueueFamilyProperties* queueFamilyProperties = SM::Alloc<VkQueueFamilyProperties>(kEngineGlobal, numQueueFamilies);
         vkGetPhysicalDeviceQueueFamilyProperties(candidateGPU, &numQueueFamilies, queueFamilyProperties);
 
-        graphicsQueueIndex = kInvalidQueueIndex;
-        computeQueueIndex = kInvalidQueueIndex;
-        transferQueueIndex = kInvalidQueueIndex;
-        presentationQueueIndex = kInvalidQueueIndex;
+        m_graphicsQueueIndex = kInvalidQueueIndex;
+        m_computeQueueIndex = kInvalidQueueIndex;
+        m_transferQueueIndex = kInvalidQueueIndex;
+        m_presentationQueueIndex = kInvalidQueueIndex;
         for (int iQueue = 0; iQueue < numQueueFamilies; iQueue++)
         {
             const VkQueueFamilyProperties& props = queueFamilyProperties[iQueue];
 
-            if (graphicsQueueIndex == kInvalidQueueIndex && 
+            if (m_graphicsQueueIndex == kInvalidQueueIndex && 
                 IsBitSet(props.queueFlags, VK_QUEUE_GRAPHICS_BIT))
             {
-                graphicsQueueIndex = iQueue;
+                m_graphicsQueueIndex = iQueue;
             }
 
-            if (computeQueueIndex == kInvalidQueueIndex && 
+            if (m_computeQueueIndex == kInvalidQueueIndex && 
                 IsBitSet(props.queueFlags, VK_QUEUE_COMPUTE_BIT)  && 
                 !IsBitSet(props.queueFlags, VK_QUEUE_GRAPHICS_BIT))
             {
-                computeQueueIndex = iQueue;
+                m_computeQueueIndex = iQueue;
             }
 
-            if (transferQueueIndex == kInvalidQueueIndex && 
+            if (m_transferQueueIndex == kInvalidQueueIndex && 
                 IsBitSet(props.queueFlags, VK_QUEUE_TRANSFER_BIT) &&
                 !IsBitSet(props.queueFlags, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT))
             {
-                transferQueueIndex = iQueue;
+                m_transferQueueIndex = iQueue;
             }
 
             VkBool32 canPresent = false;
             vkGetPhysicalDeviceSurfaceSupportKHR(candidateGPU, iQueue, surface, &canPresent);
-            if (presentationQueueIndex == kInvalidQueueIndex && canPresent)
+            if (m_presentationQueueIndex == kInvalidQueueIndex && canPresent)
             {
-                presentationQueueIndex = iQueue;
+                m_presentationQueueIndex = iQueue;
             }
 
             // check if no more families to find
-            if (graphicsQueueIndex != kInvalidQueueIndex && 
-                computeQueueIndex != kInvalidQueueIndex &&
-                presentationQueueIndex != kInvalidQueueIndex &&
-                transferQueueIndex != kInvalidQueueIndex)
+            if (m_graphicsQueueIndex != kInvalidQueueIndex && 
+                m_computeQueueIndex != kInvalidQueueIndex &&
+                m_presentationQueueIndex != kInvalidQueueIndex &&
+                m_transferQueueIndex != kInvalidQueueIndex)
             {
                 break;
             }
         }
 
-        if(graphicsQueueIndex == -1 || presentationQueueIndex == -1)
+        if(m_graphicsQueueIndex == -1 || m_presentationQueueIndex == -1)
         {
             continue;
         }
@@ -285,12 +281,12 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
     //------------------------------------------------------------------------------------------------------------------------
     // Logical Device
     //------------------------------------------------------------------------------------------------------------------------
-    VkPhysicalDeviceFeatures deviceFeatures = {
+    VkPhysicalDeviceFeatures deviceFeatures {
         .fillModeNonSolid = VK_TRUE,
         .samplerAnisotropy = VK_TRUE
     };
 
-    VkPhysicalDeviceVulkan13Features vk13Features = {
+    VkPhysicalDeviceVulkan13Features vk13Features {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
         .synchronization2 = VK_TRUE,
         .dynamicRendering = VK_TRUE
@@ -302,36 +298,36 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
     static const U32 kMaxNumQueues = 4;
     VkDeviceQueueCreateInfo queueCreateInfos[kMaxNumQueues];
     queueCreateInfos[numQueues].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    queueCreateInfos[numQueues].queueFamilyIndex = graphicsQueueIndex;
+    queueCreateInfos[numQueues].queueFamilyIndex = m_graphicsQueueIndex;
     queueCreateInfos[numQueues].queueCount = 1;
     queueCreateInfos[numQueues].pQueuePriorities = &priority;
     numQueues++;
 
     queueCreateInfos[numQueues].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    queueCreateInfos[numQueues].queueFamilyIndex = computeQueueIndex;
+    queueCreateInfos[numQueues].queueFamilyIndex = m_computeQueueIndex;
     queueCreateInfos[numQueues].queueCount = 1;
     queueCreateInfos[numQueues].pQueuePriorities = &priority;
     numQueues++;
 
-    if(graphicsQueueIndex != presentationQueueIndex)
+    if(m_graphicsQueueIndex != m_presentationQueueIndex)
     {
         queueCreateInfos[numQueues].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queueCreateInfos[numQueues].queueFamilyIndex = presentationQueueIndex;
+        queueCreateInfos[numQueues].queueFamilyIndex = m_presentationQueueIndex;
         queueCreateInfos[numQueues].queueCount = 1;
         queueCreateInfos[numQueues].pQueuePriorities = &priority;
         numQueues++;
     }
 
-    if(transferQueueIndex != kInvalidQueueIndex)
+    if(m_transferQueueIndex != kInvalidQueueIndex)
     {
         queueCreateInfos[numQueues].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queueCreateInfos[numQueues].queueFamilyIndex = transferQueueIndex;
+        queueCreateInfos[numQueues].queueFamilyIndex = m_transferQueueIndex;
         queueCreateInfos[numQueues].queueCount = 1;
         queueCreateInfos[numQueues].pQueuePriorities = &priority;
         numQueues++;
     }
 
-    VkDeviceCreateInfo createInfo = {
+    VkDeviceCreateInfo createInfo {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .pNext = &vk13Features,
         .queueCreateInfoCount = numQueues,
@@ -352,32 +348,25 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
     VkQueue presentationQueue = VK_NULL_HANDLE;
     VkQueue transferQueue = VK_NULL_HANDLE;
     {
-        vkGetDeviceQueue(m_device, graphicsQueueIndex, 0, &m_graphicsQueue);
-        vkGetDeviceQueue(m_device, computeQueueIndex, 0, &m_computeQueue);
-        vkGetDeviceQueue(m_device, presentationQueueIndex, 0, &m_presentationQueue);
-        if(transferQueueIndex != kInvalidQueueIndex)
+        vkGetDeviceQueue(m_device, m_graphicsQueueIndex, 0, &m_graphicsQueue);
+        vkGetDeviceQueue(m_device, m_computeQueueIndex, 0, &m_computeQueue);
+        vkGetDeviceQueue(m_device, m_presentationQueueIndex, 0, &m_presentationQueue);
+        if(m_transferQueueIndex != kInvalidQueueIndex)
         {
-            vkGetDeviceQueue(m_device, transferQueueIndex, 0, &transferQueue);
+            vkGetDeviceQueue(m_device, m_transferQueueIndex, 0, &transferQueue);
         }
     }
 
     //------------------------------------------------------------------------------------------------------------------------
-    // Random Precalculated Values
+    // Command pools
     //------------------------------------------------------------------------------------------------------------------------
-
-    // calculate max number of msaa samples we can use
-    VkSampleCountFlags msaaCounts = m_physicalDeviceProperties.limits.framebufferColorSampleCounts & m_physicalDeviceProperties.limits.framebufferDepthSampleCounts;
-    if (msaaCounts & VK_SAMPLE_COUNT_2_BIT) m_maxMsaaSamples = VK_SAMPLE_COUNT_2_BIT;
-    if (msaaCounts & VK_SAMPLE_COUNT_4_BIT) m_maxMsaaSamples = VK_SAMPLE_COUNT_4_BIT;
-    if (msaaCounts & VK_SAMPLE_COUNT_8_BIT) m_maxMsaaSamples = VK_SAMPLE_COUNT_8_BIT;
-    if (msaaCounts & VK_SAMPLE_COUNT_16_BIT) m_maxMsaaSamples = VK_SAMPLE_COUNT_16_BIT;
-    if (msaaCounts & VK_SAMPLE_COUNT_32_BIT) m_maxMsaaSamples = VK_SAMPLE_COUNT_32_BIT;
-    if (msaaCounts & VK_SAMPLE_COUNT_64_BIT) m_maxMsaaSamples = VK_SAMPLE_COUNT_64_BIT;
-
-    // default depth format
-	VkFormat candidateDepthFormats[] = { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT };
-	m_defaultDepthFormat = FindSupportedFormat(candidateDepthFormats, ARRAY_LEN(candidateDepthFormats), VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
-	SM_ASSERT(m_defaultDepthFormat != VK_FORMAT_UNDEFINED);
+    VkCommandPoolCreateInfo graphicsCommandPoolCreateInfo {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .queueFamilyIndex = (U32)m_graphicsQueueIndex
+    };
+    SM_ASSERT(vkCreateCommandPool(m_device, &graphicsCommandPoolCreateInfo, nullptr, &m_graphicsCommandPool) == VK_SUCCESS);
 
     //------------------------------------------------------------------------------------------------------------------------
     // Swapchain
@@ -393,13 +382,13 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
     VkSurfaceFormatKHR* surfaceFormats = SM::Alloc<VkSurfaceFormatKHR>(kEngineGlobal, numSurfaceFormats);
     vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, m_surface, &numSurfaceFormats, surfaceFormats);
 
-    VkSurfaceFormatKHR swapchainFormat = surfaceFormats[0];
+    m_swapchainFormat = surfaceFormats[0];
     for(int i = 0; i < numSurfaceFormats; i++)
     {
         const VkSurfaceFormatKHR& format = surfaceFormats[i];
         if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
         {
-            swapchainFormat = format;
+            m_swapchainFormat = format;
         }
     }
 
@@ -419,25 +408,25 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
         }
     }
 
-    VkSurfaceCapabilitiesKHR surfaceCapabilities = {};
+    VkSurfaceCapabilitiesKHR surfaceCapabilities{};
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physicalDevice, m_surface, &surfaceCapabilities);
 
-    VkExtent2D swapchainExtent{};
     if (surfaceCapabilities.currentExtent.width != UINT32_MAX)
     {
-        swapchainExtent = surfaceCapabilities.currentExtent;
+        m_swapchainExtent = surfaceCapabilities.currentExtent;
     }
     else
     {
         U32 width;
         U32 height;
         Platform::GetWindowDimensions(m_pWindow, width, height);
-        swapchainExtent = { width, height };
-        swapchainExtent.width = Clamp(swapchainExtent.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
-        swapchainExtent.height = Clamp(swapchainExtent.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
+        m_swapchainExtent = { width, height };
+        m_swapchainExtent.width = Clamp(m_swapchainExtent.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
+        m_swapchainExtent.height = Clamp(m_swapchainExtent.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
     }
 
     U32 imageCount = surfaceCapabilities.minImageCount + 1; // one extra image to prevent waiting on driver
+    imageCount = Min(imageCount, kMaxNumSwapchainImages);
     if (surfaceCapabilities.maxImageCount > 0)
     {
         imageCount = Min(imageCount, surfaceCapabilities.maxImageCount);
@@ -449,101 +438,118 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
     //fullScreenInfo.pNext = nullptr;
     //fullScreenInfo.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT;
 
-    VkSwapchainCreateInfoKHR swapchainCreateInfo = {
+    VkSwapchainCreateInfoKHR swapchainCreateInfo {
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
         .pNext = nullptr, // use full_screenInfo here
         .surface = m_surface,
         .minImageCount = imageCount,
-        .imageFormat = swapchainFormat.format,
-        .imageColorSpace = swapchainFormat.colorSpace,
-        .imageExtent = swapchainExtent,
+        .imageFormat = m_swapchainFormat.format,
+        .imageColorSpace = m_swapchainFormat.colorSpace,
+        .imageExtent = m_swapchainExtent,
         .imageArrayLayers = 1,
         .imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         .presentMode = swapchainPresentMode
     };
 
-    //u32 queueFamilyIndices[] = { (u32)context.queue_indices.graphics, (u32)context.queue_indices.presentation };
+    U32 queueFamilyIndices[] = { (U32)m_graphicsQueueIndex, (U32)m_presentationQueueIndex };
 
-    //if (context.queue_indices.graphics != context.queue_indices.presentation)
-    //{
-    //    create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-    //    create_info.queueFamilyIndexCount = 2;
-    //    create_info.pQueueFamilyIndices = queueFamilyIndices;
-    //}
-    //else
-    //{
-    //    create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    //    create_info.queueFamilyIndexCount = 0;
-    //    create_info.pQueueFamilyIndices = nullptr;
-    //}
+    if (m_graphicsQueueIndex != m_presentationQueueIndex)
+    {
+        swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+        swapchainCreateInfo.queueFamilyIndexCount = 2;
+        swapchainCreateInfo.pQueueFamilyIndices = queueFamilyIndices;
+    }
+    else
+    {
+        swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        swapchainCreateInfo.queueFamilyIndexCount = 0;
+        swapchainCreateInfo.pQueueFamilyIndices = nullptr;
+    }
 
-    //create_info.preTransform = swapchain_info.capabilities.currentTransform;
-    //create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    //create_info.clipped = VK_TRUE;
-    //create_info.oldSwapchain = VK_NULL_HANDLE;
+    swapchainCreateInfo.preTransform = surfaceCapabilities.currentTransform;
+    swapchainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    swapchainCreateInfo.clipped = VK_TRUE;
+    swapchainCreateInfo.oldSwapchain = VK_NULL_HANDLE;
 
-    //SM_VULKAN_ASSERT(vkCreateSwapchainKHR(context.device, &create_info, nullptr, &context.swapchain.handle));
+    SM_ASSERT(vkCreateSwapchainKHR(m_device, &swapchainCreateInfo, nullptr, &m_swapchain) == VK_SUCCESS);
+    SM_ASSERT(vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_numSwapchainImages, nullptr) == VK_SUCCESS);
+    SM_ASSERT(m_numSwapchainImages < kMaxNumSwapchainImages);
+    SM_ASSERT(vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_numSwapchainImages, m_swapchainImages) == VK_SUCCESS);
 
-    //u32 num_images = 0;
-    //vkGetSwapchainImagesKHR(context.device, context.swapchain.handle, &num_images, nullptr);
+    VkCommandBufferAllocateInfo commandBufferAllocInfo {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .pNext = nullptr,
+        .commandPool = m_graphicsCommandPool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1
+    };
 
-	//array_resize(context.swapchain.images, num_images);
-    //vkGetSwapchainImagesKHR(context.device, context.swapchain.handle, &num_images, context.swapchain.images.data);
+    VkCommandBuffer commandBuffer;
+    vkAllocateCommandBuffers(m_device, &commandBufferAllocInfo, &commandBuffer);
 
-    //context.swapchain.format = swapchain_format.format;
-    //context.swapchain.extent = swapchain_extent;
+    VkCommandBufferBeginInfo beginInfo {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+    };
+    vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
-    //VkCommandBufferAllocateInfo command_buffer_alloc_info{};
-    //command_buffer_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    //command_buffer_alloc_info.pNext = nullptr;
-    //command_buffer_alloc_info.commandPool = context.graphics_command_pool;
-    //command_buffer_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    //command_buffer_alloc_info.commandBufferCount = 1;
+    // transition swapchain images to presentation layout
+    for (U32 i = 0; i < m_numSwapchainImages; i++)
+    {
+        VkImageMemoryBarrier barrier {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .srcAccessMask = VK_ACCESS_NONE,
+            .dstAccessMask = VK_ACCESS_NONE,
+            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = m_swapchainImages[i],
+            .subresourceRange {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1
+            }
+        };
 
-    //VkCommandBuffer command_buffer;
-    //vkAllocateCommandBuffers(context.device, &command_buffer_alloc_info, &command_buffer);
+        vkCmdPipelineBarrier(commandBuffer,
+                             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                             0,
+                             0, nullptr,
+                             0, nullptr,
+                             1, &barrier);
+    }
+    vkEndCommandBuffer(commandBuffer);
+    
+    VkSubmitInfo submit_info{};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &commandBuffer;
 
-    //VkCommandBufferBeginInfo begin_info{};
-    //begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    //begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    //vkBeginCommandBuffer(command_buffer, &begin_info);
+    vkQueueSubmit(m_graphicsQueue, 1, &submit_info, VK_NULL_HANDLE);
+    vkQueueWaitIdle(m_graphicsQueue);
 
-    //// transition swapchain images to presentation layout
-    //for (u32 i = 0; i < (u32)context.swapchain.images.cur_size; i++)
-    //{
-    //    VkImageMemoryBarrier barrier{};
-    //    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    //    barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    //    barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    //    barrier.srcAccessMask = VK_ACCESS_NONE;
-    //    barrier.dstAccessMask = VK_ACCESS_NONE;
-    //    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    //    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    //    barrier.image = context.swapchain.images[i];
-    //    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    //    barrier.subresourceRange.baseMipLevel = 0;
-    //    barrier.subresourceRange.levelCount = 1;
-    //    barrier.subresourceRange.baseArrayLayer = 0;
-    //    barrier.subresourceRange.layerCount = 1;
+    vkFreeCommandBuffers(m_device, m_graphicsCommandPool, 1, &commandBuffer);
 
-    //    vkCmdPipelineBarrier(command_buffer,
-    //                         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-    //                         0,
-    //                         0, nullptr,
-    //                         0, nullptr,
-    //                         1, &barrier);
-    //}
-    //vkEndCommandBuffer(command_buffer);
-    //
-    //VkSubmitInfo submit_info{};
-    //submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    //submit_info.commandBufferCount = 1;
-    //submit_info.pCommandBuffers = &command_buffer;
+    //------------------------------------------------------------------------------------------------------------------------
+    // Random Precalculated Values
+    //------------------------------------------------------------------------------------------------------------------------
 
-    //vkQueueSubmit(context.graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
-    //vkQueueWaitIdle(context.graphics_queue);
+    // calculate max number of msaa samples we can use
+    VkSampleCountFlags msaaCounts = m_physicalDeviceProperties.limits.framebufferColorSampleCounts & m_physicalDeviceProperties.limits.framebufferDepthSampleCounts;
+    if (msaaCounts & VK_SAMPLE_COUNT_2_BIT) m_maxMsaaSamples = VK_SAMPLE_COUNT_2_BIT;
+    if (msaaCounts & VK_SAMPLE_COUNT_4_BIT) m_maxMsaaSamples = VK_SAMPLE_COUNT_4_BIT;
+    if (msaaCounts & VK_SAMPLE_COUNT_8_BIT) m_maxMsaaSamples = VK_SAMPLE_COUNT_8_BIT;
+    if (msaaCounts & VK_SAMPLE_COUNT_16_BIT) m_maxMsaaSamples = VK_SAMPLE_COUNT_16_BIT;
+    if (msaaCounts & VK_SAMPLE_COUNT_32_BIT) m_maxMsaaSamples = VK_SAMPLE_COUNT_32_BIT;
+    if (msaaCounts & VK_SAMPLE_COUNT_64_BIT) m_maxMsaaSamples = VK_SAMPLE_COUNT_64_BIT;
 
-    //vkFreeCommandBuffers(context.device, context.graphics_command_pool, 1, &command_buffer);
+    // default depth format
+	VkFormat candidateDepthFormats[] = { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT };
+	m_defaultDepthFormat = FindSupportedFormat(candidateDepthFormats, ARRAY_LEN(candidateDepthFormats), VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+	SM_ASSERT(m_defaultDepthFormat != VK_FORMAT_UNDEFINED);
 
     return true;
 }

@@ -17,7 +17,7 @@ namespace SM
     typedef		float		F32;
     typedef		double		F64;
 
-    typedef		U8			Byte8;
+    typedef		U8			Byte;
 
     #define KiB(i) (i * 1024)
     #define MiB(i) (i * KiB(1024))

@@ -1,4 +1,5 @@
 #include "SM/Engine.h"
+#include "SM/Math.h"
 #include "SM/Memory.h"
 #include "SM/Platform.h"
 #include "SM/Renderer/Renderer.h"
@@ -14,9 +15,12 @@ void SM::EngineInit(const char* dllName)
 {
     s_dllName = dllName;
 
-    InitAllocators();
-    s_pWindow = Platform::OpenWindow("Workbench", 1600, 900);
+    Platform::Init();
 
+    SeedRng();
+    InitAllocators();
+
+    s_pWindow = Platform::OpenWindow("Workbench", 1600, 900);
     s_renderer = CreateRenderer(kVulkan);
     s_renderer->Init(s_pWindow);
 
@@ -32,9 +36,7 @@ void SM::EngineMainLoop()
 
         GameApi game = Platform::LoadGameDll(s_dllName);
         game.GameUpdate();
-
         game.GameRender();
-        //s_renderer->RenderFrame();
     }
 }
 

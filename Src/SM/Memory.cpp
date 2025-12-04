@@ -16,9 +16,8 @@ MemoryArena g_memoryArenas[kNumArenaTypes] =
     { .m_arenaType = kEngineGlobal, .m_sizeBytes = MiB(1) }   
 };
 
-class LinearAllocator
+struct LinearAllocator
 {
-public:
     void Init(void* storage, size_t size);
     void* Alloc(size_t sizeBytes, U32 alignment);
     template<typename T>
