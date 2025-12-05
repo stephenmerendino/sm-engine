@@ -10,8 +10,9 @@ namespace SM
         kNumRendererTypes
     };
 
-    struct Renderer
+    class Renderer
     {
+        public:
         virtual bool Init(Platform::Window* pWindow) = 0;
     };
 

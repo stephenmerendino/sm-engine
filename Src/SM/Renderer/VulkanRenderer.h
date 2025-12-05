@@ -13,8 +13,9 @@
 
 namespace SM
 {
-    struct VulkanRenderer : public Renderer
+    class VulkanRenderer : public Renderer
     {
+        public:
         // main renderer interface
         virtual bool Init(Platform::Window* pWindow) final;
 
