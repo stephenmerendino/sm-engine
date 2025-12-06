@@ -305,6 +305,18 @@ namespace SM
 
         Mat44 GetRotation() const;
         void SetRotation(const Mat44& rotation);
+
+        static Mat44 CreateScale(F32 uniformScale);
+        static Mat44 CreateScale(F32 i, F32 j, F32 k);
+        static Mat44 CreateScale(const Vec3& ijk);
+        static Mat44 CreateTranslation(F32 _tx, F32 _ty, F32 _tz);
+        static Mat44 CreateTranslation(const Vec3& t);
+        static Mat44 CreateRotationXRads(F32 xRads);
+        static Mat44 CreateRotationYRads(F32 yRads);
+        static Mat44 CreateRotationZRads(F32 zRads);
+        static Mat44 CreateRotationXDegs(F32 xDegs);
+        static Mat44 CreateRotationYDegs(F32 yDegs);
+        static Mat44 CreateRotationZDegs(F32 zDegs);
     };
 
     //-------------------------------------------------------------------------
@@ -1304,12 +1316,12 @@ namespace SM
         return copy;
     }
 
-    void Mat44::Scale(F32 uniformScale)
+    inline void Mat44::Scale(F32 uniformScale)
     {
         Scale(uniformScale, uniformScale, uniformScale);
     }
 
-    void Mat44::Scale(F32 i, F32 j, F32 k)
+    inline void Mat44::Scale(F32 i, F32 j, F32 k)
     {
         ix *= i;
         iy *= i;
@@ -1322,7 +1334,7 @@ namespace SM
         kz *= k;
     }
 
-    void Mat44::Scale(const Vec3& ijk)
+    inline void Mat44::Scale(const Vec3& ijk)
     {
         ix *= ijk.x;
         iy *= ijk.x;
@@ -1335,7 +1347,7 @@ namespace SM
         kz *= ijk.z;
     }
 
-    void Mat44::SetScale(F32 uniformScale)
+    inline void Mat44::SetScale(F32 uniformScale)
     {
         Vec3 iBasis = *((Vec3*)(&ix));
         Vec3 jBasis = *((Vec3*)(&jx));
@@ -1346,7 +1358,7 @@ namespace SM
         kBasis.SetLength(uniformScale);
     }
 
-    void Mat44::SetScale(F32 i, F32 j, F32 k)
+    inline void Mat44::SetScale(F32 i, F32 j, F32 k)
     {
         Vec3 iBasis = *((Vec3*)(&ix));
         Vec3 jBasis = *((Vec3*)(&jx));
@@ -1357,7 +1369,7 @@ namespace SM
         kBasis.SetLength(k);
     }
 
-    void Mat44::SetScale(const Vec3& ijk)
+    inline void Mat44::SetScale(const Vec3& ijk)
     {
         Vec3 iBasis = *((Vec3*)(&ix));
         Vec3 jBasis = *((Vec3*)(&jx));
@@ -1368,86 +1380,217 @@ namespace SM
         kBasis.SetLength(ijk.z);
     }
 
-    Mat44 Mat44::GetScaled(F32 uniformScale) const
+    inline Mat44 Mat44::GetScaled(F32 uniformScale) const
     {
         Mat44 copy = *this;
         copy.Scale(uniformScale);
         return copy;
     }
 
-    Mat44 Mat44::GetScaled(F32 i, F32 j, F32 k) const
+    inline Mat44 Mat44::GetScaled(F32 i, F32 j, F32 k) const
     {
         Mat44 copy = *this;
         copy.Scale(i, j, k);
         return copy;
     }
 
-    Mat44 Mat44::GetScaled(const Vec3& ijk) const
+    inline Mat44 Mat44::GetScaled(const Vec3& ijk) const
     {
         Mat44 copy = *this;
         copy.Scale(ijk);
         return copy;
     }
 
-    void Mat44::Translate(F32 _tx, F32 _ty, F32 _tz)
+    inline void Mat44::Translate(F32 _tx, F32 _ty, F32 _tz)
     {
         tx += _tx;
         ty += _ty;
         tz += _tz;
     }
 
-    void Mat44::Translate(const Vec3& t)
+    inline void Mat44::Translate(const Vec3& t)
     {
         Translate(t.x, t.y, t.z);
     }
     
-    void Mat44::SetTranslation(F32 _tx, F32 _ty, F32 _tz)
+    inline void Mat44::SetTranslation(F32 _tx, F32 _ty, F32 _tz)
     {
         tx = _tx;
         ty = _ty;
         tz = _tz;
     }
 
-    void Mat44::SetTranslation(const Vec3& t)
+    inline void Mat44::SetTranslation(const Vec3& t)
     {
         SetTranslation(t.x, t.y, t.z);
     }
 
-    Mat44 Mat44::GetTranslated(F32 tx, F32 ty, F32 tz) const;
-    Mat44 Mat44::GetTranslated(const Vec3& t) const;
+    inline Mat44 Mat44::GetTranslated(F32 _tx, F32 _ty, F32 _tz) const
+    {
+        Mat44 copy = *this;
+        copy.Translate(_tx, _ty, _tz);
+        return copy;
+    }
 
-    void Mat44::RotateXRads(F32 xRads);
-    void Mat44::RotateYRads(F32 yRads);
-    void Mat44::RotateZRads(F32 zRads);
-    void Mat44::RotateXDegs(F32 xDegs);
-    void Mat44::RotateYDegs(F32 yDegs);
-    void Mat44::RotateZDegs(F32 zDegs);
-    void Mat44::RotateAroundAxisRads(const Vec3& axis, F32 rads);
-    void Mat44::RotateAroundAxisDegs(const Vec3& axis, F32 degs);
+    inline Mat44 Mat44::GetTranslated(const Vec3& t) const
+    {
+        Mat44 copy = *this;
+        copy.Translate(t);
+        return copy;
+    }
 
-    void Mat44::SetRotationXRads(F32 xRads);
-    void Mat44::SetRotationYRads(F32 yRads);
-    void Mat44::SetRotationZRads(F32 zRads);
-    void Mat44::SetRotationXDegs(F32 xDegs);
-    void Mat44::SetRotationYDegs(F32 yDegs);
-    void Mat44::SetRotationZDegs(F32 zDegs);
-    void Mat44::SetRotationAroundAxisRads(const Vec3& axis, F32 rads);
-    void Mat44::SetRotationAroundAxisDegs(const Vec3& axis, F32 degs);
+    inline void Mat44::RotateXRads(F32 xRads)
+    {
+        F32 cosRads = cosf(xRads);
+        F32 sinRads = sinf(xRads);
 
-    Mat44 Mat44::GetRotatedXRads(F32 xRads) const;
-    Mat44 Mat44::GetRotatedYRads(F32 yRads) const;
-    Mat44 Mat44::GetRotatedZRads(F32 zRads) const;
-    Mat44 Mat44::GetRotatedXDegs(F32 xDegs) const;
-    Mat44 Mat44::GetRotatedYDegs(F32 yDegs) const;
-    Mat44 Mat44::GetRotatedZDegs(F32 zDegs) const;
-    Mat44 Mat44::GetRotatedAroundAxisRads(const Vec3& axis, F32 rads) const;
-    Mat44 Mat44::GetRotatedAroundAxisDegs(const Vec3& axis, F32 degs) const;
+        Mat44 x_rot = Mat44(1.0f, 0.0f, 0.0f, 0.0f,
+                                0.0f, cosRads, sinRads, 0.0f,
+                                0.0f, -sinRads, cosRads, 0.0f,
+                                0.0f, 0.0f, 0.0f, 1.0f);
 
-    Mat33 Mat44::GetRotationMat33() const;
-    void Mat44::SetRotationMat33(const Mat33& rotation);
+        *this *= x_rot;
+    }
 
-    Mat44 Mat44::GetRotation() const;
-    void Mat44::SetRotation(const Mat44& rotation);
+    inline void Mat44::RotateYRads(F32 yRads)
+    {
+        F32 cosRads = cosf(yRads);
+        F32 sinRads = sinf(yRads);
+
+        Mat44 yRot = Mat44(cosRads, 0.0f, -sinRads, 0.0f,
+                                0.0f, 1.0f, 0.0f, 0.0f,
+                                sinRads, 0.0f, cosRads, 0.0f,
+                                0.0f, 0.0f, 0.0f, 1.0f);
+
+        *this *= yRot;
+    }
+
+    inline void Mat44::RotateZRads(F32 zRads)
+    {
+        F32 cosRads = cosf(zRads);
+        F32 sinRads = sinf(zRads);
+
+        Mat44 zRot = Mat44(cosRads, sinRads, 0.0f, 0.0f,
+                               -sinRads, cosRads, 0.0f, 0.0f,
+                               0.0f, 0.0f, 1.0f, 0.0f,
+                               0.0f, 0.0f, 0.0f, 1.0f);
+
+        *this *= zRot;
+
+    }
+
+    inline void Mat44::RotateXDegs(F32 xDegs)
+    {
+        RotateXRads(DegToRad(xDegs));
+    }
+
+    inline void Mat44::RotateYDegs(F32 yDegs)
+    {
+        RotateYRads(DegToRad(yDegs));
+    }
+
+    inline void Mat44::RotateZDegs(F32 zDegs)
+    {
+        RotateZRads(DegToRad(zDegs));
+    }
+
+    inline void Mat44::RotateAroundAxisRads(const Vec3& axis, F32 rads)
+    {
+        Vec3 i = axis.GetNormalized();
+        Vec3 j = Cross(Vec3::WORLD_UP, axis).GetNormalized();
+        Vec3 k = Cross(i, j);
+        Mat44 rotWorldBasis = Mat44(i, j, k, Vec3::ZERO);
+        Mat44 rotWorldLocal = rotWorldBasis.GetTransposed();
+        Mat44 localRot = Mat44::CreateRotationXRads(rads);
+
+        *this *= (rotWorldLocal * localRot * rotWorldBasis);
+    }
+
+    inline void Mat44::RotateAroundAxisDegs(const Vec3& axis, F32 degs)
+    {
+        RotateAroundAxisRads(axis, DegToRad(degs));
+    }
+
+    inline void Mat44::SetRotationXRads(F32 xRads);
+    inline void Mat44::SetRotationYRads(F32 yRads);
+    inline void Mat44::SetRotationZRads(F32 zRads);
+    inline void Mat44::SetRotationXDegs(F32 xDegs);
+    inline void Mat44::SetRotationYDegs(F32 yDegs);
+    inline void Mat44::SetRotationZDegs(F32 zDegs);
+    inline void Mat44::SetRotationAroundAxisRads(const Vec3& axis, F32 rads);
+    inline void Mat44::SetRotationAroundAxisDegs(const Vec3& axis, F32 degs);
+
+    inline Mat44 Mat44::GetRotatedXRads(F32 xRads) const;
+    inline Mat44 Mat44::GetRotatedYRads(F32 yRads) const;
+    inline Mat44 Mat44::GetRotatedZRads(F32 zRads) const;
+    inline Mat44 Mat44::GetRotatedXDegs(F32 xDegs) const;
+    inline Mat44 Mat44::GetRotatedYDegs(F32 yDegs) const;
+    inline Mat44 Mat44::GetRotatedZDegs(F32 zDegs) const;
+    inline Mat44 Mat44::GetRotatedAroundAxisRads(const Vec3& axis, F32 rads) const;
+    inline Mat44 Mat44::GetRotatedAroundAxisDegs(const Vec3& axis, F32 degs) const;
+
+    inline Mat33 Mat44::GetRotationMat33() const;
+    inline void Mat44::SetRotationMat33(const Mat33& rotation);
+
+    inline Mat44 Mat44::GetRotation() const;
+    inline void Mat44::SetRotation(const Mat44& rotation);
+
+    inline Mat44 Mat44::CreateScale(F32 uniformScale)
+    {
+        Mat44 scale;
+        scale.SetScale(uniformScale);
+        return scale;
+    }
+
+    inline Mat44 Mat44::CreateScale(F32 i, F32 j, F32 k)
+    {
+
+    }
+
+    inline Mat44 Mat44::CreateScale(const Vec3& ijk)
+    {
+
+    }
+
+    inline Mat44 Mat44::CreateTranslation(F32 _tx, F32 _ty, F32 _tz)
+    {
+
+    }
+
+    inline Mat44 Mat44::CreateTranslation(const Vec3& t)
+    {
+
+    }
+
+    inline Mat44 Mat44::CreateRotationXRads(F32 xRads)
+    {
+
+    }
+
+    inline Mat44 Mat44::CreateRotationYRads(F32 yRads)
+    {
+
+    }
+
+    inline Mat44 Mat44::CreateRotationZRads(F32 zRads)
+    {
+
+    }
+
+    inline Mat44 Mat44::CreateRotationXDegs(F32 xDegs)
+    {
+
+    }
+
+    inline Mat44 Mat44::CreateRotationYDegs(F32 yDegs)
+    {
+
+    }
+
+    inline Mat44 Mat44::CreateRotationZDegs(F32 zDegs)
+    {
+
+    }
 
     inline Vec4 operator*(const Vec4& v, const Mat44& mat)
     {
