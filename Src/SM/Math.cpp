@@ -3,7 +3,16 @@
 using namespace SM;
 
 const Vec2 Vec2::ZERO(0.0f, 0.0f);
-const Vec3 Vec3::ZERO(0.0f, 0.0f, 0.0f);
+const Vec3 Vec3::ZERO(0.0, 0.0f, 0.0f);
+const Vec3 Vec3::X_AXIS(1.0f, 0.0f, 0.0f);
+const Vec3 Vec3::Y_AXIS(0.0f, 1.0f, 0.0f);
+const Vec3 Vec3::Z_AXIS(0.0f, 0.0f, 1.0f);
+const Vec3 Vec3::WORLD_FORWARD = Vec3::Y_AXIS;
+const Vec3 Vec3::WORLD_BACKWARD = -Vec3::WORLD_FORWARD;
+const Vec3 Vec3::WORLD_UP = Vec3::Z_AXIS;
+const Vec3 Vec3::WORLD_DOWN = -Vec3::WORLD_UP;
+const Vec3 Vec3::WORLD_LEFT = -Vec3::X_AXIS;
+const Vec3 Vec3::WORLD_RIGHT = -Vec3::WORLD_LEFT;
 const Vec4 Vec4::ZERO(0.0f, 0.0f, 0.0f, 0.0f);
 const IVec2 IVec2::ZERO(0, 0);
 const IVec3 IVec3::ZERO(0, 0, 0);

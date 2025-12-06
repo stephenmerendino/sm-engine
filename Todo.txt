@@ -1,10 +1,9 @@
 Current Tasks
 -------------
-[] Finish porting Math
+[] Finish platform functions
 
 TODO
 ----
-[] Finish platform functions
 [] Keyboard Input
 [] Mouse Input
 [] Port Camera code from old engine
@@ -19,3 +18,7 @@ Big Systems TODO
 [] Audio
 [] Physics
 [] Networking
+
+Finished Tasks
+--------------
+[x] Finish porting Math
