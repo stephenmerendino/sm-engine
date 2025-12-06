@@ -1,21 +1,21 @@
+Current Tasks
+-------------
+[] Finish porting Math
+
 TODO
 ----
-[x] Neovim macro to convert snake case to camel case
-[] Window creation
-[] Main loop
-[] Live code editing of game dll w/ instance update
-[] Nice handling of command line args
-[] Window creation 
+[] Finish platform functions
+[] Keyboard Input
+[] Mouse Input
+[] Port Camera code from old engine
+[] Get renderer clearing screen and presenting
+[] ImGui setup
+[] Vulkan rendering time
 
-Future Work
------------
-[] Memory allocation strategy
-    [] Arenas
-    [] API
-    [] OS level memory allocation
-[] Containers
-    [] Static array
-    [] Dynamic array
-    [] Ring buffer
-    [] Queue
-    [] BitArray
+Big Systems TODO
+----------------
+[] Animation
+[] Particles
+[] Audio
+[] Physics
+[] Networking
