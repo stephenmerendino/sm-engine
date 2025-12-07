@@ -474,7 +474,7 @@ VkSurfaceKHR Platform::CreateVulkanSurface(VkInstance instance, Window* platform
     return surface;
 }
 
-void Platform::CompileShader(ShaderType shaderType, const char* shaderFile, const char* entryFunctionName)
+Shader* Platform::CompileShader(ShaderType shaderType, const char* shaderFile, const char* entryFunctionName, LinearAllocator* allocator)
 {
     HRESULT hres;
 
@@ -482,8 +482,6 @@ void Platform::CompileShader(ShaderType shaderType, const char* shaderFile, cons
 
     const char* fullFilepath = ConcatenateStrings(EngineGetRawAssetsDir(), "Shaders\\");
     fullFilepath = ConcatenateStrings(fullFilepath, shaderFile);
-
-	// need to convert filepath from const char * to LPCWSTR
 
     size_t fullFilepathLen = strlen(fullFilepath) + 1;
     wchar_t* fullFilepathW = SM::Alloc<wchar_t>(fullFilepathLen); 
@@ -550,7 +548,7 @@ void Platform::CompileShader(ShaderType shaderType, const char* shaderFile, cons
 		if (SUCCEEDED(hres) && errorBlob) 
 		{
 			Log("Shader compilation failed for %s\n%s\n", shaderFile, (const char*)errorBlob->GetBufferPointer());
-			return false;
+			return nullptr;
 		}
 	}
 
@@ -558,14 +556,13 @@ void Platform::CompileShader(ShaderType shaderType, const char* shaderFile, cons
 	CComPtr<IDxcBlob> code;
 	result->GetResult(&code);
 
-	(*out_shader)->file_name = file_name;
-	(*out_shader)->entry_name = entry_name;
-	(*out_shader)->shader_type = shader_type;
-
-	(*out_shader)->bytecode = array_init<byte_t>(arena, code->GetBufferSize());
-	array_push((*out_shader)->bytecode, (byte_t*)code->GetBufferPointer(), code->GetBufferSize());
-
-	return true;
+    Shader* shader = allocator->Alloc<Shader>();
+	shader->m_fileName = shaderFile;
+	shader->m_entryFunctionName = entryFunctionName;
+	shader->m_type = shaderType;
+    shader->m_byteCode = (Byte*)allocator->Alloc(code->GetBufferSize());
+    ::memcpy(shader->m_byteCode, code->GetBufferPointer(), code->GetBufferSize());
+	return shader;
 }
 
 F32 Platform::GetMillisecondsSinceAppStart()

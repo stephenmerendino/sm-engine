@@ -1,10 +1,9 @@
 Current Tasks
 -------------
-[] Finish platform functions
+[] Keyboard Input
 
 TODO
 ----
-[] Keyboard Input
 [] Mouse Input
 [] Port Camera code from old engine
 [] Get renderer clearing screen and presenting
@@ -19,6 +18,11 @@ Big Systems TODO
 [] Physics
 [] Networking
 
+Bugs
+----
+none
+
 Finished Tasks
 --------------
 [x] Finish porting Math
+[x] Finish platform functions

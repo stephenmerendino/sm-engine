@@ -21,6 +21,14 @@ namespace SM
         kNumShaderTypes
     };
 
+    struct Shader
+    {
+        const char* m_fileName = nullptr; 
+        const char* m_entryFunctionName = nullptr;
+        Byte* m_byteCode = nullptr;
+        ShaderType m_type;
+    };
+
     namespace Platform
     {
         struct Window;

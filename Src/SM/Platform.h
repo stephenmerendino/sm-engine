@@ -52,7 +52,10 @@ namespace SM
         void LoadVulkanDeviceFuncs(VkDevice device);
         PFN_vkDebugUtilsMessengerCallbackEXT GetVulkanDebugCallback();
         VkSurfaceKHR CreateVulkanSurface(VkInstance instance, Window* platformWindow);
-        void CompileShader(ShaderType shaderType, const char* shaderFile, const char* entryFunctionName);
+        Shader* CompileShader(ShaderType shaderType, 
+                           const char* shaderFile, 
+                           const char* entryFunctionName, 
+                           LinearAllocator* allocator = GetCurrentAllocator());
 
         //------------------------------------------------------------------------------------------------------------------------
         // Timing
