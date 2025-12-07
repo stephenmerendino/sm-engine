@@ -5,7 +5,6 @@
 #include "SM/Engine.cpp"
 #include "SM/Math.cpp"
 #include "SM/Memory.cpp"
-#include "SM/Renderer/Renderer.cpp"
 #include "SM/Renderer/VulkanRenderer.cpp"
 
 int WINAPI WinMain(HINSTANCE app, 
@@ -16,7 +15,7 @@ int WINAPI WinMain(HINSTANCE app,
     const char* dllName = "Workbench.dll";
     const char* rawAssetsDir = "..\\..\\..\\RawAssets\\";
 
-    SM::EngineInit(dllName);
+    SM::EngineInit(dllName, rawAssetsDir);
     SM::EngineMainLoop();
 
     return 0;

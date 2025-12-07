@@ -1,7 +1,9 @@
 #include "SM/Platform.h"
+#include "SM/Bits.h"
 #include "SM/Assert.h"
 #include "SM/Engine.h"
 #include "SM/Memory.h"
+#include "SM/Math.h"
 
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
@@ -33,6 +35,19 @@ CComPtr<IDxcLibrary> s_dxcShaderCompilerLibrary;
 CComPtr<IDxcCompiler3> s_dxcShaderCompiler;
 CComPtr<IDxcUtils> s_dxcUtils;
 
+// input state
+U8 s_keyStates[(U8)Platform::KeyCode::kNumKeyCodes] = { 0 };
+Vec2 s_mouseMovementNormalized = Vec2::ZERO;
+IVec2 s_savedMousePos = IVec2::ZERO;
+
+struct MouseState
+{
+    IVec2 m_mousePosScreen;
+    Vec2 m_mousePosScreenNormalized;
+    IVec2 m_mousePosWindow;
+    Vec2 m_mousePosWindowNormalized;
+};
+
 /*
    For future reference of how to ask platform for memory info
     SYSTEM_INFO systemInfo;
@@ -41,6 +56,84 @@ CComPtr<IDxcUtils> s_dxcUtils;
     U32 pageSize = systemInfo.dwPageSize;
     U32 allocationGranularity = systemInfo.dwAllocationGranularity;
 */
+
+static I32 Win32KeyToEngineKey(U32 windowsKey)
+{
+	// https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
+
+	// Numbers 0-9
+	// 0x30 = 0, 0x39 = 9
+	if (windowsKey >= 0x30 && windowsKey <= 0x39)
+	{
+		return (U32)Platform::KeyCode::kKey0 + (windowsKey - 0x30);
+	}
+
+	// Letters A-Z
+	// 0x41 = A, 0x5A = Z
+	if (windowsKey >= 0x41 && windowsKey <= 0x5A)
+	{
+		return (U32)Platform::KeyCode::kKeyA + (windowsKey - 0x41);
+	}
+
+	// Numpad 0-9
+	if (windowsKey >= VK_NUMPAD0 && windowsKey <= VK_NUMPAD9)
+	{
+		return (U32)Platform::KeyCode::kKeyNumPad0 + (windowsKey - VK_NUMPAD0);
+	}
+
+	// F1-F24
+	if (windowsKey >= VK_F1 && windowsKey <= VK_F24)
+	{
+		return (U32)Platform::KeyCode::kKeyF1 + (windowsKey - VK_F1);
+	}
+
+	// Handle everything else directly
+	switch (windowsKey)
+	{
+        case VK_LBUTTON:    return (U32)Platform::KeyCode::kMouseLButton; 
+		case VK_RBUTTON:    return (U32)Platform::KeyCode::kMouseRButton; 
+		case VK_MBUTTON:    return (U32)Platform::KeyCode::kMouseMButton; 
+
+		case VK_BACK:       return (U32)Platform::KeyCode::kKeyBackspace; 
+		case VK_TAB:        return (U32)Platform::KeyCode::kKeyTab; 
+		case VK_CLEAR:      return (U32)Platform::KeyCode::kKeyClear; 
+		case VK_RETURN:     return (U32)Platform::KeyCode::kKeyEnter; 
+		case VK_SHIFT:      return (U32)Platform::KeyCode::kKeyShift; 
+		case VK_CONTROL:    return (U32)Platform::KeyCode::kKeyControl; 
+		case VK_MENU:       return (U32)Platform::KeyCode::kKeyAlt; 
+		case VK_PAUSE:      return (U32)Platform::KeyCode::kKeyPause; 
+		case VK_CAPITAL:    return (U32)Platform::KeyCode::kKeyCapslock; 
+		case VK_ESCAPE:     return (U32)Platform::KeyCode::kKeyEscape; 
+		case VK_SPACE:      return (U32)Platform::KeyCode::kKeySpace; 
+		case VK_PRIOR:      return (U32)Platform::KeyCode::kKeyPageUp; 
+		case VK_NEXT:       return (U32)Platform::KeyCode::kKeyPageDown; 
+		case VK_END:        return (U32)Platform::KeyCode::kKeyEnd; 
+		case VK_HOME:       return (U32)Platform::KeyCode::kKeyHome; 
+		case VK_LEFT:       return (U32)Platform::KeyCode::kKeyLeftArrow; 
+		case VK_UP:         return (U32)Platform::KeyCode::kKeyUpArrow; 
+		case VK_RIGHT:      return (U32)Platform::KeyCode::kKeyRightArrow; 
+		case VK_DOWN:       return (U32)Platform::KeyCode::kKeyDownArrow; 
+		case VK_SELECT:     return (U32)Platform::KeyCode::kKeySelect; 
+		case VK_PRINT:      return (U32)Platform::KeyCode::kKeyPrint; 
+		case VK_SNAPSHOT:   return (U32)Platform::KeyCode::kKeyPrintScreen; 
+		case VK_INSERT:     return (U32)Platform::KeyCode::kKeyInsert; 
+		case VK_DELETE:     return (U32)Platform::KeyCode::kKeyDelete; 
+		case VK_HELP:       return (U32)Platform::KeyCode::kKeyHelp; 
+		case VK_SLEEP:      return (U32)Platform::KeyCode::kKeySleep; 
+
+		case VK_MULTIPLY:   return (U32)Platform::KeyCode::kKeyMultiply; 
+		case VK_ADD:        return (U32)Platform::KeyCode::kKeyAdd; 
+		case VK_SEPARATOR:  return (U32)Platform::KeyCode::kKeySeparator; 
+		case VK_SUBTRACT:   return (U32)Platform::KeyCode::kKeySubtract; 
+		case VK_DECIMAL:    return (U32)Platform::KeyCode::kKeyDecimal; 
+		case VK_DIVIDE:     return (U32)Platform::KeyCode::kKeyDivide; 
+
+		case VK_NUMLOCK:    return (U32)Platform::KeyCode::kKeyNumLock; 
+		case VK_SCROLL:     return (U32)Platform::KeyCode::kKeyScrollLock; 
+	}
+
+	return (U32)Platform::KeyCode::kKeyInvalid;
+}
 
 static void ReportLastWindowsError()
 {
@@ -169,9 +262,32 @@ struct Platform::Window
     U32 m_height;
 };
 
+static void HandleKeyDown(SM::Platform::KeyCode key)
+{
+    U8& keyState = s_keyStates[key];
+    if(!IsBitSet(keyState, SM::Platform::kIsDown))
+    {
+        SetBit(keyState, SM::Platform::kWasPressed);
+    }
+    SetBit(keyState, SM::Platform::kIsDown);
+}
+
+static void HandleKeyUp(SM::Platform::KeyCode key)
+{
+    U8& keyState = s_keyStates[key];
+    if(IsBitSet(keyState, SM::Platform::kIsDown))
+    {
+        SetBit(keyState, SM::Platform::kWasReleased);
+    }
+    UnSetBit(keyState, SM::Platform::kIsDown);
+}
+
 static LRESULT EngineWinProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 {
     LRESULT result = 0;
+
+	//bool imgui_handled_input = ImGui_ImplWin32_WndProcHandler(window_handle, msg, w_param, l_param);
+    // if imgui_handled_input, don't modify input state
 
     switch (message)
     {
@@ -196,6 +312,58 @@ static LRESULT EngineWinProc(HWND window, UINT message, WPARAM wParam, LPARAM lP
         case WM_ACTIVATEAPP:
         {
             result = DefWindowProc(window, message, wParam, lParam);
+        }
+        break;
+
+		case WM_KEYDOWN:
+        case WM_SYSKEYDOWN:
+        {
+            // handle key down
+            Platform::KeyCode key = (Platform::KeyCode)Win32KeyToEngineKey(wParam);
+            HandleKeyDown(key);
+        }
+        break;
+
+        case WM_LBUTTONDOWN:
+        {
+            HandleKeyDown(Platform::KeyCode::kMouseLButton);
+        }
+        break;
+
+        case WM_MBUTTONDOWN:
+        {
+            HandleKeyDown(Platform::KeyCode::kMouseMButton);
+        }
+        break;
+
+        case WM_RBUTTONDOWN: 
+        {
+            HandleKeyDown(Platform::KeyCode::kMouseRButton);
+        }
+        break;
+
+		case WM_KEYUP:
+        case WM_SYSKEYUP:
+        {
+            Platform::KeyCode key = (Platform::KeyCode)Win32KeyToEngineKey(wParam);
+            HandleKeyUp(key);
+        }
+
+        case WM_LBUTTONUP:
+        {
+            HandleKeyUp(Platform::KeyCode::kMouseLButton);
+        }
+        break;
+
+        case WM_MBUTTONUP:
+        {
+            HandleKeyUp(Platform::KeyCode::kMouseMButton);
+        }
+        break;
+
+        case WM_RBUTTONUP:	
+        {
+            HandleKeyUp(Platform::KeyCode::kMouseRButton);
         }
         break;
 
@@ -355,8 +523,17 @@ GameApi Platform::LoadGameDll(const char* gameDll)
     return gameApi;
 }
 
-void Platform::UpdateWindow(Platform::Window* pWindow)
+void Platform::UpdateWindow(Window* pWindow)
 {
+    // Reset input state
+	for (U32 i = 0; i < (U32)KeyCode::kNumKeyCodes; i++)
+	{
+		UnSetBit(s_keyStates[i], (U8)KeyStateBitFlags::kWasPressed | (U8)KeyStateBitFlags::kWasReleased);
+	}
+
+    // Update Mouse State?
+
+
     MSG msg;
     while (::PeekMessage(&msg, pWindow->m_hwnd, 0, 0, PM_REMOVE))
     {
@@ -642,4 +819,69 @@ bool Platform::ReadFileBytes(const char* filename, Byte*& outBytes, size_t& outN
     outNumBytes = numBytesRead;
 
     return true;
+}
+
+bool Platform::IsKeyDown(Platform::KeyCode key)
+{
+    return IsBitSet(s_keyStates[key], Platform::kIsDown);
+}
+
+bool Platform::WasKeyPressed(KeyCode key)
+{
+    return IsBitSet(s_keyStates[key], Platform::kWasPressed);
+}
+
+bool Platform::WasKeyReleased(KeyCode key)
+{
+    return IsBitSet(s_keyStates[key], Platform::kWasReleased);
+}
+
+void Platform::ShowMouse()
+{
+	::ShowCursor(true);
+}
+
+void Platform::HideMouse()
+{
+	::ShowCursor(false);
+}
+
+bool Platform::IsMouseShown()
+{
+    CURSORINFO cursorInfo;
+    ::GetCursorInfo(&cursorInfo);
+    return (cursorInfo.flags & CURSOR_SHOWING);
+}
+
+void Platform::GetMousePositionScreen(U32& xScreen, U32& yScreen)
+{
+	POINT mousePos;
+	::GetCursorPos(&mousePos);
+	xScreen = mousePos.x;
+	yScreen = mousePos.y;
+}
+
+void Platform::SetMousePositionScreen(U32 xScreen, U32 yScreen)
+{
+	::SetCursorPos(xScreen, yScreen);
+}
+
+void Platform::GetMousePositionNormalized(U32& xNormalized, U32& yNormalized)
+{
+    U32 xScreen = 0;
+    U32 yScreen = 0;
+    GetMousePositionScreen(xScreen, yScreen);
+
+    int screenWidth = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+    int screenHeight = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+
+    xNormalized = (F32)xScreen / (F32)screenWidth;
+    yNormalized = (F32)yScreen / (F32)screenHeight;
+}
+
+void Platform::SetMousePositionNormalized(U32 xNormalized, U32 yNormalized)
+{
+    int screenWidth = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+    int screenHeight = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+    SetMousePositionScreen(xNormalized * screenWidth, yNormalized * screenHeight);
 }
