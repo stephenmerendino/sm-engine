@@ -1,7 +1,9 @@
 #pragma once
 
 #include "SM/Engine.h"
+#include "SM/Memory.h"
 #include "SM/StandardTypes.h"
+#include "SM/Renderer/VulkanRenderer.h"
 
 #define VK_NO_PROTOTYPES
 #include "ThirdParty/vulkan/vulkan.h"
@@ -50,7 +52,7 @@ namespace SM
         void LoadVulkanDeviceFuncs(VkDevice device);
         PFN_vkDebugUtilsMessengerCallbackEXT GetVulkanDebugCallback();
         VkSurfaceKHR CreateVulkanSurface(VkInstance instance, Window* platformWindow);
-        void CompileShader();
+        void CompileShader(ShaderType shaderType, const char* shaderFile, const char* entryFunctionName);
 
         //------------------------------------------------------------------------------------------------------------------------
         // Timing
@@ -66,10 +68,13 @@ namespace SM
         void SleepThreadMilliseconds(F32 ms);
 
         //------------------------------------------------------------------------------------------------------------------------
-        // I/O
+        // File I/O
         //------------------------------------------------------------------------------------------------------------------------
-        bool LoadFileBytes(const char* filename, Byte* outBytes, size_t outNumBytes);
+        bool ReadFileBytes(const char* filename, Byte*& outBytes, size_t& outNumBytes, LinearAllocator* allocator = GetCurrentAllocator());
 
+        //------------------------------------------------------------------------------------------------------------------------
+        // Keyboard / Mouse / Gamepad Input
+        //------------------------------------------------------------------------------------------------------------------------
         enum KeyCode : U32
         {
             kKey0,

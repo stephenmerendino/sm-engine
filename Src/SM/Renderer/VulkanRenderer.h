@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SM/Renderer/Renderer.h"
+#include "SM/StandardTypes.h"
 
 #define VK_NO_PROTOTYPES
 #include "ThirdParty/vulkan/vulkan_core.h"
@@ -13,16 +13,26 @@
 
 namespace SM
 {
-    class VulkanRenderer : public Renderer
+    enum ShaderType
+    {
+        kVertex,
+        kPixel,
+        kCompute,
+        kNumShaderTypes
+    };
+
+    namespace Platform
+    {
+        struct Window;
+    }
+
+    class VulkanRenderer
     {
         public:
-        // main renderer interface
-        virtual bool Init(Platform::Window* pWindow) final;
+        bool Init(Platform::Window* pWindow);
+        VkFormat FindSupportedFormat(VkFormat* candidates, U32 numCandidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 
         Platform::Window* m_pWindow = nullptr;
-
-        // vulkan specific
-        VkFormat FindSupportedFormat(VkFormat* candidates, U32 numCandidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 
         VkInstance m_instance = VK_NULL_HANDLE;
         VkPhysicalDevice m_physicalDevice = VK_NULL_HANDLE;

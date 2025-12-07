@@ -30,8 +30,8 @@ static I64 s_timingFreqPerSec = 0;
 
 // shader compiler
 CComPtr<IDxcLibrary> s_dxcShaderCompilerLibrary;
-CComPtr<IDxcCompiler3> s_dcxShaderCompiler;
-CComPtr<IDxcUtils> s_dcxUtils;
+CComPtr<IDxcCompiler3> s_dxcShaderCompiler;
+CComPtr<IDxcUtils> s_dxcUtils;
 
 /*
    For future reference of how to ask platform for memory info
@@ -76,8 +76,8 @@ void Platform::Init()
 
     // dxc shader compiler
 	SM_ASSERT(SUCCEEDED(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(&s_dxcShaderCompilerLibrary))));
-	SM_ASSERT(SUCCEEDED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&s_dcxShaderCompiler))));
-	SM_ASSERT(SUCCEEDED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&s_dcxUtils))));
+	SM_ASSERT(SUCCEEDED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&s_dxcShaderCompiler))));
+	SM_ASSERT(SUCCEEDED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&s_dxcUtils))));
 }
 
 void Platform::Log(const char* format, ...)
@@ -474,88 +474,98 @@ VkSurfaceKHR Platform::CreateVulkanSurface(VkInstance instance, Window* platform
     return surface;
 }
 
-void Platform::CompileShader()
+void Platform::CompileShader(ShaderType shaderType, const char* shaderFile, const char* entryFunctionName)
 {
-	//HRESULT hres;
+    HRESULT hres;
 
-	//// append on the root shader directory
-	//// todo: move this out of platform specific code
-	//string_t full_filepath = string_init(arena);
-	//string_append(full_filepath, SHADERS_PATH);
-	//string_append(full_filepath, file_name);
+    PushScopedStackAllocator(KiB(2));
 
-	//// need to convert filepath from const char * to LPCWSTR
-	//wchar_t* full_filepath_w = string_to_wchar(arena, full_filepath);
-	//wchar_t* entry_name_w = string_to_wchar(arena, entry_name);
+    const char* fullFilepath = ConcatenateStrings(EngineGetRawAssetsDir(), "Shaders\\");
+    fullFilepath = ConcatenateStrings(fullFilepath, shaderFile);
 
-	//// Load the HLSL text shader from disk
-	//uint32_t code_page = DXC_CP_ACP;
-	//CComPtr<IDxcBlobEncoding> source_blob;
-	//hres = s_utils->LoadFile(full_filepath_w, &code_page, &source_blob);
-	//SM_ASSERT(SUCCEEDED(hres));
+	// need to convert filepath from const char * to LPCWSTR
 
-	//LPCWSTR target_profile;
-	//switch (shader_type)
-	//{
-    //    case shader_type_t::VERTEX: target_profile = L"vs_6_6"; break;
-    //    case shader_type_t::PIXEL: target_profile = L"ps_6_6"; break;
-	//	case shader_type_t::COMPUTE: target_profile = L"cs_6_6"; break;
-    //    default: target_profile = L"unknown"; break;
-	//}
+    size_t fullFilepathLen = strlen(fullFilepath) + 1;
+    wchar_t* fullFilepathW = SM::Alloc<wchar_t>(fullFilepathLen); 
+	size_t numCharsConverted = 0;
+	::mbstowcs_s(&numCharsConverted, fullFilepathW, fullFilepathLen, fullFilepath, fullFilepathLen);
 
-	//// configure the compiler arguments for compiling the HLSL shader to SPIR-V
-	//array_t<LPCWSTR> arguments = array_init<LPCWSTR>(arena, 8);
-	//array_push(arguments, (LPCWSTR)full_filepath_w);
-	//array_push(arguments, L"-E");
-	//array_push(arguments, (LPCWSTR)entry_name_w);
-	//array_push(arguments, L"-T");
-	//array_push(arguments, target_profile);
-	//array_push(arguments, L"-spirv");
+    size_t entryFunctionNameLen = strlen(entryFunctionName) + 1;
+    wchar_t* entryFunctionNameW = SM::Alloc<wchar_t>(entryFunctionNameLen); 
+	numCharsConverted = 0;
+	::mbstowcs_s(&numCharsConverted, entryFunctionNameW, entryFunctionNameLen, entryFunctionName, entryFunctionNameLen);
 
-	//if(is_running_in_debug())
-	//{
-    //    array_push(arguments, L"-Zi");
-    //    array_push(arguments, L"-Od");
-	//}
+	// Load the HLSL text shader from disk
+	U32 codePage = DXC_CP_ACP;
+	CComPtr<IDxcBlobEncoding> sourceBlob;
+	hres = s_dxcUtils->LoadFile(fullFilepathW, &codePage, &sourceBlob);
+	SM_ASSERT(SUCCEEDED(hres));
 
-	//// Compile shader
-	//DxcBuffer buffer{};
-	//buffer.Encoding = DXC_CP_ACP;
-	//buffer.Ptr = source_blob->GetBufferPointer();
-	//buffer.Size = source_blob->GetBufferSize();
+	LPCWSTR targetProfile;
+	switch (shaderType)
+	{
+        case SM::kVertex: targetProfile = L"vs66"; break;
+        case SM::kPixel: targetProfile = L"ps66"; break;
+		case SM::kCompute: targetProfile = L"cs66"; break;
+        default: targetProfile = L"unknown"; break;
+	}
 
-	//CComPtr<IDxcResult> result{ nullptr };
-	//hres = s_compiler->Compile(&buffer, arguments.data, (uint32_t)arguments.cur_size, nullptr, IID_PPV_ARGS(&result));
+	// configure the compiler arguments for compiling the HLSL shader to SPIR-V
+    static const size_t kMaxNumArgs = 12;
+    size_t numArgs = 0;
+	LPCWSTR arguments[kMaxNumArgs];
+    ::memset(arguments, 0, sizeof(LPCWSTR) * kMaxNumArgs);
+	arguments[numArgs++] = (LPCWSTR)fullFilepathW;
+	arguments[numArgs++] = L"-E";
+	arguments[numArgs++] = (LPCWSTR)entryFunctionNameW;
+	arguments[numArgs++] = L"-T";
+	arguments[numArgs++] = targetProfile;
+	arguments[numArgs++] = L"-spirv";
 
-	//if (SUCCEEDED(hres)) 
-	//{
-	//	result->GetStatus(&hres);
-	//}
+	if(IsRunningDebugBuild())
+	{
+        arguments[numArgs++] = L"-Zi";
+        arguments[numArgs++] = L"-Od";
+	}
 
-	//// Output error if compilation failed
-	//if (FAILED(hres) && (result)) 
-	//{
-	//	CComPtr<IDxcBlobEncoding> error_blob;
-	//	hres = result->GetErrorBuffer(&error_blob);
-	//	if (SUCCEEDED(hres) && error_blob) 
-	//	{
-	//		debug_printf("Shader compilation failed for %s\n%s\n", file_name, (const char*)error_blob->GetBufferPointer());
-	//		return false;
-	//	}
-	//}
+	// Compile shader
+	DxcBuffer buffer{};
+	buffer.Encoding = DXC_CP_ACP;
+	buffer.Ptr = sourceBlob->GetBufferPointer();
+	buffer.Size = sourceBlob->GetBufferSize();
 
-	//// Get compilation result
-	//CComPtr<IDxcBlob> code;
-	//result->GetResult(&code);
+	CComPtr<IDxcResult> result{ nullptr };
+	hres = s_dxcShaderCompiler->Compile(&buffer, arguments, numArgs, nullptr, IID_PPV_ARGS(&result));
 
-	//(*out_shader)->file_name = file_name;
-	//(*out_shader)->entry_name = entry_name;
-	//(*out_shader)->shader_type = shader_type;
+	if (SUCCEEDED(hres)) 
+	{
+		result->GetStatus(&hres);
+	}
 
-	//(*out_shader)->bytecode = array_init<byte_t>(arena, code->GetBufferSize());
-	//array_push((*out_shader)->bytecode, (byte_t*)code->GetBufferPointer(), code->GetBufferSize());
+	// Output error if compilation failed
+	if (FAILED(hres) && (result)) 
+	{
+		CComPtr<IDxcBlobEncoding> errorBlob;
+		hres = result->GetErrorBuffer(&errorBlob);
+		if (SUCCEEDED(hres) && errorBlob) 
+		{
+			Log("Shader compilation failed for %s\n%s\n", shaderFile, (const char*)errorBlob->GetBufferPointer());
+			return false;
+		}
+	}
 
-	//return true;
+	// Get compilation result
+	CComPtr<IDxcBlob> code;
+	result->GetResult(&code);
+
+	(*out_shader)->file_name = file_name;
+	(*out_shader)->entry_name = entry_name;
+	(*out_shader)->shader_type = shader_type;
+
+	(*out_shader)->bytecode = array_init<byte_t>(arena, code->GetBufferSize());
+	array_push((*out_shader)->bytecode, (byte_t*)code->GetBufferPointer(), code->GetBufferSize());
+
+	return true;
 }
 
 F32 Platform::GetMillisecondsSinceAppStart()
@@ -601,36 +611,38 @@ void Platform::SleepThreadMilliseconds(F32 ms)
 	while (GetMillisecondsSinceAppStart() - msStart < ms) { YieldThread(); }
 }
 
-bool Platform::LoadFileBytes(const char* filename, Byte* outBytes, size_t outNumBytes)
+bool Platform::ReadFileBytes(const char* filename, Byte*& outBytes, size_t& outNumBytes, LinearAllocator* allocator)
 {
-	//array_t<byte_t> data;
+    HANDLE file = ::CreateFileA(filename, 
+                                GENERIC_READ, 
+                                FILE_SHARE_READ, 
+                                NULL, 
+                                OPEN_EXISTING,
+                                FILE_ATTRIBUTE_NORMAL, 
+                                NULL);
+    if(file == INVALID_HANDLE_VALUE)
+    {
+        ReportLastWindowsError();
+        return false;
+    }
 
-	//// open file for read and binary
-	//FILE* p_file = NULL;
-	//fopen_s(&p_file, filename, "rb");
-	//if (NULL == p_file)
-	//{
-	//	debug_printf("Failed to open file [%s] to read bytes\n", filename);
-	//	return data;
-	//}
+    DWORD fileSize = ::GetFileSize(file, NULL);
 
-	//// measure size
-	//fseek(p_file, 0, SEEK_END);
-	//long file_len = ftell(p_file);
-	//rewind(p_file);
+    // allocate a buffer of size fileSize
+    void* data = allocator->Alloc(fileSize);
 
-	//// alloc buffer
-	//data = array_init_sized<byte_t>(arena, file_len);
+    // read into it
+    DWORD numBytesRead = 0;
+    ::ReadFile(file, data, fileSize, &numBytesRead, NULL);
 
-	//// read into buffer
-	//size_t bytes_read = fread(data.data, sizeof(byte_t), file_len, p_file);
-	//SM_ASSERT(bytes_read == (size_t)file_len);
+    SM_ASSERT(numBytesRead == fileSize);
 
-	//// close file
-	//fclose(p_file);
+    // close file
+    ::CloseHandle(file);
 
-	//// return buffer
-	//return data;
+    // return data
+    outBytes = (Byte*)data;
+    outNumBytes = numBytesRead;
 
-    return false;
+    return true;
 }

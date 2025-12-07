@@ -1,36 +1,18 @@
 #include "SM/Memory.h"
 #include "SM/Assert.h"
+#include "SM/Containers.h"
 
 #include <cstdlib>
 
 using namespace SM;
 
-struct MemoryArena
+static size_t s_memoryArenaSizes[kNumBuiltInArenas] = 
 {
-    MemoryArenaType m_arenaType;    
-    size_t m_sizeBytes;
+    MiB(1) // kEngineGlobal   
 };
 
-MemoryArena g_memoryArenas[kNumArenaTypes] = 
-{
-    { .m_arenaType = kEngineGlobal, .m_sizeBytes = MiB(1) }   
-};
-
-class LinearAllocator
-{
-    public:
-    void Init(void* storage, size_t size);
-    void* Alloc(size_t sizeBytes, U32 alignment);
-    template<typename T>
-    T* Alloc(size_t numElements);
-    template<typename T>
-    T* Alloc();
-    void Reset();
-
-    void* m_pMemory = nullptr;
-    size_t m_size = 0;
-    U32 m_allocatedBytes = 0;
-};
+LinearAllocator s_allocators[kNumBuiltInArenas];
+Stack<LinearAllocator*, 256> s_allocatorStack;
 
 void LinearAllocator::Init(void* storage, size_t size)
 {
@@ -89,18 +71,40 @@ void LinearAllocator::Reset()
     m_allocatedBytes = 0;
 }
 
-LinearAllocator g_allocators[kNumArenaTypes];
-
-void SM::InitAllocators()
+void SM::InitBuiltInAllocators()
 {
-    for(int i = 0; i < kNumArenaTypes; i++)
+    for(int i = 0; i < kNumBuiltInArenas; i++)
     {
-        void* allocatorMemory = malloc(g_memoryArenas[i].m_sizeBytes);
-        g_allocators[i].Init(allocatorMemory, g_memoryArenas[i].m_sizeBytes);
+        void* allocatorMemory = malloc(s_memoryArenaSizes[i]);
+        s_allocators[i].Init(allocatorMemory, s_memoryArenaSizes[i]);
     }
 }
 
-void* SM::Alloc(MemoryArenaType arenaType, size_t numBytes, U32 alignment)
+LinearAllocator* SM::GetBuiltInAllocator(BuiltInMemoryAllocator builtInArena)
 {
-    return g_allocators[arenaType].Alloc(numBytes, alignment);
+    return &s_allocators[builtInArena];
+}
+
+void SM::PushAllocator(LinearAllocator* allocator)
+{
+    s_allocatorStack.Push(allocator);
+}
+
+void SM::PushAllocator(BuiltInMemoryAllocator builtInAllocator)
+{
+    s_allocatorStack.Push(GetBuiltInAllocator(builtInAllocator));
+}
+
+void SM::PopAllocator()
+{
+    // pop allocator from the stack
+    s_allocatorStack.Pop();
+}
+
+LinearAllocator* SM::GetCurrentAllocator()
+{
+    LinearAllocator* allocator = nullptr;
+    bool didGetAllocator = s_allocatorStack.Top(&allocator);
+    SM_ASSERT(didGetAllocator);
+    return allocator;
 }

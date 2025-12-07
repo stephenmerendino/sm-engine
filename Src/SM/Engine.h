@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SM/Memory.h"
 namespace SM
 {
     //------------------------------------------------------------------------------------------------------------------
@@ -47,9 +48,10 @@ namespace SM
     //------------------------------------------------------------------------------------------------------------------
     // Common
     //------------------------------------------------------------------------------------------------------------------
-    void EngineInit(const char* dllName);
+    void EngineInit(const char* dllName, const char* rawAssetsDir);
     void EngineMainLoop();
     void EngineExit();
+    const char* EngineGetRawAssetsDir();
 
     inline constexpr bool IsRunningDebugBuild()
     {
@@ -70,4 +72,6 @@ namespace SM
         a = b;
         b = copy;
     }
+
+    char* ConcatenateStrings(const char* s1, const char* s2, LinearAllocator* allocator = GetCurrentAllocator());
 }

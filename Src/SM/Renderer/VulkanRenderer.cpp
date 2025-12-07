@@ -12,7 +12,10 @@ using namespace SM;
 
 bool VulkanRenderer::Init(Platform::Window* pWindow)
 {
+    SM::PushAllocator(kEngineGlobal);
     m_pWindow = pWindow;
+
+    Platform::LoadVulkanGlobalFuncs();
 
     //------------------------------------------------------------------------------------------------------------------------
     // Instance
@@ -40,7 +43,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
             U32 numLayers;
             vkEnumerateInstanceLayerProperties(&numLayers, nullptr);
 
-            VkLayerProperties* instanceLayers = SM::Alloc<VkLayerProperties>(kEngineGlobal, numLayers);
+            VkLayerProperties* instanceLayers = SM::Alloc<VkLayerProperties>(numLayers);
             vkEnumerateInstanceLayerProperties(&numLayers, instanceLayers);
 
             for (const char* layerName : VALIDATION_LAYERS)
@@ -120,7 +123,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
         SM_ASSERT(vkCreateDebugUtilsMessengerEXT(m_instance, &debugMessengerCreateInfo, nullptr, &debugMessenger) == VK_SUCCESS);
     }
 
-    VkSurfaceKHR surface = Platform::CreateVulkanSurface(m_instance, pWindow);
+    m_surface = Platform::CreateVulkanSurface(m_instance, pWindow);
 
     //------------------------------------------------------------------------------------------------------------------------
     // Physical Device
@@ -129,7 +132,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
     vkEnumeratePhysicalDevices(m_instance, &numFoundGPUs, nullptr);
     SM_ASSERT(numFoundGPUs != 0);
 
-    VkPhysicalDevice* foundGPUs = SM::Alloc<VkPhysicalDevice>(kEngineGlobal, numFoundGPUs);
+    VkPhysicalDevice* foundGPUs = SM::Alloc<VkPhysicalDevice>(numFoundGPUs);
     vkEnumeratePhysicalDevices(m_instance, &numFoundGPUs, foundGPUs);
 
     if (IsRunningDebugBuild())
@@ -173,7 +176,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
         U32 numFoundExtensions = 0;
         vkEnumerateDeviceExtensionProperties(candidateGPU, nullptr, &numFoundExtensions, nullptr);
 
-        VkExtensionProperties* extensions = SM::Alloc<VkExtensionProperties>(kEngineGlobal, numFoundExtensions);
+        VkExtensionProperties* extensions = SM::Alloc<VkExtensionProperties>(numFoundExtensions);
         vkEnumerateDeviceExtensionProperties(candidateGPU, nullptr, &numFoundExtensions, extensions);
 
         U8 numRequiredExtensions = ARRAY_LEN(DEVICE_EXTENSIONS);
@@ -202,14 +205,14 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
         }
 
         U32 numSurfaceFormats = 0;
-        vkGetPhysicalDeviceSurfaceFormatsKHR(candidateGPU, surface, &numSurfaceFormats, nullptr);
+        vkGetPhysicalDeviceSurfaceFormatsKHR(candidateGPU, m_surface, &numSurfaceFormats, nullptr);
         if(numSurfaceFormats == 0)
         {
             continue;
         }
 
         U32 numPresentModes = 0;
-        vkGetPhysicalDeviceSurfacePresentModesKHR(candidateGPU, surface, &numPresentModes, nullptr);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(candidateGPU, m_surface, &numPresentModes, nullptr);
         if(numPresentModes == 0)
         {
             continue;
@@ -218,7 +221,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
         U32 numQueueFamilies = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(candidateGPU, &numQueueFamilies, nullptr);
 
-        VkQueueFamilyProperties* queueFamilyProperties = SM::Alloc<VkQueueFamilyProperties>(kEngineGlobal, numQueueFamilies);
+        VkQueueFamilyProperties* queueFamilyProperties = SM::Alloc<VkQueueFamilyProperties>(numQueueFamilies);
         vkGetPhysicalDeviceQueueFamilyProperties(candidateGPU, &numQueueFamilies, queueFamilyProperties);
 
         m_graphicsQueueIndex = kInvalidQueueIndex;
@@ -250,7 +253,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
             }
 
             VkBool32 canPresent = false;
-            vkGetPhysicalDeviceSurfaceSupportKHR(candidateGPU, iQueue, surface, &canPresent);
+            vkGetPhysicalDeviceSurfaceSupportKHR(candidateGPU, iQueue, m_surface, &canPresent);
             if (m_presentationQueueIndex == kInvalidQueueIndex && canPresent)
             {
                 m_presentationQueueIndex = iQueue;
@@ -297,6 +300,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
 
     static const U32 kMaxNumQueues = 4;
     VkDeviceQueueCreateInfo queueCreateInfos[kMaxNumQueues];
+    ::memset(queueCreateInfos, 0, sizeof(queueCreateInfos));
     queueCreateInfos[numQueues].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
     queueCreateInfos[numQueues].queueFamilyIndex = m_graphicsQueueIndex;
     queueCreateInfos[numQueues].queueCount = 1;
@@ -379,7 +383,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
 
     U32 numSurfaceFormats = 0;
     vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, m_surface, &numSurfaceFormats, nullptr);
-    VkSurfaceFormatKHR* surfaceFormats = SM::Alloc<VkSurfaceFormatKHR>(kEngineGlobal, numSurfaceFormats);
+    VkSurfaceFormatKHR* surfaceFormats = SM::Alloc<VkSurfaceFormatKHR>(numSurfaceFormats);
     vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, m_surface, &numSurfaceFormats, surfaceFormats);
 
     m_swapchainFormat = surfaceFormats[0];
@@ -394,7 +398,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
 
     U32 numPresentModes = 0;
     vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, m_surface, &numPresentModes, nullptr);
-    VkPresentModeKHR* presentModes = SM::Alloc<VkPresentModeKHR>(kEngineGlobal, numPresentModes);
+    VkPresentModeKHR* presentModes = SM::Alloc<VkPresentModeKHR>(numPresentModes);
     vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, m_surface, &numPresentModes, presentModes);
 
     VkPresentModeKHR swapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
@@ -473,7 +477,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
 
     SM_ASSERT(vkCreateSwapchainKHR(m_device, &swapchainCreateInfo, nullptr, &m_swapchain) == VK_SUCCESS);
     SM_ASSERT(vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_numSwapchainImages, nullptr) == VK_SUCCESS);
-    SM_ASSERT(m_numSwapchainImages < kMaxNumSwapchainImages);
+    SM_ASSERT(m_numSwapchainImages <= kMaxNumSwapchainImages);
     SM_ASSERT(vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_numSwapchainImages, m_swapchainImages) == VK_SUCCESS);
 
     VkCommandBufferAllocateInfo commandBufferAllocInfo {
@@ -551,6 +555,8 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
 	m_defaultDepthFormat = FindSupportedFormat(candidateDepthFormats, ARRAY_LEN(candidateDepthFormats), VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 	SM_ASSERT(m_defaultDepthFormat != VK_FORMAT_UNDEFINED);
 
+    SM::PopAllocator();
+
     return true;
 }
 
@@ -572,6 +578,5 @@ VkFormat VulkanRenderer::FindSupportedFormat(VkFormat* candidates, U32 numCandid
 			return format;
 		}
 	}
-
 	return VK_FORMAT_UNDEFINED;
 }
