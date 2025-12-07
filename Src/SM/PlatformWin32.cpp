@@ -305,7 +305,7 @@ static LRESULT EngineWinProc(HWND window, UINT message, WPARAM wParam, LPARAM lP
 
         case WM_CLOSE:
         {
-            SM::EngineExit();
+            SM::Exit();
         }
         break;
 
@@ -516,7 +516,8 @@ GameApi Platform::LoadGameDll(const char* gameDll)
     lastLoadFiletime = fileInfo.ftLastWriteTime;
 
     EngineApi engineApi = {
-        .Log = &Platform::Log
+        .Log = &Platform::Log,
+        .GetRenderer = &GetRenderer
     };
     gameApi.GameBindEngine(engineApi);
 
@@ -657,7 +658,7 @@ Shader* Platform::CompileShader(ShaderType shaderType, const char* shaderFile, c
 
     PushScopedStackAllocator(KiB(2));
 
-    const char* fullFilepath = ConcatenateStrings(EngineGetRawAssetsDir(), "Shaders\\");
+    const char* fullFilepath = ConcatenateStrings(GetRawAssetsDir(), "Shaders\\");
     fullFilepath = ConcatenateStrings(fullFilepath, shaderFile);
 
     size_t fullFilepathLen = strlen(fullFilepath) + 1;

@@ -580,3 +580,8 @@ VkFormat VulkanRenderer::FindSupportedFormat(VkFormat* candidates, U32 numCandid
 	}
 	return VK_FORMAT_UNDEFINED;
 }
+
+void VulkanRenderer::Test()
+{
+    Platform::Log("Hello\n");
+}

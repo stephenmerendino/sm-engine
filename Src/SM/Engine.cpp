@@ -13,7 +13,7 @@ static Platform::Window* s_pWindow = nullptr;
 static VulkanRenderer* s_renderer = nullptr;
 static const char* s_rawAssetsDir = nullptr;
 
-void SM::EngineInit(const char* dllName, const char* rawAssetsDir)
+void SM::Init(const char* dllName, const char* rawAssetsDir)
 {
     s_dllName = dllName;
     s_rawAssetsDir = rawAssetsDir;
@@ -31,7 +31,7 @@ void SM::EngineInit(const char* dllName, const char* rawAssetsDir)
     game.GameInit();
 }
 
-void SM::EngineMainLoop()
+void SM::MainLoop()
 {
     while(!s_bExit)
     {
@@ -43,14 +43,28 @@ void SM::EngineMainLoop()
     }
 }
 
-void SM::EngineExit()
+void SM::Exit()
 {
     s_bExit = true;
 }
 
-const char* SM::EngineGetRawAssetsDir()
+VulkanRenderer* SM::GetRenderer()
+{
+    return s_renderer;
+}
+
+const char* SM::GetRawAssetsDir()
 {
     return s_rawAssetsDir;
+}
+
+constexpr bool SM::IsRunningDebugBuild()
+{
+    #if NDEBUG
+    return false;
+    #else
+    return true;
+    #endif
 }
 
 char* SM::ConcatenateStrings(const char* s1, const char* s2, LinearAllocator* allocator)

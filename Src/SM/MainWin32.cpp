@@ -15,8 +15,8 @@ int WINAPI WinMain(HINSTANCE app,
     const char* dllName = "Workbench.dll";
     const char* rawAssetsDir = "..\\..\\..\\RawAssets\\";
 
-    SM::EngineInit(dllName, rawAssetsDir);
-    SM::EngineMainLoop();
+    SM::Init(dllName, rawAssetsDir);
+    SM::MainLoop();
 
     return 0;
 }

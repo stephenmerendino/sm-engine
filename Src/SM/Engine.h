@@ -1,15 +1,20 @@
 #pragma once
 
 #include "SM/Memory.h"
+#include "SM/Renderer/VulkanRenderer.h"
+
 namespace SM
 {
     //------------------------------------------------------------------------------------------------------------------
     // Engine API
     //------------------------------------------------------------------------------------------------------------------
     typedef void (*EngineLogFunction)(const char* format, ...);
+    typedef VulkanRenderer* (*EngineGetRendererFunction)();
+
     struct EngineApi
     {
         EngineLogFunction Log;
+        EngineGetRendererFunction GetRenderer;
     };
 
     //------------------------------------------------------------------------------------------------------------------
@@ -48,19 +53,12 @@ namespace SM
     //------------------------------------------------------------------------------------------------------------------
     // Common
     //------------------------------------------------------------------------------------------------------------------
-    void EngineInit(const char* dllName, const char* rawAssetsDir);
-    void EngineMainLoop();
-    void EngineExit();
-    const char* EngineGetRawAssetsDir();
-
-    inline constexpr bool IsRunningDebugBuild()
-    {
-        #if NDEBUG
-        return false;
-        #else
-        return true;
-        #endif
-    }
+    void Init(const char* dllName, const char* rawAssetsDir);
+    void MainLoop();
+    void Exit();
+    VulkanRenderer* GetRenderer();
+    const char* GetRawAssetsDir();
+    constexpr bool IsRunningDebugBuild();
 
     #define ARRAY_LEN(x) (sizeof(x) / sizeof(x[0]))
     #define UNUSED(x) (void*)&x
