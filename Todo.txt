@@ -1,12 +1,13 @@
 Current Tasks
 -------------
-[] Port Camera code from old engine
+[] Get renderer clearing screen and presenting
 
 TODO
 ----
-[] Get renderer clearing screen and presenting
 [] ImGui setup
-[] Vulkan rendering time
+[] Frame pacing
+[] Game can render a single cube at world origin
+[] Game needs to setup camera logic for right click first person fly mode
 
 Big Systems TODO
 ----------------
@@ -26,3 +27,4 @@ Finished Tasks
 [x] Finish platform functions
 [x] Keyboard Input
 [x] Mouse Input
+[x] Port Camera code from old engine

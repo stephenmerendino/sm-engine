@@ -37,8 +37,8 @@ CComPtr<IDxcUtils> s_dxcUtils;
 
 // input state
 U8 s_keyStates[(U8)Platform::KeyCode::kNumKeyCodes] = { 0 };
-Vec2 s_mouseMovementNormalized = Vec2::ZERO;
-IVec2 s_savedMousePos = IVec2::ZERO;
+Vec2 s_mouseMovementNormalized = Vec2::kZero;
+IVec2 s_savedMousePos = IVec2::kZero;
 
 struct MouseState
 {
@@ -305,7 +305,8 @@ static LRESULT EngineWinProc(HWND window, UINT message, WPARAM wParam, LPARAM lP
 
         case WM_CLOSE:
         {
-            SM::Exit();
+            Platform::Log("WM_CLOSE\n");
+            Exit();
         }
         break;
 
@@ -440,6 +441,7 @@ Platform::Window* Platform::OpenWindow(const char* title, U32 width, U32 height)
     return pWindow;
 }
 
+/*
 GameApi Platform::LoadGameDll(const char* gameDll)
 {
     static bool bIsLoaded = false;
@@ -522,8 +524,9 @@ GameApi Platform::LoadGameDll(const char* gameDll)
 
     return gameApi;
 }
+*/
 
-void Platform::UpdateWindow(Window* pWindow)
+void Platform::Update(Window* pWindow)
 {
     // Reset input state
 	for (U32 i = 0; i < (U32)KeyCode::kNumKeyCodes; i++)

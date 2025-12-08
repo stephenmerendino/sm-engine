@@ -10,6 +10,8 @@
 
 namespace SM
 {
+    class Vec4;
+
     //-------------------------------------------------------------------------
     // Vec2
     //-------------------------------------------------------------------------
@@ -39,7 +41,7 @@ namespace SM
         void Normalize();
         Vec2 GetNormalized() const;
 
-        static const Vec2 ZERO;
+        static const Vec2 kZero;
     };
 
     //-------------------------------------------------------------------------
@@ -73,16 +75,19 @@ namespace SM
         void Normalize();
         Vec3 GetNormalized() const;
 
-        static const Vec3 ZERO;
-        static const Vec3 X_AXIS;
-        static const Vec3 Y_AXIS;
-        static const Vec3 Z_AXIS;
-        static const Vec3 WORLD_FORWARD;
-        static const Vec3 WORLD_BACKWARD;
-        static const Vec3 WORLD_UP;
-        static const Vec3 WORLD_DOWN;
-        static const Vec3 WORLD_LEFT;
-        static const Vec3 WORLD_RIGHT;
+        Vec4 ToVec4Point() const;
+        Vec4 ToVec4Dir() const;
+
+        static const Vec3 kZero;
+        static const Vec3 kXAxis;
+        static const Vec3 kYAxis;
+        static const Vec3 kZAxis;
+        static const Vec3 kWorldForward;
+        static const Vec3 kWorldBackward;
+        static const Vec3 kWorldUp;
+        static const Vec3 kWorldDown;
+        static const Vec3 kWorldLeft;
+        static const Vec3 kWorldRight;
     };
 
     //-------------------------------------------------------------------------
@@ -119,7 +124,7 @@ namespace SM
         Vec4 GetNormalized() const;
         Vec3 ToVec3() const;
 
-        static const Vec4 ZERO;
+        static const Vec4 kZero;
     };
 
     //-------------------------------------------------------------------------
@@ -148,7 +153,7 @@ namespace SM
         F32 CalcLength() const;
         I32 CalcLengthSq() const;
 
-        static const IVec2 ZERO;
+        static const IVec2 kZero;
     };
 
     //-------------------------------------------------------------------------
@@ -179,7 +184,7 @@ namespace SM
         F32 CalcLength() const;
         I32 CalcLengthSq() const;
 
-        static const IVec3 ZERO;
+        static const IVec3 kZero;
     };
 
     //-------------------------------------------------------------------------
@@ -219,6 +224,8 @@ namespace SM
         void Transpose();
         Mat33 GetTransposed() const;
         F32 Determinant() const;
+
+        static const Mat33 kIdentity;
     };
 
     //-------------------------------------------------------------------------
@@ -320,6 +327,9 @@ namespace SM
         Mat44 GetRotation() const;
         void SetRotation(const Mat44& rotation);
 
+        Vec3 TransformPoint(const Vec3& point) const;
+        Vec3 TransformDir(const Vec3& dir) const;
+
         static Mat44 CreateScale(F32 uniformScale);
         static Mat44 CreateScale(F32 i, F32 j, F32 k);
         static Mat44 CreateScale(const Vec3& ijk);
@@ -333,7 +343,10 @@ namespace SM
         static Mat44 CreateRotationZDegs(F32 zDegs);
         static Mat44 CreateRotationAroundAxisRads(const Vec3& axis, F32 rads);
         static Mat44 CreateRotationAroundAxisDegs(const Vec3& axis, F32 degs);
+
+        static const Mat44 kIdentity;
     };
+    Vec4 operator*(const Vec4& v, const Mat44& mat);
 
     //-------------------------------------------------------------------------
     // General
@@ -351,14 +364,14 @@ namespace SM
 
     inline F32 DegToRad(F32 degrees)
     {
-        static const F32 DEGREES_CONVERSION = kPi / 180.0f;
-        return degrees * DEGREES_CONVERSION;
+        static const F32 kDegreesConversion = kPi / 180.0f;
+        return degrees * kDegreesConversion;
     }
 
     inline F32 RadToDeg(F32 radians)
     {
-        static const F32 RADIANS_CONVERSION = 180.0f / kPi;
-        return radians * RADIANS_CONVERSION;
+        static const F32 kRadiansConverion = 180.0f / kPi;
+        return radians * kRadiansConverion;
     }
 
     inline F32 SinDeg(F32 deg)
@@ -417,6 +430,11 @@ namespace SM
         if(value < min) return min;
         if(value > max) return max;
         return value;
+    }
+
+    inline F32 Remap(F32 value, F32 inMin, F32 inMax, F32 outMin, F32 outMax)
+    {
+        return ((value / (inMax - inMin)) * (outMax - outMin)) + outMin;
     }
 
     //-------------------------------------------------------------------------
@@ -657,6 +675,16 @@ namespace SM
     	Vec3 copy = *this;
         copy.Normalize();
     	return copy;
+    }
+
+    inline Vec4 Vec3::ToVec4Point() const
+    {
+        return Vec4(x, y, z, 1.0f);
+    }
+
+    inline Vec4 Vec3::ToVec4Dir() const
+    {
+        return Vec4(x, y, z, 0.0f);
     }
 
     inline Vec3 operator*(F32 s, const Vec3& v)
@@ -1534,9 +1562,9 @@ namespace SM
     inline void Mat44::RotateAroundAxisRads(const Vec3& axis, F32 rads)
     {
         Vec3 i = axis.GetNormalized();
-        Vec3 j = Cross(Vec3::WORLD_UP, axis).GetNormalized();
+        Vec3 j = Cross(Vec3::kWorldUp, axis).GetNormalized();
         Vec3 k = Cross(i, j);
-        Mat44 rotWorldBasis = Mat44(i, j, k, Vec3::ZERO);
+        Mat44 rotWorldBasis = Mat44(i, j, k, Vec3::kZero);
         Mat44 rotWorldLocal = rotWorldBasis.GetTransposed();
         Mat44 localRot = Mat44::CreateRotationXRads(rads);
 
@@ -1593,9 +1621,9 @@ namespace SM
     inline void Mat44::SetRotationAroundAxisRads(const Vec3& axis, F32 rads)
     {
         Vec3 i = axis.GetNormalized();
-        Vec3 j = Cross(Vec3::WORLD_UP, axis).GetNormalized();
+        Vec3 j = Cross(Vec3::kWorldUp, axis).GetNormalized();
         Vec3 k = Cross(i, j);
-        Mat44 rotWorldBasis = Mat44(i, j, k, Vec3::ZERO);
+        Mat44 rotWorldBasis = Mat44(i, j, k, Vec3::kZero);
         Mat44 rotWorldLocal = rotWorldBasis.GetTransposed();
         Mat44 localRot = Mat44::CreateRotationXRads(rads);
 
@@ -1661,7 +1689,7 @@ namespace SM
 
     inline Mat44 Mat44::GetRotation() const
     {
-        return Mat44(GetIBasis(), GetJBasis(), GetKBasis(), Vec3::ZERO);
+        return Mat44(GetIBasis(), GetJBasis(), GetKBasis(), Vec3::kZero);
     }
 
     inline void Mat44::SetRotation(const Mat44& rotation)
@@ -1669,6 +1697,16 @@ namespace SM
         SetIBasis(rotation.GetIBasis());
         SetJBasis(rotation.GetJBasis());
         SetKBasis(rotation.GetKBasis());
+    }
+
+    inline Vec3 Mat44::TransformPoint(const Vec3& point) const
+    {
+        return (point.ToVec4Point() * *this).ToVec3();
+    }
+
+    inline Vec3 Mat44::TransformDir(const Vec3& dir) const
+    {
+        return (dir.ToVec4Dir() * *this).ToVec3();
     }
 
     inline Mat44 Mat44::CreateScale(F32 uniformScale)

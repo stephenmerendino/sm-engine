@@ -1,5 +1,8 @@
 #pragma once
 
+#include "SM/Math.h"
+#include "SM/Renderer/Shader.h"
+#include "SM/Renderer/Color.h"
 #include "SM/StandardTypes.h"
 
 #define VK_NO_PROTOTYPES
@@ -13,22 +16,6 @@
 
 namespace SM
 {
-    enum ShaderType
-    {
-        kVertex,
-        kPixel,
-        kCompute,
-        kNumShaderTypes
-    };
-
-    struct Shader
-    {
-        const char* m_fileName = nullptr; 
-        const char* m_entryFunctionName = nullptr;
-        Byte* m_byteCode = nullptr;
-        ShaderType m_type;
-    };
-
     namespace Platform
     {
         struct Window;
@@ -38,9 +25,12 @@ namespace SM
     {
         public:
         bool Init(Platform::Window* pWindow);
+        void RenderFrame();
+        void SetClearColor(const ColorF32& color);
         VkFormat FindSupportedFormat(VkFormat* candidates, U32 numCandidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 
         Platform::Window* m_pWindow = nullptr;
+        ColorF32 m_clearColor;
 
         VkInstance m_instance = VK_NULL_HANDLE;
         VkPhysicalDevice m_physicalDevice = VK_NULL_HANDLE;

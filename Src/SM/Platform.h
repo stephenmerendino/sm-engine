@@ -3,7 +3,7 @@
 #include "SM/Engine.h"
 #include "SM/Memory.h"
 #include "SM/StandardTypes.h"
-#include "SM/Renderer/VulkanRenderer.h"
+#include "SM/Renderer/Shader.h"
 
 #define VK_NO_PROTOTYPES
 #include "ThirdParty/vulkan/vulkan.h"
@@ -12,15 +12,13 @@ namespace SM
 { 
     namespace Platform
     {
+        struct Window;
+
         //------------------------------------------------------------------------------------------------------------------------
         // General
         //------------------------------------------------------------------------------------------------------------------------
         void Init();
-
-        //------------------------------------------------------------------------------------------------------------------------
-        // Game
-        //------------------------------------------------------------------------------------------------------------------------
-        GameApi LoadGameDll(const char* gameDll);
+        void Update(Window* pWindow);
 
         //------------------------------------------------------------------------------------------------------------------------
         // Logging
@@ -39,9 +37,7 @@ namespace SM
         //------------------------------------------------------------------------------------------------------------------------
         // Window
         //------------------------------------------------------------------------------------------------------------------------
-        struct Window;
         Window* OpenWindow(const char* title, U32 width, U32 height);
-        void UpdateWindow(Window* pWindow);
         void GetScreenDimensions(U32& screenWidth, U32& screenHeight);
         void GetWindowDimensions(Window* pWindow, U32& width, U32& height);
 
@@ -54,9 +50,9 @@ namespace SM
         PFN_vkDebugUtilsMessengerCallbackEXT GetVulkanDebugCallback();
         VkSurfaceKHR CreateVulkanSurface(VkInstance instance, Window* platformWindow);
         Shader* CompileShader(ShaderType shaderType, 
-                           const char* shaderFile, 
-                           const char* entryFunctionName, 
-                           LinearAllocator* allocator = GetCurrentAllocator());
+                              const char* shaderFile, 
+                              const char* entryFunctionName, 
+                              LinearAllocator* allocator = GetCurrentAllocator());
 
         //------------------------------------------------------------------------------------------------------------------------
         // Timing

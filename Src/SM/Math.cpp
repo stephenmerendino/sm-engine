@@ -2,20 +2,22 @@
 
 using namespace SM;
 
-const Vec2 Vec2::ZERO(0.0f, 0.0f);
-const Vec3 Vec3::ZERO(0.0, 0.0f, 0.0f);
-const Vec3 Vec3::X_AXIS(1.0f, 0.0f, 0.0f);
-const Vec3 Vec3::Y_AXIS(0.0f, 1.0f, 0.0f);
-const Vec3 Vec3::Z_AXIS(0.0f, 0.0f, 1.0f);
-const Vec3 Vec3::WORLD_FORWARD = Vec3::Y_AXIS;
-const Vec3 Vec3::WORLD_BACKWARD = -Vec3::WORLD_FORWARD;
-const Vec3 Vec3::WORLD_UP = Vec3::Z_AXIS;
-const Vec3 Vec3::WORLD_DOWN = -Vec3::WORLD_UP;
-const Vec3 Vec3::WORLD_LEFT = -Vec3::X_AXIS;
-const Vec3 Vec3::WORLD_RIGHT = -Vec3::WORLD_LEFT;
-const Vec4 Vec4::ZERO(0.0f, 0.0f, 0.0f, 0.0f);
-const IVec2 IVec2::ZERO(0, 0);
-const IVec3 IVec3::ZERO(0, 0, 0);
+const Vec2 Vec2::kZero(0.0f, 0.0f);
+const Vec3 Vec3::kZero(0.0, 0.0f, 0.0f);
+const Vec3 Vec3::kXAxis(1.0f, 0.0f, 0.0f);
+const Vec3 Vec3::kYAxis(0.0f, 1.0f, 0.0f);
+const Vec3 Vec3::kZAxis(0.0f, 0.0f, 1.0f);
+const Vec3 Vec3::kWorldForward = Vec3::kYAxis;
+const Vec3 Vec3::kWorldBackward = -Vec3::kWorldForward;
+const Vec3 Vec3::kWorldUp = Vec3::kZAxis;
+const Vec3 Vec3::kWorldDown = -Vec3::kWorldUp;
+const Vec3 Vec3::kWorldLeft = -Vec3::kXAxis;
+const Vec3 Vec3::kWorldRight = -Vec3::kWorldLeft;
+const Vec4 Vec4::kZero(0.0f, 0.0f, 0.0f, 0.0f);
+const IVec2 IVec2::kZero(0, 0);
+const IVec3 IVec3::kZero(0, 0, 0);
+const Mat33 Mat33::kIdentity;
+const Mat44 Mat44::kIdentity;
 
 // Based on https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/ 
 // #TODO(smerendino): Implement ULP into this as well based on the source text

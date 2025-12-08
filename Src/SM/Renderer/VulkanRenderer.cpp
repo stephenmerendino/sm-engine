@@ -10,11 +10,30 @@
 
 using namespace SM;
 
+Vec3 MakeColorNormalized(U8 r, U8 g, U8 b)
+{
+    return Vec3((F32)r / 255.f, (F32)g / 255.f, (F32)b / 255.f);
+}
+
+static const Vec3 kDefaultClearColor = MakeColorNormalized(0, 100, 100);
+
+struct Color
+{
+    Color(F32 _r, F32 _g, F32 _b, F32 _a = 1.0f);
+    Color(U8 _r, U8 _g, U8 _b, U8 _a = 255);
+
+    F32 r = 0.0f;
+    F32 g = 0.0f;
+    F32 b = 0.0f;
+    F32 a = 0.0f;
+};
+
 bool VulkanRenderer::Init(Platform::Window* pWindow)
 {
     SM::PushAllocator(kEngineGlobal);
 
     m_pWindow = pWindow;
+    m_clearColor = ColorF32(0, 100, 100);
 
     Platform::LoadVulkanGlobalFuncs();
 
@@ -561,6 +580,10 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
     return true;
 }
 
+void VulkanRenderer::RenderFrame()
+{
+}
+
 VkFormat VulkanRenderer::FindSupportedFormat(VkFormat* candidates, U32 numCandidates, VkImageTiling tiling, VkFormatFeatureFlags features)
 {
 	for(U32 i = 0; i < numCandidates; i++)
@@ -580,4 +603,9 @@ VkFormat VulkanRenderer::FindSupportedFormat(VkFormat* candidates, U32 numCandid
 		}
 	}
 	return VK_FORMAT_UNDEFINED;
+}
+
+void VulkanRenderer::SetClearColor(const ColorF32& color)
+{
+    m_clearColor = color;
 }
