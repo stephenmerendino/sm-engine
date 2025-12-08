@@ -1,8 +1,10 @@
 #include "SM/Engine.h"
-#include "SM/Math.h"
-#include "SM/Memory.h"
 #include "SM/Platform.h"
-#include "SM/Renderer/VulkanRenderer.h"
+
+#include "SM/Math.cpp"
+#include "SM/Memory.cpp"
+#include "SM/Renderer/VulkanRenderer.cpp"
+
 #include <cstdio>
 
 using namespace SM;
@@ -14,36 +16,21 @@ static VulkanRenderer* s_renderer = nullptr;
 
 void SM::Init(const EngineConfig& config)
 {
-    s_engineConfig = config;
-    Platform::Init();
+    SM::Platform::Init();
 
+    s_engineConfig = config;
     SeedRng();
     InitBuiltInAllocators();
-
-    s_pWindow = Platform::OpenWindow(config.m_windowName, config.m_windowWidth, config.m_windowHeight);
-
-    s_renderer = new (SM::Alloc<VulkanRenderer>(kEngineGlobal)) VulkanRenderer;
-    s_renderer->Init(s_pWindow);
-
-    GameApi game = Platform::LoadGameDll(s_engineConfig.m_dllName);
-    game.GameInit();
-}
-
-void SM::MainLoop()
-{
-    while(!s_bExit)
-    {
-        Platform::UpdateWindow(s_pWindow);
-
-        GameApi game = Platform::LoadGameDll(s_engineConfig.m_dllName);
-        game.GameUpdate();
-        game.GameRender();
-    }
 }
 
 void SM::Exit()
 {
     s_bExit = true;
+}
+
+bool SM::ExitRequested()
+{
+    return s_bExit;
 }
 
 VulkanRenderer* SM::GetRenderer()

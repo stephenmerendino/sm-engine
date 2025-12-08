@@ -533,7 +533,6 @@ void Platform::UpdateWindow(Window* pWindow)
 
     // Update Mouse State?
 
-
     MSG msg;
     while (::PeekMessage(&msg, pWindow->m_hwnd, 0, 0, PM_REMOVE))
     {

@@ -21,18 +21,6 @@ void LinearAllocator::Init(void* storage, size_t size)
     m_allocatedBytes = 0;
 }
 
-template<typename T>
-T* LinearAllocator::Alloc(size_t numElements)
-{
-    return (T*)Alloc(sizeof(T) * numElements, alignof(T));
-}
-
-template<typename T>
-T* LinearAllocator::Alloc()
-{
-    return Alloc<T>(1);
-}
-
 static uintptr_t AlignAddress(uintptr_t address, uintptr_t alignment)
 {
     /*

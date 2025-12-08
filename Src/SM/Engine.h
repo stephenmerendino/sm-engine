@@ -14,8 +14,6 @@ namespace SM
     struct EngineApi
     {
         EngineLogFunction Log;
-        RendererApi Renderer;
-        AssetManagerApi AssetManager;
     };
 
     //------------------------------------------------------------------------------------------------------------------
@@ -64,8 +62,8 @@ namespace SM
     };
 
     void Init(const EngineConfig& config);
-    void MainLoop();
     void Exit();
+    bool ExitRequested();
     VulkanRenderer* GetRenderer();
     const char* GetRawAssetsDir();
     bool IsRunningDebugBuild();

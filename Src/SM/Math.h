@@ -1271,17 +1271,17 @@ namespace SM
     	return *this;
     }
 
-    Vec3 Mat44::GetIBasis() const
+    inline Vec3 Mat44::GetIBasis() const
     {
         return Vec3(ix, iy, iz);
     }
 
-    Vec3 Mat44::GetJBasis() const
+    inline Vec3 Mat44::GetJBasis() const
     {
         return Vec3(jx, jy, jz);
     }
 
-    Vec3 Mat44::GetKBasis() const
+    inline Vec3 Mat44::GetKBasis() const
     {
         return Vec3(kx, ky, kz);
     }
