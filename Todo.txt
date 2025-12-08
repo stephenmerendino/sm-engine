@@ -1,11 +1,9 @@
 Current Tasks
 -------------
-[] Keyboard Input
+[] Port Camera code from old engine
 
 TODO
 ----
-[] Mouse Input
-[] Port Camera code from old engine
 [] Get renderer clearing screen and presenting
 [] ImGui setup
 [] Vulkan rendering time
@@ -26,3 +24,5 @@ Finished Tasks
 --------------
 [x] Finish porting Math
 [x] Finish platform functions
+[x] Keyboard Input
+[x] Mouse Input

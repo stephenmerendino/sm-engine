@@ -42,6 +42,7 @@ namespace SM
         struct Window;
         Window* OpenWindow(const char* title, U32 width, U32 height);
         void UpdateWindow(Window* pWindow);
+        void GetScreenDimensions(U32& screenWidth, U32& screenHeight);
         void GetWindowDimensions(Window* pWindow, U32& width, U32& height);
 
         //------------------------------------------------------------------------------------------------------------------------
@@ -211,9 +212,13 @@ namespace SM
         void ShowMouse();
         void HideMouse();
         bool IsMouseShown();
-        void GetMousePositionScreen(U32& screenX, U32& screenY);
-        void SetMousePositionScreen(U32 screenX, U32 screenY);
-        void GetMousePositionNormalized(U32& screenX, U32& screenY);
-        void SetMousePositionNormalized(U32 screenX, U32 screenY);
+        void GetMousePositionScreen(U32& xScreen, U32& yScreen);
+        void SetMousePositionScreen(U32 xScreen, U32 yScreen);
+        void GetMousePositionScreenNormalized(U32& xScreenNormalized, U32& yScreenNormalized);
+        void SetMousePositionScreenNormalized(U32 xScreenNormalized, U32 yScreenNormalized);
+        void GetMousePositionWindow(Window* pWindow, U32& xWindow, U32& yWindow);
+        void SetMousePositionWindow(Window* pWindow, U32 xWindow, U32 yWindow);
+        void GetMousePositionWindowNormalized(Window* pWindow, F32& xWindowNormalized, F32& yWindowNormalized);
+        void SetMousePositionWindowNormalized(Window* pWindow, F32 xWindowNormalized, F32 yWindowNormalized);
     } 
 }

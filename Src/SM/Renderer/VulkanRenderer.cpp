@@ -13,6 +13,7 @@ using namespace SM;
 bool VulkanRenderer::Init(Platform::Window* pWindow)
 {
     SM::PushAllocator(kEngineGlobal);
+
     m_pWindow = pWindow;
 
     Platform::LoadVulkanGlobalFuncs();
@@ -579,9 +580,4 @@ VkFormat VulkanRenderer::FindSupportedFormat(VkFormat* candidates, U32 numCandid
 		}
 	}
 	return VK_FORMAT_UNDEFINED;
-}
-
-void VulkanRenderer::Test()
-{
-    Platform::Log("Hello\n");
 }

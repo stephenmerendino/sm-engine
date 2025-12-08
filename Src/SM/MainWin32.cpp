@@ -12,10 +12,15 @@ int WINAPI WinMain(HINSTANCE app,
 				   LPSTR args, 
 				   int show)
 {
-    const char* dllName = "Workbench.dll";
-    const char* rawAssetsDir = "..\\..\\..\\RawAssets\\";
+    EngineConfig config {
+        .m_dllName = "Workbench.dll",
+        .m_windowName = "Workbench",
+        .m_windowWidth = 1920,
+        .m_windowHeight = 1080,
+        .m_rawAssetsDir = "..\\..\\..\\RawAssets\\"
+    };
 
-    SM::Init(dllName, rawAssetsDir);
+    SM::Init(config);
     SM::MainLoop();
 
     return 0;

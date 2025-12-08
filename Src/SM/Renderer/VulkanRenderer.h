@@ -40,8 +40,6 @@ namespace SM
         bool Init(Platform::Window* pWindow);
         VkFormat FindSupportedFormat(VkFormat* candidates, U32 numCandidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 
-        void Test();
-
         Platform::Window* m_pWindow = nullptr;
 
         VkInstance m_instance = VK_NULL_HANDLE;

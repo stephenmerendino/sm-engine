@@ -516,8 +516,7 @@ GameApi Platform::LoadGameDll(const char* gameDll)
     lastLoadFiletime = fileInfo.ftLastWriteTime;
 
     EngineApi engineApi = {
-        .Log = &Platform::Log,
-        .GetRenderer = &GetRenderer
+        .Log = &Platform::Log
     };
     gameApi.GameBindEngine(engineApi);
 
@@ -541,6 +540,12 @@ void Platform::UpdateWindow(Window* pWindow)
         ::TranslateMessage(&msg);
         ::DispatchMessage(&msg);
     }
+}
+
+void Platform::GetScreenDimensions(U32& screenWidth, U32& screenHeight)
+{
+    screenWidth = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+    screenHeight = GetSystemMetrics(SM_CYVIRTUALSCREEN);
 }
 
 void Platform::GetWindowDimensions(Window* pWindow, U32& width, U32& height)
@@ -867,22 +872,73 @@ void Platform::SetMousePositionScreen(U32 xScreen, U32 yScreen)
 	::SetCursorPos(xScreen, yScreen);
 }
 
-void Platform::GetMousePositionNormalized(U32& xNormalized, U32& yNormalized)
+void Platform::GetMousePositionScreenNormalized(U32& xScreenNormalized, U32& yScreenNormalized)
 {
     U32 xScreen = 0;
     U32 yScreen = 0;
     GetMousePositionScreen(xScreen, yScreen);
 
-    int screenWidth = GetSystemMetrics(SM_CXVIRTUALSCREEN);
-    int screenHeight = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+    U32 screenWidth = 0;
+    U32 screenHeight = 0;
+    GetScreenDimensions(screenWidth, screenHeight);
 
-    xNormalized = (F32)xScreen / (F32)screenWidth;
-    yNormalized = (F32)yScreen / (F32)screenHeight;
+    xScreenNormalized = (F32)xScreen / (F32)screenWidth;
+    yScreenNormalized = (F32)yScreen / (F32)screenHeight;
 }
 
-void Platform::SetMousePositionNormalized(U32 xNormalized, U32 yNormalized)
+void Platform::SetMousePositionScreenNormalized(U32 xScreenNormalized, U32 yScreenNormalized)
 {
-    int screenWidth = GetSystemMetrics(SM_CXVIRTUALSCREEN);
-    int screenHeight = GetSystemMetrics(SM_CYVIRTUALSCREEN);
-    SetMousePositionScreen(xNormalized * screenWidth, yNormalized * screenHeight);
+    U32 screenWidth = 0;
+    U32 screenHeight = 0;
+    GetScreenDimensions(screenWidth, screenHeight);
+    SetMousePositionScreen(xScreenNormalized * screenWidth, yScreenNormalized * screenHeight);
+}
+
+void Platform::GetMousePositionWindow(Window* pWindow, U32& xWindow, U32& yWindow)
+{
+    U32 xScreen = 0;
+    U32 yScreen = 0;
+    GetMousePositionScreen(xScreen, yScreen);
+
+    POINT screenPos{.x = (LONG)xWindow, .y = (LONG)yWindow};
+    ::ScreenToClient(pWindow->m_hwnd, &screenPos);
+
+    xWindow = screenPos.x;
+    yWindow = screenPos.y;
+}
+
+void Platform::SetMousePositionWindow(Window* pWindow, U32 xWindow, U32 yWindow)
+{
+    POINT screenPos{.x =  (LONG)xWindow, .y = (LONG)yWindow};
+    ::ClientToScreen(pWindow->m_hwnd, &screenPos); 
+    SetMousePositionScreen(screenPos.x, screenPos.y);
+}
+
+void Platform::GetMousePositionWindowNormalized(Window* pWindow, F32& xWindowNormalized, F32& yWindowNormalized)
+{
+    U32 xWindow = 0;
+    U32 yWindow = 0;
+    GetMousePositionWindow(pWindow, xWindow, yWindow);
+
+    U32 windowWidth = 0;
+    U32 windowHeight = 0;
+    GetWindowDimensions(pWindow, windowWidth, windowHeight);
+
+    xWindowNormalized = (F32)xWindow / (F32)windowWidth;
+    yWindowNormalized = (F32)yWindow / (F32)windowHeight;
+}
+
+void Platform::SetMousePositionWindowNormalized(Window* pWindow, F32 xWindowNormalized, F32 yWindowNormalized)
+{
+    U32 windowWidth = 0;
+    U32 windowHeight = 0;
+    GetWindowDimensions(pWindow, windowWidth, windowHeight);
+    
+    U32 xWindow = xWindowNormalized * windowWidth;
+    U32 yWindow = yWindowNormalized * windowHeight;
+
+    POINT screenPos{ .x = (LONG)xWindow, .y = (LONG)yWindow };
+    ::ClientToScreen(pWindow->m_hwnd, &screenPos);
+
+    SetMousePositionScreen(screenPos.x, screenPos.y);
 }

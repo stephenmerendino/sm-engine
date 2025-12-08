@@ -7,27 +7,25 @@
 
 using namespace SM;
 
-static const char* s_dllName = nullptr;
+static EngineConfig s_engineConfig;
 static bool s_bExit = false;
 static Platform::Window* s_pWindow = nullptr;
 static VulkanRenderer* s_renderer = nullptr;
-static const char* s_rawAssetsDir = nullptr;
 
-void SM::Init(const char* dllName, const char* rawAssetsDir)
+void SM::Init(const EngineConfig& config)
 {
-    s_dllName = dllName;
-    s_rawAssetsDir = rawAssetsDir;
-
+    s_engineConfig = config;
     Platform::Init();
 
     SeedRng();
     InitBuiltInAllocators();
 
-    s_pWindow = Platform::OpenWindow("Workbench", 1600, 900);
+    s_pWindow = Platform::OpenWindow(config.m_windowName, config.m_windowWidth, config.m_windowHeight);
+
     s_renderer = new (SM::Alloc<VulkanRenderer>(kEngineGlobal)) VulkanRenderer;
     s_renderer->Init(s_pWindow);
 
-    GameApi game = Platform::LoadGameDll(s_dllName);
+    GameApi game = Platform::LoadGameDll(s_engineConfig.m_dllName);
     game.GameInit();
 }
 
@@ -37,7 +35,7 @@ void SM::MainLoop()
     {
         Platform::UpdateWindow(s_pWindow);
 
-        GameApi game = Platform::LoadGameDll(s_dllName);
+        GameApi game = Platform::LoadGameDll(s_engineConfig.m_dllName);
         game.GameUpdate();
         game.GameRender();
     }
@@ -55,10 +53,10 @@ VulkanRenderer* SM::GetRenderer()
 
 const char* SM::GetRawAssetsDir()
 {
-    return s_rawAssetsDir;
+    return s_engineConfig.m_rawAssetsDir;
 }
 
-constexpr bool SM::IsRunningDebugBuild()
+bool SM::IsRunningDebugBuild()
 {
     #if NDEBUG
     return false;

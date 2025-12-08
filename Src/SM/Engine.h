@@ -14,7 +14,8 @@ namespace SM
     struct EngineApi
     {
         EngineLogFunction Log;
-        EngineGetRendererFunction GetRenderer;
+        RendererApi Renderer;
+        AssetManagerApi AssetManager;
     };
 
     //------------------------------------------------------------------------------------------------------------------
@@ -53,12 +54,21 @@ namespace SM
     //------------------------------------------------------------------------------------------------------------------
     // Common
     //------------------------------------------------------------------------------------------------------------------
-    void Init(const char* dllName, const char* rawAssetsDir);
+    struct EngineConfig
+    {
+        const char* m_dllName = nullptr;
+        const char* m_windowName = nullptr;
+        U32 m_windowWidth = 0;
+        U32 m_windowHeight = 0;
+        const char* m_rawAssetsDir = nullptr;
+    };
+
+    void Init(const EngineConfig& config);
     void MainLoop();
     void Exit();
     VulkanRenderer* GetRenderer();
     const char* GetRawAssetsDir();
-    constexpr bool IsRunningDebugBuild();
+    bool IsRunningDebugBuild();
 
     #define ARRAY_LEN(x) (sizeof(x) / sizeof(x[0]))
     #define UNUSED(x) (void*)&x
