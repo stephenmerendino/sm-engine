@@ -574,7 +574,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL Win32VulkanDebugCallback(VkDebugUtilsMessa
 	UNUSED(userData);
 
 	// filter out verbose and info messages unless we explicitly want them
-	if (!VULKAN_VERBOSE)
+	if (!VulkanConfig::kEnableVerboseLog)
 	{
 		if (msgSeverity & (VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT))
 		{

@@ -54,9 +54,8 @@ namespace SM
         VkSwapchainKHR m_swapchain = VK_NULL_HANDLE;
         VkSurfaceFormatKHR m_swapchainFormat;
         VkExtent2D m_swapchainExtent;
-        static const U32 kMaxNumSwapchainImages = 3;
-        VkImage m_swapchainImages[kMaxNumSwapchainImages];
-        U32 m_numSwapchainImages = 0;
+        U32 m_numFramesInFlight = 0;
+        VkImage* m_pSwapchainImages;
 
         VkSampleCountFlagBits m_maxMsaaSamples = VK_SAMPLE_COUNT_1_BIT;
         VkFormat m_defaultDepthFormat = VK_FORMAT_UNDEFINED;

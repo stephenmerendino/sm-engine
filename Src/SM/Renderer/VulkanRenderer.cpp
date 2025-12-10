@@ -10,30 +10,202 @@
 
 using namespace SM;
 
-Vec3 MakeColorNormalized(U8 r, U8 g, U8 b)
+static const ColorF32 kDefaultClearColor = ColorF32(0, 100, 100);
+
+struct FrameResources
 {
-    return Vec3((F32)r / 255.f, (F32)g / 255.f, (F32)b / 255.f);
-}
-
-static const Vec3 kDefaultClearColor = MakeColorNormalized(0, 100, 100);
-
-struct Color
-{
-    Color(F32 _r, F32 _g, F32 _b, F32 _a = 1.0f);
-    Color(U8 _r, U8 _g, U8 _b, U8 _a = 255);
-
-    F32 r = 0.0f;
-    F32 g = 0.0f;
-    F32 b = 0.0f;
-    F32 a = 0.0f;
+    VkImage m_mainColorRenderTarget = VK_NULL_HANDLE;
+    VkImage* m_swapchainImage = nullptr;
 };
+FrameResources s_frameResources[VulkanConfig::kOptimalNumFramesInFlight];
+
+static void UpdateSwapchain(VulkanRenderer* pRenderer)
+{
+	if (pRenderer->m_swapchain != VK_NULL_HANDLE)
+	{
+        vkQueueWaitIdle(pRenderer->m_graphicsQueue);
+        vkDestroySwapchainKHR(pRenderer->m_device, pRenderer->m_swapchain, nullptr);
+	}
+
+    U32 numSurfaceFormats = 0;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(pRenderer->m_physicalDevice, pRenderer->m_surface, &numSurfaceFormats, nullptr);
+    VkSurfaceFormatKHR* surfaceFormats = SM::Alloc<VkSurfaceFormatKHR>(numSurfaceFormats);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(pRenderer->m_physicalDevice, pRenderer->m_surface, &numSurfaceFormats, surfaceFormats);
+
+    pRenderer->m_swapchainFormat = surfaceFormats[0];
+    for(int i = 0; i < numSurfaceFormats; i++)
+    {
+        const VkSurfaceFormatKHR& format = surfaceFormats[i];
+        if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+        {
+            pRenderer->m_swapchainFormat = format;
+        }
+    }
+
+    U32 numPresentModes = 0;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(pRenderer->m_physicalDevice, pRenderer->m_surface, &numPresentModes, nullptr);
+    VkPresentModeKHR* presentModes = SM::Alloc<VkPresentModeKHR>(numPresentModes);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(pRenderer->m_physicalDevice, pRenderer->m_surface, &numPresentModes, presentModes);
+
+    VkPresentModeKHR swapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
+    for(int i = 0; i < numPresentModes; i++)
+    {
+        const VkPresentModeKHR& mode = presentModes[i];
+        if (mode == VK_PRESENT_MODE_MAILBOX_KHR)
+        {
+            swapchainPresentMode = mode;
+            break;
+        }
+    }
+
+    VkSurfaceCapabilitiesKHR surfaceCapabilities{};
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(pRenderer->m_physicalDevice, pRenderer->m_surface, &surfaceCapabilities);
+
+    if (surfaceCapabilities.currentExtent.width != UINT32_MAX)
+    {
+        pRenderer->m_swapchainExtent = surfaceCapabilities.currentExtent;
+    }
+    else
+    {
+        U32 width;
+        U32 height;
+        Platform::GetWindowDimensions(pRenderer->m_pWindow, width, height);
+        pRenderer->m_swapchainExtent = { width, height };
+        pRenderer->m_swapchainExtent.width = Clamp(pRenderer->m_swapchainExtent.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
+        pRenderer->m_swapchainExtent.height = Clamp(pRenderer->m_swapchainExtent.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
+    }
+
+    U32 imageCount = surfaceCapabilities.minImageCount + 1; // one extra image to prevent waiting on driver
+    imageCount = Min(imageCount, VulkanConfig::kOptimalNumFramesInFlight);
+    if (surfaceCapabilities.maxImageCount > 0)
+    {
+        imageCount = Min(imageCount, surfaceCapabilities.maxImageCount);
+    }
+
+    if(imageCount > pRenderer->m_numFramesInFlight)
+    {
+        if(s_frameResources)
+        {
+            // free the vulkan resources held by the current frame resources
+        }
+        s_frameResources = SM::Alloc<FrameResources>(kEngineGlobal, imageCount);
+        pRenderer->m_numFramesInFlight = imageCount;
+        pRenderer->m_pSwapchainImages = SM::Alloc<VkImage>(kEngineGlobal, pRenderer->m_numFramesInFlight);
+    }
+
+    // TODO: Allow fullscreen
+    //VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = {};
+    //fullScreenInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
+    //fullScreenInfo.pNext = nullptr;
+    //fullScreenInfo.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT;
+
+    VkSwapchainCreateInfoKHR swapchainCreateInfo {
+        .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+        .pNext = nullptr, // use full_screenInfo here
+        .surface = pRenderer->m_surface,
+        .minImageCount = pRenderer->m_numFramesInFlight,
+        .imageFormat = pRenderer->m_swapchainFormat.format,
+        .imageColorSpace = pRenderer->m_swapchainFormat.colorSpace,
+        .imageExtent = pRenderer->m_swapchainExtent,
+        .imageArrayLayers = 1,
+        .imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+        .presentMode = swapchainPresentMode
+    };
+
+    U32 queueFamilyIndices[] = { (U32)pRenderer->m_graphicsQueueIndex, (U32)pRenderer->m_presentationQueueIndex };
+
+    if (pRenderer->m_graphicsQueueIndex != pRenderer->m_presentationQueueIndex)
+    {
+        swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+        swapchainCreateInfo.queueFamilyIndexCount = 2;
+        swapchainCreateInfo.pQueueFamilyIndices = queueFamilyIndices;
+    }
+    else
+    {
+        swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        swapchainCreateInfo.queueFamilyIndexCount = 0;
+        swapchainCreateInfo.pQueueFamilyIndices = nullptr;
+    }
+
+    swapchainCreateInfo.preTransform = surfaceCapabilities.currentTransform;
+    swapchainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    swapchainCreateInfo.clipped = VK_TRUE;
+    swapchainCreateInfo.oldSwapchain = VK_NULL_HANDLE;
+
+
+    SM_ASSERT(vkCreateSwapchainKHR(pRenderer->m_device, &swapchainCreateInfo, nullptr, &pRenderer->m_swapchain) == VK_SUCCESS);
+
+    // make sure number of swapchain images matches what we expected based on surface capabilities + config
+    U32 numSwapchainImages = 0;
+    SM_ASSERT(vkGetSwapchainImagesKHR(pRenderer->m_device, pRenderer->m_swapchain, &numSwapchainImages, nullptr) == VK_SUCCESS);
+    SM_ASSERT(pRenderer->m_numFramesInFlight == numSwapchainImages)
+        
+    SM_ASSERT(vkGetSwapchainImagesKHR(pRenderer->m_device, pRenderer->m_swapchain, &numSwapchainImages, pRenderer->m_pSwapchainImages) == VK_SUCCESS);
+
+    VkCommandBufferAllocateInfo commandBufferAllocInfo {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .pNext = nullptr,
+        .commandPool = pRenderer->m_graphicsCommandPool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1
+    };
+
+    VkCommandBuffer commandBuffer;
+    vkAllocateCommandBuffers(pRenderer->m_device, &commandBufferAllocInfo, &commandBuffer);
+
+    VkCommandBufferBeginInfo beginInfo {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+    };
+    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+    // transition swapchain images to presentation layout
+    for (U32 i = 0; i < pRenderer->m_numFramesInFlight; i++)
+    {
+        VkImageMemoryBarrier barrier {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .srcAccessMask = VK_ACCESS_NONE,
+            .dstAccessMask = VK_ACCESS_NONE,
+            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = pRenderer->m_pSwapchainImages[i],
+            .subresourceRange {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1
+            }
+        };
+
+        vkCmdPipelineBarrier(commandBuffer,
+                             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                             0,
+                             0, nullptr,
+                             0, nullptr,
+                             1, &barrier);
+    }
+    vkEndCommandBuffer(commandBuffer);
+    
+    VkSubmitInfo submit_info{};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &commandBuffer;
+
+    vkQueueSubmit(pRenderer->m_graphicsQueue, 1, &submit_info, VK_NULL_HANDLE);
+    vkQueueWaitIdle(pRenderer->m_graphicsQueue);
+
+    vkFreeCommandBuffers(pRenderer->m_device, pRenderer->m_graphicsCommandPool, 1, &commandBuffer);
+}
 
 bool VulkanRenderer::Init(Platform::Window* pWindow)
 {
     SM::PushAllocator(kEngineGlobal);
 
     m_pWindow = pWindow;
-    m_clearColor = ColorF32(0, 100, 100);
+    m_clearColor = kDefaultClearColor;
 
     Platform::LoadVulkanGlobalFuncs();
 
@@ -52,11 +224,11 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
     VkInstanceCreateInfo instanceCreateInfo {
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pApplicationInfo = &appInfo,
-        .enabledExtensionCount = ARRAY_LEN(INSTANCE_EXTENSIONS),
-        .ppEnabledExtensionNames = INSTANCE_EXTENSIONS
+        .enabledExtensionCount = ARRAY_LEN(VulkanConfig::kInstanceExtensions),
+        .ppEnabledExtensionNames = VulkanConfig::kInstanceExtensions
     };
 
-    if (ENABLE_VALIDATION_LAYERS)
+    if (VulkanConfig::kEnableValidationLayers)
     {
         // check validation layers are supported
         {
@@ -66,7 +238,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
             VkLayerProperties* instanceLayers = SM::Alloc<VkLayerProperties>(numLayers);
             vkEnumerateInstanceLayerProperties(&numLayers, instanceLayers);
 
-            for (const char* layerName : VALIDATION_LAYERS)
+            for (const char* layerName : VulkanConfig::kValidationLayers)
             {
                 bool layerFound = false;
 
@@ -84,8 +256,8 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
             }
         }
 
-        instanceCreateInfo.ppEnabledLayerNames = VALIDATION_LAYERS;
-        instanceCreateInfo.enabledLayerCount = ARRAY_LEN(VALIDATION_LAYERS);
+        instanceCreateInfo.ppEnabledLayerNames = VulkanConfig::kValidationLayers;
+        instanceCreateInfo.enabledLayerCount = ARRAY_LEN(VulkanConfig::kValidationLayers);
 
         // this debug messenger debugs the actual instance creation
         VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo {
@@ -105,7 +277,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
         };
         instanceCreateInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugMessengerCreateInfo;
 
-        if (ENABLE_VALIDATION_BEST_PRACTICES)
+        if (VulkanConfig::kEnableValidationBestPractices)
         {
             VkValidationFeatureEnableEXT enables[] = { VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT };
             VkValidationFeaturesEXT features {};
@@ -122,7 +294,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
     //------------------------------------------------------------------------------------------------------------------------
     // Debug Messenger
     //------------------------------------------------------------------------------------------------------------------------
-    if (ENABLE_VALIDATION_LAYERS)
+    if (VulkanConfig::kEnableValidationLayers)
     {
         VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo {
             .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
@@ -199,7 +371,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
         VkExtensionProperties* extensions = SM::Alloc<VkExtensionProperties>(numFoundExtensions);
         vkEnumerateDeviceExtensionProperties(candidateGPU, nullptr, &numFoundExtensions, extensions);
 
-        U8 numRequiredExtensions = ARRAY_LEN(DEVICE_EXTENSIONS);
+        U8 numRequiredExtensions = ARRAY_LEN(VulkanConfig::kDeviceExtensions);
         U8 hasExtensionCounter = 0;
 
         for(U32 i = 0; i < numFoundExtensions; i++)
@@ -209,7 +381,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
             for(U32 j = 0; j < numRequiredExtensions; j++)
             {
                 const char* extensionName = props.extensionName;
-                const char* requiredExtension = DEVICE_EXTENSIONS[j];
+                const char* requiredExtension = VulkanConfig::kDeviceExtensions[j];
                 if(strcmp(extensionName, requiredExtension) == 0)
                 {
                     hasExtensionCounter++;
@@ -356,8 +528,8 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
         .pNext = &vk13Features,
         .queueCreateInfoCount = numQueues,
         .pQueueCreateInfos = queueCreateInfos,
-        .enabledExtensionCount = ARRAY_LEN(DEVICE_EXTENSIONS),
-        .ppEnabledExtensionNames = DEVICE_EXTENSIONS,
+        .enabledExtensionCount = ARRAY_LEN(VulkanConfig::kDeviceExtensions),
+        .ppEnabledExtensionNames = VulkanConfig::kDeviceExtensions,
         .pEnabledFeatures = &deviceFeatures
     };
 
@@ -393,172 +565,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
     SM_ASSERT(vkCreateCommandPool(m_device, &graphicsCommandPoolCreateInfo, nullptr, &m_graphicsCommandPool) == VK_SUCCESS);
 
     //------------------------------------------------------------------------------------------------------------------------
-    // Swapchain
-    //------------------------------------------------------------------------------------------------------------------------
-	if (m_swapchain != VK_NULL_HANDLE)
-	{
-        vkQueueWaitIdle(m_graphicsQueue);
-        vkDestroySwapchainKHR(m_device, m_swapchain, nullptr);
-	}
-
-    U32 numSurfaceFormats = 0;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, m_surface, &numSurfaceFormats, nullptr);
-    VkSurfaceFormatKHR* surfaceFormats = SM::Alloc<VkSurfaceFormatKHR>(numSurfaceFormats);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, m_surface, &numSurfaceFormats, surfaceFormats);
-
-    m_swapchainFormat = surfaceFormats[0];
-    for(int i = 0; i < numSurfaceFormats; i++)
-    {
-        const VkSurfaceFormatKHR& format = surfaceFormats[i];
-        if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
-        {
-            m_swapchainFormat = format;
-        }
-    }
-
-    U32 numPresentModes = 0;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, m_surface, &numPresentModes, nullptr);
-    VkPresentModeKHR* presentModes = SM::Alloc<VkPresentModeKHR>(numPresentModes);
-    vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, m_surface, &numPresentModes, presentModes);
-
-    VkPresentModeKHR swapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
-    for(int i = 0; i < numPresentModes; i++)
-    {
-        const VkPresentModeKHR& mode = presentModes[i];
-        if (mode == VK_PRESENT_MODE_MAILBOX_KHR)
-        {
-            swapchainPresentMode = mode;
-            break;
-        }
-    }
-
-    VkSurfaceCapabilitiesKHR surfaceCapabilities{};
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physicalDevice, m_surface, &surfaceCapabilities);
-
-    if (surfaceCapabilities.currentExtent.width != UINT32_MAX)
-    {
-        m_swapchainExtent = surfaceCapabilities.currentExtent;
-    }
-    else
-    {
-        U32 width;
-        U32 height;
-        Platform::GetWindowDimensions(m_pWindow, width, height);
-        m_swapchainExtent = { width, height };
-        m_swapchainExtent.width = Clamp(m_swapchainExtent.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
-        m_swapchainExtent.height = Clamp(m_swapchainExtent.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
-    }
-
-    U32 imageCount = surfaceCapabilities.minImageCount + 1; // one extra image to prevent waiting on driver
-    imageCount = Min(imageCount, kMaxNumSwapchainImages);
-    if (surfaceCapabilities.maxImageCount > 0)
-    {
-        imageCount = Min(imageCount, surfaceCapabilities.maxImageCount);
-    }
-
-    // TODO: Allow fullscreen
-    //VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = {};
-    //fullScreenInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
-    //fullScreenInfo.pNext = nullptr;
-    //fullScreenInfo.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT;
-
-    VkSwapchainCreateInfoKHR swapchainCreateInfo {
-        .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-        .pNext = nullptr, // use full_screenInfo here
-        .surface = m_surface,
-        .minImageCount = imageCount,
-        .imageFormat = m_swapchainFormat.format,
-        .imageColorSpace = m_swapchainFormat.colorSpace,
-        .imageExtent = m_swapchainExtent,
-        .imageArrayLayers = 1,
-        .imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-        .presentMode = swapchainPresentMode
-    };
-
-    U32 queueFamilyIndices[] = { (U32)m_graphicsQueueIndex, (U32)m_presentationQueueIndex };
-
-    if (m_graphicsQueueIndex != m_presentationQueueIndex)
-    {
-        swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-        swapchainCreateInfo.queueFamilyIndexCount = 2;
-        swapchainCreateInfo.pQueueFamilyIndices = queueFamilyIndices;
-    }
-    else
-    {
-        swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        swapchainCreateInfo.queueFamilyIndexCount = 0;
-        swapchainCreateInfo.pQueueFamilyIndices = nullptr;
-    }
-
-    swapchainCreateInfo.preTransform = surfaceCapabilities.currentTransform;
-    swapchainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    swapchainCreateInfo.clipped = VK_TRUE;
-    swapchainCreateInfo.oldSwapchain = VK_NULL_HANDLE;
-
-    SM_ASSERT(vkCreateSwapchainKHR(m_device, &swapchainCreateInfo, nullptr, &m_swapchain) == VK_SUCCESS);
-    SM_ASSERT(vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_numSwapchainImages, nullptr) == VK_SUCCESS);
-    SM_ASSERT(m_numSwapchainImages <= kMaxNumSwapchainImages);
-    SM_ASSERT(vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_numSwapchainImages, m_swapchainImages) == VK_SUCCESS);
-
-    VkCommandBufferAllocateInfo commandBufferAllocInfo {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .pNext = nullptr,
-        .commandPool = m_graphicsCommandPool,
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = 1
-    };
-
-    VkCommandBuffer commandBuffer;
-    vkAllocateCommandBuffers(m_device, &commandBufferAllocInfo, &commandBuffer);
-
-    VkCommandBufferBeginInfo beginInfo {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
-    };
-    vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-    // transition swapchain images to presentation layout
-    for (U32 i = 0; i < m_numSwapchainImages; i++)
-    {
-        VkImageMemoryBarrier barrier {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .srcAccessMask = VK_ACCESS_NONE,
-            .dstAccessMask = VK_ACCESS_NONE,
-            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-            .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .image = m_swapchainImages[i],
-            .subresourceRange {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1
-            }
-        };
-
-        vkCmdPipelineBarrier(commandBuffer,
-                             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                             0,
-                             0, nullptr,
-                             0, nullptr,
-                             1, &barrier);
-    }
-    vkEndCommandBuffer(commandBuffer);
-    
-    VkSubmitInfo submit_info{};
-    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit_info.commandBufferCount = 1;
-    submit_info.pCommandBuffers = &commandBuffer;
-
-    vkQueueSubmit(m_graphicsQueue, 1, &submit_info, VK_NULL_HANDLE);
-    vkQueueWaitIdle(m_graphicsQueue);
-
-    vkFreeCommandBuffers(m_device, m_graphicsCommandPool, 1, &commandBuffer);
-
-    //------------------------------------------------------------------------------------------------------------------------
-    // Random Precalculated Values
+    // Misc
     //------------------------------------------------------------------------------------------------------------------------
 
     // calculate max number of msaa samples we can use
@@ -577,11 +584,25 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
 
     SM::PopAllocator();
 
+    UpdateSwapchain(this);
+
     return true;
 }
 
 void VulkanRenderer::RenderFrame()
 {
+    // check if swapchain is out of date and recreate it if needed
+    VkResult status = vkGetSwapchainStatusKHR(m_device, m_swapchain); 
+    SM_ASSERT(status == VK_SUCCESS || status == VK_SUBOPTIMAL_KHR);
+    if(status == VK_SUBOPTIMAL_KHR)
+    {
+        UpdateSwapchain(this);
+    }
+
+    // grab this frames main color render target
+    // draw to it
+    // copy its data to the swapchain image
+    // present the swapchain image
 }
 
 VkFormat VulkanRenderer::FindSupportedFormat(VkFormat* candidates, U32 numCandidates, VkImageTiling tiling, VkFormatFeatureFlags features)

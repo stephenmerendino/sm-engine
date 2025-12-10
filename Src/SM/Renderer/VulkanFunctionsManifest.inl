@@ -128,6 +128,7 @@ VK_DEVICE_FUNCTION(vkCmdDispatch)
 VK_DEVICE_FUNCTION(vkCmdBeginRendering)
 VK_DEVICE_FUNCTION(vkCmdEndRendering)
 VK_DEVICE_FUNCTION(vkCmdPushConstants)
+VK_DEVICE_FUNCTION(vkGetSwapchainStatusKHR);
 
 #undef VK_EXPORTED_FUNCTION
 #undef VK_GLOBAL_FUNCTION
