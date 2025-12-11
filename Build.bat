@@ -39,12 +39,21 @@ mkdir %BuildDir% >nul 2>&1
 
 REM Compile Engine.cpp
 cl %CompilerFlags% %BaseFileToCompile% %IncludeDirs% %BaseOutputFiles%
+IF %ERRORLEVEL% NEQ 0 (
+    EXIT /b %ERRORLEVEL%
+)
 
 REM Compile PlatformWin32.cpp
 cl %CompilerFlags% %PlatformFileToCompile% %IncludeDirs% %PlatformOutputFiles%
+IF %ERRORLEVEL% NEQ 0 (
+    EXIT /b %ERRORLEVEL%
+)
 
 REM Link them together into SM-Engine.lib
 lib /nologo /out:%BaseLibOutput% %BaseObjOutput% %PlatformObjOutput% %Libs% %LibsPath% /IGNORE:4006
+IF %ERRORLEVEL% NEQ 0 (
+    EXIT /b %ERRORLEVEL%
+)
 
 ENDLOCAL
 

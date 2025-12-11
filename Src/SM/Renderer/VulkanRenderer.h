@@ -3,6 +3,7 @@
 #include "SM/Math.h"
 #include "SM/Renderer/Shader.h"
 #include "SM/Renderer/Color.h"
+#include "SM/Renderer/VulkanConfig.h"
 #include "SM/StandardTypes.h"
 
 #define VK_NO_PROTOTYPES
@@ -54,8 +55,7 @@ namespace SM
         VkSwapchainKHR m_swapchain = VK_NULL_HANDLE;
         VkSurfaceFormatKHR m_swapchainFormat;
         VkExtent2D m_swapchainExtent;
-        U32 m_numFramesInFlight = 0;
-        VkImage* m_pSwapchainImages;
+        U32 m_numSwapchainImages = 0;
 
         VkSampleCountFlagBits m_maxMsaaSamples = VK_SAMPLE_COUNT_1_BIT;
         VkFormat m_defaultDepthFormat = VK_FORMAT_UNDEFINED;

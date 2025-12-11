@@ -12,21 +12,106 @@ using namespace SM;
 
 static const ColorF32 kDefaultClearColor = ColorF32(0, 100, 100);
 
-struct FrameResources
+class RenderFrames 
 {
-    VkImage m_mainColorRenderTarget = VK_NULL_HANDLE;
-    VkImage* m_swapchainImage = nullptr;
+    public:
+    static const size_t kMaxNumFrames = VulkanConfig::kOptimalNumFramesInFlight;
+
+    void Init(VulkanRenderer* pRenderer);
+    void AdvanceFrame();
+    void UpdateFromSwapchain(VulkanRenderer* pRenderer);
+
+    VkCommandBuffer GetCommandBuffer() { return m_commandBuffers[m_curFrame]; };
+    VkImage GetMainColorRenderTarget() { return m_mainColorRenderTargets[m_curFrame]; };
+    VkImage GetSwapchainImage() { return m_swapchainImages[m_curFrame]; };
+
+    U32 m_curFrame = 0;
+    U32 m_numFrames = 0; // should always be <= VulkanConfig::kOptimalNumFramesInFlight
+    VkCommandBuffer m_commandBuffers[kMaxNumFrames];
+    VkImage m_mainColorRenderTargets[kMaxNumFrames];
+    VkImage m_swapchainImages[kMaxNumFrames];
 };
-FrameResources s_frameResources[VulkanConfig::kOptimalNumFramesInFlight];
+RenderFrames s_renderFrames;
 
-static void UpdateSwapchain(VulkanRenderer* pRenderer)
+void RenderFrames::Init(VulkanRenderer* pRenderer)
 {
-	if (pRenderer->m_swapchain != VK_NULL_HANDLE)
-	{
-        vkQueueWaitIdle(pRenderer->m_graphicsQueue);
-        vkDestroySwapchainKHR(pRenderer->m_device, pRenderer->m_swapchain, nullptr);
-	}
+    m_numFrames = pRenderer->m_numSwapchainImages;
 
+    VkCommandBufferAllocateInfo commandBufferAllocInfo{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .pNext = nullptr,
+        .commandPool = pRenderer->m_graphicsCommandPool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = m_numFrames
+    };
+
+    vkAllocateCommandBuffers(pRenderer->m_device, &commandBufferAllocInfo, m_commandBuffers);
+
+    UpdateFromSwapchain(pRenderer);
+}
+
+void RenderFrames::AdvanceFrame()
+{
+    m_curFrame++;
+    m_curFrame %= m_numFrames;
+}
+
+void RenderFrames::UpdateFromSwapchain(VulkanRenderer* pRenderer)
+{
+    // make sure number of swapchain images matches what we expected based on surface capabilities + config
+    U32 numSwapchainImages = 0;
+    SM_ASSERT(vkGetSwapchainImagesKHR(pRenderer->m_device, pRenderer->m_swapchain, &numSwapchainImages, nullptr) == VK_SUCCESS);
+    SM_ASSERT(m_numFrames == numSwapchainImages);
+    SM_ASSERT(vkGetSwapchainImagesKHR(pRenderer->m_device, pRenderer->m_swapchain, &numSwapchainImages, m_swapchainImages) == VK_SUCCESS);
+
+    VkCommandBuffer initCommandBuffer = m_commandBuffers[0];
+    VkCommandBufferBeginInfo beginInfo {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+    };
+    vkBeginCommandBuffer(initCommandBuffer, &beginInfo);
+
+    // transition swapchain images to presentation layout
+    for (U32 i = 0; i < m_numFrames; i++)
+    {
+        VkImageMemoryBarrier barrier {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .srcAccessMask = VK_ACCESS_NONE,
+            .dstAccessMask = VK_ACCESS_NONE,
+            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = m_swapchainImages[i],
+            .subresourceRange {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1
+            }
+        };
+
+        vkCmdPipelineBarrier(initCommandBuffer,
+                             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                             0,
+                             0, nullptr,
+                             0, nullptr,
+                             1, &barrier);
+    }
+    vkEndCommandBuffer(initCommandBuffer);
+    
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &initCommandBuffer;
+
+    vkQueueSubmit(pRenderer->m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(pRenderer->m_graphicsQueue);
+}
+
+static void CreateSwapchain(VulkanRenderer* pRenderer)
+{
     U32 numSurfaceFormats = 0;
     vkGetPhysicalDeviceSurfaceFormatsKHR(pRenderer->m_physicalDevice, pRenderer->m_surface, &numSurfaceFormats, nullptr);
     VkSurfaceFormatKHR* surfaceFormats = SM::Alloc<VkSurfaceFormatKHR>(numSurfaceFormats);
@@ -75,23 +160,11 @@ static void UpdateSwapchain(VulkanRenderer* pRenderer)
         pRenderer->m_swapchainExtent.height = Clamp(pRenderer->m_swapchainExtent.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
     }
 
-    U32 imageCount = surfaceCapabilities.minImageCount + 1; // one extra image to prevent waiting on driver
-    imageCount = Min(imageCount, VulkanConfig::kOptimalNumFramesInFlight);
-    if (surfaceCapabilities.maxImageCount > 0)
-    {
-        imageCount = Min(imageCount, surfaceCapabilities.maxImageCount);
-    }
+    U32 imageCount = Clamp(VulkanConfig::kOptimalNumFramesInFlight, 
+                           surfaceCapabilities.minImageCount, 
+                           surfaceCapabilities.maxImageCount > 0 ? surfaceCapabilities.maxImageCount : VulkanConfig::kOptimalNumFramesInFlight);
 
-    if(imageCount > pRenderer->m_numFramesInFlight)
-    {
-        if(s_frameResources)
-        {
-            // free the vulkan resources held by the current frame resources
-        }
-        s_frameResources = SM::Alloc<FrameResources>(kEngineGlobal, imageCount);
-        pRenderer->m_numFramesInFlight = imageCount;
-        pRenderer->m_pSwapchainImages = SM::Alloc<VkImage>(kEngineGlobal, pRenderer->m_numFramesInFlight);
-    }
+    pRenderer->m_numSwapchainImages = imageCount;
 
     // TODO: Allow fullscreen
     //VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = {};
@@ -103,7 +176,7 @@ static void UpdateSwapchain(VulkanRenderer* pRenderer)
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
         .pNext = nullptr, // use full_screenInfo here
         .surface = pRenderer->m_surface,
-        .minImageCount = pRenderer->m_numFramesInFlight,
+        .minImageCount = pRenderer->m_numSwapchainImages,
         .imageFormat = pRenderer->m_swapchainFormat.format,
         .imageColorSpace = pRenderer->m_swapchainFormat.colorSpace,
         .imageExtent = pRenderer->m_swapchainExtent,
@@ -135,69 +208,31 @@ static void UpdateSwapchain(VulkanRenderer* pRenderer)
 
     SM_ASSERT(vkCreateSwapchainKHR(pRenderer->m_device, &swapchainCreateInfo, nullptr, &pRenderer->m_swapchain) == VK_SUCCESS);
 
-    // make sure number of swapchain images matches what we expected based on surface capabilities + config
-    U32 numSwapchainImages = 0;
-    SM_ASSERT(vkGetSwapchainImagesKHR(pRenderer->m_device, pRenderer->m_swapchain, &numSwapchainImages, nullptr) == VK_SUCCESS);
-    SM_ASSERT(pRenderer->m_numFramesInFlight == numSwapchainImages)
-        
-    SM_ASSERT(vkGetSwapchainImagesKHR(pRenderer->m_device, pRenderer->m_swapchain, &numSwapchainImages, pRenderer->m_pSwapchainImages) == VK_SUCCESS);
+}
 
-    VkCommandBufferAllocateInfo commandBufferAllocInfo {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .pNext = nullptr,
-        .commandPool = pRenderer->m_graphicsCommandPool,
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = 1
-    };
-
-    VkCommandBuffer commandBuffer;
-    vkAllocateCommandBuffers(pRenderer->m_device, &commandBufferAllocInfo, &commandBuffer);
-
-    VkCommandBufferBeginInfo beginInfo {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
-    };
-    vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-    // transition swapchain images to presentation layout
-    for (U32 i = 0; i < pRenderer->m_numFramesInFlight; i++)
+static void UpdateSwapchain(VulkanRenderer* pRenderer)
+{
+    if(pRenderer->m_swapchain == VK_NULL_HANDLE)
     {
-        VkImageMemoryBarrier barrier {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .srcAccessMask = VK_ACCESS_NONE,
-            .dstAccessMask = VK_ACCESS_NONE,
-            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-            .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .image = pRenderer->m_pSwapchainImages[i],
-            .subresourceRange {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1
-            }
-        };
-
-        vkCmdPipelineBarrier(commandBuffer,
-                             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                             0,
-                             0, nullptr,
-                             0, nullptr,
-                             1, &barrier);
+        CreateSwapchain(pRenderer);
+        return;
     }
-    vkEndCommandBuffer(commandBuffer);
-    
-    VkSubmitInfo submit_info{};
-    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit_info.commandBufferCount = 1;
-    submit_info.pCommandBuffers = &commandBuffer;
 
-    vkQueueSubmit(pRenderer->m_graphicsQueue, 1, &submit_info, VK_NULL_HANDLE);
-    vkQueueWaitIdle(pRenderer->m_graphicsQueue);
+    VkResult status = vkGetSwapchainStatusKHR(pRenderer->m_device, pRenderer->m_swapchain); 
+    SM_ASSERT(status == VK_SUCCESS || status == VK_SUBOPTIMAL_KHR);
+    if(status == VK_SUCCESS)
+    {
+        return;
+    }
 
-    vkFreeCommandBuffers(pRenderer->m_device, pRenderer->m_graphicsCommandPool, 1, &commandBuffer);
+	if (pRenderer->m_swapchain != VK_NULL_HANDLE)
+	{
+        vkQueueWaitIdle(pRenderer->m_graphicsQueue);
+        vkDestroySwapchainKHR(pRenderer->m_device, pRenderer->m_swapchain, nullptr);
+	}
+
+    CreateSwapchain(pRenderer);
+    s_renderFrames.UpdateFromSwapchain(pRenderer);
 }
 
 bool VulkanRenderer::Init(Platform::Window* pWindow)
@@ -584,23 +619,21 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
 
     SM::PopAllocator();
 
-    UpdateSwapchain(this);
+    CreateSwapchain(this);
+    s_renderFrames.Init(this);
 
     return true;
 }
 
 void VulkanRenderer::RenderFrame()
 {
-    // check if swapchain is out of date and recreate it if needed
-    VkResult status = vkGetSwapchainStatusKHR(m_device, m_swapchain); 
-    SM_ASSERT(status == VK_SUCCESS || status == VK_SUBOPTIMAL_KHR);
-    if(status == VK_SUBOPTIMAL_KHR)
-    {
-        UpdateSwapchain(this);
-    }
+    UpdateSwapchain(this);
 
     // grab this frames main color render target
+    s_renderFrames.AdvanceFrame();
+
     // draw to it
+
     // copy its data to the swapchain image
     // present the swapchain image
 }
