@@ -16,4 +16,5 @@ namespace SM
         }
 
     char* ConcatenateStrings(const char* s1, const char* s2, LinearAllocator* allocator = GetCurrentAllocator());
+    const char* ToString(bool b);
 }

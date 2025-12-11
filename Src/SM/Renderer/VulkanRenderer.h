@@ -31,6 +31,8 @@ namespace SM
         void RenderFrame();
         void SetClearColor(const ColorF32& color);
         VkFormat FindSupportedFormat(VkFormat* candidates, U32 numCandidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+        void CreateSwapchain();
+        void UpdateSwapchain();
 
         Platform::Window* m_pWindow = nullptr;
         ColorF32 m_clearColor;
@@ -73,9 +75,23 @@ namespace SM
     {
         public:
         void Init(VulkanRenderer* pRenderer);
-        void UpdateFromSwapchain(VulkanRenderer* pRenderer);
+        void Update();
 
-        VkCommandBuffer m_commandBuffer;
-        VkImage m_mainColorRenderTarget;
+        VkExtent2D m_curScreenResolution = { .width = 0, .height = 0 };
+        VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
+        VkImage m_mainColorRenderTarget = VK_NULL_HANDLE;
+        VkDeviceMemory m_mainColorRenderTargetMemory = VK_NULL_HANDLE;
+
+        VulkanRenderer* m_pRenderer = nullptr;
     };
+
+    inline bool operator==(const VkExtent2D& a, const VkExtent2D& b)
+    {
+        return a.width == b.width && a.height == b.height;
+    }
+
+    inline bool operator!=(const VkExtent2D& a, const VkExtent2D& b)
+    {
+        return !(a == b);
+    }
 }
