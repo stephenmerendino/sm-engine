@@ -22,6 +22,8 @@ namespace SM
         struct Window;
     }
 
+    class FrameResources;
+
     class VulkanRenderer
     {
         public:
@@ -55,9 +57,25 @@ namespace SM
         VkSwapchainKHR m_swapchain = VK_NULL_HANDLE;
         VkSurfaceFormatKHR m_swapchainFormat;
         VkExtent2D m_swapchainExtent;
-        U32 m_numSwapchainImages = 0;
+        VkImage* m_pSwapchainImages = nullptr;
+
+        U32 m_numFramesInFlight = 0;
+        U32 m_curFrameInFlight = 0;
+        FrameResources* m_pFrameResources = nullptr;
 
         VkSampleCountFlagBits m_maxMsaaSamples = VK_SAMPLE_COUNT_1_BIT;
         VkFormat m_defaultDepthFormat = VK_FORMAT_UNDEFINED;
+
+        static const size_t kMaxNumFramesInFlight = VulkanConfig::kOptimalNumFramesInFlight;
+    };
+
+    class FrameResources
+    {
+        public:
+        void Init(VulkanRenderer* pRenderer);
+        void UpdateFromSwapchain(VulkanRenderer* pRenderer);
+
+        VkCommandBuffer m_commandBuffer;
+        VkImage m_mainColorRenderTarget;
     };
 }
