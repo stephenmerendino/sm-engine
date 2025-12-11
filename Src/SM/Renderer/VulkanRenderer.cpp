@@ -1,12 +1,14 @@
 #include "SM/Renderer/VulkanRenderer.h"
 #include "SM/Assert.h"
 #include "SM/Bits.h"
+#include "SM/Engine.h"
 #include "SM/Math.h"
 #include "SM/Memory.h"
 #include "SM/Renderer/VulkanConfig.h"
 #include "ThirdParty/vulkan/vulkan_core.h"
 
 #include <cstring>
+#include <regex>
 
 using namespace SM;
 
@@ -14,65 +16,113 @@ static const ColorF32 kDefaultClearColor = ColorF32(0, 100, 100);
 
 void FrameResources::Init(VulkanRenderer* pRenderer)
 {
+    m_pRenderer = pRenderer;
+    m_curScreenResolution = {.width = 0, .height = 0};
+
     VkCommandBufferAllocateInfo commandBufferAllocInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .pNext = nullptr,
-        .commandPool = pRenderer->m_graphicsCommandPool,
+        .commandPool = m_pRenderer->m_graphicsCommandPool,
         .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
         .commandBufferCount = 1 
     };
 
-    vkAllocateCommandBuffers(pRenderer->m_device, &commandBufferAllocInfo, &m_commandBuffer);
+    vkAllocateCommandBuffers(m_pRenderer->m_device, &commandBufferAllocInfo, &m_commandBuffer);
 
-    UpdateFromSwapchain(pRenderer);
+    Update();
 }
 
-void FrameResources::UpdateFromSwapchain(VulkanRenderer* pRenderer)
+void FrameResources::Update()
 {
-    // setup main color render target
+    if(m_curScreenResolution == m_pRenderer->m_swapchainExtent)
     {
-        //VkImageCreateInfo imageCreateInfo {
-        //    VkStructureType          sType;
-        //    const void*              pNext;
-        //    VkImageCreateFlags       flags;
-        //    VkImageType              imageType;
-        //    VkFormat                 format;
-        //    VkExtent3D               extent;
-        //    uint32_t                 mipLevels;
-        //    uint32_t                 arrayLayers;
-        //    VkSampleCountFlagBits    samples;
-        //    VkImageTiling            tiling;
-        //    VkImageUsageFlags        usage;
-        //    VkSharingMode            sharingMode;
-        //    uint32_t                 queueFamilyIndexCount;
-        //    const uint32_t*          pQueueFamilyIndices;
-        //    VkImageLayout            initialLayout;
-        //};
+        return; 
     }
 
+    m_curScreenResolution = m_pRenderer->m_swapchainExtent;
+
+    // setup main color render target
+    {
+        VkImageCreateInfo imageCreateInfo {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, 
+            .pNext = nullptr, 
+            .flags = 0, 
+            .imageType = VK_IMAGE_TYPE_2D, 
+            .format = VK_FORMAT_R8G8B8A8_UNORM, 
+            .extent = { .width = m_curScreenResolution.width, .height = m_curScreenResolution.height, .depth = 1 }, 
+            .mipLevels = 1, 
+            .arrayLayers = 1,
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .tiling = VK_IMAGE_TILING_OPTIMAL, 
+            .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, 
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE, 
+            .queueFamilyIndexCount = 1, 
+            .pQueueFamilyIndices = (U32*)&m_pRenderer->m_graphicsQueueIndex, 
+            .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+        };
+
+        SM_ASSERT(vkCreateImage(m_pRenderer->m_device, &imageCreateInfo, nullptr, &m_mainColorRenderTarget) == VK_SUCCESS);
+
+        VkMemoryRequirements imageMemoryRequirements;
+        vkGetImageMemoryRequirements(m_pRenderer->m_device, m_mainColorRenderTarget, &imageMemoryRequirements);
+
+        VkMemoryPropertyFlagBits neededFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        U32 memoryTypeIndex = UINT32_MAX;
+
+        // for each memory type check if its bit is set, if so check if it has the flags we need
+        for(int i = 0; i < m_pRenderer->m_physicalDeviceMemoryProperties.memoryTypeCount; i++)
+        {
+            // not a valid memory type based on the requirements
+            if(!IsBitSet(imageMemoryRequirements.memoryTypeBits, i))
+            {
+                continue;
+            }
+
+            // its a valid memory type, BUT it doesn't have the flags we need
+            if(!IsBitSet(m_pRenderer->m_physicalDeviceMemoryProperties.memoryTypes[i].propertyFlags, neededFlags))
+            {
+                continue;    
+            }
+
+            // passed all the filters, this is a valid memory type to use
+            memoryTypeIndex = i;
+            break;
+        }
+
+        VkMemoryAllocateInfo imageMemoryAllocateInfo {
+            .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, 
+            .pNext = nullptr,
+            .allocationSize = imageMemoryRequirements.size,
+            .memoryTypeIndex = memoryTypeIndex
+        };
+        SM_ASSERT(vkAllocateMemory(m_pRenderer->m_device, &imageMemoryAllocateInfo, nullptr, &m_mainColorRenderTargetMemory) == VK_SUCCESS);
+
+        VkDeviceSize memoryOffset = 0;
+        SM_ASSERT(vkBindImageMemory(m_pRenderer->m_device, m_mainColorRenderTarget, m_mainColorRenderTargetMemory, memoryOffset) == VK_SUCCESS);
+    }
 }
 
-static void CreateSwapchain(VulkanRenderer* pRenderer)
+void VulkanRenderer::CreateSwapchain()
 {
     U32 numSurfaceFormats = 0;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(pRenderer->m_physicalDevice, pRenderer->m_surface, &numSurfaceFormats, nullptr);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, m_surface, &numSurfaceFormats, nullptr);
     VkSurfaceFormatKHR* surfaceFormats = SM::Alloc<VkSurfaceFormatKHR>(numSurfaceFormats);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(pRenderer->m_physicalDevice, pRenderer->m_surface, &numSurfaceFormats, surfaceFormats);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, m_surface, &numSurfaceFormats, surfaceFormats);
 
-    pRenderer->m_swapchainFormat = surfaceFormats[0];
+    m_swapchainFormat = surfaceFormats[0];
     for(int i = 0; i < numSurfaceFormats; i++)
     {
         const VkSurfaceFormatKHR& format = surfaceFormats[i];
         if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
         {
-            pRenderer->m_swapchainFormat = format;
+            m_swapchainFormat = format;
         }
     }
 
     U32 numPresentModes = 0;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(pRenderer->m_physicalDevice, pRenderer->m_surface, &numPresentModes, nullptr);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, m_surface, &numPresentModes, nullptr);
     VkPresentModeKHR* presentModes = SM::Alloc<VkPresentModeKHR>(numPresentModes);
-    vkGetPhysicalDeviceSurfacePresentModesKHR(pRenderer->m_physicalDevice, pRenderer->m_surface, &numPresentModes, presentModes);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(m_physicalDevice, m_surface, &numPresentModes, presentModes);
 
     VkPresentModeKHR swapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
     for(int i = 0; i < numPresentModes; i++)
@@ -86,30 +136,30 @@ static void CreateSwapchain(VulkanRenderer* pRenderer)
     }
 
     VkSurfaceCapabilitiesKHR surfaceCapabilities{};
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(pRenderer->m_physicalDevice, pRenderer->m_surface, &surfaceCapabilities);
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physicalDevice, m_surface, &surfaceCapabilities);
 
     if (surfaceCapabilities.currentExtent.width != UINT32_MAX)
     {
-        pRenderer->m_swapchainExtent = surfaceCapabilities.currentExtent;
+        m_swapchainExtent = surfaceCapabilities.currentExtent;
     }
     else
     {
         U32 width;
         U32 height;
-        Platform::GetWindowDimensions(pRenderer->m_pWindow, width, height);
-        pRenderer->m_swapchainExtent = { width, height };
-        pRenderer->m_swapchainExtent.width = Clamp(pRenderer->m_swapchainExtent.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
-        pRenderer->m_swapchainExtent.height = Clamp(pRenderer->m_swapchainExtent.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
+        Platform::GetWindowDimensions(m_pWindow, width, height);
+        m_swapchainExtent = { width, height };
+        m_swapchainExtent.width = Clamp(m_swapchainExtent.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
+        m_swapchainExtent.height = Clamp(m_swapchainExtent.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
     }
 
     U32 imageCount = Clamp(VulkanConfig::kOptimalNumFramesInFlight, 
                            surfaceCapabilities.minImageCount, 
                            surfaceCapabilities.maxImageCount > 0 ? surfaceCapabilities.maxImageCount : VulkanConfig::kOptimalNumFramesInFlight);
 
-    if(pRenderer->m_numFramesInFlight != imageCount)
+    if(m_numFramesInFlight != imageCount)
     {
-        pRenderer->m_numFramesInFlight = imageCount;
-        pRenderer->m_pSwapchainImages = SM::Alloc<VkImage>(kEngineGlobal, pRenderer->m_numFramesInFlight);
+        m_numFramesInFlight = imageCount;
+        m_pSwapchainImages = SM::Alloc<VkImage>(kEngineGlobal, m_numFramesInFlight);
     }
 
     // TODO: Allow fullscreen
@@ -121,19 +171,19 @@ static void CreateSwapchain(VulkanRenderer* pRenderer)
     VkSwapchainCreateInfoKHR swapchainCreateInfo {
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
         .pNext = nullptr, // use full_screenInfo here
-        .surface = pRenderer->m_surface,
-        .minImageCount = pRenderer->m_numFramesInFlight,
-        .imageFormat = pRenderer->m_swapchainFormat.format,
-        .imageColorSpace = pRenderer->m_swapchainFormat.colorSpace,
-        .imageExtent = pRenderer->m_swapchainExtent,
+        .surface = m_surface,
+        .minImageCount = m_numFramesInFlight,
+        .imageFormat = m_swapchainFormat.format,
+        .imageColorSpace = m_swapchainFormat.colorSpace,
+        .imageExtent = m_swapchainExtent,
         .imageArrayLayers = 1,
         .imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         .presentMode = swapchainPresentMode
     };
 
-    U32 queueFamilyIndices[] = { (U32)pRenderer->m_graphicsQueueIndex, (U32)pRenderer->m_presentationQueueIndex };
+    U32 queueFamilyIndices[] = { (U32)m_graphicsQueueIndex, (U32)m_presentationQueueIndex };
 
-    if (pRenderer->m_graphicsQueueIndex != pRenderer->m_presentationQueueIndex)
+    if (m_graphicsQueueIndex != m_presentationQueueIndex)
     {
         swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
         swapchainCreateInfo.queueFamilyIndexCount = 2;
@@ -151,24 +201,24 @@ static void CreateSwapchain(VulkanRenderer* pRenderer)
     swapchainCreateInfo.clipped = VK_TRUE;
     swapchainCreateInfo.oldSwapchain = VK_NULL_HANDLE;
 
-    SM_ASSERT(vkCreateSwapchainKHR(pRenderer->m_device, &swapchainCreateInfo, nullptr, &pRenderer->m_swapchain) == VK_SUCCESS);
+    SM_ASSERT(vkCreateSwapchainKHR(m_device, &swapchainCreateInfo, nullptr, &m_swapchain) == VK_SUCCESS);
 
     // make sure number of swapchain images matches what we expected based on surface capabilities + config
     U32 numSwapchainImages = 0;
-    SM_ASSERT(vkGetSwapchainImagesKHR(pRenderer->m_device, pRenderer->m_swapchain, &numSwapchainImages, nullptr) == VK_SUCCESS);
-    SM_ASSERT(pRenderer->m_numFramesInFlight == numSwapchainImages);
-    SM_ASSERT(vkGetSwapchainImagesKHR(pRenderer->m_device, pRenderer->m_swapchain, &numSwapchainImages, pRenderer->m_pSwapchainImages) == VK_SUCCESS);
+    SM_ASSERT(vkGetSwapchainImagesKHR(m_device, m_swapchain, &numSwapchainImages, nullptr) == VK_SUCCESS);
+    SM_ASSERT(m_numFramesInFlight == numSwapchainImages);
+    SM_ASSERT(vkGetSwapchainImagesKHR(m_device, m_swapchain, &numSwapchainImages, m_pSwapchainImages) == VK_SUCCESS);
 
     VkCommandBufferAllocateInfo commandBufferAllocInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .pNext = nullptr, 
-        .commandPool = pRenderer->m_graphicsCommandPool, 
+        .commandPool = m_graphicsCommandPool, 
         .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY, 
         .commandBufferCount = 1
     };
 
     VkCommandBuffer initCommandBuffer = VK_NULL_HANDLE;
-    SM_ASSERT(vkAllocateCommandBuffers(pRenderer->m_device, &commandBufferAllocInfo, &initCommandBuffer) == VK_SUCCESS);
+    SM_ASSERT(vkAllocateCommandBuffers(m_device, &commandBufferAllocInfo, &initCommandBuffer) == VK_SUCCESS);
 
     VkCommandBufferBeginInfo beginInfo {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -177,7 +227,7 @@ static void CreateSwapchain(VulkanRenderer* pRenderer)
     vkBeginCommandBuffer(initCommandBuffer, &beginInfo);
 
     // transition swapchain images to presentation layout
-    for (U32 i = 0; i < pRenderer->m_numFramesInFlight; i++)
+    for (U32 i = 0; i < m_numFramesInFlight; i++)
     {
         VkImageMemoryBarrier barrier {
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
@@ -187,7 +237,7 @@ static void CreateSwapchain(VulkanRenderer* pRenderer)
             .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .image = pRenderer->m_pSwapchainImages[i],
+            .image = m_pSwapchainImages[i],
             .subresourceRange {
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                 .baseMipLevel = 0,
@@ -211,25 +261,24 @@ static void CreateSwapchain(VulkanRenderer* pRenderer)
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &initCommandBuffer;
 
-    vkQueueSubmit(pRenderer->m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(pRenderer->m_graphicsQueue);
+    vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(m_graphicsQueue);
 }
 
-static void UpdateSwapchain(VulkanRenderer* pRenderer)
+void VulkanRenderer::UpdateSwapchain()
 {
-    SM_ASSERT(pRenderer->m_swapchain != VK_NULL_HANDLE);
+    SM_ASSERT(m_swapchain != VK_NULL_HANDLE);
 
-    VkResult status = vkGetSwapchainStatusKHR(pRenderer->m_device, pRenderer->m_swapchain); 
+    VkResult status = vkGetSwapchainStatusKHR(m_device, m_swapchain); 
     SM_ASSERT(status == VK_SUCCESS || status == VK_SUBOPTIMAL_KHR);
     if(status == VK_SUCCESS)
     {
         return;
     }
 
-    vkQueueWaitIdle(pRenderer->m_graphicsQueue);
-    vkDestroySwapchainKHR(pRenderer->m_device, pRenderer->m_swapchain, nullptr);
-    CreateSwapchain(pRenderer);
-
+    vkQueueWaitIdle(m_graphicsQueue);
+    vkDestroySwapchainKHR(m_device, m_swapchain, nullptr);
+    CreateSwapchain();
 }
 
 bool VulkanRenderer::Init(Platform::Window* pWindow)
@@ -359,11 +408,11 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
     VkPhysicalDevice* foundGPUs = SM::Alloc<VkPhysicalDevice>(numFoundGPUs);
     vkEnumeratePhysicalDevices(m_instance, &numFoundGPUs, foundGPUs);
 
-    if (IsRunningDebugBuild())
+    if(IsRunningDebugBuild())
     {
         Platform::Log("Physical Devices:\n");
 
-        for (U8 i = 0; i < numFoundGPUs; i++)
+        for(U8 i = 0; i < numFoundGPUs; i++)
         {
             VkPhysicalDeviceProperties deviceProps;
             vkGetPhysicalDeviceProperties(foundGPUs[i], &deviceProps);
@@ -386,13 +435,13 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
         vkGetPhysicalDeviceFeatures(candidateGPU, &features);
 
         // must be a dedicated gpu
-        if (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
+        if(props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
         {
             continue;
         }
 
         // must have anisotrophic filtering... I don't remember why tho
-        if (features.samplerAnisotropy == VK_FALSE)
+        if(features.samplerAnisotropy == VK_FALSE)
         {
             continue;
         }
@@ -452,24 +501,24 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
         m_computeQueueIndex = kInvalidQueueIndex;
         m_transferQueueIndex = kInvalidQueueIndex;
         m_presentationQueueIndex = kInvalidQueueIndex;
-        for (int iQueue = 0; iQueue < numQueueFamilies; iQueue++)
+        for(int iQueue = 0; iQueue < numQueueFamilies; iQueue++)
         {
             const VkQueueFamilyProperties& props = queueFamilyProperties[iQueue];
 
-            if (m_graphicsQueueIndex == kInvalidQueueIndex && 
+            if(m_graphicsQueueIndex == kInvalidQueueIndex && 
                 IsBitSet(props.queueFlags, VK_QUEUE_GRAPHICS_BIT))
             {
                 m_graphicsQueueIndex = iQueue;
             }
 
-            if (m_computeQueueIndex == kInvalidQueueIndex && 
+            if(m_computeQueueIndex == kInvalidQueueIndex && 
                 IsBitSet(props.queueFlags, VK_QUEUE_COMPUTE_BIT)  && 
                 !IsBitSet(props.queueFlags, VK_QUEUE_GRAPHICS_BIT))
             {
                 m_computeQueueIndex = iQueue;
             }
 
-            if (m_transferQueueIndex == kInvalidQueueIndex && 
+            if(m_transferQueueIndex == kInvalidQueueIndex && 
                 IsBitSet(props.queueFlags, VK_QUEUE_TRANSFER_BIT) &&
                 !IsBitSet(props.queueFlags, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT))
             {
@@ -478,13 +527,13 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
 
             VkBool32 canPresent = false;
             vkGetPhysicalDeviceSurfaceSupportKHR(candidateGPU, iQueue, m_surface, &canPresent);
-            if (m_presentationQueueIndex == kInvalidQueueIndex && canPresent)
+            if(m_presentationQueueIndex == kInvalidQueueIndex && canPresent)
             {
                 m_presentationQueueIndex = iQueue;
             }
 
             // check if no more families to find
-            if (m_graphicsQueueIndex != kInvalidQueueIndex && 
+            if(m_graphicsQueueIndex != kInvalidQueueIndex && 
                 m_computeQueueIndex != kInvalidQueueIndex &&
                 m_presentationQueueIndex != kInvalidQueueIndex &&
                 m_transferQueueIndex != kInvalidQueueIndex)
@@ -501,6 +550,35 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
         m_physicalDevice = candidateGPU;
         vkGetPhysicalDeviceProperties(m_physicalDevice, &m_physicalDeviceProperties);
         vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &m_physicalDeviceMemoryProperties);
+
+        if(IsRunningDebugBuild())
+        {
+            // print out each heap
+            for(int i = 0; i < m_physicalDeviceMemoryProperties.memoryHeapCount; i++)
+            {
+                Platform::Log("[vk-init] Memory Heap %i\n  size = %lu\n  size KiB = %.2f\n  size MiB = %.2f\n  size GiB = %.2f\n  device local = %s\n  multi instance = %s\n", 
+                              i,
+                              m_physicalDeviceMemoryProperties.memoryHeaps[i].size, 
+                              (F32)m_physicalDeviceMemoryProperties.memoryHeaps[i].size / (F32)(1024), 
+                              (F32)m_physicalDeviceMemoryProperties.memoryHeaps[i].size / (F32)(1024 * 1024), 
+                              (F32)m_physicalDeviceMemoryProperties.memoryHeaps[i].size / (F32)(1024 * 1024 * 1024), 
+                              ToString(m_physicalDeviceMemoryProperties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT),
+                              ToString(m_physicalDeviceMemoryProperties.memoryHeaps[i].flags & VK_MEMORY_HEAP_MULTI_INSTANCE_BIT));
+            }
+
+            // print out each memory type
+            for(int i = 0; i < m_physicalDeviceMemoryProperties.memoryTypeCount; i++)
+            {
+                Platform::Log("[vk-init] Memory Type %i\n  heap index = %u\n  device local = %s\n  host visible = %s\n  host coherhent = %s\n  host cached = %s\n  lazily allocated = %s\n", 
+                              i,
+                              m_physicalDeviceMemoryProperties.memoryTypes[i].heapIndex, 
+                              ToString(m_physicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                              ToString(m_physicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                              ToString(m_physicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                              ToString(m_physicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
+                              ToString(m_physicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT));
+            }
+        }
     }
 
     SM_ASSERT(m_physicalDevice != VK_NULL_HANDLE);
@@ -615,7 +693,8 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
 	SM_ASSERT(m_defaultDepthFormat != VK_FORMAT_UNDEFINED);
 
     // Setup frame resources
-    CreateSwapchain(this);
+    CreateSwapchain();
+
     m_pFrameResources = SM::Alloc<FrameResources>(m_numFramesInFlight);
     for(int i = 0; i < m_numFramesInFlight; i++)
     {
@@ -632,9 +711,10 @@ void VulkanRenderer::RenderFrame()
     m_curFrameInFlight++;
     m_curFrameInFlight %= m_numFramesInFlight;
 
-    UpdateSwapchain(this);
+    UpdateSwapchain();
 
     FrameResources& frameResources = m_pFrameResources[m_curFrameInFlight];
+    frameResources.Update();
 
     // draw to main color render target
     // get a swapchain image

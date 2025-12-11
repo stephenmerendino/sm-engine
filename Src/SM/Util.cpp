@@ -11,3 +11,8 @@ char* SM::ConcatenateStrings(const char* s1, const char* s2, LinearAllocator* al
     sprintf_s(combinedString, combinedSize, "%s%s\0", s1, s2);
     return combinedString;
 }
+
+const char* SM::ToString(bool b)
+{
+    return b ? "True" : "False";    
+}
