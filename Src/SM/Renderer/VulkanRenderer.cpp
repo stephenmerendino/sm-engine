@@ -18,18 +18,49 @@ void FrameResources::Init(VulkanRenderer* pRenderer)
 {
     m_pRenderer = pRenderer;
     m_curScreenResolution = {.width = 0, .height = 0};
+    
+    // m_commandBuffer
+    {
+        VkCommandBufferAllocateInfo commandBufferAllocInfo{
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+                .pNext = nullptr,
+                .commandPool = m_pRenderer->m_graphicsCommandPool,
+                .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                .commandBufferCount = 1 
+        };
 
-    VkCommandBufferAllocateInfo commandBufferAllocInfo{
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .pNext = nullptr,
-        .commandPool = m_pRenderer->m_graphicsCommandPool,
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = 1 
-    };
+        vkAllocateCommandBuffers(m_pRenderer->m_device, &commandBufferAllocInfo, &m_commandBuffer);
+    }
 
-    vkAllocateCommandBuffers(m_pRenderer->m_device, &commandBufferAllocInfo, &m_commandBuffer);
+    // m_swapchainAcquiredSemaphore
+    {
+        VkSemaphoreCreateInfo createInfo{
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0 
+        };
+        SM_ASSERT(vkCreateSemaphore(m_pRenderer->m_device, &createInfo, nullptr, &m_swapchainAcquiredSemaphore) == VK_SUCCESS);
+    }
 
-    Update();
+    // m_swapchainAcquiredFence
+    {
+        VkFenceCreateInfo createInfo{
+            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0,
+        };
+        SM_ASSERT(vkCreateFence(m_pRenderer->m_device, &createInfo, nullptr, &m_swapchainAcquiredFence) == VK_SUCCESS);
+    }
+
+    // m_frameCompletedFence
+    {
+        VkFenceCreateInfo createInfo{
+            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = VK_FENCE_CREATE_SIGNALED_BIT,
+        };
+        SM_ASSERT(vkCreateFence(m_pRenderer->m_device, &createInfo, nullptr, &m_frameCompletedFence) == VK_SUCCESS);
+    }
 }
 
 void FrameResources::Update()
@@ -39,16 +70,24 @@ void FrameResources::Update()
         return; 
     }
 
+    // free previous resources
+    if(m_curScreenResolution.width != 0 && m_curScreenResolution.height != 0)
+    {
+        vkDestroyImage(m_pRenderer->m_device, m_mainColorRenderTarget, nullptr);
+        vkFreeMemory(m_pRenderer->m_device, m_mainColorRenderTargetMemory, nullptr);
+    }
+
     m_curScreenResolution = m_pRenderer->m_swapchainExtent;
 
     // setup main color render target
     {
+        // Image
         VkImageCreateInfo imageCreateInfo {
             .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, 
             .pNext = nullptr, 
             .flags = 0, 
             .imageType = VK_IMAGE_TYPE_2D, 
-            .format = VK_FORMAT_R8G8B8A8_UNORM, 
+            .format = m_mainColorFormat, 
             .extent = { .width = m_curScreenResolution.width, .height = m_curScreenResolution.height, .depth = 1 }, 
             .mipLevels = 1, 
             .arrayLayers = 1,
@@ -63,6 +102,7 @@ void FrameResources::Update()
 
         SM_ASSERT(vkCreateImage(m_pRenderer->m_device, &imageCreateInfo, nullptr, &m_mainColorRenderTarget) == VK_SUCCESS);
 
+        // Memory
         VkMemoryRequirements imageMemoryRequirements;
         vkGetImageMemoryRequirements(m_pRenderer->m_device, m_mainColorRenderTarget, &imageMemoryRequirements);
 
@@ -95,10 +135,35 @@ void FrameResources::Update()
             .allocationSize = imageMemoryRequirements.size,
             .memoryTypeIndex = memoryTypeIndex
         };
+
         SM_ASSERT(vkAllocateMemory(m_pRenderer->m_device, &imageMemoryAllocateInfo, nullptr, &m_mainColorRenderTargetMemory) == VK_SUCCESS);
 
         VkDeviceSize memoryOffset = 0;
         SM_ASSERT(vkBindImageMemory(m_pRenderer->m_device, m_mainColorRenderTarget, m_mainColorRenderTargetMemory, memoryOffset) == VK_SUCCESS);
+
+        // Image View
+        VkImageViewCreateInfo imageViewCreateInfo{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0,
+            .image = m_mainColorRenderTarget,
+            .viewType = VK_IMAGE_VIEW_TYPE_2D,
+            .format = m_mainColorFormat,
+            .components = { 
+                .r = VK_COMPONENT_SWIZZLE_IDENTITY, 
+                .g = VK_COMPONENT_SWIZZLE_IDENTITY, 
+                .b = VK_COMPONENT_SWIZZLE_IDENTITY, 
+                .a = VK_COMPONENT_SWIZZLE_IDENTITY 
+            },
+            .subresourceRange = {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1
+            }
+        };
+        SM_ASSERT(vkCreateImageView(m_pRenderer->m_device, &imageViewCreateInfo, nullptr, &m_mainColorImageView) == VK_SUCCESS);
     }
 }
 
@@ -714,16 +779,204 @@ void VulkanRenderer::RenderFrame()
     UpdateSwapchain();
 
     FrameResources& frameResources = m_pFrameResources[m_curFrameInFlight];
+    vkWaitForFences(m_device, 1, &frameResources.m_frameCompletedFence, VK_TRUE, UINT64_MAX);
+    vkResetFences(m_device, 1, &frameResources.m_frameCompletedFence);
     frameResources.Update();
 
-    // draw to main color render target
+    // reset frame command buffer
+    {
+        VkCommandBufferResetFlags resetCommandBufferFlags = 0;
+        vkResetCommandBuffer(frameResources.m_commandBuffer, resetCommandBufferFlags);
+    }
+
+    // draw to main color target
+    {
+        VkClearColorValue clearColor;
+        clearColor.float32[0] = m_clearColor.r;
+        clearColor.float32[1] = m_clearColor.g;
+        clearColor.float32[2] = m_clearColor.b;
+        clearColor.float32[3] = m_clearColor.a;
+        VkClearValue clearValue{
+            .color = clearColor
+        };
+
+        VkRenderingAttachmentInfo mainColorAttachmentInfo{
+            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            .pNext = nullptr,
+            .imageView = frameResources.m_mainColorImageView,
+            .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .resolveMode = VK_RESOLVE_MODE_NONE,
+            .resolveImageView = VK_NULL_HANDLE,
+            .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .clearValue = clearValue
+        };
+
+        VkRenderingAttachmentInfo colorAttachments[] = { mainColorAttachmentInfo };
+
+        VkRenderingInfo renderingInfo{
+            .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+            .pNext = nullptr,
+            .flags = 0,
+            .renderArea = {
+                .offset = { .x = 0, .y = 0 },
+                .extent = m_swapchainExtent
+            },
+            .layerCount = 1,
+            .viewMask = 0,
+            .colorAttachmentCount = ARRAY_LEN(colorAttachments),
+            .pColorAttachments = colorAttachments,
+            .pDepthAttachment = nullptr,
+            .pStencilAttachment = nullptr
+        };
+        vkCmdBeginRendering(frameResources.m_commandBuffer, &renderingInfo);
+        vkCmdEndRendering(frameResources.m_commandBuffer);
+    }
+
     // get a swapchain image
+    U32 swapchainImageIndex = UINT32_MAX;
+    {
+        vkAcquireNextImageKHR(m_device, 
+                              m_swapchain, 
+                              UINT64_MAX, 
+                              frameResources.m_swapchainAcquiredSemaphore, 
+                              frameResources.m_swapchainAcquiredFence, 
+                              &swapchainImageIndex);
+    }
+
     // transition main color from color attachment to transfer src
     // transition swapchain image from presentation to transfer dst
+    {
+        VkImageMemoryBarrier transitionMainColorToTransferSrcBarrier{
+            //VkStructureType            sType;
+            //const void*                pNext;
+            //VkAccessFlags              srcAccessMask;
+            //VkAccessFlags              dstAccessMask;
+            //VkImageLayout              oldLayout;
+            //VkImageLayout              newLayout;
+            //uint32_t                   srcQueueFamilyIndex;
+            //uint32_t                   dstQueueFamilyIndex;
+            //VkImage                    image;
+            //VkImageSubresourceRange    subresourceRange;
+        };
+
+        VkImageMemoryBarrier transitionSwapchainToTransferDstBarrier{
+            //VkStructureType            sType;
+            //const void*                pNext;
+            //VkAccessFlags              srcAccessMask;
+            //VkAccessFlags              dstAccessMask;
+            //VkImageLayout              oldLayout;
+            //VkImageLayout              newLayout;
+            //uint32_t                   srcQueueFamilyIndex;
+            //uint32_t                   dstQueueFamilyIndex;
+            //VkImage                    image;
+            //VkImageSubresourceRange    subresourceRange;
+        };
+
+        VkImageMemoryBarrier imageMemoryBarriers[] = {
+            transitionMainColorToTransferSrcBarrier,
+            transitionSwapchainToTransferDstBarrier
+        };
+
+        VkDependencyFlagBits test;
+        vkCmdPipelineBarrier(frameResources.m_commandBuffer, 
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 
+                VK_PIPELINE_STAGE_TRANSFER_BIT, 
+                0, 
+                0, nullptr, 
+                0, nullptr, 
+                ARRAY_LEN(imageMemoryBarriers), imageMemoryBarriers);
+    }
+
     // copy main color data to the swapchain image
+    {
+        VkImageBlit blitInfo{
+            //VkImageSubresourceLayers    srcSubresource;
+            //VkOffset3D                  srcOffsets[2];
+            //VkImageSubresourceLayers    dstSubresource;
+            //VkOffset3D                  dstOffsets[2];
+        };
+        vkCmdBlitImage(frameResources.m_commandBuffer, 
+                frameResources.m_mainColorRenderTarget, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
+                m_pSwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+                1, &blitInfo, VK_FILTER_LINEAR);
+    }
+
     // transition swapchain image to presentation from transfer dst
     // transition main color render target to color attachment from transfer src
+    {
+        VkImageMemoryBarrier transitionMainColorToColorAttachmentBarrier{
+            //VkStructureType            sType;
+            //const void*                pNext;
+            //VkAccessFlags              srcAccessMask;
+            //VkAccessFlags              dstAccessMask;
+            //VkImageLayout              oldLayout;
+            //VkImageLayout              newLayout;
+            //uint32_t                   srcQueueFamilyIndex;
+            //uint32_t                   dstQueueFamilyIndex;
+            //VkImage                    image;
+            //VkImageSubresourceRange    subresourceRange;
+        };
+
+        VkImageMemoryBarrier transitionSwapchainToPresentationBarrier{
+            //VkStructureType            sType;
+            //const void*                pNext;
+            //VkAccessFlags              srcAccessMask;
+            //VkAccessFlags              dstAccessMask;
+            //VkImageLayout              oldLayout;
+            //VkImageLayout              newLayout;
+            //uint32_t                   srcQueueFamilyIndex;
+            //uint32_t                   dstQueueFamilyIndex;
+            //VkImage                    image;
+            //VkImageSubresourceRange    subresourceRange;
+        };
+
+        VkImageMemoryBarrier imageMemoryBarriers[] = {
+            transitionMainColorToColorAttachmentBarrier,
+            transitionSwapchainToPresentationBarrier
+        };
+
+        VkDependencyFlagBits test;
+        vkCmdPipelineBarrier(frameResources.m_commandBuffer, 
+                VK_PIPELINE_STAGE_TRANSFER_BIT, 
+                VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 
+                0, 
+                0, nullptr, 
+                0, nullptr, 
+                ARRAY_LEN(imageMemoryBarriers), imageMemoryBarriers);
+    }
+
+    // submit the command buffer
+    {
+        VkSubmitInfo submitInfo{
+            //VkStructureType                sType;
+            //const void*                    pNext;
+            //uint32_t                       waitSemaphoreCount;
+            //const VkSemaphore*             pWaitSemaphores;
+            //const VkPipelineStageFlags*    pWaitDstStageMask;
+            //uint32_t                       commandBufferCount;
+            //const VkCommandBuffer*         pCommandBuffers;
+            //uint32_t                       signalSemaphoreCount;
+            //const VkSemaphore*             pSignalSemaphores;
+        };
+        vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, frameResources.m_frameCompletedFence);
+    }
+
     // present the swapchain image
+    {
+        VkPresentInfoKHR presentInfo{
+            //VkStructureType          sType;
+            //const void*              pNext;
+            //uint32_t                 waitSemaphoreCount;
+            //const VkSemaphore*       pWaitSemaphores;
+            //uint32_t                 swapchainCount;
+            //const VkSwapchainKHR*    pSwapchains;
+            //const uint32_t*          pImageIndices;
+            //VkResult*                pResults;
+        };
+        vkQueuePresentKHR(m_graphicsQueue, &presentInfo);
+    }
 }
 
 VkFormat VulkanRenderer::FindSupportedFormat(VkFormat* candidates, U32 numCandidates, VkImageTiling tiling, VkFormatFeatureFlags features)

@@ -78,9 +78,18 @@ namespace SM
         void Update();
 
         VkExtent2D m_curScreenResolution = { .width = 0, .height = 0 };
+
         VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
+
+        VkSemaphore m_swapchainAcquiredSemaphore = VK_NULL_HANDLE;
+        VkFence m_swapchainAcquiredFence = VK_NULL_HANDLE;
+
+        VkFormat m_mainColorFormat = VK_FORMAT_R8G8B8A8_UNORM;
         VkImage m_mainColorRenderTarget = VK_NULL_HANDLE;
         VkDeviceMemory m_mainColorRenderTargetMemory = VK_NULL_HANDLE;
+        VkImageView m_mainColorImageView = VK_NULL_HANDLE;
+
+        VkFence m_frameCompletedFence = VK_NULL_HANDLE;
 
         VulkanRenderer* m_pRenderer = nullptr;
     };
