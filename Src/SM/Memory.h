@@ -84,7 +84,7 @@ namespace SM
 
     #define PushScopedStackAllocator(stackMemorySize) \
         LinearAllocator stackLinearAllocator; \
-        void* stackMemory = _alloca(stackMemorySize); \
+        void* stackMemory = Platform::StackAllocate(stackMemorySize); \
         stackLinearAllocator.Init(stackMemory, stackMemorySize); \
         ScopedAllocator scopedAllocator##__LINE__(&stackLinearAllocator);
 

@@ -6,6 +6,7 @@
 #include "SM/Memory.h"
 #include "SM/Renderer/VulkanConfig.h"
 #include "SM/Renderer/VulkanFunctions.h"
+#include "ThirdParty/vulkan/vulkan_core.h"
 
 #define VK_NO_PROTOTYPES
 #include "ThirdParty/imgui/imgui.h"
@@ -254,6 +255,8 @@ void FrameResources::EndFrame()
 
 void VulkanRenderer::CreateSwapchain()
 {
+    PushScopedStackAllocator(KiB(1));
+
     U32 numSurfaceFormats = 0;
     vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, m_surface, &numSurfaceFormats, nullptr);
     VkSurfaceFormatKHR* surfaceFormats = SM::Alloc<VkSurfaceFormatKHR>(numSurfaceFormats);
@@ -413,6 +416,8 @@ void VulkanRenderer::CreateSwapchain()
 
     vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
     vkQueueWaitIdle(m_graphicsQueue);
+
+    SM::PopAllocator();
 }
 
 bool VulkanRenderer::UpdateSwapchain(U32& outSwapchainImageIndex, VkSemaphore imageAcquiredSemaphore, VkFence imageAcquiredFence)
@@ -1238,9 +1243,9 @@ void VulkanRenderer::RenderFrame()
             .pImageIndices = &frameResources.m_swapchainImageIndex,
             .pResults = &presentResult
         };
-        SM_ASSERT(vkQueuePresentKHR(m_graphicsQueue, &presentInfo) == VK_SUCCESS);
-        SM_ASSERT(presentResult == VK_SUCCESS || presentResult == VK_SUBOPTIMAL_KHR);
-        if(presentResult == VK_SUBOPTIMAL_KHR)
+        presentResult = vkQueuePresentKHR(m_graphicsQueue, &presentInfo);
+        SM_ASSERT(presentResult == VK_SUCCESS || presentResult == VK_SUBOPTIMAL_KHR || presentResult == VK_ERROR_OUT_OF_DATE_KHR);
+        if(presentResult == VK_SUBOPTIMAL_KHR || presentResult == VK_ERROR_OUT_OF_DATE_KHR)
         {
             m_bSwapchainNeedsRefresh = true;
         }

@@ -545,6 +545,11 @@ void Platform::Update(Window* pWindow)
     }
 }
 
+void* Platform::StackAllocate(size_t bytes)
+{
+    return _alloca(bytes);    
+}
+
 void Platform::GetScreenDimensions(U32& screenWidth, U32& screenHeight)
 {
     screenWidth = GetSystemMetrics(SM_CXVIRTUALSCREEN);
