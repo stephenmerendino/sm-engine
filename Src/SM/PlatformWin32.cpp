@@ -18,6 +18,7 @@
 #define VK_DEVICE_FUNCTION(func)	PFN_##func func = VK_NULL_HANDLE;
 #include "SM/Renderer/VulkanFunctionsManifest.inl"
 #include "SM/Renderer/VulkanConfig.h"
+
 #include "ThirdParty/imgui/imgui_impl_win32.cpp"
 
 #include <combaseapi.h>
@@ -306,7 +307,6 @@ static LRESULT EngineWinProc(HWND window, UINT message, WPARAM wParam, LPARAM lP
 
         case WM_CLOSE:
         {
-            Platform::Log("WM_CLOSE\n");
             Exit();
         }
         break;

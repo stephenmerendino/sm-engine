@@ -1,16 +1,19 @@
 Current Tasks
 -------------
-[] Get renderer clearing screen and presenting
+[] ImGui setup
+    [x] Rendering
+    [] Input
 
 TODO
 ----
-[] ImGui setup
+[] Better integration of FrameResources with swapchain/renderer
 [] Frame pacing
 [] Game can render a single cube at world origin
 [] Game needs to setup camera logic for right click first person fly mode
 
 Big Systems TODO
 ----------------
+[] Lighting
 [] Animation
 [] Particles
 [] Audio
@@ -28,3 +31,4 @@ Finished Tasks
 [x] Keyboard Input
 [x] Mouse Input
 [x] Port Camera code from old engine
+[x] Get renderer clearing screen and presenting

@@ -85,12 +85,6 @@
 //  2016-10-18: Vulkan: Add location decorators & change to use structs as in/out in glsl, update embedded spv (produced with glslangValidator -x). Null the released resources.
 //  2016-08-27: Vulkan: Fix Vulkan example for use when a depth buffer is active.
 
-//(smerendino) getting rid of annoying error
-// #pragma warning(disable : 4211)
-
-//(smerendino) include my own vulkan header for function prototypes
-//#include "SM/Renderer/VulkanRenderer.h"
-
 #include "imgui.h"
 #ifndef IMGUI_DISABLE
 #include "imgui_impl_vulkan.h"

@@ -5,13 +5,11 @@
 #include "SM/Math.h"
 #include "SM/Memory.h"
 #include "SM/Renderer/VulkanConfig.h"
+#include "SM/Renderer/VulkanFunctions.h"
 
-//#define VK_NO_PROTOTYPES
-#define IMGUI_DEFINE_MATH_OPERATORS
+#define VK_NO_PROTOTYPES
 #include "ThirdParty/imgui/imgui.h"
 #include "ThirdParty/imgui/imgui_impl_vulkan.cpp"
-
-#include "SM/Renderer/VulkanFunctions.h"
 
 #include <cstring>
 
@@ -528,6 +526,11 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
     SM_ASSERT(vkCreateInstance(&instanceCreateInfo, nullptr, &m_instance) == VK_SUCCESS);
     Platform::LoadVulkanInstanceFuncs(m_instance);
 
+    // immediately load imgui functions once we have a valid instance, otherwise we crash because vulkan functions aren't setup correctly
+    {
+        ImGui_ImplVulkan_LoadFunctions(VK_API_VERSION_1_3, ImguiVulkanFuncLoader, &m_instance);
+    }
+
     //------------------------------------------------------------------------------------------------------------------------
     // Debug Messenger
     //------------------------------------------------------------------------------------------------------------------------
@@ -907,7 +910,6 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
             .stencilAttachmentFormat = VK_FORMAT_UNDEFINED
         };
 
-        ImGui_ImplVulkan_LoadFunctions(VK_API_VERSION_1_3, ImguiVulkanFuncLoader, &m_instance);
         ImGui_ImplVulkan_InitInfo imguiInitInfo{
             .Instance = m_instance,
             .PhysicalDevice = m_physicalDevice,

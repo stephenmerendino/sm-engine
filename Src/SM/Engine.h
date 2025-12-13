@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SM/Util.h"
+#define IMGUI_USER_CONFIG "SM/Renderer/ImGuiConfig.h"
 
 namespace SM
 {
@@ -14,5 +14,4 @@ namespace SM
     bool ExitRequested();
     const char* GetRawAssetsDir();
     bool IsRunningDebugBuild();
-
 }

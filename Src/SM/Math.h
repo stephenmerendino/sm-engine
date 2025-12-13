@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SM/Engine.h"
+#include "SM/Util.h"
 #include "SM/Assert.h"
 #include "SM/StandardTypes.h"
 #include <cfloat>
