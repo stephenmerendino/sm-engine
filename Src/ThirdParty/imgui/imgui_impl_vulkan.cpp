@@ -86,10 +86,10 @@
 //  2016-08-27: Vulkan: Fix Vulkan example for use when a depth buffer is active.
 
 //(smerendino) getting rid of annoying error
- #pragma warning(disable : 4211)
+// #pragma warning(disable : 4211)
 
 //(smerendino) include my own vulkan header for function prototypes
-#include "sm/render/vulkan/vk_include.h"
+//#include "SM/Renderer/VulkanRenderer.h"
 
 #include "imgui.h"
 #ifndef IMGUI_DISABLE

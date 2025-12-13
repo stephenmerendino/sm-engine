@@ -5,14 +5,30 @@
 #include "SM/Math.h"
 #include "SM/Memory.h"
 #include "SM/Renderer/VulkanConfig.h"
-#include "ThirdParty/vulkan/vulkan_core.h"
+
+//#define VK_NO_PROTOTYPES
+#define IMGUI_DEFINE_MATH_OPERATORS
+#include "ThirdParty/imgui/imgui.h"
+#include "ThirdParty/imgui/imgui_impl_vulkan.cpp"
+
+#include "SM/Renderer/VulkanFunctions.h"
 
 #include <cstring>
-#include <regex>
 
 using namespace SM;
 
 static const ColorF32 kDefaultClearColor = ColorF32(0, 0.4, 0.4);
+
+static void ImguiCheckVulkanResult(VkResult result)
+{
+    SM_ASSERT(result == VK_SUCCESS);
+}
+
+static PFN_vkVoidFunction ImguiVulkanFuncLoader(const char* functionName, void* userData)
+{
+	VkInstance instance = *((VkInstance*)userData);
+    return vkGetInstanceProcAddr(instance, functionName);
+}
 
 void FrameResources::Init(VulkanRenderer* pRenderer)
 {
@@ -127,7 +143,7 @@ void FrameResources::BeginFrame()
                     .pNext = nullptr, 
                     .flags = 0, 
                     .imageType = VK_IMAGE_TYPE_2D, 
-                    .format = m_mainColorFormat, 
+                    .format = VulkanRenderer::kMainColorFormat, 
                     .extent = { .width = m_mainColorExtent.width, .height = m_mainColorExtent.height, .depth = 1 }, 
                     .mipLevels = 1, 
                     .arrayLayers = 1,
@@ -188,7 +204,7 @@ void FrameResources::BeginFrame()
                     .flags = 0,
                     .image = m_mainColorRenderTarget,
                     .viewType = VK_IMAGE_VIEW_TYPE_2D,
-                    .format = m_mainColorFormat,
+                    .format = VulkanRenderer::kMainColorFormat,
                     .components = { 
                         .r = VK_COMPONENT_SWIZZLE_IDENTITY, 
                         .g = VK_COMPONENT_SWIZZLE_IDENTITY, 
@@ -433,7 +449,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
     //------------------------------------------------------------------------------------------------------------------------
     // Instance
     //------------------------------------------------------------------------------------------------------------------------
-    VkApplicationInfo appInfo {
+    VkApplicationInfo appInfo{
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pApplicationName = "SM Workbench",
         .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
@@ -442,7 +458,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
         .apiVersion = VK_API_VERSION_1_3
     };
 
-    VkInstanceCreateInfo instanceCreateInfo {
+    VkInstanceCreateInfo instanceCreateInfo{
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pApplicationInfo = &appInfo,
         .enabledExtensionCount = ARRAY_LEN(VulkanConfig::kInstanceExtensions),
@@ -542,6 +558,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
     // Physical Device
     //------------------------------------------------------------------------------------------------------------------------
     U32 numFoundGPUs = 0;
+    Platform::Log("%lu", (uintptr_t)vkEnumeratePhysicalDevices);
     vkEnumeratePhysicalDevices(m_instance, &numFoundGPUs, nullptr);
     SM_ASSERT(numFoundGPUs != 0);
 
@@ -783,9 +800,7 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
         .pEnabledFeatures = &deviceFeatures
     };
 
-    //SM_ASSERT(vkCreateDevice(m_physicalDevice, &createInfo, nullptr, &m_device) == VK_SUCCESS);
-    VkResult deviceCreated = vkCreateDevice(m_physicalDevice, &createInfo, nullptr, &m_device);
-    SM_ASSERT(deviceCreated == VK_SUCCESS);
+    SM_VULKAN_ASSERT(vkCreateDevice(m_physicalDevice, &createInfo, nullptr, &m_device));
     Platform::LoadVulkanDeviceFuncs(m_device);
 
     //------------------------------------------------------------------------------------------------------------------------
@@ -842,6 +857,79 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
         m_frameResources[i].Init(this);
     }
 
+    //------------------------------------------------------------------------------------------------------------------------
+    // ImGui
+    //------------------------------------------------------------------------------------------------------------------------
+    {
+		// imgui descriptor pool
+		{
+            const I32 IMGUI_MAX_SETS = 1000;
+
+            VkDescriptorPoolSize poolSizes[] = { 
+				{ VK_DESCRIPTOR_TYPE_SAMPLER, IMGUI_MAX_SETS },
+				{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, IMGUI_MAX_SETS },
+				{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, IMGUI_MAX_SETS },
+				{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, IMGUI_MAX_SETS },
+				{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, IMGUI_MAX_SETS },
+				{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, IMGUI_MAX_SETS },
+				{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, IMGUI_MAX_SETS },
+				{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, IMGUI_MAX_SETS },
+				{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, IMGUI_MAX_SETS },
+				{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, IMGUI_MAX_SETS },
+				{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, IMGUI_MAX_SETS }
+			};
+
+            VkDescriptorPoolCreateInfo createInfo{
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+                .maxSets = IMGUI_MAX_SETS,
+                .poolSizeCount = (U32)ARRAY_LEN(poolSizes),
+                .pPoolSizes = poolSizes
+            };
+            SM_VULKAN_ASSERT(vkCreateDescriptorPool(m_device, &createInfo, nullptr, &m_imguiDescriptorPool));
+		}
+
+        IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+        ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+        //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+        ImGui::StyleColorsDark();
+
+        F32 fontSize = 13.0f;
+        Platform::ImguiInit(m_pWindow, fontSize);
+
+        VkPipelineRenderingCreateInfoKHR pipelineRenderingCreateInfo{
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
+            .pNext = nullptr,
+            .viewMask = 0,
+            .colorAttachmentCount = 1,
+            .pColorAttachmentFormats = &VulkanRenderer::kMainColorFormat,
+            .depthAttachmentFormat = VK_FORMAT_UNDEFINED,
+            .stencilAttachmentFormat = VK_FORMAT_UNDEFINED
+        };
+
+        ImGui_ImplVulkan_LoadFunctions(VK_API_VERSION_1_3, ImguiVulkanFuncLoader, &m_instance);
+        ImGui_ImplVulkan_InitInfo imguiInitInfo{
+            .Instance = m_instance,
+            .PhysicalDevice = m_physicalDevice,
+            .Device = m_device,
+            .QueueFamily = (U32)m_graphicsQueueIndex,
+            .Queue = m_graphicsQueue,
+            .DescriptorPool = m_imguiDescriptorPool,
+            .RenderPass = VK_NULL_HANDLE,
+            .MinImageCount = (U32)m_numFramesInFlight, 
+            .ImageCount = (U32)m_numFramesInFlight,
+            .MSAASamples = VK_SAMPLE_COUNT_1_BIT,
+            .PipelineCache = VK_NULL_HANDLE,
+            .Subpass = 0,
+            .UseDynamicRendering = true,
+            .PipelineRenderingCreateInfo = pipelineRenderingCreateInfo,
+            .Allocator = VK_NULL_HANDLE,
+            .CheckVkResultFn = ImguiCheckVulkanResult
+        };
+        ImGui_ImplVulkan_Init(&imguiInitInfo);
+        ImGui_ImplVulkan_CreateFontsTexture();
+	}
+
     SM::PopAllocator();
 
     return true;
@@ -849,12 +937,24 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
 
 void VulkanRenderer::RenderFrame()
 {
+    if(ExitRequested() || Platform::IsWindowMinimized(m_pWindow))
+    {
+        return;    
+    }
+
     m_curFrameInFlight++;
     m_curFrameInFlight %= m_numFramesInFlight;
 
     // setup new frame
     FrameResources& frameResources = m_frameResources[m_curFrameInFlight];
     frameResources.BeginFrame();
+
+    // imgui
+    {
+        Platform::ImguiBeginFrame();
+        ::ImGui_ImplVulkan_NewFrame();
+        ::ImGui::NewFrame();
+    }
 
     // draw to main color target
     {
@@ -897,6 +997,65 @@ void VulkanRenderer::RenderFrame()
         };
         vkCmdBeginRendering(frameResources.m_commandBuffer, &renderingInfo);
         //(TODO) do the rendering of meshes here
+        vkCmdEndRendering(frameResources.m_commandBuffer);
+    }
+
+    // imgui
+    {
+        static bool s_showImguiDemo = true;
+
+        if (ImGui::BeginMainMenuBar())
+        {
+            if (ImGui::MenuItem("ImGui Demo"))
+            {
+                s_showImguiDemo = true;
+            }
+            ImGui::EndMainMenuBar();
+        }
+
+        ImGui::ShowDemoWindow(&s_showImguiDemo);
+
+        VkRenderingAttachmentInfo colorAttachmentInfo{
+            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            .pNext = nullptr,
+            .imageView = frameResources.m_mainColorImageView,
+            .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .resolveMode = VK_RESOLVE_MODE_NONE,
+            .resolveImageView = VK_NULL_HANDLE,
+            .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .clearValue {
+                .color { 0.0f, 0.0f, 0.0f, 0.0f } 
+            }
+        };
+        VkRenderingAttachmentInfo colorAttachments[] = {
+            colorAttachmentInfo
+        };
+
+        VkRect2D renderArea{
+            .offset = { .x = 0, .y = 0 },
+            .extent = frameResources.m_mainColorExtent 
+        };
+
+        VkRenderingInfo renderingInfo{
+            .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+            .pNext = nullptr,
+            .flags = 0,
+            .renderArea = renderArea,
+            .layerCount = 1,
+            .viewMask = 0,
+            .colorAttachmentCount = ARRAY_LEN(colorAttachments),
+            .pColorAttachments = colorAttachments,
+            .pDepthAttachment = nullptr,
+            .pStencilAttachment = nullptr 
+        };
+        vkCmdBeginRendering(frameResources.m_commandBuffer, &renderingInfo);
+
+        ::ImGui::Render();
+        ::ImDrawData* draw_data = ::ImGui::GetDrawData();
+        ImGui_ImplVulkan_RenderDrawData(draw_data, frameResources.m_commandBuffer);
+
         vkCmdEndRendering(frameResources.m_commandBuffer);
     }
 

@@ -18,6 +18,7 @@
 #define VK_DEVICE_FUNCTION(func)	PFN_##func func = VK_NULL_HANDLE;
 #include "SM/Renderer/VulkanFunctionsManifest.inl"
 #include "SM/Renderer/VulkanConfig.h"
+#include "ThirdParty/imgui/imgui_impl_win32.cpp"
 
 #include <combaseapi.h>
 #include "ThirdParty/dxc/dxcapi.h"
@@ -565,6 +566,11 @@ void Platform::GetWindowDimensions(Window* pWindow, U32& width, U32& height)
     height = clientArea.bottom - clientArea.top;
 }
 
+bool Platform::IsWindowMinimized(Window* pWindow)
+{
+    return ::IsIconic(pWindow->m_hwnd); 
+}
+
 static VKAPI_ATTR VkBool32 VKAPI_CALL Win32VulkanDebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT msgSeverity,
 													           VkDebugUtilsMessageTypeFlagsEXT msgType,
 													           const VkDebugUtilsMessengerCallbackDataEXT* cbData,
@@ -748,6 +754,25 @@ Shader* Platform::CompileShader(ShaderType shaderType, const char* shaderFile, c
     shader->m_byteCode = (Byte*)allocator->Alloc(code->GetBufferSize());
     ::memcpy(shader->m_byteCode, code->GetBufferPointer(), code->GetBufferSize());
 	return shader;
+}
+
+void Platform::ImguiInit(Window* pWindow, F32 fontSize)
+{
+    ImGui_ImplWin32_Init(pWindow->m_hwnd);
+
+    F32 dpiScale = ImGui_ImplWin32_GetDpiScaleForHwnd(pWindow->m_hwnd);
+    Platform::Log("[imgui-init] Setting ImGui DPI Scale to %f\n", dpiScale);
+
+    ImFontConfig fontCfg;
+    fontCfg.SizePixels = floor(fontSize * dpiScale);
+    ImGui::GetIO().Fonts->AddFontDefault(&fontCfg);
+
+    ImGui::GetStyle().ScaleAllSizes(dpiScale);
+}
+
+void Platform::ImguiBeginFrame()
+{
+    ImGui_ImplWin32_NewFrame();
 }
 
 F32 Platform::GetMillisecondsSinceAppStart()

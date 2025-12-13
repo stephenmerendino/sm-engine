@@ -6,7 +6,7 @@ set ScriptDir=%~dp0
 set CodeRootDir=Src
 set OutputFile=%ScriptDir%compile_commands.json
 
-set Directory=%CD%
+set Directory=%ScriptDir%
 set "Directory=!Directory:\=/!"
 
 echo [ > %OutputFile%

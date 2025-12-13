@@ -40,6 +40,7 @@ namespace SM
         Window* OpenWindow(const char* title, U32 width, U32 height);
         void GetScreenDimensions(U32& screenWidth, U32& screenHeight);
         void GetWindowDimensions(Window* pWindow, U32& width, U32& height);
+        bool IsWindowMinimized(Window* pWindow);
 
         //------------------------------------------------------------------------------------------------------------------------
         // Rendering
@@ -53,6 +54,12 @@ namespace SM
                               const char* shaderFile, 
                               const char* entryFunctionName, 
                               LinearAllocator* allocator = GetCurrentAllocator());
+
+        //------------------------------------------------------------------------------------------------------------------------
+        // ImGui
+        //------------------------------------------------------------------------------------------------------------------------
+        void ImguiInit(Window* pWindow, F32 fontSize);
+        void ImguiBeginFrame();
 
         //------------------------------------------------------------------------------------------------------------------------
         // Timing

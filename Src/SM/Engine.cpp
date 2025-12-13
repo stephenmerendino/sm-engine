@@ -6,7 +6,11 @@
 #include "SM/Memory.cpp"
 #include "SM/Renderer/VulkanRenderer.cpp"
 
-#include <cstdio>
+#include "ThirdParty/imgui/imgui.cpp"
+#include "ThirdParty/imgui/imgui_demo.cpp"
+#include "ThirdParty/imgui/imgui_draw.cpp"
+#include "ThirdParty/imgui/imgui_tables.cpp"
+#include "ThirdParty/imgui/imgui_widgets.cpp"
 
 using namespace SM;
 

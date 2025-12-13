@@ -7,15 +7,6 @@
 #include "SM/StandardTypes.h"
 #include <cstdint>
 
-#define VK_NO_PROTOTYPES
-#include "ThirdParty/vulkan/vulkan_core.h"
-
-#define VK_EXPORTED_FUNCTION(func)	extern PFN_##func func;
-#define VK_GLOBAL_FUNCTION(func)	extern PFN_##func func;
-#define VK_INSTANCE_FUNCTION(func)	extern PFN_##func func;
-#define VK_DEVICE_FUNCTION(func)	extern PFN_##func func;
-#include "SM/Renderer/VulkanFunctionsManifest.inl"
-
 namespace SM
 {
     namespace Platform
@@ -40,7 +31,6 @@ namespace SM
         VkSemaphore m_swapchainImageAcquiredSemaphore = VK_NULL_HANDLE;
         VkFence m_swapchainImageAcquiredFence = VK_NULL_HANDLE;
 
-        VkFormat m_mainColorFormat = VK_FORMAT_R8G8B8A8_UNORM;
         VkImage m_mainColorRenderTarget = VK_NULL_HANDLE;
         VkDeviceMemory m_mainColorRenderTargetMemory = VK_NULL_HANDLE;
         VkImageView m_mainColorImageView = VK_NULL_HANDLE;
@@ -84,6 +74,7 @@ namespace SM
         VkQueue m_transferQueue = VK_NULL_HANDLE;
 
         VkCommandPool m_graphicsCommandPool = VK_NULL_HANDLE;
+        VkDescriptorPool m_imguiDescriptorPool = VK_NULL_HANDLE;
 
         VkSwapchainKHR m_swapchain = VK_NULL_HANDLE;
         VkSurfaceFormatKHR m_swapchainFormat;
@@ -99,6 +90,7 @@ namespace SM
         VkFormat m_defaultDepthFormat = VK_FORMAT_UNDEFINED;
 
         static const size_t kMaxNumFramesInFlight = VulkanConfig::kOptimalNumFramesInFlight;
+        static const VkFormat kMainColorFormat = VK_FORMAT_R8G8B8A8_UNORM;
     };
 
     inline bool operator==(const VkExtent2D& a, const VkExtent2D& b)
@@ -110,4 +102,6 @@ namespace SM
     {
         return !(a == b);
     }
+
+    #define SM_VULKAN_ASSERT(expr) SM_ASSERT(expr == VK_SUCCESS)
 }
