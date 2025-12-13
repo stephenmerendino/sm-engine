@@ -5,6 +5,7 @@
 #include "SM/Renderer/Color.h"
 #include "SM/Renderer/VulkanConfig.h"
 #include "SM/StandardTypes.h"
+#include <cstdint>
 
 #define VK_NO_PROTOTYPES
 #include "ThirdParty/vulkan/vulkan_core.h"
@@ -22,7 +23,35 @@ namespace SM
         struct Window;
     }
 
-    class FrameResources;
+    class VulkanRenderer;
+
+    class FrameResources
+    {
+        public:
+        void Init(VulkanRenderer* pRenderer);
+        void BeginFrame();
+        void EndFrame();
+
+        VkExtent2D m_curScreenResolution = { .width = 0, .height = 0 };
+
+        VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
+
+        U32 m_swapchainImageIndex = UINT32_MAX;
+        VkSemaphore m_swapchainImageAcquiredSemaphore = VK_NULL_HANDLE;
+        VkFence m_swapchainImageAcquiredFence = VK_NULL_HANDLE;
+
+        VkFormat m_mainColorFormat = VK_FORMAT_R8G8B8A8_UNORM;
+        VkImage m_mainColorRenderTarget = VK_NULL_HANDLE;
+        VkDeviceMemory m_mainColorRenderTargetMemory = VK_NULL_HANDLE;
+        VkImageView m_mainColorImageView = VK_NULL_HANDLE;
+        VkExtent2D m_mainColorExtent;
+
+        VkSemaphore m_allGpuWorkCompletedSemaphore = VK_NULL_HANDLE;
+        VkFence m_frameCompletedFence = VK_NULL_HANDLE;
+
+        VulkanRenderer* m_pRenderer = nullptr;
+    };
+
 
     class VulkanRenderer
     {
@@ -64,37 +93,12 @@ namespace SM
 
         U32 m_numFramesInFlight = 0;
         U32 m_curFrameInFlight = 0;
-        FrameResources* m_pFrameResources = nullptr;
+        FrameResources m_frameResources[VulkanConfig::kOptimalNumFramesInFlight];
 
         VkSampleCountFlagBits m_maxMsaaSamples = VK_SAMPLE_COUNT_1_BIT;
         VkFormat m_defaultDepthFormat = VK_FORMAT_UNDEFINED;
 
         static const size_t kMaxNumFramesInFlight = VulkanConfig::kOptimalNumFramesInFlight;
-    };
-
-    class FrameResources
-    {
-        public:
-        void Init(VulkanRenderer* pRenderer);
-        void Update();
-
-        VkExtent2D m_curScreenResolution = { .width = 0, .height = 0 };
-
-        VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
-
-        VkSemaphore m_swapchainImageAcquiredSemaphore = VK_NULL_HANDLE;
-        VkFence m_swapchainImageAcquiredFence = VK_NULL_HANDLE;
-
-        VkFormat m_mainColorFormat = VK_FORMAT_R8G8B8A8_UNORM;
-        VkImage m_mainColorRenderTarget = VK_NULL_HANDLE;
-        VkDeviceMemory m_mainColorRenderTargetMemory = VK_NULL_HANDLE;
-        VkImageView m_mainColorImageView = VK_NULL_HANDLE;
-        VkExtent2D m_mainColorExtent;
-
-        VkSemaphore m_allGpuWorkCompletedSemaphore = VK_NULL_HANDLE;
-        VkFence m_frameCompletedFence = VK_NULL_HANDLE;
-
-        VulkanRenderer* m_pRenderer = nullptr;
     };
 
     inline bool operator==(const VkExtent2D& a, const VkExtent2D& b)

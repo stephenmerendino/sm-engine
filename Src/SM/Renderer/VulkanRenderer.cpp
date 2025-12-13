@@ -12,7 +12,7 @@
 
 using namespace SM;
 
-static const ColorF32 kDefaultClearColor = ColorF32(0, 100, 100);
+static const ColorF32 kDefaultClearColor = ColorF32(0, 0.4, 0.4);
 
 void FrameResources::Init(VulkanRenderer* pRenderer)
 {
@@ -47,7 +47,7 @@ void FrameResources::Init(VulkanRenderer* pRenderer)
         VkFenceCreateInfo createInfo{
             .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
             .pNext = nullptr,
-            .flags = 0,
+            .flags = VK_FENCE_CREATE_SIGNALED_BIT,
         };
         SM_ASSERT(vkCreateFence(m_pRenderer->m_device, &createInfo, nullptr, &m_swapchainImageAcquiredFence) == VK_SUCCESS);
     }
@@ -73,117 +73,169 @@ void FrameResources::Init(VulkanRenderer* pRenderer)
     }
 }
 
-void FrameResources::Update()
+void FrameResources::BeginFrame()
 {
-    if(m_curScreenResolution == m_pRenderer->m_swapchainExtent)
+    // block main thread to explicitly wait and reset of the main frame fence, this means all previous gpu work is finished
     {
-        return; 
+        VkFence fencesToReset[] = {
+            m_frameCompletedFence,
+            m_swapchainImageAcquiredFence
+        };
+        vkWaitForFences(m_pRenderer->m_device, ARRAY_LEN(fencesToReset), fencesToReset, VK_TRUE, UINT64_MAX);
+        vkResetFences(m_pRenderer->m_device, ARRAY_LEN(fencesToReset), fencesToReset);
     }
 
-    // free previous resources
-    if(m_curScreenResolution.width != 0 && m_curScreenResolution.height != 0)
+    // swapchain update
     {
-        vkDestroyImage(m_pRenderer->m_device, m_mainColorRenderTarget, nullptr);
-        vkFreeMemory(m_pRenderer->m_device, m_mainColorRenderTargetMemory, nullptr);
+        bool bSwapchainStillUsable = m_pRenderer->UpdateSwapchain(m_swapchainImageIndex, m_swapchainImageAcquiredSemaphore, m_swapchainImageAcquiredFence);
+        SM_ASSERT(bSwapchainStillUsable);
     }
 
-    m_curScreenResolution = m_pRenderer->m_swapchainExtent;
-
-    // setup main color render target
+    // reset and begin the frame command buffer
     {
-        m_mainColorExtent = m_curScreenResolution;
+        VkCommandBufferResetFlags resetCommandBufferFlags = 0;
+        vkResetCommandBuffer(m_commandBuffer, resetCommandBufferFlags);
 
-        // Image
-        VkImageCreateInfo imageCreateInfo {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, 
-            .pNext = nullptr, 
-            .flags = 0, 
-            .imageType = VK_IMAGE_TYPE_2D, 
-            .format = m_mainColorFormat, 
-            .extent = { .width = m_mainColorExtent.width, .height = m_mainColorExtent.height, .depth = 1 }, 
-            .mipLevels = 1, 
-            .arrayLayers = 1,
-            .samples = VK_SAMPLE_COUNT_1_BIT,
-            .tiling = VK_IMAGE_TILING_OPTIMAL, 
-            .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, 
-            .sharingMode = VK_SHARING_MODE_EXCLUSIVE, 
-            .queueFamilyIndexCount = 1, 
-            .pQueueFamilyIndices = (U32*)&m_pRenderer->m_graphicsQueueIndex, 
-            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED 
-        };
-
-        SM_ASSERT(vkCreateImage(m_pRenderer->m_device, &imageCreateInfo, nullptr, &m_mainColorRenderTarget) == VK_SUCCESS);
-
-        // Memory
-        VkMemoryRequirements imageMemoryRequirements;
-        vkGetImageMemoryRequirements(m_pRenderer->m_device, m_mainColorRenderTarget, &imageMemoryRequirements);
-
-        VkMemoryPropertyFlagBits neededFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-        U32 memoryTypeIndex = UINT32_MAX;
-
-        // for each memory type check if its bit is set, if so check if it has the flags we need
-        for(int i = 0; i < m_pRenderer->m_physicalDeviceMemoryProperties.memoryTypeCount; i++)
-        {
-            // not a valid memory type based on the requirements
-            if(!IsBitSet(imageMemoryRequirements.memoryTypeBits, i))
-            {
-                continue;
-            }
-
-            // its a valid memory type, BUT it doesn't have the flags we need
-            if(!IsBitSet(m_pRenderer->m_physicalDeviceMemoryProperties.memoryTypes[i].propertyFlags, neededFlags))
-            {
-                continue;    
-            }
-
-            // passed all the filters, this is a valid memory type to use
-            memoryTypeIndex = i;
-            break;
-        }
-
-        VkMemoryAllocateInfo imageMemoryAllocateInfo {
-            .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, 
-            .pNext = nullptr,
-            .allocationSize = imageMemoryRequirements.size,
-            .memoryTypeIndex = memoryTypeIndex
-        };
-
-        SM_ASSERT(vkAllocateMemory(m_pRenderer->m_device, &imageMemoryAllocateInfo, nullptr, &m_mainColorRenderTargetMemory) == VK_SUCCESS);
-
-        VkDeviceSize memoryOffset = 0;
-        SM_ASSERT(vkBindImageMemory(m_pRenderer->m_device, m_mainColorRenderTarget, m_mainColorRenderTargetMemory, memoryOffset) == VK_SUCCESS);
-
-        // Image View
-        VkImageViewCreateInfo imageViewCreateInfo{
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        VkCommandBufferBeginInfo beginInfo{
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
             .pNext = nullptr,
             .flags = 0,
-            .image = m_mainColorRenderTarget,
-            .viewType = VK_IMAGE_VIEW_TYPE_2D,
-            .format = m_mainColorFormat,
-            .components = { 
-                .r = VK_COMPONENT_SWIZZLE_IDENTITY, 
-                .g = VK_COMPONENT_SWIZZLE_IDENTITY, 
-                .b = VK_COMPONENT_SWIZZLE_IDENTITY, 
-                .a = VK_COMPONENT_SWIZZLE_IDENTITY 
-            },
-            .subresourceRange = {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1
-            }
+            .pInheritanceInfo = nullptr
         };
-        SM_ASSERT(vkCreateImageView(m_pRenderer->m_device, &imageViewCreateInfo, nullptr, &m_mainColorImageView) == VK_SUCCESS);
+        SM_ASSERT(vkBeginCommandBuffer(m_commandBuffer, &beginInfo) == VK_SUCCESS);
     }
 
-    VkCommandBufferResetFlags resetCommandBufferFlags = 0;
-    vkResetCommandBuffer(m_commandBuffer, resetCommandBufferFlags);
+    // swapchain res changed so we have to update all of our resources to match the new size
+    if(m_curScreenResolution != m_pRenderer->m_swapchainExtent)
+    {
+        // free previous resources
+        if(m_curScreenResolution.width != 0 && m_curScreenResolution.height != 0)
+        {
+            vkDestroyImage(m_pRenderer->m_device, m_mainColorRenderTarget, nullptr);
+            vkFreeMemory(m_pRenderer->m_device, m_mainColorRenderTargetMemory, nullptr);
+        }
 
-    // begin command buffer
+        m_curScreenResolution = m_pRenderer->m_swapchainExtent;
 
-    // transition any created resources into their correct starting states
+        // setup main color render target
+        {
+            m_mainColorExtent = m_curScreenResolution;
+
+            // Image
+            VkImageCreateInfo imageCreateInfo {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, 
+                    .pNext = nullptr, 
+                    .flags = 0, 
+                    .imageType = VK_IMAGE_TYPE_2D, 
+                    .format = m_mainColorFormat, 
+                    .extent = { .width = m_mainColorExtent.width, .height = m_mainColorExtent.height, .depth = 1 }, 
+                    .mipLevels = 1, 
+                    .arrayLayers = 1,
+                    .samples = VK_SAMPLE_COUNT_1_BIT,
+                    .tiling = VK_IMAGE_TILING_OPTIMAL, 
+                    .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, 
+                    .sharingMode = VK_SHARING_MODE_EXCLUSIVE, 
+                    .queueFamilyIndexCount = 1, 
+                    .pQueueFamilyIndices = (U32*)&m_pRenderer->m_graphicsQueueIndex, 
+                    .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED 
+            };
+
+            SM_ASSERT(vkCreateImage(m_pRenderer->m_device, &imageCreateInfo, nullptr, &m_mainColorRenderTarget) == VK_SUCCESS);
+
+            // Memory
+            VkMemoryRequirements imageMemoryRequirements;
+            vkGetImageMemoryRequirements(m_pRenderer->m_device, m_mainColorRenderTarget, &imageMemoryRequirements);
+
+            VkMemoryPropertyFlagBits neededFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+            U32 memoryTypeIndex = UINT32_MAX;
+
+            // for each memory type check if its bit is set, if so check if it has the flags we need
+            for(int i = 0; i < m_pRenderer->m_physicalDeviceMemoryProperties.memoryTypeCount; i++)
+            {
+                // not a valid memory type based on the requirements
+                if(!IsBitSet(imageMemoryRequirements.memoryTypeBits, i))
+                {
+                    continue;
+                }
+
+                // its a valid memory type, BUT it doesn't have the flags we need
+                if(!IsBitSet(m_pRenderer->m_physicalDeviceMemoryProperties.memoryTypes[i].propertyFlags, neededFlags))
+                {
+                    continue;    
+                }
+
+                // passed all the filters, this is a valid memory type to use
+                memoryTypeIndex = i;
+                break;
+            }
+
+            VkMemoryAllocateInfo imageMemoryAllocateInfo {
+                .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, 
+                    .pNext = nullptr,
+                    .allocationSize = imageMemoryRequirements.size,
+                    .memoryTypeIndex = memoryTypeIndex
+            };
+
+            SM_ASSERT(vkAllocateMemory(m_pRenderer->m_device, &imageMemoryAllocateInfo, nullptr, &m_mainColorRenderTargetMemory) == VK_SUCCESS);
+
+            VkDeviceSize memoryOffset = 0;
+            SM_ASSERT(vkBindImageMemory(m_pRenderer->m_device, m_mainColorRenderTarget, m_mainColorRenderTargetMemory, memoryOffset) == VK_SUCCESS);
+
+            // Image View
+            VkImageViewCreateInfo imageViewCreateInfo{
+                .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                    .pNext = nullptr,
+                    .flags = 0,
+                    .image = m_mainColorRenderTarget,
+                    .viewType = VK_IMAGE_VIEW_TYPE_2D,
+                    .format = m_mainColorFormat,
+                    .components = { 
+                        .r = VK_COMPONENT_SWIZZLE_IDENTITY, 
+                        .g = VK_COMPONENT_SWIZZLE_IDENTITY, 
+                        .b = VK_COMPONENT_SWIZZLE_IDENTITY, 
+                        .a = VK_COMPONENT_SWIZZLE_IDENTITY 
+                    },
+                    .subresourceRange = {
+                        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                        .baseMipLevel = 0,
+                        .levelCount = 1,
+                        .baseArrayLayer = 0,
+                        .layerCount = 1
+                    }
+            };
+            SM_ASSERT(vkCreateImageView(m_pRenderer->m_device, &imageViewCreateInfo, nullptr, &m_mainColorImageView) == VK_SUCCESS);
+
+            // transition the newly created image into the expected layout for rendering a frame
+            VkImageMemoryBarrier barrier {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                .srcAccessMask = VK_ACCESS_NONE,
+                .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image = m_mainColorRenderTarget,
+                .subresourceRange {
+                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .baseMipLevel = 0,
+                    .levelCount = 1,
+                    .baseArrayLayer = 0,
+                    .layerCount = 1
+                }
+            };
+            vkCmdPipelineBarrier(m_commandBuffer,
+                                 VK_PIPELINE_STAGE_NONE, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                 0,
+                                 0, nullptr,
+                                 0, nullptr,
+                                 1, &barrier);
+        }
+    }
+}
+
+void FrameResources::EndFrame()
+{
+    vkEndCommandBuffer(m_commandBuffer);
 }
 
 void VulkanRenderer::CreateSwapchain()
@@ -353,13 +405,12 @@ bool VulkanRenderer::UpdateSwapchain(U32& outSwapchainImageIndex, VkSemaphore im
 {
     SM_ASSERT(m_swapchain != VK_NULL_HANDLE);
 
-    U32 swapchainImageIndex = UINT32_MAX;
     VkResult status = vkAcquireNextImageKHR(m_device, 
                                             m_swapchain, 
                                             UINT64_MAX, 
                                             imageAcquiredSemaphore, 
                                             imageAcquiredFence, 
-                                            &swapchainImageIndex);
+                                            &outSwapchainImageIndex);
 
     SM_ASSERT(status == VK_SUCCESS || status == VK_SUBOPTIMAL_KHR);
     if(status == VK_SUBOPTIMAL_KHR)
@@ -786,10 +837,9 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
     // Setup frame resources
     CreateSwapchain();
 
-    m_pFrameResources = SM::Alloc<FrameResources>(m_numFramesInFlight);
     for(int i = 0; i < m_numFramesInFlight; i++)
     {
-        m_pFrameResources[i].Init(this);
+        m_frameResources[i].Init(this);
     }
 
     SM::PopAllocator();
@@ -803,20 +853,8 @@ void VulkanRenderer::RenderFrame()
     m_curFrameInFlight %= m_numFramesInFlight;
 
     // setup new frame
-    FrameResources& frameResources = m_pFrameResources[m_curFrameInFlight];
-    U32 swapchainImageIndex = UINT32_MAX;
-    {
-        // block main thread to explicitly wait and reset of the main frame fence, this means all previous gpu work is finished
-        vkWaitForFences(m_device, 1, &frameResources.m_frameCompletedFence, VK_TRUE, UINT64_MAX);
-        vkResetFences(m_device, 1, &frameResources.m_frameCompletedFence);
-        bool bSwapchainStillUsable = UpdateSwapchain(swapchainImageIndex, frameResources.m_swapchainImageAcquiredSemaphore, frameResources.m_swapchainImageAcquiredFence);
-        SM_ASSERT(bSwapchainStillUsable);
-        frameResources.Update();
-    }
-
-    // reset frame command buffer
-    {
-    }
+    FrameResources& frameResources = m_frameResources[m_curFrameInFlight];
+    frameResources.BeginFrame();
 
     // draw to main color target
     {
@@ -893,7 +931,7 @@ void VulkanRenderer::RenderFrame()
             .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .image = m_pSwapchainImages[swapchainImageIndex],
+            .image = m_pSwapchainImages[frameResources.m_swapchainImageIndex],
             .subresourceRange{
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                 .baseMipLevel = 0,
@@ -944,7 +982,7 @@ void VulkanRenderer::RenderFrame()
         };
         vkCmdBlitImage(frameResources.m_commandBuffer, 
                 frameResources.m_mainColorRenderTarget, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
-                m_pSwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+                m_pSwapchainImages[frameResources.m_swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
                 1, &blitInfo, VK_FILTER_NEAREST);
     }
 
@@ -955,7 +993,7 @@ void VulkanRenderer::RenderFrame()
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
             .pNext = nullptr,
             .srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
-            .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_NONE,
             .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
             .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
@@ -979,7 +1017,7 @@ void VulkanRenderer::RenderFrame()
             .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .image = m_pSwapchainImages[swapchainImageIndex],
+            .image = m_pSwapchainImages[frameResources.m_swapchainImageIndex],
             .subresourceRange{
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                 .baseMipLevel = 0,
@@ -1003,6 +1041,8 @@ void VulkanRenderer::RenderFrame()
                 0, nullptr, 
                 ARRAY_LEN(imageMemoryBarriers), imageMemoryBarriers);
     }
+
+    frameResources.EndFrame();
 
     // submit the command buffer
     {
@@ -1034,13 +1074,18 @@ void VulkanRenderer::RenderFrame()
             .pWaitSemaphores = &frameResources.m_allGpuWorkCompletedSemaphore,
             .swapchainCount = 1,
             .pSwapchains = &m_swapchain,
-            .pImageIndices = &swapchainImageIndex,
+            .pImageIndices = &frameResources.m_swapchainImageIndex,
             .pResults = &presentResult
         };
         SM_ASSERT(vkQueuePresentKHR(m_graphicsQueue, &presentInfo) == VK_SUCCESS);
-        SM_ASSERT(presentResult == VK_SUCCESS || presentResult == VK_SUBOPTIMAL_KHR || presentResult == VK_ERROR_OUT_OF_DATE_KHR);
+        SM_ASSERT(presentResult == VK_SUCCESS || presentResult == VK_SUBOPTIMAL_KHR);
+        if(presentResult == VK_SUBOPTIMAL_KHR)
+        {
+            m_bSwapchainNeedsRefresh = true;
+        }
     }
 
+    // wait until very end of the frame to recreate swapchain if needed
     if(m_bSwapchainNeedsRefresh)
     {
         vkQueueWaitIdle(m_graphicsQueue);
