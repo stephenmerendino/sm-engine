@@ -32,7 +32,7 @@ namespace SM
         void SetClearColor(const ColorF32& color);
         VkFormat FindSupportedFormat(VkFormat* candidates, U32 numCandidates, VkImageTiling tiling, VkFormatFeatureFlags features);
         void CreateSwapchain();
-        void UpdateSwapchain();
+        bool UpdateSwapchain(U32& outSwapchainImageIndex, VkSemaphore imageAcquiredSemaphore = VK_NULL_HANDLE, VkFence imageAcquiredFence = VK_NULL_HANDLE);
 
         Platform::Window* m_pWindow = nullptr;
         ColorF32 m_clearColor;
@@ -60,6 +60,7 @@ namespace SM
         VkSurfaceFormatKHR m_swapchainFormat;
         VkExtent2D m_swapchainExtent;
         VkImage* m_pSwapchainImages = nullptr;
+        bool m_bSwapchainNeedsRefresh = false;
 
         U32 m_numFramesInFlight = 0;
         U32 m_curFrameInFlight = 0;
@@ -81,14 +82,16 @@ namespace SM
 
         VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
 
-        VkSemaphore m_swapchainAcquiredSemaphore = VK_NULL_HANDLE;
-        VkFence m_swapchainAcquiredFence = VK_NULL_HANDLE;
+        VkSemaphore m_swapchainImageAcquiredSemaphore = VK_NULL_HANDLE;
+        VkFence m_swapchainImageAcquiredFence = VK_NULL_HANDLE;
 
         VkFormat m_mainColorFormat = VK_FORMAT_R8G8B8A8_UNORM;
         VkImage m_mainColorRenderTarget = VK_NULL_HANDLE;
         VkDeviceMemory m_mainColorRenderTargetMemory = VK_NULL_HANDLE;
         VkImageView m_mainColorImageView = VK_NULL_HANDLE;
+        VkExtent2D m_mainColorExtent;
 
+        VkSemaphore m_allGpuWorkCompletedSemaphore = VK_NULL_HANDLE;
         VkFence m_frameCompletedFence = VK_NULL_HANDLE;
 
         VulkanRenderer* m_pRenderer = nullptr;

@@ -32,24 +32,24 @@ void FrameResources::Init(VulkanRenderer* pRenderer)
         vkAllocateCommandBuffers(m_pRenderer->m_device, &commandBufferAllocInfo, &m_commandBuffer);
     }
 
-    // m_swapchainAcquiredSemaphore
+    // m_swapchainImageAcquiredSemaphore
     {
         VkSemaphoreCreateInfo createInfo{
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
             .pNext = nullptr,
             .flags = 0 
         };
-        SM_ASSERT(vkCreateSemaphore(m_pRenderer->m_device, &createInfo, nullptr, &m_swapchainAcquiredSemaphore) == VK_SUCCESS);
+        SM_ASSERT(vkCreateSemaphore(m_pRenderer->m_device, &createInfo, nullptr, &m_swapchainImageAcquiredSemaphore) == VK_SUCCESS);
     }
 
-    // m_swapchainAcquiredFence
+    // m_swapchainImageAcquiredFence
     {
         VkFenceCreateInfo createInfo{
             .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
             .pNext = nullptr,
             .flags = 0,
         };
-        SM_ASSERT(vkCreateFence(m_pRenderer->m_device, &createInfo, nullptr, &m_swapchainAcquiredFence) == VK_SUCCESS);
+        SM_ASSERT(vkCreateFence(m_pRenderer->m_device, &createInfo, nullptr, &m_swapchainImageAcquiredFence) == VK_SUCCESS);
     }
 
     // m_frameCompletedFence
@@ -60,6 +60,16 @@ void FrameResources::Init(VulkanRenderer* pRenderer)
             .flags = VK_FENCE_CREATE_SIGNALED_BIT,
         };
         SM_ASSERT(vkCreateFence(m_pRenderer->m_device, &createInfo, nullptr, &m_frameCompletedFence) == VK_SUCCESS);
+    }
+
+    // m_allGpuWorkCompletedSemaphore
+    {
+        VkSemaphoreCreateInfo createInfo{
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0 
+        };
+        SM_ASSERT(vkCreateSemaphore(m_pRenderer->m_device, &createInfo, nullptr, &m_allGpuWorkCompletedSemaphore) == VK_SUCCESS);
     }
 }
 
@@ -81,6 +91,8 @@ void FrameResources::Update()
 
     // setup main color render target
     {
+        m_mainColorExtent = m_curScreenResolution;
+
         // Image
         VkImageCreateInfo imageCreateInfo {
             .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, 
@@ -88,7 +100,7 @@ void FrameResources::Update()
             .flags = 0, 
             .imageType = VK_IMAGE_TYPE_2D, 
             .format = m_mainColorFormat, 
-            .extent = { .width = m_curScreenResolution.width, .height = m_curScreenResolution.height, .depth = 1 }, 
+            .extent = { .width = m_mainColorExtent.width, .height = m_mainColorExtent.height, .depth = 1 }, 
             .mipLevels = 1, 
             .arrayLayers = 1,
             .samples = VK_SAMPLE_COUNT_1_BIT,
@@ -97,7 +109,7 @@ void FrameResources::Update()
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE, 
             .queueFamilyIndexCount = 1, 
             .pQueueFamilyIndices = (U32*)&m_pRenderer->m_graphicsQueueIndex, 
-            .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED 
         };
 
         SM_ASSERT(vkCreateImage(m_pRenderer->m_device, &imageCreateInfo, nullptr, &m_mainColorRenderTarget) == VK_SUCCESS);
@@ -165,6 +177,13 @@ void FrameResources::Update()
         };
         SM_ASSERT(vkCreateImageView(m_pRenderer->m_device, &imageViewCreateInfo, nullptr, &m_mainColorImageView) == VK_SUCCESS);
     }
+
+    VkCommandBufferResetFlags resetCommandBufferFlags = 0;
+    vkResetCommandBuffer(m_commandBuffer, resetCommandBufferFlags);
+
+    // begin command buffer
+
+    // transition any created resources into their correct starting states
 }
 
 void VulkanRenderer::CreateSwapchain()
@@ -330,20 +349,25 @@ void VulkanRenderer::CreateSwapchain()
     vkQueueWaitIdle(m_graphicsQueue);
 }
 
-void VulkanRenderer::UpdateSwapchain()
+bool VulkanRenderer::UpdateSwapchain(U32& outSwapchainImageIndex, VkSemaphore imageAcquiredSemaphore, VkFence imageAcquiredFence)
 {
     SM_ASSERT(m_swapchain != VK_NULL_HANDLE);
 
-    VkResult status = vkGetSwapchainStatusKHR(m_device, m_swapchain); 
+    U32 swapchainImageIndex = UINT32_MAX;
+    VkResult status = vkAcquireNextImageKHR(m_device, 
+                                            m_swapchain, 
+                                            UINT64_MAX, 
+                                            imageAcquiredSemaphore, 
+                                            imageAcquiredFence, 
+                                            &swapchainImageIndex);
+
     SM_ASSERT(status == VK_SUCCESS || status == VK_SUBOPTIMAL_KHR);
-    if(status == VK_SUCCESS)
+    if(status == VK_SUBOPTIMAL_KHR)
     {
-        return;
+        m_bSwapchainNeedsRefresh = true;
     }
 
-    vkQueueWaitIdle(m_graphicsQueue);
-    vkDestroySwapchainKHR(m_device, m_swapchain, nullptr);
-    CreateSwapchain();
+    return true;
 }
 
 bool VulkanRenderer::Init(Platform::Window* pWindow)
@@ -708,7 +732,9 @@ bool VulkanRenderer::Init(Platform::Window* pWindow)
         .pEnabledFeatures = &deviceFeatures
     };
 
-    SM_ASSERT(vkCreateDevice(m_physicalDevice, &createInfo, nullptr, &m_device) == VK_SUCCESS);
+    //SM_ASSERT(vkCreateDevice(m_physicalDevice, &createInfo, nullptr, &m_device) == VK_SUCCESS);
+    VkResult deviceCreated = vkCreateDevice(m_physicalDevice, &createInfo, nullptr, &m_device);
+    SM_ASSERT(deviceCreated == VK_SUCCESS);
     Platform::LoadVulkanDeviceFuncs(m_device);
 
     //------------------------------------------------------------------------------------------------------------------------
@@ -776,30 +802,24 @@ void VulkanRenderer::RenderFrame()
     m_curFrameInFlight++;
     m_curFrameInFlight %= m_numFramesInFlight;
 
-    UpdateSwapchain();
-
+    // setup new frame
     FrameResources& frameResources = m_pFrameResources[m_curFrameInFlight];
-    vkWaitForFences(m_device, 1, &frameResources.m_frameCompletedFence, VK_TRUE, UINT64_MAX);
-    vkResetFences(m_device, 1, &frameResources.m_frameCompletedFence);
-    frameResources.Update();
+    U32 swapchainImageIndex = UINT32_MAX;
+    {
+        // block main thread to explicitly wait and reset of the main frame fence, this means all previous gpu work is finished
+        vkWaitForFences(m_device, 1, &frameResources.m_frameCompletedFence, VK_TRUE, UINT64_MAX);
+        vkResetFences(m_device, 1, &frameResources.m_frameCompletedFence);
+        bool bSwapchainStillUsable = UpdateSwapchain(swapchainImageIndex, frameResources.m_swapchainImageAcquiredSemaphore, frameResources.m_swapchainImageAcquiredFence);
+        SM_ASSERT(bSwapchainStillUsable);
+        frameResources.Update();
+    }
 
     // reset frame command buffer
     {
-        VkCommandBufferResetFlags resetCommandBufferFlags = 0;
-        vkResetCommandBuffer(frameResources.m_commandBuffer, resetCommandBufferFlags);
     }
 
     // draw to main color target
     {
-        VkClearColorValue clearColor;
-        clearColor.float32[0] = m_clearColor.r;
-        clearColor.float32[1] = m_clearColor.g;
-        clearColor.float32[2] = m_clearColor.b;
-        clearColor.float32[3] = m_clearColor.a;
-        VkClearValue clearValue{
-            .color = clearColor
-        };
-
         VkRenderingAttachmentInfo mainColorAttachmentInfo{
             .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
             .pNext = nullptr,
@@ -810,7 +830,14 @@ void VulkanRenderer::RenderFrame()
             .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
             .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-            .clearValue = clearValue
+            .clearValue {
+                .color {
+                    m_clearColor.r,
+                    m_clearColor.g,
+                    m_clearColor.b,
+                    m_clearColor.a
+                } 
+            }
         };
 
         VkRenderingAttachmentInfo colorAttachments[] = { mainColorAttachmentInfo };
@@ -821,7 +848,7 @@ void VulkanRenderer::RenderFrame()
             .flags = 0,
             .renderArea = {
                 .offset = { .x = 0, .y = 0 },
-                .extent = m_swapchainExtent
+                .extent = frameResources.m_mainColorExtent
             },
             .layerCount = 1,
             .viewMask = 0,
@@ -831,47 +858,49 @@ void VulkanRenderer::RenderFrame()
             .pStencilAttachment = nullptr
         };
         vkCmdBeginRendering(frameResources.m_commandBuffer, &renderingInfo);
+        //(TODO) do the rendering of meshes here
         vkCmdEndRendering(frameResources.m_commandBuffer);
-    }
-
-    // get a swapchain image
-    U32 swapchainImageIndex = UINT32_MAX;
-    {
-        vkAcquireNextImageKHR(m_device, 
-                              m_swapchain, 
-                              UINT64_MAX, 
-                              frameResources.m_swapchainAcquiredSemaphore, 
-                              frameResources.m_swapchainAcquiredFence, 
-                              &swapchainImageIndex);
     }
 
     // transition main color from color attachment to transfer src
     // transition swapchain image from presentation to transfer dst
     {
         VkImageMemoryBarrier transitionMainColorToTransferSrcBarrier{
-            //VkStructureType            sType;
-            //const void*                pNext;
-            //VkAccessFlags              srcAccessMask;
-            //VkAccessFlags              dstAccessMask;
-            //VkImageLayout              oldLayout;
-            //VkImageLayout              newLayout;
-            //uint32_t                   srcQueueFamilyIndex;
-            //uint32_t                   dstQueueFamilyIndex;
-            //VkImage                    image;
-            //VkImageSubresourceRange    subresourceRange;
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext = nullptr,
+            .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = frameResources.m_mainColorRenderTarget,
+            .subresourceRange{
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1
+            }
         };
 
         VkImageMemoryBarrier transitionSwapchainToTransferDstBarrier{
-            //VkStructureType            sType;
-            //const void*                pNext;
-            //VkAccessFlags              srcAccessMask;
-            //VkAccessFlags              dstAccessMask;
-            //VkImageLayout              oldLayout;
-            //VkImageLayout              newLayout;
-            //uint32_t                   srcQueueFamilyIndex;
-            //uint32_t                   dstQueueFamilyIndex;
-            //VkImage                    image;
-            //VkImageSubresourceRange    subresourceRange;
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext = nullptr,
+            .srcAccessMask = VK_ACCESS_NONE,
+            .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = m_pSwapchainImages[swapchainImageIndex],
+            .subresourceRange{
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1
+            }
         };
 
         VkImageMemoryBarrier imageMemoryBarriers[] = {
@@ -892,44 +921,72 @@ void VulkanRenderer::RenderFrame()
     // copy main color data to the swapchain image
     {
         VkImageBlit blitInfo{
-            //VkImageSubresourceLayers    srcSubresource;
-            //VkOffset3D                  srcOffsets[2];
-            //VkImageSubresourceLayers    dstSubresource;
-            //VkOffset3D                  dstOffsets[2];
+            .srcSubresource{
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .mipLevel = 0,
+                .baseArrayLayer = 0,
+                .layerCount = 1
+            },
+            .srcOffsets{
+                {.x = 0, .y = 0, .z = 0}, 
+                {.x = (int)frameResources.m_mainColorExtent.width, .y = (int)frameResources.m_mainColorExtent.height, .z = 1}
+            },
+            .dstSubresource{
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .mipLevel = 0,
+                .baseArrayLayer = 0,
+                .layerCount = 1
+            },
+            .dstOffsets{
+                {.x = 0, .y = 0, .z = 0}, 
+                {.x = (int)m_swapchainExtent.width, .y = (int)m_swapchainExtent.height, .z = 1}
+            }
         };
         vkCmdBlitImage(frameResources.m_commandBuffer, 
                 frameResources.m_mainColorRenderTarget, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 
                 m_pSwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
-                1, &blitInfo, VK_FILTER_LINEAR);
+                1, &blitInfo, VK_FILTER_NEAREST);
     }
 
     // transition swapchain image to presentation from transfer dst
     // transition main color render target to color attachment from transfer src
     {
         VkImageMemoryBarrier transitionMainColorToColorAttachmentBarrier{
-            //VkStructureType            sType;
-            //const void*                pNext;
-            //VkAccessFlags              srcAccessMask;
-            //VkAccessFlags              dstAccessMask;
-            //VkImageLayout              oldLayout;
-            //VkImageLayout              newLayout;
-            //uint32_t                   srcQueueFamilyIndex;
-            //uint32_t                   dstQueueFamilyIndex;
-            //VkImage                    image;
-            //VkImageSubresourceRange    subresourceRange;
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext = nullptr,
+            .srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+            .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = frameResources.m_mainColorRenderTarget,
+            .subresourceRange{
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1
+            }
         };
 
         VkImageMemoryBarrier transitionSwapchainToPresentationBarrier{
-            //VkStructureType            sType;
-            //const void*                pNext;
-            //VkAccessFlags              srcAccessMask;
-            //VkAccessFlags              dstAccessMask;
-            //VkImageLayout              oldLayout;
-            //VkImageLayout              newLayout;
-            //uint32_t                   srcQueueFamilyIndex;
-            //uint32_t                   dstQueueFamilyIndex;
-            //VkImage                    image;
-            //VkImageSubresourceRange    subresourceRange;
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext = nullptr,
+            .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_NONE,
+            .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = m_pSwapchainImages[swapchainImageIndex],
+            .subresourceRange{
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1
+            }
         };
 
         VkImageMemoryBarrier imageMemoryBarriers[] = {
@@ -949,33 +1006,47 @@ void VulkanRenderer::RenderFrame()
 
     // submit the command buffer
     {
+        VkPipelineStageFlags pWaitDstStageMask[]{
+            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
+        };
         VkSubmitInfo submitInfo{
-            //VkStructureType                sType;
-            //const void*                    pNext;
-            //uint32_t                       waitSemaphoreCount;
-            //const VkSemaphore*             pWaitSemaphores;
-            //const VkPipelineStageFlags*    pWaitDstStageMask;
-            //uint32_t                       commandBufferCount;
-            //const VkCommandBuffer*         pCommandBuffers;
-            //uint32_t                       signalSemaphoreCount;
-            //const VkSemaphore*             pSignalSemaphores;
+            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+            .pNext = nullptr,
+            .waitSemaphoreCount = 1,
+            .pWaitSemaphores = &frameResources.m_swapchainImageAcquiredSemaphore,
+            .pWaitDstStageMask = pWaitDstStageMask,
+            .commandBufferCount = 1,
+            .pCommandBuffers = &frameResources.m_commandBuffer,
+            .signalSemaphoreCount = 1,
+            .pSignalSemaphores = &frameResources.m_allGpuWorkCompletedSemaphore
+
         };
         vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, frameResources.m_frameCompletedFence);
     }
 
     // present the swapchain image
     {
+        VkResult presentResult;
         VkPresentInfoKHR presentInfo{
-            //VkStructureType          sType;
-            //const void*              pNext;
-            //uint32_t                 waitSemaphoreCount;
-            //const VkSemaphore*       pWaitSemaphores;
-            //uint32_t                 swapchainCount;
-            //const VkSwapchainKHR*    pSwapchains;
-            //const uint32_t*          pImageIndices;
-            //VkResult*                pResults;
+            .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+            .pNext = nullptr,
+            .waitSemaphoreCount = 1,
+            .pWaitSemaphores = &frameResources.m_allGpuWorkCompletedSemaphore,
+            .swapchainCount = 1,
+            .pSwapchains = &m_swapchain,
+            .pImageIndices = &swapchainImageIndex,
+            .pResults = &presentResult
         };
-        vkQueuePresentKHR(m_graphicsQueue, &presentInfo);
+        SM_ASSERT(vkQueuePresentKHR(m_graphicsQueue, &presentInfo) == VK_SUCCESS);
+        SM_ASSERT(presentResult == VK_SUCCESS || presentResult == VK_SUBOPTIMAL_KHR || presentResult == VK_ERROR_OUT_OF_DATE_KHR);
+    }
+
+    if(m_bSwapchainNeedsRefresh)
+    {
+        vkQueueWaitIdle(m_graphicsQueue);
+        vkDestroySwapchainKHR(m_device, m_swapchain, nullptr);
+        CreateSwapchain();
+        m_bSwapchainNeedsRefresh = false;
     }
 }
 
